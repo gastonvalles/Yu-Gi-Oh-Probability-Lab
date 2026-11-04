@@ -300,6 +300,12 @@ export const auto: Translated<typeof es> = {
   'auto.chain.state.disabled': 'No effect',
   // Negated or no effect, with the link that did it (the core doesn't say: the adapter works it out).
   'auto.chain.by': '{state} · by CL{by}',
+  // Resolved: what its effect did, when the core says so without doubt (`chainOutcome`). Replaces «Resolved» in its chip.
+  'auto.chain.outcome.add': { one: 'Adds {count} card', other: 'Adds {count} cards' },
+  'auto.chain.outcome.draw': { one: 'Draws {count} card', other: 'Draws {count} cards' },
+  'auto.chain.outcome.summon': { one: 'Summons {count} monster', other: 'Summons {count} monsters' },
+  'auto.chain.outcome.grave': 'Sends {count} to the GY',
+  'auto.chain.outcome.banish': { one: 'Banishes {count} card', other: 'Banishes {count} cards' },
   // Phones: on top of the pill, «Chain · 2 · Resolves CL2».
   'auto.chain.count': 'Chain · {count}',
   'auto.chain.resolves': 'Resolves',

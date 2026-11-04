@@ -1,7 +1,7 @@
 import { mirrorApply, openMirror, type Mirror, type WireAct } from '../mat-public'
 import { createMatState, locateCard, matReducer, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type MatSummon, type MatTakeZone, type Placed } from '../practice-mat'
 import { LOCATION as L, POSITION as P, type AutoEvent, type EventOf, type LocPos, type Seat, type WireEvent } from './protocol'
-import type { ChainStep } from './chain-feed'
+import { chainOutcome, type ChainStep } from './chain-feed'
 import { isPublic } from './referee'
 
 /**
@@ -308,6 +308,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
   let openedNow = new Set<Card>()
   /** Una Invocación sin su `*summoned` todavía: las cartas que se invocan juntas van en la misma causa. */
   let summoning = false
+  /** Lo que el núcleo contó desde el `chain_solving` del eslabón que se resuelve (puede cruzar tandas: una pregunta en medio), para su `outcome` (`chainOutcome`). */
+  let solving: WireEvent[] | null = null
 
   const matId = (card: Card, controller: Seat) => (card.owner === controller ? card.id : `f.${card.id}`)
   const ref = (card: Card, controller: Seat): CardRef => ({ side: controller === seat ? 'mine' : 'theirs', id: matId(card, controller) })
@@ -735,6 +737,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
   function handle(event: WireEvent, rest: readonly WireEvent[]) {
     // La fase sigue siendo la misma; una Invocación, no: lo que se dispara después pudo venir de otra cosa.
     if (!summoning && overlay.cause && overlay.cause.kind !== 'phase' && RETRIGGER.has(event.type)) cause(null)
+    solving?.push(event)
     switch (event.type) {
       case 'move':
         return move(event, rest)
@@ -886,10 +889,13 @@ export function createAdapter(options: AdapterOptions): Adapter {
         const negation = state === 'negated' || state === 'disabled'
         // Quién lo negó: el núcleo no lo dice, pero niega mientras resuelve un eslabón, así que es el que se está resolviendo (comprobado con el núcleo real en
         // `auto-chain-feed.slow.test.ts`). Si es el mismo eslabón (llega sin efecto a su turno: un efecto continuo) o no se resuelve ninguno, no se sabe: sin `by`.
-        const solving = negation ? overlay.chain.findIndex((item, i) => item.state === 'solving' && i !== event.chain_size - 1) : -1
-        const by = solving >= 0 ? { by: solving + 1 } : {}
+        const solver = negation ? overlay.chain.findIndex((item, i) => item.state === 'solving' && i !== event.chain_size - 1) : -1
+        const by = solver >= 0 ? { by: solver + 1 } : {}
+        const outcome = state === 'solved' && solving ? chainOutcome(solving) : null
 
-        out.chain.push({ kind: state, at: out.mine.length, seq: out.order.length, index: event.chain_size - 1, ...by })
+        if (state === 'solving') solving = []
+        if (state === 'solved') solving = null
+        out.chain.push({ kind: state, at: out.mine.length, seq: out.order.length, index: event.chain_size - 1, ...by, ...(outcome ? { outcome } : {}) })
 
         // Un eslabón resuelto sale de la cadena (como en el núcleo); los demás cambian de estado.
         const link = overlay.chain[event.chain_size - 1]
@@ -903,6 +909,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       }
 
       case 'chain_end':
+        solving = null
         overlay = { ...overlay, chain: [] }
         out.chain.push({ kind: 'end', at: out.mine.length, seq: out.order.length, index: -1 })
         // Las miras de los objetivos se van al terminar la cadena (las de `card_target` siguen hasta su `cancel_target`).

@@ -288,6 +288,36 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
   })
 })
 
+describe('lo que hizo un eslabón resuelto (`outcome`): un solo chip, en lugar de «Resuelta»', () => {
+  const added: ChainNoticeRow = { ...PONIX, state: 'solved', outcome: { label: 'Añade 1 carta', tone: 'success' } }
+
+  it('en la pila del celular y en su nombre accesible, entero; la cinta sigue con el ícono del estado; sin `outcome`, «Resuelta»', () => {
+    pill([added, { ...ASH, state: 'solved' }], { focus: 0, resolving: true })
+    const row = within(screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).getByRole('button', { name: /^Eslabón 1:/ })
+
+    expect(row).toHaveAccessibleName('Eslabón 1: Ponix, tuyo. Añade 1 carta')
+    expect(within(row).getByText('Añade 1 carta')).toHaveAttribute('data-part', 'chip')
+    expect(within(row).queryByText('Resuelta')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Eslabón 2: Ash Blossom, del rival. Resuelta' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/Añade 1 carta$/)
+    fireEvent.click(screen.getByRole('button', { name: /la hoja/ }))
+    const [first, second] = within(screen.getByRole('list', { name: 'Eslabones de la cadena, del primero al último' })).getAllByRole('button')
+
+    expect(first).toHaveAccessibleName('Eslabón 1: Ponix, tuyo. Añade 1 carta')
+    expect(first).not.toHaveTextContent('Añade')
+    expect(first!.querySelector('svg')!.innerHTML).toBe(second!.querySelector('svg')!.innerHTML)
+  })
+
+  it('en escritorio: el chip de la fila y el resumen de la píldora lo dicen', () => {
+    const { status, rerender } = pill([added], { open: true, compact: false })
+
+    expect(screen.getByRole('button', { name: 'Eslabón 1: Ponix, tuyo. Añade 1 carta' })).toHaveTextContent(/Añade 1 carta$/)
+    expect(status).toHaveTextContent(/Añade 1 carta$/)
+    rerender([{ ...PONIX, state: 'solved' }])
+    expect(screen.getByRole('button', { name: 'Eslabón 1: Ponix, tuyo. Resuelta' })).toHaveTextContent(/Resuelta$/)
+  })
+})
+
 describe('ChainNotice desplegada en escritorio (como abre cada cadena)', () => {
   it('la píldora es el título de la pila («Cadena · 2»): el eslabón, su dueño y su estado van sólo en su fila (el resumen, para el lector de pantalla)', () => {
     const { status } = pill([PONIX, ASH], { open: true, compact: false })

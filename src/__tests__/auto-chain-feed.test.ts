@@ -1,4 +1,6 @@
-import { CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainStep } from '../app/auto/chain-feed'
+import { createAdapter } from '../app/auto/adapter'
+import { CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainDwell, chainFeed, chainOutcome, linkPhrase, stepsUpTo, type ChainStep } from '../app/auto/chain-feed'
+import { LOCATION as L, type WireEvent } from '../app/auto/protocol'
 
 const link = (index: number, mine: boolean, code: number, at: number): ChainStep => ({ kind: 'chain', at, index, link: { card: { side: mine ? 'mine' : 'theirs', id: `x${code}` }, code, mine } })
 const step = (kind: ChainStep['kind'], index: number, at: number): ChainStep => ({ kind, at, index })
@@ -59,6 +61,73 @@ describe('chainFeed: la cadena paso a paso', () => {
     expect(stepsUpTo(ASH_CHAIN, 0)).toBe(0)
     expect(stepsUpTo(ASH_CHAIN, 1)).toBe(6)
     expect(stepsUpTo(ASH_CHAIN, 2)).toBe(8)
+  })
+})
+
+describe('chainOutcome: qué hizo un eslabón, sólo sin duda', () => {
+  const at = (controller: 0 | 1, location: number, overlay_sequence?: number) => ({ controller, location, sequence: 0, position: 5, ...(overlay_sequence === undefined ? {} : { overlay_sequence }) })
+  const move = (from: number, to: number, controller: 0 | 1 = 0): WireEvent => ({ type: 'move', card: 0, from: at(controller, from), to: at(controller, to) })
+  const draw = (player: 0 | 1, count: number): WireEvent => ({ type: 'draw', player, drawn: Array.from({ length: count }, () => ({ code: 0, position: 10 })) })
+  const spsummoning: WireEvent = { type: 'spsummoning', code: 0, controller: 0, location: L.MZONE, sequence: 0, position: 1 }
+  const quiet: WireEvent[] = [{ type: 'shuffle_deck', player: 0 }, { type: 'confirm_cards', player: 0, cards: [] }, { type: 'recover', player: 1, amount: 1000 }]
+
+  it('una sola clase de cosa: la cuenta (lo que no mueve cartas no cuenta)', () => {
+    expect(chainOutcome([move(L.DECK, L.HAND), ...quiet])).toEqual({ kind: 'add', count: 1 })
+    expect(chainOutcome([move(L.GRAVE, L.HAND), move(L.REMOVED, L.HAND, 1)])).toEqual({ kind: 'add', count: 2 })
+    expect(chainOutcome([draw(0, 2), ...quiet])).toEqual({ kind: 'draw', count: 2 })
+    expect(chainOutcome([move(L.GRAVE, L.MZONE), spsummoning, { type: 'spsummoned' }, move(L.DECK, L.MZONE), spsummoning])).toEqual({ kind: 'summon', count: 2 })
+    // Una Ficha llega de ningún lado (lugar 0) y se Invoca igual.
+    expect(chainOutcome([move(0, L.MZONE), spsummoning])).toEqual({ kind: 'summon', count: 1 })
+    expect(chainOutcome([move(L.MZONE, L.GRAVE), move(L.MZONE, L.GRAVE, 1)])).toEqual({ kind: 'grave', count: 2 })
+    expect(chainOutcome([move(L.GRAVE, L.REMOVED, 1)])).toEqual({ kind: 'banish', count: 1 })
+  })
+
+  it('se calla: nada, dos clases (robar y descartar), robos de los dos, regresar del campo, una Invocación Normal o una Colocación, un material, al Deck', () => {
+    expect(chainOutcome([])).toBeNull()
+    expect(chainOutcome(quiet)).toBeNull()
+    expect(chainOutcome([draw(0, 3), move(L.HAND, L.GRAVE), move(L.HAND, L.GRAVE)])).toBeNull()
+    expect(chainOutcome([draw(0, 1), draw(1, 1)])).toBeNull()
+    expect(chainOutcome([move(L.MZONE, L.HAND)])).toBeNull()
+    expect(chainOutcome([move(L.DECK, L.HAND), move(L.MZONE, L.HAND)])).toBeNull()
+    expect(chainOutcome([move(L.HAND, L.MZONE), { type: 'summoning', code: 0, controller: 0, location: L.MZONE, sequence: 0, position: 1 }])).toBeNull()
+    expect(chainOutcome([move(L.HAND, L.MZONE), move(L.GRAVE, L.MZONE), spsummoning])).toBeNull()
+    expect(chainOutcome([{ type: 'move', card: 0, from: at(0, L.MZONE, 0), to: at(0, L.GRAVE) }])).toBeNull()
+    expect(chainOutcome([move(L.GRAVE, L.DECK)])).toBeNull()
+    expect(chainOutcome([move(L.DECK, L.SZONE)])).toBeNull()
+  })
+
+  it('chainFeed lo pasa a la fila sólo si quedó resuelta (una sin efecto no dice lo que hizo)', () => {
+    const outcome = { kind: 'add', count: 1 } as const
+    const steps = ASH_CHAIN.map((item, i) => (item.kind === 'solved' ? { ...item, outcome: i === 6 ? outcome : { kind: 'draw' as const, count: 1 } } : item))
+
+    expect(chainFeed(steps, 5)?.rows[1]).toMatchObject({ state: 'solved', outcome: { kind: 'draw', count: 1 } })
+    // Terraforming quedó sin efecto: su paso `solved` no le da `outcome`.
+    expect(chainFeed(steps, 8)?.rows[0]).toMatchObject({ state: 'disabled' })
+    expect(chainFeed(steps, 8)?.rows[0]).not.toHaveProperty('outcome')
+    expect(chainFeed(ASH_CHAIN, 8)?.rows.some((row) => 'outcome' in row)).toBe(false)
+  })
+
+  it('el adaptador lo anota en el paso `solved`, aunque una pregunta parta la resolución en dos tandas, y no cuenta el costo ni la Mágica que se va después', () => {
+    const adapter = createAdapter({ seat: 0, mine: { deck: [111, 222, 333], extra: [] }, theirs: { deck: 3, extra: 0 }, typeOf: () => 1 })
+    const batch = (...list: WireEvent[]) => adapter.apply({ t: 'events', seat: 0, n: 0, events: list }).chain
+    const card = (location: number, sequence: number, position = 10) => ({ controller: 0 as const, location, sequence, position })
+
+    adapter.apply({ t: 'events', seat: 0, n: 0, events: [draw(0, 1)] })
+    expect(batch(
+      { type: 'move', card: 333, from: card(L.HAND, 0), to: card(L.SZONE, 0, 5) },
+      { type: 'chaining', code: 333, controller: 0, location: L.SZONE, sequence: 0, position: 5, triggering_controller: 0, triggering_location: L.SZONE, triggering_sequence: 0, description: '0', chain_size: 1 },
+      { type: 'chained', chain_size: 1 },
+      { type: 'chain_solving', chain_size: 1 },
+    ).map((item) => item.kind)).toEqual(['chain', 'solving'])
+    const solved = batch(
+      { type: 'move', card: 222, from: card(L.DECK, 1), to: card(L.HAND, 0) },
+      { type: 'shuffle_deck', player: 0 },
+      { type: 'chain_solved', chain_size: 1 },
+      { type: 'move', card: 333, from: card(L.SZONE, 0, 5), to: card(L.GRAVE, 0, 5) },
+      { type: 'chain_end' },
+    )
+
+    expect(solved.map((item) => [item.kind, item.outcome])).toEqual([['solved', { kind: 'add', count: 1 }], ['end', undefined]])
   })
 })
 

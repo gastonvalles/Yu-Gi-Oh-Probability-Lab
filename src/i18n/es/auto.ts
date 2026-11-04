@@ -314,6 +314,12 @@ export const auto = {
   'auto.chain.state.disabled': 'Sin efecto',
   // Negada o sin efecto, con el eslabón que lo hizo (el núcleo no lo dice: lo deduce el adaptador).
   'auto.chain.by': '{state} · por CL{by}',
+  // Resuelta, lo que hizo su efecto si el núcleo lo dice sin duda (`chainOutcome`): reemplaza a «Resuelta» en su chip.
+  'auto.chain.outcome.add': { one: 'Añade {count} carta', other: 'Añade {count} cartas' },
+  'auto.chain.outcome.draw': { one: 'Roba {count} carta', other: 'Roba {count} cartas' },
+  'auto.chain.outcome.summon': { one: 'Invoca {count} monstruo', other: 'Invoca {count} monstruos' },
+  'auto.chain.outcome.grave': 'Manda {count} al Cementerio',
+  'auto.chain.outcome.banish': { one: 'Destierra {count} carta', other: 'Destierra {count} cartas' },
   // El celular: arriba en la píldora, «Cadena · 2 · Resuelve CL2».
   'auto.chain.count': 'Cadena · {count}',
   'auto.chain.resolves': 'Resuelve',

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 
-import type { ChainRowState } from '../../../app/auto/chain-feed'
+import type { ChainOutcome, ChainRowState } from '../../../app/auto/chain-feed'
 import { t } from '../../../i18n'
 import { ChainLessonBody } from '../../auto/ChainLesson'
-import { CHIP_ICON, ChainListRows, STATE_TONE, stateLabel, type ChainNoticeRow } from '../../auto/chain-parts'
+import { CHIP_ICON, ChainListRows, outcomeChip, STATE_TONE, stateLabel, type ChainNoticeRow } from '../../auto/chain-parts'
 import { Badge } from '../../ui/Badge'
 import { Button } from '../../ui/Button'
 import { Icon } from '../../ui/Icon'
@@ -11,21 +11,25 @@ import { Segmented } from '../../ui/Segmented'
 import type { Tone } from '../../ui/tone'
 import { Specimen, Tag } from '../Specimen'
 
-/** La cadena: la pila real animada paso a paso (`ChainListRows`), los chips de consecuencia (en propuesta, sin cablear) y la hoja «Cómo se resuelve» (`ChainLesson`). */
+/** La cadena: la pila real animada paso a paso (`ChainListRows`), sus chips (estado y, resuelta, lo que hizo) y la hoja «Cómo se resuelve» (`ChainLesson`). */
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
 
-/** La cadena de muestra (la del catálogo): Branded Fusion, Ash del rival y el CL3 que la para. Negada: PSY-Framegear Gamma niega su activación; sin efecto: Called by the Grave niega su efecto. */
-const CARDS = {
+/**
+ * La cadena de muestra (la del catálogo): Branded Fusion, Ash del rival y el CL3 que la para. Negada: PSY-Framegear Gamma niega su activación; sin efecto: Called by the Grave niega su efecto.
+ * `outcome`: lo que dice el núcleo real al resolverse (`auto-chain-feed.slow.test.ts`): Gamma se Invoca con Psy-Frame Driver, Called by destierra a Ash; Branded Fusion manda materiales al
+ * Cementerio e Invoca a la vez, así que se calla («Resuelta»).
+ */
+const CARDS: Record<'negated' | 'disabled', Array<{ name: string; art: string; mine: boolean; outcome?: ChainOutcome }>> = {
   negated: [
     { name: 'Branded Fusion', art: art(44362883), mine: true },
     { name: 'Ash Blossom & Joyous Spring', art: art(14558127), mine: false },
-    { name: 'PSY-Framegear Gamma', art: art(38814750), mine: true },
+    { name: 'PSY-Framegear Gamma', art: art(38814750), mine: true, outcome: { kind: 'summon', count: 2 } },
   ],
   disabled: [
     { name: 'Branded Fusion', art: art(44362883), mine: true },
     { name: 'Ash Blossom & Joyous Spring', art: art(14558127), mine: false },
-    { name: 'Called by the Grave', art: art(24224830), mine: true },
+    { name: 'Called by the Grave', art: art(24224830), mine: true, outcome: { kind: 'banish', count: 1 } },
   ],
 }
 type Variant = keyof typeof CARDS
@@ -47,7 +51,7 @@ const rowsOf = (step: number, variant: Variant): ChainNoticeRow[] =>
     const card = CARDS[variant][index]!
     const state = raw === 'X' ? variant : raw
 
-    return { number: index + 1, who: card.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: card.mine, name: card.name, art: card.art, state, ...(raw === 'X' ? { by: 3 } : {}) }
+    return { number: index + 1, who: card.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: card.mine, name: card.name, art: card.art, state, ...(raw === 'X' ? { by: 3 } : {}), ...(state === 'solved' && card.outcome ? { outcome: outcomeChip(card.outcome) } : {}) }
   })
 
 const voidedState = (state: ChainRowState) => state === 'negated' || state === 'disabled'
@@ -83,7 +87,7 @@ function ChainMotionSample() {
       className="col-span-full"
       note={
         <>
-          La pila real de la cadena (la de <Tag>ChainNotice</Tag> y <Tag>ChainSheet</Tag>) con un guion: CL1, CL2 y CL3 entran; CL3 resuelve y para a CL2; CL3 queda resuelta; CL1 resuelve y queda resuelta. El eslabón que se suma entra arriba y empuja la pila; el que resuelve hace un pop, se le enciende el aro ámbar y la marca de la izquierda baja desde el que resolvió antes (se lee que se resuelve de arriba hacia abajo); el resuelto recibe un tilde que entra girando y su arte se apaga; el negado o sin efecto, una cruz como un sello, una sacudida corta y el arte gris latiendo (como en la mesa); sólo el negado tacha su nombre. Todo entre 200 y 320 ms, sólo <Tag>opacity</Tag> y <Tag>transform</Tag>, y sólo cuando un eslabón cambia: una pila que se abre ya armada no anima. «Sin movimiento» muestra los cambios secos, como los ve quien pidió reducir el movimiento (el latido del gris lo apaga esa preferencia del sistema). Archivo: <Tag>auto/chain-parts.tsx</Tag>
+          La pila real de la cadena (la de <Tag>ChainNotice</Tag> y <Tag>ChainSheet</Tag>) con un guion: CL1, CL2 y CL3 entran; CL3 resuelve y para a CL2; CL3 queda resuelta; CL1 resuelve y queda resuelta. El eslabón que se suma entra arriba y empuja la pila; el que resuelve hace un pop, se le enciende el aro ámbar y la marca de la izquierda baja desde el que resolvió antes (se lee que se resuelve de arriba hacia abajo); el resuelto recibe un tilde que entra girando y su arte se apaga, y su chip dice lo que hizo si el núcleo lo sabe sin duda (CL3: «Invoca 2 monstruos» o «Destierra 1 carta»; Branded Fusion manda materiales e Invoca a la vez: «Resuelta»); el negado o sin efecto, una cruz como un sello, una sacudida corta y el arte gris latiendo (como en la mesa); sólo el negado tacha su nombre. Todo entre 200 y 320 ms, sólo <Tag>opacity</Tag> y <Tag>transform</Tag>, y sólo cuando un eslabón cambia: una pila que se abre ya armada no anima. «Sin movimiento» muestra los cambios secos, como los ve quien pidió reducir el movimiento (el latido del gris lo apaga esa preferencia del sistema). Archivo: <Tag>auto/chain-parts.tsx</Tag>
         </>
       }
     >
@@ -129,16 +133,28 @@ const Chip = ({ label, tone }: { label: string; tone: Tone }) => (
   </Badge>
 )
 
+/** Un ejemplo de cada consecuencia que sale en el duelo (con plural donde hay cartas reales que lo dan: Pot of Greed roba 2, Gamma Invoca 2). */
+const OUTCOMES: ChainOutcome[] = [
+  { kind: 'add', count: 1 },
+  { kind: 'draw', count: 2 },
+  { kind: 'summon', count: 2 },
+  { kind: 'grave', count: 1 },
+  { kind: 'banish', count: 1 },
+]
+
 function ConsequenceSample() {
   return (
     <Specimen
-      title="PROPUESTA · Chips de consecuencia"
+      title="Chips de la cadena"
       layout="column"
       note={
         <>
-          Qué pasó con cada efecto, en una o dos palabras, con su tono (<Tag>ui/tone.ts</Tag>) y su ícono: nunca sólo el color. Regla: callar antes que decir algo falso. Arriba, lo que el núcleo ya
-          dice (<Tag>chain-feed.ts</Tag>: <Tag>chain_solving</Tag>, <Tag>chain_solved</Tag>, <Tag>chain_negated</Tag>, <Tag>chain_disabled</Tag>; el «por CLn» lo deduce el adaptador y, si no hay
-          duda, va). Abajo, lo que haría falta pedirle al motor: no se muestra hasta tenerlo.
+          Cómo va cada eslabón y, resuelto, qué hizo, en pocas palabras, con su tono (<Tag>ui/tone.ts</Tag>) y su ícono: nunca sólo el color. Un solo chip por eslabón: lo que hizo reemplaza a
+          «Resuelta» (y el nombre accesible de la fila lo dice entero). Regla: callar antes que decir algo falso. El estado sale de <Tag>chain_solving</Tag>, <Tag>chain_solved</Tag>,{' '}
+          <Tag>chain_negated</Tag> y <Tag>chain_disabled</Tag> (el «por CLn» lo deduce el adaptador); lo que hizo, de lo que el núcleo mueve entre <Tag>chain_solving</Tag> y{' '}
+          <Tag>chain_solved</Tag> (<Tag>chainOutcome</Tag> en <Tag>chain-feed.ts</Tag>): sólo si pasó una sola clase de cosa, contada sin nombrar cartas. «Destruye» no sale: el núcleo no dice
+          por qué se movió una carta, y destruir y mandar al Cementerio llegan iguales. Abajo, lo que no se muestra: «Sin objetivo» (ningún mensaje dice que el objetivo ya no está: el eslabón
+          se resuelve igual) y «Llega tarde» (es una lectura del orden de la cadena, no un dato del núcleo: va en «Cómo se resuelve»).
         </>
       }
     >
@@ -150,13 +166,15 @@ function ConsequenceSample() {
           ))}
           <Chip label={stateLabel({ state: 'disabled' })} tone="warning" />
         </div>
+        <div className="flex flex-wrap gap-1.5">
+          {OUTCOMES.map((outcome) => (
+            <Chip key={outcome.kind} {...outcomeChip(outcome)} />
+          ))}
+        </div>
       </div>
       <div className="grid gap-1.5">
-        <p className="m-0 text-micro font-bold text-soft">Habría que pedírselo al motor (no se muestra)</p>
+        <p className="m-0 text-micro font-bold text-soft">No lo sabe el motor (no se muestra)</p>
         <div className="flex flex-wrap gap-1.5 opacity-70">
-          <Chip label="Invoca 1 monstruo" tone="success" />
-          <Chip label="Añade 1 carta" tone="success" />
-          <Chip label="Destruye 1 carta" tone="success" />
           <Chip label="Sin objetivo" tone="neutral" />
           <Chip label="Llega tarde" tone="warning" />
         </div>
@@ -186,7 +204,7 @@ function LessonSample() {
   )
 }
 
-/** La cadena animada, la propuesta de los chips de consecuencia y la hoja «Cómo se resuelve». */
+/** La cadena animada, sus chips y la hoja «Cómo se resuelve». */
 export function ChainProposalSamples() {
   return (
     <>

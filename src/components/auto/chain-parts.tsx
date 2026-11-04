@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef } from 'react'
 
 import { cancelWhenDone, EASE_IN_OUT, EASE_OUT, EASE_SNAP, prefersReducedMotion } from '../../app/motion'
-import type { ChainRowState } from '../../app/auto/chain-feed'
+import type { ChainOutcome, ChainRowState } from '../../app/auto/chain-feed'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { PLAYER_COLOR } from '../duel/player-color'
@@ -25,12 +25,20 @@ export interface ChainNoticeRow {
   state: ChainRowState
   /** Negado o sin efecto: el eslabón que lo hizo (1 = CL1), si se sabe; el estado lo dice («Sin efecto · por CL2»). */
   by?: number
+  /**
+   * Lo que pasó, si dice más que el estado («Añade 1 carta», `outcomeChip`): reemplaza al estado en el chip y en el nombre accesible (`stateLabel`); el tilde o la cruz del arte siguen
+   * diciendo el estado. En el duelo, sólo en una resuelta y sólo si el núcleo lo dice sin duda (`chainOutcome`); sin esto, el estado («Resuelta», «Sin efecto · por CL2»).
+   */
+  outcome?: { label: string; tone: Tone }
 }
 
 export const STATE_TONE: Record<ChainRowState, Tone> = { chained: 'neutral', solving: 'info', solved: 'success', negated: 'danger', disabled: 'warning' }
 /** El ícono de cada tono de estado: el chip se lee por el texto (en la cinta, por su nombre accesible); el ícono y el color lo refuerzan, y el color nunca va solo. */
 export const CHIP_ICON: Record<Tone, IconName> = { neutral: 'timer', brand: 'link', info: 'play', success: 'check', warning: 'ban', danger: 'x' }
-export const stateLabel = ({ state, by }: Pick<ChainNoticeRow, 'state' | 'by'>) => (by ? t('auto.chain.by', { state: t(`auto.chain.state.${state}`), by }) : t(`auto.chain.state.${state}`))
+export const stateLabel = ({ state, by, outcome }: Pick<ChainNoticeRow, 'state' | 'by' | 'outcome'>) =>
+  outcome?.label ?? (by ? t('auto.chain.by', { state: t(`auto.chain.state.${state}`), by }) : t(`auto.chain.state.${state}`))
+/** El chip de lo que hizo un eslabón resuelto («Añade 1 carta», «Invoca 2 monstruos»): verde como «Resuelta», que es lo que sigue siendo. */
+export const outcomeChip = ({ kind, count }: ChainOutcome): NonNullable<ChainNoticeRow['outcome']> => ({ label: t(`auto.chain.outcome.${kind}`, { count }), tone: 'success' })
 export const colorOf = (mine: boolean) => PLAYER_COLOR[mine ? 'mine' : 'theirs']
 
 const voidedState = (state: ChainRowState) => state === 'negated' || state === 'disabled'
@@ -124,7 +132,8 @@ function useChainRowMotion(rows: readonly ChainNoticeRow[]) {
 }
 
 /**
- * Las filas de la pila de la cadena, en el orden en que se resuelven (el último eslabón arriba): número en el color de su dueño, arte, nombre, de quién y su estado. Cada una es un botón de 44 px o más con su
+ * Las filas de la pila de la cadena, en el orden en que se resuelven (el último eslabón arriba): número en el color de su dueño, arte, nombre, de quién y un solo chip: su estado o, resuelta, lo que hizo si se
+ * sabe (`outcome`: «Añade 1 carta»; el chip cambia con el mismo movimiento que al resolverse). Cada una es un botón de 44 px o más con su
  * nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»); el que se resuelve lleva el aro ámbar y la marca de la izquierda; el resuelto, un tilde sobre el arte apagado; el negado o sin efecto, una
  * cruz sobre el arte gris y latiendo (sólo el negado tacha su nombre). Cada cambio se anima (`useChainRowMotion`). Sin `who`, el dueño sólo por el color de su número (la hoja del celular: nada dicho dos
  * veces). La usan la pila de escritorio (`ChainNotice`) y el detalle de la hoja del celular (`ChainSheet`).
@@ -169,7 +178,7 @@ export function ChainListRows({ rows, onPick, who = true }: { rows: readonly Cha
             {who ? <span className={cx('truncate text-micro font-semibold', color.text)}>{link.who}</span> : null}
           </span>
           {/* Sin ícono: el tilde o la cruz ya van sobre el arte (a 390 px el nombre necesita ese lugar). */}
-          <Badge data-part="chip" tone={STATE_TONE[link.state]} size="sm" className="shrink-0">
+          <Badge data-part="chip" tone={link.outcome?.tone ?? STATE_TONE[link.state]} size="sm" className="shrink-0">
             {stateLabel(link)}
           </Badge>
         </button>
