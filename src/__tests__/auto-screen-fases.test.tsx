@@ -11,8 +11,8 @@ import { fakeSession, loc, pos, type FakeSession } from './support/auto-session-
 import { core, dispatches, hand, handCard, lane, phaseButton, renderAuto } from './support/auto-screen-harness'
 import { tap } from './support/practice-mat-harness'
 
-// Las fases de «Jugar solo automático» como en la mesa manual: arrancás en la Draw Phase y las cambiás vos con el botón de fases. La mesa frena en tu DP y tu SP
-// (aunque el núcleo ya las contó) y, si tenés algo para activar ahí (una Rápida), la ventana se juega como en la manual: brilla y el botón de fases pasa.
+// Las fases de «Jugar solo automático»: tu DP y tu SP pasan solas hasta la Main Phase 1 (la mesa frena sólo si el núcleo pregunta) y desde ahí las cambiás vos con el botón de
+// fases. Si tenés algo para activar en tu DP o tu SP (una Rápida), la ventana se juega como en la manual: brilla y el botón de fases pasa.
 
 const IDLE: CoreAsk = { type: 'select_idlecmd', player: 0, summons: [loc(100, L.HAND, 0)], special_summons: [], pos_changes: [], monster_sets: [], spell_sets: [], activates: [], to_bp: false, to_ep: true, shuffle: false }
 /** La ventana de una fase tuya con Called by the Grave (900, en la mano) para activar: sin nada que «responda de verdad» (`spe_count` 0), como la abre el núcleo. */
@@ -42,99 +42,91 @@ const goTo = (name: string) => {
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
 
-describe('auto-screen · las fases son manuales', () => {
-  it('un duelo nuevo arranca en la Draw Phase: el botón de fases ofrece la SP y la M1, y cambiar de fase no le contesta nada al núcleo hasta la Main Phase 1', () => {
+describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las fases son tuyas', () => {
+  it('un duelo nuevo (vas primero, sin robo) entra directo a la Main Phase 1: el botón ofrece sólo lo que el núcleo deja', () => {
     const fake = renderAuto(drawPhaseSession())
 
     rearm(fake, START, IDLE)
-    phaseIs('Draw Phase')
+    phaseIs('Main Phase 1')
     expect(phaseButton()).toBeEnabled()
     fireEvent.click(phaseButton())
-    expect(screen.getByRole('menuitem', { name: 'Ir a Standby Phase' })).not.toHaveAttribute('aria-disabled')
-    expect(screen.getByRole('menuitem', { name: 'Ir a Main Phase 1' })).not.toHaveAttribute('aria-disabled')
-    // Sin pasar por la M1 no hay batalla (el núcleo no la deja), ni vuelta atrás.
-    expect(screen.getByRole('menuitem', { name: /^Battle Phase/ })).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Standby Phase' }))
-    phaseIs('Standby Phase')
-    expect(phaseButton()).toBeEnabled()
-    // En la DP y la SP no hay jugadas que ofrecer: tocar una carta sólo la muestra.
-    tap(handCard('Ash Blossom'))
-    expect(screen.queryByRole('menuitem')).toBeNull()
-    goTo('Main Phase 1')
-    phaseIs('Main Phase 1')
+    // Ni vuelta atrás ni una Battle Phase que el núcleo no da (el turno 1 no ataca); la End Phase, sí.
+    for (const name of ['Draw Phase', 'Standby Phase', 'Battle Phase']) expect(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('menuitem', { name: 'Ir a End Phase' })).not.toHaveAttribute('aria-disabled')
+    fireEvent.keyDown(window, { key: 'Escape' })
     tap(handCard('Ash Blossom'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 0, index: 0 }])
     expect(dispatches).toBe(0)
   })
 
-  it('«Main Phase 1» desde la Draw Phase salta las dos', () => {
-    const fake = renderAuto(drawPhaseSession())
-
-    rearm(fake, START, IDLE)
-    goTo('Main Phase 1')
-    step()
-    phaseIs('Main Phase 1')
-    expect(fake.answers).toEqual([])
-    expect(phaseButton()).toBeEnabled()
-  })
-
-  it('el turno que llega se cuenta a su ritmo y frena en tu DP: ni el tiempo ni tocar la mesa cruzan la parada', () => {
+  it('el turno que llega se cuenta a su ritmo: tu End Phase, tu robo, la DP, la SP y la M1, solas y sin contestar nada', () => {
     const fake = renderAuto()
 
     // Terminaste tu turno; el núcleo cuenta tu End Phase, el turno del rival, tu robo y tu DP, SP y M1 de una.
     core(() => fake.events([to('end'), to('draw', true), { type: 'draw', count: 1, ids: ['card-101-1'] }, ...START]))
     core(() => fake.ask(IDLE))
     expect(phaseButton()).toBeDisabled()
-    // Tocar la mesa salta hasta la parada, no más allá.
-    fireEvent.pointerDown(hand(), { button: 0, pointerId: 1 })
+    step()
+    phaseIs('End Phase')
+    step()
     phaseIs('Draw Phase')
+    step()
     expect(handCard('Droll')).toBeInTheDocument()
-    expect(phaseButton()).toBeEnabled()
-    for (let n = 0; n < 4; n += 1) step()
-    fireEvent.pointerDown(hand(), { button: 0, pointerId: 1 })
-    phaseIs('Draw Phase')
-    goTo('Standby Phase')
+    expect(phaseButton()).toBeDisabled()
+    step()
     phaseIs('Standby Phase')
-    goTo('Main Phase 1')
+    expect(phaseButton()).toBeDisabled()
+    step()
     phaseIs('Main Phase 1')
+    expect(phaseButton()).toBeEnabled()
     expect(fake.answers).toEqual([])
   })
 
-  it('rearmar: un deshacer a mitad del turno o una recarga no frenan; deshacer la primera jugada del turno vuelve a la M1; reiniciar, a la Draw Phase', () => {
-    const fake = renderAuto(drawPhaseSession())
+  it('tocar la mesa salta hasta la Main Phase 1; rearmar (deshacer, reiniciar, recargar) también va al final', () => {
+    const fake = renderAuto()
+
+    core(() => fake.events([to('end'), to('draw', true), { type: 'draw', count: 1, ids: ['card-101-1'] }, ...START]))
+    core(() => fake.ask(IDLE))
+    fireEvent.pointerDown(hand(), { button: 0, pointerId: 1 })
+    phaseIs('Main Phase 1')
+    expect(handCard('Droll')).toBeInTheDocument()
+    expect(phaseButton()).toBeEnabled()
+
+    cleanup()
+    const again = renderAuto(drawPhaseSession())
     const midTurn = [...START, { type: 'move', id: 'card-200-1', to: 'gy' } as MatAction]
 
-    rearm(fake, midTurn, IDLE)
+    rearm(again, midTurn, IDLE)
     phaseIs('Main Phase 1')
-    expect(screen.queryByRole('button', { name: 'Maxx C' })).toBeNull()
-    rearm(fake, START, IDLE)
-    phaseIs('Draw Phase')
-    goTo('Main Phase 1')
-    step()
+    core(() => again.undo())
+    rearm(again, START, IDLE)
     phaseIs('Main Phase 1')
-    // Deshacer la primera jugada de la M1: ya habías dejado la DP y la SP de este turno.
-    core(() => fake.undo())
-    rearm(fake, START, IDLE)
+    core(() => again.restart())
+    rearm(again, START, IDLE)
     phaseIs('Main Phase 1')
-    // Reiniciar es otro duelo: lo pedido vuelve a cero.
-    core(() => fake.restart())
-    rearm(fake, START, IDLE)
-    phaseIs('Draw Phase')
+    // El invitado que recarga con el turno recién empezado.
+    const session = drawPhaseSession(START)
 
-    // La mesa que se arma con el turno empezado (el invitado que recarga) tampoco frena; si recién empieza, sí.
-    const reload = (actions: MatAction[]) => {
-      const session = drawPhaseSession(actions)
+    session.ask(IDLE)
+    cleanup()
+    renderAuto(session)
+    phaseIs('Main Phase 1')
+  })
 
-      session.ask(IDLE)
-      cleanup()
-      renderAuto(session)
+  it('una Standby Phase que un efecto salta no se muestra, y una Battle Phase saltada no se ofrece', () => {
+    const fake = renderAuto()
+    const seen: string[] = []
+
+    core(() => fake.events([to('end'), to('draw', true), { type: 'draw', count: 1, ids: ['card-101-1'] }, to('main1')]))
+    core(() => fake.ask(IDLE))
+    for (let n = 0; n < 4; n += 1) {
+      step()
+      seen.push(phaseButton().getAttribute('aria-label') ?? '')
     }
-
-    reload(midTurn)
-    phaseIs('Main Phase 1')
-    reload(START)
-    phaseIs('Draw Phase')
+    expect(seen).toEqual(['End Phase', 'Draw Phase', 'Draw Phase', 'Main Phase 1'].map((name) => `Fases: ${name}`))
+    fireEvent.click(phaseButton())
+    expect(screen.getByRole('menuitem', { name: /^Battle Phase/ })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('la ventana de tu DP con una Rápida en la mano: brilla sin cartel, se activa con su menú y «Standby Phase» pasa; la de la SP, igual', () => {
@@ -149,7 +141,7 @@ describe('auto-screen · las fases son manuales', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     goTo('Standby Phase')
     expect(fake.answers).toEqual([PASS])
-    // El núcleo pasa a tu SP y vuelve a abrir la ventana: la mesa cruza la parada que pediste y la muestra.
+    // El núcleo pasa a tu SP y vuelve a abrir la ventana: la mesa la cuenta y la muestra.
     core(() => fake.events([to('standby')]))
     core(() => fake.ask(windowAt(0x2)))
     step()
@@ -158,6 +150,12 @@ describe('auto-screen · las fases son manuales', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
     expect(fake.answers).toEqual([PASS, { type: 'select_chain', index: 0 }])
     expect(dispatches).toBe(0)
+    // Resuelta la cadena, el turno sigue solo hasta la Main Phase 1.
+    core(() => fake.events([to('main1')]))
+    core(() => fake.ask(IDLE))
+    step()
+    phaseIs('Main Phase 1')
+    expect(phaseButton()).toBeEnabled()
   })
 
   it('«Main Phase 1» en la ventana de la DP pasa y la ventana de la SP se pasa sola, sin mostrarse', () => {
