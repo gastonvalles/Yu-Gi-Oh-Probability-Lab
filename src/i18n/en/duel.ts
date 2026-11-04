@@ -85,6 +85,14 @@ export const duel: Translated<typeof es> = {
   'duel.announce.named.reveal': '{name} reveals {card}',
   'duel.announce.named.hand': '{name} adds {card} to their hand',
   'duel.announce.named.declare': '{name} declares {card}',
+  'duel.announce.named.normal': '{name} Normal Summons {card}',
+  'duel.announce.named.special': '{name} Special Summons {card}',
+  'duel.announce.named.fusion': '{name} Fusion Summons {card}',
+  'duel.announce.named.synchro': '{name} Synchro Summons {card}',
+  'duel.announce.named.xyz': '{name} Xyz Summons {card}',
+  'duel.announce.named.link': '{name} Link Summons {card}',
+  'duel.announce.set': '{name} Sets a card',
+  'duel.announce.setMonster': '{name} Sets a monster',
 
   'duel.play.subtitle': 'Jump into a duel in seconds.',
   'duel.play.now': 'Play now',
@@ -386,6 +394,10 @@ export const duel: Translated<typeof es> = {
 
   // The chat between the two.
   'duel.log.turn': 'Turn {turn} · {name}',
+  'duel.log.mineLost': 'You lose {amount} LP ({lp})',
+  'duel.log.mineGained': 'You gain {amount} LP ({lp})',
+  'duel.log.rivalLost': '{name} loses {amount} LP ({lp})',
+  'duel.log.rivalGained': '{name} gains {amount} LP ({lp})',
   'duel.log.open': 'Open the play log',
   'duel.log.dismiss': 'Swipe sideways to dismiss',
   'duel.chat.open': 'Chat',

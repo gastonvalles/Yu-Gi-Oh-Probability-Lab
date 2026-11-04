@@ -35,6 +35,7 @@ export const practice = {
   'practice.menu.untarget': 'Quitar target',
   'practice.menu.battleAttack': 'Atacar',
   'practice.menu.attackDirectly': 'Ataque directo',
+  'practice.menu.attackPick': 'Tocá al monstruo del rival en la mesa.',
   // A quién se ataca: la zona y la carta del rival.
   'practice.attack.target': '{zone}: {name}',
   'practice.attack.faceDown': 'Boca abajo',

@@ -73,13 +73,17 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
 
   await test.step('Ana pone su nombre y reta a un amigo', async () => {
     await ana.goto('/#duel')
+    // El nombre viaja al salir del campo o con Enter: Enter lo deja guardado sin depender de cuándo pierde el foco.
     await ana.getByRole('textbox', { name: 'Tu nombre' }).fill('Ana')
+    await ana.getByRole('textbox', { name: 'Tu nombre' }).press('Enter')
     // El modo de entrada es el automático (fuera de esta prueba): el duelo por enlace manual se elige en las reglas.
     await ana.getByRole('button', { name: /^Reglas del duelo/ }).click()
     const rules = ana.getByRole('dialog', { name: 'Reglas del duelo' })
     await rules.getByRole('radio', { name: 'Manual' }).click()
     await rules.getByRole('button', { name: 'Guardar reglas' }).click()
     await expect(rules).toBeHidden()
+    // Guardar las reglas no le borra el nombre (si no, Beto vería «Duelista» en vez de «Ana te invitó»).
+    await expect(ana.getByRole('textbox', { name: 'Tu nombre' }), 'el nombre de Ana tras guardar las reglas').toHaveValue('Ana')
     await ana.getByRole('button', { name: /^Retar a un amigo/ }).click()
     // Una sala manual se puede mirar (la automática todavía no) y no lleva el renglón «Reglas: Automáticas».
     await expect(ana.getByRole('button', { name: 'Copiar enlace para mirar' })).toBeVisible()
@@ -95,15 +99,9 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     const invited = beto.getByText('Ana te invitó a un duelo')
     const full = beto.getByRole('heading', { name: 'La sala ya está completa' })
 
-    // Hallazgo: en desarrollo (StrictMode) la sala se abre dos veces, con dos `pid` distintos; si el relay atiende la segunda antes de cerrar la primera, la sala está «completa».
-    for (let attempt = 1; ; attempt++) {
-      await expect(invited.or(full)).toBeVisible()
-      if (await invited.isVisible()) break
-      finding(`Beto entró por el enlace y vio «La sala ya está completa» (intento ${attempt}); recarga.`)
-      await shot(beto, `02-beto-sala-completa-${attempt}`)
-      expect(attempt).toBeLessThan(3)
-      await beto.reload()
-    }
+    // En desarrollo StrictMode abre la sala dos veces: las dos conexiones llevan el mismo `pid` y la segunda reemplaza a la primera, nunca «completa».
+    await expect(invited.or(full)).toBeVisible()
+    await expect(full, 'Beto entró por el enlace y vio «La sala ya está completa»').toBeHidden()
 
     await beto.getByRole('textbox', { name: 'Tu nombre' }).fill('Beto')
     // El nombre viaja al salir del campo o con Enter, no en cada letra.
@@ -143,10 +141,14 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     summonedByAna = await playFromHand(ana, 'Invocación Normal', 'Zona de monstruo 1')
     await expect(field(beto, 'rival')).toHaveCount(1)
     await expect(rivalHand(beto)).toHaveAccessibleName('Mano del rival: 4')
-    await playFromHand(ana, 'Colocar', 'Zona de monstruo 2')
+    const setByAna = await playFromHand(ana, 'Colocar', 'Zona de monstruo 2')
     await expect(field(beto, 'rival')).toHaveCount(2)
     await expect(field(ana, 'mine')).toHaveCount(2)
     await expect(beto.getByRole('img', { name: /^Rival, Zona de monstruo 1, nivel \d, ATK/ })).toBeVisible()
+    // El registro de Beto cuenta lo de Ana como el de ella: la invocación con su carta (está boca arriba) y que coloca, sin decir cuál.
+    await expect.poll(() => logLines(beto)).toEqual(expect.arrayContaining([`Ana hace una Invocación Normal de ${summonedByAna}`, 'Ana coloca un monstruo']))
+    await expect.poll(() => logLines(ana)).toEqual(expect.arrayContaining([`Invocación Normal de ${summonedByAna}`, `Colocás ${setByAna} boca abajo`]))
+    if (setByAna !== summonedByAna) expect((await logLines(beto)).join(' ')).not.toContain(setByAna)
     await shot(ana, '04-ana-turno1')
     await shot(beto, '04-beto-ve-turno1')
   })
@@ -169,6 +171,7 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     await phase(beto, ana, 'Battle Phase')
     await field(beto, 'mine').first().click()
     await beto.getByRole('menuitem', { name: 'Atacar', exact: true }).click()
+    await expect(beto.getByRole('menu').getByText('Tocá al monstruo del rival en la mesa.')).toBeVisible()
     // El objetivo (el monstruo boca arriba de Ana) se toca en la mesa, no en el menú: con «Atacar» el menú deja pasar el puntero a propósito
     // (`passThrough`: src/components/probability/PracticeMat.tsx:1331 y :3265, `pointer-events-none` en MatDialogs.tsx:382) y lo que se puede atacar lleva `data-attack-target`.
     await shot(beto, '06-beto-objetivo')
@@ -180,6 +183,8 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
   await test.step('Ana resuelve el combate en su mesa: pierde vidas y manda su monstruo al cementerio', async () => {
     await changeLife(ana, ['1', '0', '0'])
     await expect(lifeOf(beto, 'Ana')).toHaveAccessibleName(/^Puntos de vida de Ana: 7900\./)
+    await expect.poll(() => logLines(beto)).toContain('Ana pierde 100 LP (7900)')
+    await expect.poll(() => logLines(ana)).toContain('Perdés 100 LP (7900)')
     await ana.getByRole('group', { name: 'Zona de monstruo 1', exact: true }).getByRole('button').first().click()
     await ana.getByRole('menuitem', { name: 'Al cementerio', exact: true }).click()
     await expect(beto.getByRole('group', { name: 'GY: 1' })).toBeVisible()
@@ -206,7 +211,7 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     await expect(field(ana, 'rival')).toHaveCount(1)
     await expect(hand(beto)).toHaveCount(5)
     await expect(rivalHand(ana)).toHaveAccessibleName('Mano del rival: 5')
-    lostLines(logBeforeUndo, await logLines(ana), 'Ana, cuando Beto deshace (con su permiso)', 1)
+    expect(lostLines(logBeforeUndo, await logLines(ana), 1), 'el registro de Ana, cuando Beto deshace (con su permiso)').toEqual([])
   })
 
   await test.step('Beto pasa el turno y Ana roba', async () => {
@@ -222,11 +227,17 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
   await test.step('Beto recarga la página en pleno duelo y la mesa vuelve igual', async () => {
     const before = { beto: await table(beto), ana: await table(ana) }
     const anaLog = await logLines(ana)
+    const betoLog = await logLines(beto)
+    // Lo que se escribieron los dos (Beto en la sala, Ana durante el duelo) está en el registro de Beto antes de recargar.
+    expect(betoLog.join(' ')).toContain('Hola Ana, ¿arrancamos?')
+    expect(betoLog.join(' ')).toContain('Me dolió')
     await beto.reload()
     await expect(hand(beto)).toHaveCount(before.beto.hand.length)
     await expect.poll(() => table(beto)).toEqual(before.beto)
     await expect.poll(() => table(ana)).toEqual(before.ana)
-    lostLines(anaLog, await logLines(ana), 'Ana, cuando Beto recarga')
+    // Ninguno pierde nada: Ana conserva lo que hizo Beto, y Beto vuelve con su registro y el chat entero.
+    expect(lostLines(anaLog, await logLines(ana)), 'el registro de Ana, cuando Beto recarga').toEqual([])
+    await expect.poll(() => logLines(beto)).toEqual(betoLog)
     await shot(beto, '09-beto-tras-recargar')
   })
 
@@ -266,6 +277,9 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     await shot(beto, '11-beto-gano')
     await leave(ana)
     await expect(beto.getByText(/^Ana se fue: la sala desaparece en/)).toBeVisible()
+    // Un solo aviso: ni «se desconectó, cuando vuelva…» ni «no está en la sala».
+    await expect(beto.getByText(/^Tu rival se desconectó/)).toHaveCount(0)
+    await expect(beto.getByText('Tu rival no está en la sala.')).toHaveCount(0)
     await shot(beto, '12-beto-ana-se-fue')
     await leave(beto)
   })
@@ -274,11 +288,8 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
 /** Las líneas del registro y el chat (el panel de la derecha en escritorio). */
 const logLines = (page: Page) => page.getByRole('log', { name: /^Chat con / }).getByRole('listitem').allInnerTexts()
 
-/** Lo que estaba en el registro de `who` y ya no está (salvo las `undone` últimas: una jugada deshecha). */
-function lostLines(before: string[], after: string[], who: string, undone = 0) {
-  const lost = before.slice(0, before.length - undone).filter((line) => !after.includes(line))
-  if (lost.length) finding(`El registro de ${who} perdió líneas: ${lost.map((line) => `«${line.replace(/\s+/g, ' ')}»`).join(', ')}.`)
-}
+/** Lo que estaba en un registro y ya no está (salvo las `undone` últimas: una jugada deshecha). */
+const lostLines = (before: string[], after: string[], undone = 0) => before.slice(0, before.length - undone).filter((line) => !after.includes(line))
 
 const turnText = (page: Page) => page.getByText(/^(Tu turno|Turno de \S+) · \d+$/)
 
@@ -322,12 +333,7 @@ async function letPass(page: Page) {
   await page.getByRole('button', { name: 'Dejar pasar' }).click()
 }
 
-const finding = (text: string) => {
-  test.info().annotations.push({ type: 'hallazgo', description: text })
-  console.log(`HALLAZGO: ${text}`)
-}
-
-const hand = (page: Page) => page.getByRole('list', { name: 'Mano', exact: true }).getByRole('listitem')
+const hand =(page: Page) => page.getByRole('list', { name: 'Mano', exact: true }).getByRole('listitem')
 const rivalHand = (page: Page) => page.getByRole('img', { name: /^Mano del rival/ })
 const phaseChip = (page: Page) => page.getByRole('button', { name: /^Fases:/ })
 

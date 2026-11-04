@@ -1,4 +1,5 @@
 import { invalid, readId, readInt, readMatAction, readMatState, readRecord } from './combo-share'
+import { MAX_CHAT_LENGTH, MAX_CHAT_LOG, type ChatLine } from './duel-games'
 import { ROOM_CODE_PATTERN } from './duel-relay-rules'
 import type { DuelRecord, DuelSnapshot, Mover } from './duel-session'
 import type { SideDeck } from './duel-siding'
@@ -9,8 +10,8 @@ import type { MatAction, MatState } from './practice-mat'
  * Lo propio de un duelo en curso, guardado en el navegador para no perderlo si la página se recarga, si el navegador descarta la pestaña mientras se atiende otra
  * aplicación o si el jugador sale del duelo y vuelve a entrar: la mesa de arranque y las jugadas (de ahí se vuelve a armar, el reductor es determinista), las vidas,
  * el reloj y quién empezó. Mientras falta uno de los dos el duelo está en pausa; al volver, el mismo jugador sigue con su mesa.
- * Lo del rival, el chat y el registro de juegos no se guardan: lo primero lo repite el rival al volver a saludar y lo otro es de cada sesión (del rival sólo va lo que pide el
- * replay, `record`).
+ * También el chat (los dos lados) y, en otra clave (`writeDuelLog`), el registro de jugadas que se ve. Lo del rival y el registro de juegos no se guardan: lo primero lo repite el
+ * rival al volver a saludar y lo otro es de cada sesión (del rival sólo va lo que pide el replay, `record`).
  */
 export interface DuelSave {
   v: 1
@@ -37,12 +38,16 @@ export interface DuelSave {
    * por eso) y `readDuelSave` lo suma; sin él (de antes, o roto), el duelo sigue pero ya no se puede grabar.
    */
   record?: DuelRecord
+  /** Lo escrito por los dos (los últimos `MAX_CHAT_LOG`). Los guardados de antes no lo traen. */
+  chat?: ChatLine[]
 }
 
 const PREFIX = 'ygo-lab:duel-save:'
 const saveKey = (room: string, role: 'host' | 'guest') => `${PREFIX}${room}:${role}`
 const RECORD_PREFIX = 'ygo-lab:duel-record:'
 const recordKey = (room: string, role: 'host' | 'guest') => `${RECORD_PREFIX}${room}:${role}`
+const LOG_PREFIX = 'ygo-lab:duel-log:'
+const logKey = (room: string, role: 'host' | 'guest') => `${LOG_PREFIX}${room}:${role}`
 
 /** Cuánto se espera a quien salió: pasado ese tiempo el duelo en pausa se descarta. */
 export const SAVE_TTL_MS = 2 * 60 * 60 * 1000
@@ -66,6 +71,7 @@ export function saveOf(snapshot: DuelSnapshot, now: number): DuelSave | null {
     conceded: snapshot.conceded,
     rematch: snapshot.rematch.mine,
     order: [...snapshot.order],
+    chat: [...snapshot.chat],
   }
 }
 
@@ -76,6 +82,12 @@ const isNumber = (value: unknown): value is number => typeof value === 'number' 
 const isList = (value: unknown): value is string[] => Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 /** El orden de las jugadas: `me` o `peer` por cada una de los dos (como mucho, las mías más las del rival). */
 const isOrder = (value: unknown): value is Mover[] => Array.isArray(value) && value.length <= 2 * MAX_SAVED_ACTIONS && value.every((entry) => entry === 'me' || entry === 'peer')
+/** Una línea del chat: su número, de quién (0 o 1) y el texto, con el largo de siempre. */
+export const isChatLine = (value: unknown): value is ChatLine => {
+  const line = value as Partial<ChatLine> | null
+  return typeof line === 'object' && line !== null && Number.isInteger(line.id) && (line.from === 0 || line.from === 1) && typeof line.text === 'string' && line.text.length <= MAX_CHAT_LENGTH
+}
+const isChat = (value: unknown): value is ChatLine[] => Array.isArray(value) && value.length <= MAX_CHAT_LOG && value.every(isChatLine)
 
 /** Lo guardado, si es de este rol, no venció y tiene la forma de una mesa; si no, null (y se arma una mesa nueva). */
 export function parseSave(raw: string | null, role: 'host' | 'guest', now: number): DuelSave | null {
@@ -114,7 +126,8 @@ export function parseSave(raw: string | null, role: 'host' | 'guest', now: numbe
       (save.rival !== null && typeof save.rival !== 'string') ||
       (save.conceded !== undefined && save.conceded !== null && save.conceded !== 0 && save.conceded !== 1) ||
       (save.rematch !== undefined && typeof save.rematch !== 'boolean') ||
-      (save.order !== undefined && !isOrder(save.order))
+      (save.order !== undefined && !isOrder(save.order)) ||
+      (save.chat !== undefined && !isChat(save.chat))
     ) {
       return null
     }
@@ -181,6 +194,7 @@ export function writeDuelSave(room: string, snapshot: DuelSnapshot, now = Date.n
       localStorage.setItem(saveKey(room, snapshot.role), JSON.stringify(save))
     } else {
       localStorage.removeItem(saveKey(room, snapshot.role))
+      localStorage.removeItem(logKey(room, snapshot.role))
     }
 
     // Una sala con reglas automáticas no tiene mesa que guardar (la cuenta el núcleo): sólo quién se rindió, mientras ese duelo espera la revancha.
@@ -204,6 +218,24 @@ export function writeDuelRecord(room: string, snapshot: DuelSnapshot): void {
     }
   } catch {
     // Sin almacenamiento (o lleno) no se recuerda: al recargar, este duelo ya no se puede grabar.
+  }
+}
+
+/** El registro de jugadas que se ve (`useDuelFeed`, que lo valida al leerlo), de esta sala y este rol: va aparte porque cambia con cada línea. Escribir null lo borra. */
+export function readDuelLog(room: string, role: 'host' | 'guest'): unknown {
+  try {
+    return JSON.parse(localStorage.getItem(logKey(room, role)) ?? 'null')
+  } catch {
+    return null
+  }
+}
+
+export function writeDuelLog(room: string, role: 'host' | 'guest', log: unknown): void {
+  try {
+    if (log === null) localStorage.removeItem(logKey(room, role))
+    else localStorage.setItem(logKey(room, role), JSON.stringify(log))
+  } catch {
+    // Sin almacenamiento (o lleno), al recargar el registro empieza de nuevo.
   }
 }
 
@@ -241,6 +273,8 @@ export function clearDuelSave(room: string): void {
     localStorage.removeItem(autoEndKey(room, 'guest'))
     localStorage.removeItem(recordKey(room, 'host'))
     localStorage.removeItem(recordKey(room, 'guest'))
+    localStorage.removeItem(logKey(room, 'host'))
+    localStorage.removeItem(logKey(room, 'guest'))
   } catch {
     // Sin almacenamiento no hay nada que borrar.
   }
@@ -273,6 +307,7 @@ export function findPausedDuel(now = Date.now()): PausedDuel | null {
       if (!save || !room || !ROOM_CODE_PATTERN.test(room)) {
         localStorage.removeItem(key)
         localStorage.removeItem(`${RECORD_PREFIX}${key.slice(PREFIX.length)}`)
+        localStorage.removeItem(`${LOG_PREFIX}${key.slice(PREFIX.length)}`)
       } else if (!latest || save.savedAt > latest.savedAt) {
         latest = { room, role: save.role, rival: save.rival, savedAt: save.savedAt }
       }

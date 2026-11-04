@@ -531,6 +531,8 @@ describe('la pantalla del duelo', () => {
     guest.unmount()
     flush()
     expect(within(host.container).getByTestId('room-closing')).toHaveTextContent('Beto se fue: la sala desaparece en 5 segundos.')
+    // Un solo aviso: no además «se desconectó, cuando vuelva…» (no va a volver).
+    expect(within(host.container).queryByText(/Tu rival se desconectó/)).not.toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(2000)
     })

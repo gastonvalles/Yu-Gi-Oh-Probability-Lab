@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { ChatLine } from '../../app/duel-games'
-import type { DuelSnapshot } from '../../app/duel-session'
+import { isChatLine, readDuelLog, writeDuelLog } from '../../app/duel-save'
+import type { DuelRole, DuelSnapshot } from '../../app/duel-session'
 import { opaqueOfForeign } from '../../app/mat-control'
 import { describeMatAction, isForeignId, replayMat } from '../../app/practice-mat'
 import { t } from '../../i18n'
@@ -11,11 +12,12 @@ import type { PlayerSide } from './player-color'
 
 /**
  * Una línea del registro del duelo: lo que hizo cada jugador (tus jugadas con tus palabras; las del rival, el cartel que se le muestra a quien mira), el comienzo de cada
- * turno y lo escrito en el chat, todo en el orden en que pasó.
+ * turno y lo escrito en el chat, todo en el orden en que pasó. Lo que hace falta para sacarla si se deshace va en la línea (así sobrevive a recargar): `act`, el lugar de
+ * mi jugada; `peer`, cuántas jugadas llevaba el rival al anotarla; `turn`, el número del turno.
  */
 export type FeedEntry =
-  | { id: string; kind: 'event'; side: PlayerSide; text: string }
-  | { id: string; kind: 'turn'; text: string }
+  | { id: string; kind: 'event'; side: PlayerSide; text: string; act?: number; peer?: number }
+  | { id: string; kind: 'turn'; text: string; turn?: number }
   | { id: string; kind: 'chat'; line: ChatLine }
 
 /** Una línea todavía sin su número. */
@@ -27,36 +29,61 @@ const MAX_ENTRIES = 200
 /** Jugadas que no se anotan: robar y cambiar de fase pasan muy seguido y el cambio de turno ya tiene su línea. */
 const SILENT_ACTIONS = new Set(['draw', 'phase'])
 
+const MAX_TEXT = 500
+const isCount = (value: unknown) => value === undefined || (Number.isInteger(value) && (value as number) >= 0)
+
+/** El registro guardado (`readDuelLog`), sólo con las líneas que tienen la forma de una; null si no hay uno. */
+export function parseFeed(raw: unknown): FeedEntry[] | null {
+  if (!Array.isArray(raw)) return null
+
+  return raw.slice(-MAX_ENTRIES).filter((value): value is FeedEntry => {
+    const row = value as Partial<Record<string, unknown>> | null
+
+    if (typeof row !== 'object' || row === null || typeof row.id !== 'string' || row.id.length > 20) return false
+    if (row.kind === 'chat') return isChatLine(row.line)
+
+    const text = typeof row.text === 'string' && row.text.length <= MAX_TEXT
+
+    return row.kind === 'turn' ? text && isCount(row.turn) : row.kind === 'event' && text && (row.side === 'mine' || row.side === 'theirs') && isCount(row.act) && isCount(row.peer)
+  })
+}
+
+/** El nombre de una carta del rival (su id real, el que él mostró) si es de las de mi deck (por su número); si no, no se sabe acá. */
+export const rivalCardName = (cardsById: ReadonlyMap<string, MatCard>, real: string | undefined): string | undefined =>
+  real === undefined ? undefined : [...cardsById].find(([drawId]) => cardIdOfDrawId(drawId) === cardIdOfDrawId(real))?.[1].name
+
 interface FeedSources {
   snapshot: DuelSnapshot
   cardsById: ReadonlyMap<string, MatCard>
-  /** El cartel de lo que el rival acaba de hacer y se anima (activar, mostrar, invocar…) o de su ataque: cambiar `key` anota una línea. */
+  /** El cartel de lo que el rival acaba de hacer (activar, mostrar, invocar, colocar…) o de su ataque: cambiar `key` anota una línea, y cambiar sólo el texto la corrige. */
   rivalCaptions: ReadonlyArray<{ key: number; caption: string } | undefined>
   /** De quién es el turno y cuál es: cada cambio anota el comienzo de un turno. */
   turn: 'mine' | 'theirs'
   turnNumber: number
   rivalName: string
   myName: string
+  /** La sala y el rol: con ellos el registro se guarda y, al recargar, sigue como estaba. */
+  save?: { room: string; role: DuelRole }
 }
 
 /**
- * El registro del duelo en orden: tus jugadas, lo que anuncia el rival, los turnos y el chat. Lo que ya estaba jugado al abrir la pantalla (un duelo que se retoma)
- * no se anota, salvo el chat. **Una jugada deshecha desaparece del registro** (Gastón, 2026-10-19: «si le pido a mi oponente volver una jugada y acepta, debe desaparecer del timeline»):
- * la tuya cuando el rival permite volver atrás (o sin rival, al deshacer), la del rival cuando él deshace, y con ella el comienzo de turno que había causado. Lo escrito en el chat se queda.
+ * El registro del duelo en orden: tus jugadas, lo que anuncia el rival, los cambios de vidas, los turnos y el chat. Lo que ya estaba jugado al abrir la pantalla (un duelo
+ * que se retoma) no se anota de nuevo: con `save`, el registro guardado vuelve tal cual; sin él, sólo el chat. **Una jugada deshecha desaparece del registro** (Gastón,
+ * 2026-10-19: «si le pido a mi oponente volver una jugada y acepta, debe desaparecer del timeline»): la tuya cuando el rival permite volver atrás (o sin rival, al
+ * deshacer), la del rival cuando él deshace (`peerUndos`; que recargue no es deshacer), y con ella el comienzo de turno que había causado. Lo escrito en el chat se queda.
  */
-export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumber, rivalName, myName }: FeedSources): readonly FeedEntry[] {
-  const { chat, actions, initial } = snapshot
-  const [entries, setEntries] = useState<readonly FeedEntry[]>(() => chat.map((line) => ({ id: `c${line.id}`, kind: 'chat', line })))
-  const next = useRef(0)
+export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumber, rivalName, myName, save }: FeedSources): readonly FeedEntry[] {
+  const { chat, actions, initial, me, peerUndos } = snapshot
+  const lifeLog = snapshot.life.log
+  const [entries, setEntries] = useState<readonly FeedEntry[]>(() => (save ? parseFeed(readDuelLog(save.room, save.role)) : null) ?? chat.map((line) => ({ id: `c${line.id}`, kind: 'chat', line })))
+  // Los números de las líneas siguen después de las que volvieron de lo guardado.
+  const next = useRef(Math.max(0, ...entries.map((entry) => (entry.id.startsWith('e') ? Number(entry.id.slice(1)) + 1 || 0 : 0))))
   const seenChat = useRef(chat.at(-1)?.id ?? 0)
   const seenActions = useRef(actions.length)
-  // Qué línea del registro es la de cada una de mis jugadas (por su lugar en mi lista: las silenciosas no tienen), para sacarla si se deshace.
-  const actionLines = useRef<Array<string | undefined>>([])
-  // Lo mismo con el rival: la línea de cada cartel suyo y con cuántas jugadas suyas había cuando se anotó; si él deshace, las que ya no existen se van.
-  const peerActs = snapshot.theirs?.acts.length ?? 0
-  const captionActs = useRef<Map<string, number>>(new Map())
-  // El comienzo de cada turno que se anotó, por número de turno.
-  const turnLines = useRef<Map<number, string>>(new Map())
+  const seenLife = useRef(lifeLog.length)
+  // Cuántas jugadas lleva el rival (las que hizo desde que empezó, no las del espejo: ése se rearma de cero cuando él recarga).
+  const peerMoves = useMemo(() => snapshot.order.filter((who) => who === 'peer').length, [snapshot.order])
+  const seenUndos = useRef(peerUndos)
   // En esta pasada se deshizo una jugada (mía o del rival): sólo entonces un turno que baja de número es un turno deshecho y no un tropiezo de la sincronización.
   const undone = useRef(false)
 
@@ -76,6 +103,15 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
 
     return stamped
   }
+  const drop = (gone: (row: FeedEntry) => boolean) => setEntries((current) => (current.some(gone) ? current.filter((row) => !gone(row)) : current))
+
+  // Lo que se ve se guarda con cada cambio: recargar no lo borra.
+  const room = save?.room
+  const role = save?.role
+
+  useEffect(() => {
+    if (room !== undefined && role !== undefined) writeDuelLog(room, role, entries)
+  }, [entries, room, role])
 
   // Lo escrito: cada línea nueva del chat.
   useEffect(() => {
@@ -96,47 +132,46 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
     // Se deshizo: las jugadas que ya no están se van del registro con sus líneas.
     if (actions.length < before) {
       undone.current = true
-      const gone = new Set(actionLines.current.slice(actions.length).filter((id): id is string => id !== undefined))
-
-      actionLines.current = actionLines.current.slice(0, actions.length)
-
-      if (gone.size > 0) setEntries((current) => current.filter((row) => !gone.has(row.id)))
-
+      drop((row) => row.kind === 'event' && row.act !== undefined && row.act >= actions.length)
       return
     }
 
     if (!initial || actions.length <= before) return
 
     // Una carta del rival (su id opaco, como el objetivo de mi ataque: `c51`; o `f.c12`, una que controlo) se llama por la que él mostró, si es de las de mi deck (por su número); si no, no se sabe el nombre acá.
-    const rivalCardName = (opaque: string) => {
-      const real = snapshot.theirs?.known[opaque]
-      const same = real === undefined ? undefined : [...cardsById].find(([drawId]) => cardIdOfDrawId(drawId) === cardIdOfDrawId(real))
-
-      return same?.[1].name ?? t('duel.announce.rivalCard')
-    }
+    const rivalCard = (opaque: string) => rivalCardName(cardsById, snapshot.theirs?.known[opaque]) ?? t('duel.announce.rivalCard')
     // Lo que no es una de mis cartas es del rival.
-    const nameOf = (id: string) => (isForeignId(id) ? rivalCardName(opaqueOfForeign(id)) : (cardsById.get(id)?.name ?? rivalCardName(id)))
-    const lines: Array<{ index: number; entry: NewEntry }> = []
+    const nameOf = (id: string) => (isForeignId(id) ? rivalCard(opaqueOfForeign(id)) : (cardsById.get(id)?.name ?? rivalCard(id)))
+    const lines: NewEntry[] = []
 
     for (let index = before; index < actions.length; index += 1) {
       const action = actions[index]!
 
       if (SILENT_ACTIONS.has(action.type)) continue
 
-      lines.push({ index, entry: { kind: 'event', side: 'mine', text: describeMatAction(replayMat(initial, actions, index), action, nameOf) } })
+      lines.push({ kind: 'event', side: 'mine', text: describeMatAction(replayMat(initial, actions, index), action, nameOf), act: index })
     }
 
-    if (lines.length > 0) {
-      const stamped = push(...lines.map(({ entry }) => entry))
-
-      // Lo que ya estaba jugado antes de empezar a mirar no tiene línea (queda sin anotar): el arreglo se rellena hasta el lugar de cada jugada nueva.
-      lines.forEach(({ index }, at) => {
-        while (actionLines.current.length < index) actionLines.current.push(undefined)
-
-        actionLines.current[index] = stamped[at]?.id
-      })
-    }
+    if (lines.length > 0) push(...lines)
   }, [actions, initial, cardsById, snapshot.theirs?.known])
+
+  // Los cambios de vidas de los dos («Ana pierde 100 LP (7900)»): son públicos y no se deshacen con una jugada. Una revancha las vuelve a empezar sin anotar nada.
+  useEffect(() => {
+    const before = seenLife.current
+
+    seenLife.current = lifeLog.length
+
+    if (lifeLog.length <= before) return
+
+    push(
+      ...lifeLog.slice(before).map((change): NewEntry => {
+        const mine = change.player === me
+        const params = { name: rivalName, amount: Math.abs(change.delta), lp: change.to }
+
+        return { kind: 'event', side: mine ? 'mine' : 'theirs', text: t(`duel.log.${mine ? 'mine' : 'rival'}${change.delta < 0 ? 'Lost' : 'Gained'}`, params) }
+      }),
+    )
+  }, [lifeLog, me, rivalName])
 
   // Lo que el rival hace y se avisa (con su nombre ya dentro del texto). Si el mismo cartel gana después el nombre de la carta (se busca por su número), la línea se corrige.
   useEffect(() => {
@@ -146,10 +181,9 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
       if (entry.key !== seenCaptions.current[index]) {
         seenCaptions.current[index] = entry.key
 
-        const [line] = push({ kind: 'event', side: 'theirs', text: entry.caption })
+        const [line] = push({ kind: 'event', side: 'theirs', text: entry.caption, peer: peerMoves })
 
         captionLines.current[index] = line ? { id: line.id, text: entry.caption } : undefined
-        if (line) captionActs.current.set(line.id, peerActs)
         return
       }
 
@@ -160,41 +194,31 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
         setEntries((current) => current.map((row) => (row.id === known.id && row.kind === 'event' ? { ...row, text: entry.caption } : row)))
       }
     })
-  }, [rivalCaptions, peerActs])
+  }, [rivalCaptions, peerMoves])
 
   // Si el rival deshace una jugada, las líneas de lo que él anunció después de la última que le queda se van.
   useEffect(() => {
-    const gone = new Set([...captionActs.current].filter(([, acts]) => acts > peerActs).map(([id]) => id))
+    if (peerUndos === seenUndos.current) return
 
-    if (gone.size === 0) return
-
+    seenUndos.current = peerUndos
     undone.current = true
-    gone.forEach((id) => captionActs.current.delete(id))
-    setEntries((current) => current.filter((row) => !gone.has(row.id)))
-  }, [peerActs])
+    drop((row) => row.kind === 'event' && row.peer !== undefined && row.peer > peerMoves)
+  }, [peerUndos, peerMoves])
 
   // El comienzo de cada turno; si un turno se deshace (volver atrás desde su comienzo), su línea se va y, al volver a pasar, se anota de nuevo.
   useEffect(() => {
     if (turnNumber < seenTurn.current) {
       if (!undone.current) return
 
-      const gone = new Set([...turnLines.current].filter(([number]) => number > turnNumber).map(([, id]) => id))
-
-      ;[...turnLines.current.keys()].filter((number) => number > turnNumber).forEach((number) => turnLines.current.delete(number))
       seenTurn.current = turnNumber
-
-      if (gone.size > 0) setEntries((current) => current.filter((row) => !gone.has(row.id)))
-
+      drop((row) => row.kind === 'turn' && row.turn !== undefined && row.turn > turnNumber)
       return
     }
 
     if (turnNumber === seenTurn.current) return
 
     seenTurn.current = turnNumber
-
-    const [line] = push({ kind: 'turn', text: t('duel.log.turn', { turn: turnNumber, name: turn === 'mine' ? myName : rivalName }) })
-
-    if (line) turnLines.current.set(turnNumber, line.id)
+    push({ kind: 'turn', text: t('duel.log.turn', { turn: turnNumber, name: turn === 'mine' ? myName : rivalName }), turn: turnNumber })
   }, [turnNumber, turn, myName, rivalName])
 
   return entries

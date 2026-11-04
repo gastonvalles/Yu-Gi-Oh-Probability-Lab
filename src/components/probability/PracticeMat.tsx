@@ -3263,6 +3263,7 @@ function PracticeMatBody({
         wide={choosingEffect}
         onInspect={menuInspect}
         passThrough={attackAsk !== null}
+        note={attackAsk ? t('practice.menu.attackPick') : undefined}
         onClose={() => setMenu(null)}
       />
       <PlayTag anchor={covered || !lonePlay ? null : (menu?.rect ?? null)} item={lonePlay} name={menuTitle} onClose={() => setMenu(null)} />

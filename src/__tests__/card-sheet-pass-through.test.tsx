@@ -33,4 +33,11 @@ describe('los menús que no tapan la mesa (elegir a quién atacar tocándolo)', 
     expect(backdropOfMenu()).toHaveClass('pointer-events-none')
     expect(document.body.querySelector('[role="menu"]')).not.toHaveClass('pointer-events-none')
   })
+
+  it('el menú de escritorio lleva la pista de cómo se elige (las opciones no se tocan: el objetivo está en la mesa)', () => {
+    const anchor = { left: 10, top: 100, width: 50, height: 70, right: 60, bottom: 170, x: 10, y: 100, toJSON: () => ({}) } as DOMRect
+    render(<CardMenu anchor={anchor} kicker="Atacar" title="Dragón" items={[]} passThrough note="Tocá al monstruo del rival en la mesa." onClose={() => {}} />)
+
+    expect(document.body.querySelector('[role="menu"]')).toHaveTextContent('Tocá al monstruo del rival en la mesa.')
+  })
 })
