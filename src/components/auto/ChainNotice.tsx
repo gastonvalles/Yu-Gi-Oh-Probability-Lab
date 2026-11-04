@@ -22,6 +22,8 @@ interface ChainNoticeProps {
   /** El celular (menos de 1101 px): la hoja de abajo, `ChainSheet`. */
   compact?: boolean
   onOpenChange: (open: boolean) => void
+  /** Se abre o se cierra «Cómo se resuelve» (`ChainLesson`): mientras se lee, quien la usa no la esconde. */
+  onReading?: (reading: boolean) => void
   /** Se tocó un eslabón (índice en `rows`, y dónde está la fila): quien la usa lo muestra en el detalle o, sin detalle, grande. */
   onPick: (index: number, rect: DOMRect) => void
 }
@@ -39,19 +41,20 @@ interface ChainNoticeProps {
  *   con el ámbar de lo que se resuelve, que es un **aro** alrededor de toda la fila (`listItemSelected`, como el brillo de las cartas): forma distinta, mismo significado de siempre.
  * - **Tocar un eslabón** (`onPick`) lo muestra para leerlo: cada fila es un botón de 44 px o más con su nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»).
  * - El ritmo, cuándo aparece y cuándo se va lo decide quien la usa (`use-auto-asks.tsx`); acá sólo se dibuja. El cartel no entra ni sale animado (tiene temporizador); sus filas sí, al cambiar un eslabón (`ChainListRows`).
+ *   Terminada la cadena se va sola (`CHAIN_LINGER_MS` después del último toque): ni tocarla ni desplegarla la dejan flotando; sólo «Cómo se resuelve», abierto, la retiene (`onReading`).
  * - **El ⓘ** de la cabeza (antes de la flecha, plegada o desplegada; en el celular, en la cabeza de la hoja) abre «Cómo se resuelve» (`ChainLesson`): la letra chica de la cadena, a un toque.
  * - Accesibilidad: el texto de la píldora es un `status` (lo lee el lector de pantalla cuando cambia); la flecha dice qué hace y controla la lista.
  * - Hacer: dejar pasar los toques fuera del cartel (la caja de la mesa va con `pointer-events-none`); tocarla no salta la mesa al final (`skipAhead` la saltea).
  *   No hacer: taparla con otra cosa ni ponerle velo. La mueve sólo la persona (escritorio: su fila de arriba con el mouse, `useDraggableOffset`).
  */
-export function ChainNotice({ rows, focus, resolving, open, compact = false, onOpenChange, onPick }: ChainNoticeProps) {
+export function ChainNotice({ rows, focus, resolving, open, compact = false, onOpenChange, onReading, onPick }: ChainNoticeProps) {
   const listId = useId()
   const cardRef = useRef<HTMLDivElement | null>(null)
   // En escritorio se lleva a otro lado agarrándola por su fila de arriba (`useDraggableOffset`, como la pregunta): una posición para todas las cadenas.
   const move = useDraggableOffset(matCardPositionKey('chain'), cardRef, !compact)
   const row = rows[focus] ?? rows[rows.length - 1]
-  // Leer «Cómo se resuelve» retiene la cadena (como leer un eslabón: no se va sola al terminar). En escritorio queda desplegada hasta plegarla; en el celular, que no se pliega, se suelta al cerrar la hoja.
-  const reading = (on: boolean) => (compact ? onOpenChange(on) : on && onOpenChange(true))
+  // Leer «Cómo se resuelve» la retiene (no se va sola al terminar la cadena) hasta cerrar la hoja: es lo único que la retiene; tocar un eslabón sólo le da otro rato.
+  const reading = (on: boolean) => onReading?.(on)
 
   if (!row) return null
   // El celular: la hoja de abajo (`ChainSheet`); la pila desplegada y su píldora, desde 1101 px.
