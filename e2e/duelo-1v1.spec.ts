@@ -1,6 +1,6 @@
 // Un duelo 1 vs 1 por enlace de punta a punta: dos navegadores (contextos separados, cada uno con su localStorage) contra el relay
 // y la app locales que levanta `playwright.config.ts`. Ana abre la sala y Beto entra por el enlace.
-import { expect, test, type Browser, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page } from '@playwright/test'
 
 // Un deck de 40 normales de Nivel 4 o menos (más una Mágica y una Trampa): cualquier mano de apertura tiene algo que invocar.
 const VANILLAS: [number, string, string, number, number][] = [
@@ -169,9 +169,10 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     await phase(beto, ana, 'Battle Phase')
     await field(beto, 'mine').first().click()
     await beto.getByRole('menuitem', { name: 'Atacar', exact: true }).click()
-    // El objetivo: el monstruo boca arriba de Ana (el otro está boca abajo).
+    // El objetivo (el monstruo boca arriba de Ana) se toca en la mesa, no en el menú: con «Atacar» el menú deja pasar el puntero a propósito
+    // (`passThrough`: src/components/probability/PracticeMat.tsx:1331 y :3265, `pointer-events-none` en MatDialogs.tsx:382) y lo que se puede atacar lleva `data-attack-target`.
     await shot(beto, '06-beto-objetivo')
-    await clickOrKeyboard(beto.getByRole('menu').getByRole('menuitem', { name: summonedByAna, exact: true }), 'el objetivo del ataque (menú «Atacar»)')
+    await beto.getByRole('group', { name: /^Rival, Zona de monstruo/ }).filter({ has: beto.getByRole('img', { name: /ATK/ }) }).locator('[data-attack-target="true"]').click()
     await expect(ana.getByText(`Beto ataca a ${summonedByAna}`).first()).toBeVisible()
     await shot(ana, '06-ana-la-atacan')
   })
@@ -324,22 +325,6 @@ async function letPass(page: Page) {
 const finding = (text: string) => {
   test.info().annotations.push({ type: 'hallazgo', description: text })
   console.log(`HALLAZGO: ${text}`)
-}
-
-/**
- * Un clic de mouse donde se ve `target`; si lo que recibe el clic en ese punto es otra cosa (algo lo tapa para el puntero aunque se vea encima), es un hallazgo:
- * se anota con lo que tapa y se elige con el teclado (Enter), como podría hacerlo una persona.
- */
-async function clickOrKeyboard(target: Locator, what: string) {
-  await expect(target).toBeVisible()
-  const covering = await target.evaluate((element) => {
-    const box = element.getBoundingClientRect()
-    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
-    return hit && !element.contains(hit) ? `<${hit.tagName.toLowerCase()} class="${hit.className}">` : null
-  })
-  if (!covering) return target.click()
-  finding(`Un clic en ${what} no le llega: en ese punto lo recibe ${covering} (se eligió con Enter).`)
-  await target.press('Enter')
 }
 
 const hand = (page: Page) => page.getByRole('list', { name: 'Mano', exact: true }).getByRole('listitem')
