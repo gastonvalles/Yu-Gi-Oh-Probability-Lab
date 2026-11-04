@@ -55,13 +55,16 @@ export function useDuel({ room, role, name, settings, connect, kindOf }: UseDuel
   latest.current = { name, settings }
   const latestKindOf = useRef(kindOf)
   latestKindOf.current = kindOf
+  // Quién soy en la sala: uno por montaje. Si el efecto corre de nuevo (StrictMode lo corre dos veces en desarrollo), la conexión nueva lleva el mismo y el relay
+  // la toma como reemplazo de la anterior; con otro, si la vieja todavía no se cerró allá, cuenta tres jugadores y la sala aparece «completa».
+  const [participant] = useState(createParticipantId)
 
   useEffect(() => {
     if (room === null) {
       return
     }
 
-    const transport = connect(room, createParticipantId())
+    const transport = connect(room, participant)
     const ended = readAutoEndSave(room, role)
     const restore = readDuelSave(room, role) ?? undefined
 
@@ -91,7 +94,7 @@ export function useDuel({ room, role, name, settings, connect, kindOf }: UseDuel
       duel.close()
       setLive(null)
     }
-  }, [room, role, connect])
+  }, [room, role, connect, participant])
 
   const snapshot = useSyncExternalStore(live ? live.duel.subscribe : noSubscribe, live ? live.duel.getSnapshot : noSnapshot)
   const status = useSyncExternalStore(
@@ -105,13 +108,15 @@ export function useDuel({ room, role, name, settings, connect, kindOf }: UseDuel
 /** Un duelo mirado como espectador: se conecta a la sala mientras `room` no sea null y se desconecta al cambiar o desmontarse. `connect` tiene que ser estable. */
 export function useSpectator({ room, connect }: { room: string | null; connect: SpectatorConnect }): { spectator: Spectator | null; snapshot: SpectatorSnapshot | null; status: SocketStatus } {
   const [live, setLive] = useState<{ spectator: Spectator; transport: SpectatorSocket } | null>(null)
+  // Uno por montaje, como en `useDuel`: la segunda corrida del efecto reemplaza a la primera en vez de ocupar otro lugar.
+  const [participant] = useState(createParticipantId)
 
   useEffect(() => {
     if (room === null) {
       return
     }
 
-    const transport = connect(room, createParticipantId())
+    const transport = connect(room, participant)
     const spectator = createSpectator(transport)
 
     setLive({ spectator, transport })
@@ -120,7 +125,7 @@ export function useSpectator({ room, connect }: { room: string | null; connect: 
       spectator.close()
       setLive(null)
     }
-  }, [room, connect])
+  }, [room, connect, participant])
 
   const snapshot = useSyncExternalStore(live ? live.spectator.subscribe : noSubscribe, live ? live.spectator.getSnapshot : noSnapshot)
   const status = useSyncExternalStore(
