@@ -6,7 +6,7 @@
 ["DT01-EN005","Duel Terminal Rare Parallel Rare","Limited",4.23,80900,89943723,"Elemental HERO Neos"],
 ["DT01-EN006","Duel Terminal Normal Parallel Rare","Limited",3.81,80901,78193831,"Buster Blader"],
 ["DT01-EN007","Duel Terminal Normal Parallel Rare","Limited",3.49,80902,40640057,"Kuriboh"],
-["DT01-EN008","Duel Terminal Normal Parallel Rare","Limited",2.11,80903,57116033,"Winged Kuriboh"],
+["DT01-EN008","Duel Terminal Normal Parallel Rare","Limited",2.15,80903,57116033,"Winged Kuriboh"],
 ["DT01-EN009","Duel Terminal Rare Parallel Rare","Limited",19.36,80904,70095154,"Cyber Dragon"],
 ["DT01-EN010","Duel Terminal Super Parallel Rare","Limited",0.99,80905,60161788,"Blizzed, Defender of the Ice Barrier"],
 ["DT01-EN011","Duel Terminal Normal Parallel Rare","Limited",0.35,80907,96565487,"Blizzard Warrior"],
@@ -71,13 +71,13 @@
 ["DT01-EN070","Duel Terminal Rare Parallel Rare","Limited",0.76,80972,28332833,"Flamvell Poun"],
 ["DT01-EN071","Duel Terminal Normal Parallel Rare","Limited",0.33,80973,54326448,"Flamvell Archer"],
 ["DT01-EN072","Duel Terminal Super Parallel Rare","Limited",0.69,80974,91711547,"Flamvell Fiend"],
-["DT01-EN073","Duel Terminal Normal Parallel Rare","Limited",8.62,80975,23115241,"X-Saber Anu Piranha"],
+["DT01-EN073","Duel Terminal Normal Parallel Rare","Limited",8.23,80975,23115241,"X-Saber Anu Piranha"],
 ["DT01-EN074","Duel Terminal Rare Parallel Rare","Limited",8.59,80976,50604950,"X-Saber Galahad"],
 ["DT01-EN075","Duel Terminal Normal Parallel Rare","Limited",1.31,80977,96099959,"X-Saber Palomuro"],
 ["DT01-EN076","Duel Terminal Normal Parallel Rare","Limited",4.08,80978,23093604,"X-Saber Pashuul"],
 ["DT01-EN077","Duel Terminal Rare Parallel Rare","Limited",0.44,80979,59482302,"Ally Salvo"],
 ["DT01-EN078","Duel Terminal Normal Parallel Rare","Limited",0.24,80980,85876417,"Ally of Justice Thousand Arms"],
-["DT01-EN079","Duel Terminal Rare Parallel Rare","Limited",0.26,80981,22371016,"Ally of Justice Unknown Crusher"],
+["DT01-EN079","Duel Terminal Rare Parallel Rare","Limited",0.28,80981,22371016,"Ally of Justice Unknown Crusher"],
 ["DT01-EN080","Duel Terminal Normal Parallel Rare","Limited",0.46,80982,58760121,"Worm Falco"],
 ["DT01-EN081","Duel Terminal Normal Parallel Rare","Limited",0.6,80983,85754829,"Worm Gulse"],
 ["DT01-EN082","Duel Terminal Normal Parallel Rare","Limited",0.43,80984,11159464,"Worm Hope"],
@@ -98,5 +98,5 @@
 ["DT01-EN097","Duel Terminal Normal Parallel Rare","Limited",0.33,80999,58621589,"Shadow of Eyes"],
 ["DT01-EN098","Duel Terminal Normal Parallel Rare","Limited",0.43,81000,62325062,"Adhesion Trap Hole"],
 ["DT01-EN099","Duel Terminal Normal Parallel Rare","Limited",0.47,81001,96331676,"Crystal Raigeki"],
-["DT01-EN100","Duel Terminal Normal Parallel Rare","Limited",5.99,81002,50323155,"Black Horn of Heaven"]
+["DT01-EN100","Duel Terminal Normal Parallel Rare","Limited",6,81002,50323155,"Black Horn of Heaven"]
 ]
