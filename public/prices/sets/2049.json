@@ -32,14 +32,14 @@
 ["LEDU-EN030","Super Rare","1st Edition",0.62,144997,17745969,"Super Vehicroid - Mobile Base"],
 ["LEDU-EN031","Rare","1st Edition",0.24,144999,44139064,"Megaroid City"],
 ["LEDU-EN032","Ultra Rare","1st Edition",0.37,145000,70628672,"Emergeroid Call"],
-["LEDU-EN033","Common","1st Edition",0.26,145003,984114,"Expressroid"],
+["LEDU-EN033","Common","1st Edition",0.25,145003,984114,"Expressroid"],
 ["LEDU-EN034","Common","1st Edition",0.23,145007,73333463,"Armoroid"],
 ["LEDU-EN035","Common","1st Edition",0.15,145010,23299957,"Vehicroid Connection Zone"],
 ["LEDU-EN036","Super Rare","1st Edition",0.86,145011,6022371,"Water Dragon Cluster"],
 ["LEDU-EN037","Super Rare","1st Edition",8.03,145012,43017476,"Duoterion"],
 ["LEDU-EN038","Rare","1st Edition",0.26,145014,79402185,"Bonding - D2O"],
 ["LEDU-EN039","Rare","1st Edition",0.31,145016,6890729,"Bonding - DHO"],
-["LEDU-EN040","Common","1st Edition",0.16,145018,22587018,"Hydrogeddon"],
+["LEDU-EN040","Common","1st Edition",0.15,145018,22587018,"Hydrogeddon"],
 ["LEDU-EN041","Common","1st Edition",0.21,145019,58071123,"Oxygeddon"],
 ["LEDU-EN042","Common","1st Edition",0.26,145021,85066822,"Water Dragon"],
 ["LEDU-EN043","Common","1st Edition",0.24,145023,33245030,"Sphere Kuriboh"],
@@ -50,5 +50,5 @@
 ["LEDU-EN048","Common","1st Edition",0.25,145028,74848038,"Monster Reincarnation"],
 ["LEDU-EN049","Common","1st Edition",0.29,145030,78574395,"Wonder Balloons"],
 ["LEDU-EN050","Common","1st Edition",0.25,145032,42671151,"The Golden Apples"],
-["LEDU-EN051","Common","1st Edition",0.14,145035,45898858,"Bonding - H2O"]
+["LEDU-EN051","Common","1st Edition",0.11,145035,45898858,"Bonding - H2O"]
 ]

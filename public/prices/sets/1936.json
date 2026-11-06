@@ -1,7 +1,7 @@
 [
 ["PEVO-EN001","Ultra Rare","1st Edition",0.22,134948,76794549,"Astrograph Sorcerer"],
 ["PEVO-EN002","Ultra Rare","1st Edition",0.33,134949,12289247,"Chronograph Sorcerer"],
-["PEVO-EN003","Ultra Rare","1st Edition",2.16,134950,49684352,"Double Iris Magician"],
+["PEVO-EN003","Ultra Rare","1st Edition",2.18,134950,49684352,"Double Iris Magician"],
 ["PEVO-EN004","Ultra Rare","1st Edition",0.49,134951,75672051,"Black Fang Magician"],
 ["PEVO-EN005","Ultra Rare","1st Edition",0.47,134952,11067666,"White Wing Magician"],
 ["PEVO-EN006","Ultra Rare","1st Edition",1.38,134953,48461764,"Purple Poison Magician"],
@@ -39,7 +39,7 @@
 ["PEVO-EN038","Super Rare","1st Edition",0.27,134985,48144509,"Odd-Eyes Fusion"],
 ["PEVO-EN039","Super Rare","1st Edition",2.09,134986,71490127,"Dragon's Mirror"],
 ["PEVO-EN040","Super Rare","1st Edition",0.49,134987,79816536,"Summoner's Art"],
-["PEVO-EN041","Super Rare","1st Edition",0.24,134988,77826734,"Pendulum Reborn"],
+["PEVO-EN041","Super Rare","1st Edition",0.26,134988,77826734,"Pendulum Reborn"],
 ["PEVO-EN042","Super Rare","1st Edition",0.17,134989,15582767,"Echo Oscillation"],
 ["PEVO-EN043","Super Rare","1st Edition",0.26,134990,72648810,"Unwavering Bond"],
 ["PEVO-EN044","Super Rare","1st Edition",0.3,134991,96223501,"Satellarknight Zefrathuban"],
@@ -50,13 +50,13 @@
 ["PEVO-EN049","Super Rare","1st Edition",0.5,134996,23166823,"Ritual Beast Tamer Zefrawendi"],
 ["PEVO-EN050","Super Rare","1st Edition",0.33,134997,32354768,"Oracle of Zefra"],
 ["PEVO-EN051","Super Rare","1st Edition",0.2,134998,35561352,"Zefra Divine Strike"],
-["PEVO-EN052","Super Rare","1st Edition",0.15,135063,18716735,"Raremetalfoes Bismugear"],
-["PEVO-EN053","Super Rare","1st Edition",0.24,134999,54401832,"Metalfoes Crimsonite"],
+["PEVO-EN052","Super Rare","1st Edition",0.17,135063,18716735,"Raremetalfoes Bismugear"],
+["PEVO-EN053","Super Rare","1st Edition",0.23,134999,54401832,"Metalfoes Crimsonite"],
 ["PEVO-EN054","Super Rare","1st Edition",0.16,135000,28016193,"Metalfoes Orichalc"],
-["PEVO-EN055","Super Rare","1st Edition",0.28,135001,81612598,"Metalfoes Adamante"],
+["PEVO-EN055","Super Rare","1st Edition",0.27,135001,81612598,"Metalfoes Adamante"],
 ["PEVO-EN056","Super Rare","1st Edition",0.14,135002,33327029,"Metalfoes Counter"],
 ["PEVO-EN057","Super Rare","1st Edition",0.23,135003,65518099,"Qliphort Scout"],
 ["PEVO-EN058","Super Rare","1st Edition",0.32,135004,51194046,"Qliphort Monolith"],
 ["PEVO-EN059","Super Rare","1st Edition",0.45,135005,75195825,"Master Pendulum, the Dracoslayer"],
-["PEVO-EN060","Super Rare","1st Edition",0.23,135006,7127502,"Lector Pendulum, the Dracoverlord"]
+["PEVO-EN060","Super Rare","1st Edition",0.22,135006,7127502,"Lector Pendulum, the Dracoverlord"]
 ]

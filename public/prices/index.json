@@ -1,4 +1,4 @@
-{"updated":"2026-11-05","shards":256,"groups":[
+{"updated":"2026-11-06","shards":256,"groups":[
 [126,"2003 Collectors Tin","2003-09-01",6,"BPT"],
 [127,"2004 Collectors Tin","2004-09-01",6,"CT1"],
 [128,"2005 Collectors Tin","2005-09-01",6,"CT2"],
@@ -41,7 +41,7 @@
 [176,"Destiny Board Traveler Promo","2004-09-26",3,"DBT"],
 [178,"Duel Master's Guide","2003-10-28",1,"DMG"],
 [179,"Duel Terminal - Preview","2009-06-20",21,"DTP1"],
-[182,"Duelist League Promo","2003-01-01",720,"DL09"],
+[182,"Duelist League Promo","2003-01-01",721,"DL09"],
 [183,"Duelist of the Roses","2003-02-16",3,"DOR"],
 [184,"Duelist Pack: Yugi","2009-07-11",60,"DPYG"],
 [185,"Duelist Pack 10: Yusei 3","2011-01-25",60,"DP10"],
@@ -93,7 +93,7 @@
 [245,"Legendary Collection 2","2017-12-01",545,"LCGX"],
 [246,"Light and Darkness Power Pack","",1,"LDPP"],
 [247,"Light of Destruction","2008-02-23",225,"LODT"],
-[248,"The Lost Millennium","2005-06-01",171,"TLM"],
+[248,"The Lost Millennium","2005-06-01",172,"TLM"],
 [249,"Magic Ruler","2002-09-16",253,"MRL"],
 [250,"Magician's Force","2003-10-10",217,"MFC"],
 [251,"Master Collection Volume 1","2005-03-17",6,"MC1"],
@@ -161,7 +161,7 @@
 [318,"Structure Deck: Gates of the Underworld","2011-10-18",78,"SDGU"],
 [319,"Structure Deck: Lost Sanctuary","2011-06-14",38,"SDLS"],
 [320,"Structure Deck: Machina Mayhem","2010-02-23",74,"SDMM"],
-[321,"Structure Deck: Marik","2010-10-19",68,"SDMA"],
+[321,"Structure Deck: Marik","2010-10-19",67,"SDMA"],
 [322,"Structure Deck: The Dark Emperor","2008-04-02",72,"SDDE"],
 [323,"Structure Deck: Warriors' Strike","2009-10-27",38,"SDWS"],
 [324,"Structure Deck: Zombie World","2008-10-21",37,"SDZW"],
@@ -282,7 +282,7 @@
 [1479,"Astral Pack 5","2014-07-25",26,"AP05"],
 [1480,"Duelist Alliance","2014-08-15",214,"DUEA"],
 [1484,"2014 Mega-Tins","2014-08-29",6,"CT11"],
-[1485,"2014 Mega-Tins Mega Pack","2014-08-29",426,"MP14"],
+[1485,"2014 Mega-Tins Mega Pack","2014-08-29",430,"MP14"],
 [1488,"Duelist Alliance: Deluxe Edition","2014-09-12",7,"DUEA"],
 [1489,"Structure Deck: Geargia Rampage","2014-10-17",35,"SDGR"],
 [1491,"Legendary Collection 5D's","2014-10-24",265,"LC5D"],
@@ -474,7 +474,7 @@
 [2850,"OTS Tournament Pack 16","2021-06-12",26,"OP16"],
 [2877,"Brothers of Legend","2021-10-01",95,"BROL"],
 [2879,"Burst of Destiny","2021-10-22",105,"BODE"],
-[2896,"Maximum Gold: El Dorado","2021-11-19",164,"MGED"],
+[2896,"Maximum Gold: El Dorado","2021-11-19",163,"MGED"],
 [2934,"OTS Tournament Pack 17","2021-10-13",25,"OP17"],
 [2941,"Hidden Arsenal: Chapter 1","2022-03-11",173,"HAC1"],
 [2961,"Structure Deck: Albaz Strike","2022-04-15",46,"SDAZ"],
@@ -596,7 +596,6 @@
 [24703,"Limited Pack World Championship 2026","2026-08-29",87,"26LP"],
 [24704,"Ultimate Tournament Pack 1","2026-07-08",49,"UP01"],
 [24707,"Magnificent Monsters","2026-09-04",220,"MAMO"],
-[24789,"Winner's Pack 2026-2027","2026-07-15",90,"WI26"],
-[24815,"Beyond the Brave","2026-10-09",130,"BETB"],
-[24918,"Thank You Pack","2026-07-22",3,"TYP1"]
+[24789,"Winner's Pack 2026-2027","2026-07-15",91,"WI26"],
+[24815,"Beyond the Brave","2026-10-09",130,"BETB"]
 ]}

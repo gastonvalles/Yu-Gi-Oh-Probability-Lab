@@ -1,5 +1,5 @@
 [
-["5DS2-EN001","Common","1st Edition",1.42,32127,39674352,"Gogiga Gagagigo"],
+["5DS2-EN001","Common","1st Edition",1.38,32127,39674352,"Gogiga Gagagigo"],
 ["5DS2-EN001","Common","Unlimited",null,32127,39674352,"Gogiga Gagagigo"],
 ["5DS2-EN002","Common","1st Edition",0.33,32128,37265642,"Sabersaurus"],
 ["5DS2-EN002","Common","Unlimited",null,32128,37265642,"Sabersaurus"],
@@ -44,9 +44,9 @@
 ["5DS2-EN023","Common","Unlimited",0.98,32149,42703248,"Giant Trunade"],
 ["5DS2-EN024","Common","1st Edition",0.33,32150,79759861,"Tribute to the Doomed"],
 ["5DS2-EN024","Common","Unlimited",null,32150,79759861,"Tribute to the Doomed"],
-["5DS2-EN025","Common","1st Edition",0.2,32151,95281259,"The Warrior Returning Alive"],
+["5DS2-EN025","Common","1st Edition",0.21,32151,95281259,"The Warrior Returning Alive"],
 ["5DS2-EN025","Common","Unlimited",null,32151,95281259,"The Warrior Returning Alive"],
-["5DS2-EN026","Common","1st Edition",0.58,32152,53046408,"Emergency Provisions"],
+["5DS2-EN026","Common","1st Edition",0.66,32152,53046408,"Emergency Provisions"],
 ["5DS2-EN026","Common","Unlimited",null,32152,53046408,"Emergency Provisions"],
 ["5DS2-EN027","Common","1st Edition",0.48,32153,31036355,"Creature Swap"],
 ["5DS2-EN027","Common","Unlimited",null,32153,31036355,"Creature Swap"],
@@ -62,9 +62,9 @@
 ["5DS2-EN032","Common","Unlimited",null,32158,98143165,"Synchro Boost"],
 ["5DS2-EN033","Common","1st Edition",0.75,32159,13504844,"Gottoms' Emergency Call"],
 ["5DS2-EN033","Common","Unlimited",null,32159,13504844,"Gottoms' Emergency Call"],
-["5DS2-EN034","Common","1st Edition",0.57,32160,60082869,"Dust Tornado"],
+["5DS2-EN034","Common","1st Edition",0.63,32160,60082869,"Dust Tornado"],
 ["5DS2-EN034","Common","Unlimited",null,32160,60082869,"Dust Tornado"],
-["5DS2-EN035","Common","1st Edition",0.31,32161,59344077,"Magic Drain"],
+["5DS2-EN035","Common","1st Edition",0.32,32161,59344077,"Magic Drain"],
 ["5DS2-EN035","Common","Unlimited",null,32161,59344077,"Magic Drain"],
 ["5DS2-EN036","Common","1st Edition",2.6,32162,4178474,"Raigeki Break"],
 ["5DS2-EN036","Common","Unlimited",0.17,32162,4178474,"Raigeki Break"],
@@ -80,6 +80,6 @@
 ["5DS2-EN041","Ultra Rare","Unlimited",1.16,32167,2322421,"Road Warrior"],
 ["5DS2-EN042","Common","1st Edition",0.46,32168,60800381,"Junk Warrior"],
 ["5DS2-EN042","Common","Unlimited",0.49,32168,60800381,"Junk Warrior"],
-["5DS2-EN043","Super Rare","1st Edition",1.1,32169,80108118,"X-Saber Urbellum"],
+["5DS2-EN043","Super Rare","1st Edition",1.12,32169,80108118,"X-Saber Urbellum"],
 ["5DS2-EN043","Super Rare","Unlimited",0.84,32169,80108118,"X-Saber Urbellum"]
 ]
