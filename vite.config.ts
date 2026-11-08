@@ -9,6 +9,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { configDefaults } from 'vitest/config'
 import { defineConfig, type Plugin } from 'vite'
+import { readTiState } from './tools/ti/state.mjs'
 import { cardsByCodes, manifestCodes, promotedScripts, readLock, scriptDirs } from './scripts/build-auto-data.mjs'
 
 const isMountedWindowsWorkspace = process.cwd().startsWith('/mnt/')
@@ -141,6 +142,29 @@ function autoDataDev(): Plugin {
   }
 }
 
+/**
+ * `/api/ti/state`: la foto del departamento de TI (cards, sprint y la cola de `events.jsonl` reducida) que el dashboard `/ti` pide cada
+ * segundo. Sólo en `npm run dev`; `TI_DIR` apunta a otra carpeta para simular eventos sin tocar los reales (`tools/ti/state.mjs`).
+ */
+function tiDev(): Plugin {
+  return {
+    name: 'ti-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/api/ti/state', (_request, response) => {
+        response.setHeader('Cache-Control', 'no-store')
+        try {
+          response.setHeader('Content-Type', 'application/json')
+          response.end(JSON.stringify(readTiState()))
+        } catch (error) {
+          response.statusCode = 500
+          response.end(String(error))
+        }
+      })
+    },
+  }
+}
+
 /** Aviso de autoría al principio de cada archivo JS del build. Se agrega después de minificar, así ningún paso lo borra. */
 function copyrightBanner(): Plugin {
   return {
@@ -188,7 +212,7 @@ const SLOW = 'src/__tests__/**/*.slow.test.ts'
 const SLOW_RUN = process.env.npm_lifecycle_event === 'test:auto'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), apiDev(), autoDataDev()],
+  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), apiDev(), autoDataDev(), tiDev()],
   preview: {
     headers: readVercelHeaders(),
     proxy: CARD_IMAGE_PROXY,
