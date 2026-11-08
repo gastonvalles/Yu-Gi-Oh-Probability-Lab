@@ -8,7 +8,7 @@
 ["YS13-EN007","Common","1st Edition",0.1,69036,30608985,"Magical Undertaker"],
 ["YS13-EN008","Common","1st Edition",0.19,69037,67692580,"Caligo Claw Crow"],
 ["YS13-EN009","Common","1st Edition",0.33,69038,26082117,"Gagaga Magician"],
-["YS13-EN010","Common","1st Edition",0.44,69039,3606728,"Gagaga Girl"],
+["YS13-EN010","Common","1st Edition",0.45,69039,3606728,"Gagaga Girl"],
 ["YS13-EN011","Common","1st Edition",0.1,69040,12423762,"Gagaga Gardna"],
 ["YS13-EN012","Common","1st Edition",0.06,69041,97896503,"Zubaba Knight"],
 ["YS13-EN013","Common","1st Edition",0.1,69042,24291651,"Ganbara Knight"],
@@ -16,8 +16,8 @@
 ["YS13-EN015","Common","1st Edition",0.15,69044,25259669,"Goblindbergh"],
 ["YS13-EN016","Common","1st Edition",0.37,69045,94656263,"Kagetokage"],
 ["YS13-EN017","Common","1st Edition",0.12,69046,86039057,"Tasuke Knight"],
-["YS13-EN018","Common","1st Edition",0.22,69047,76080032,"ZW - Unicorn Spear"],
-["YS13-EN019","Common","1st Edition",0.24,69049,2460565,"Marauding Captain"],
+["YS13-EN018","Common","1st Edition",0.21,69047,76080032,"ZW - Unicorn Spear"],
+["YS13-EN019","Common","1st Edition",0.25,69049,2460565,"Marauding Captain"],
 ["YS13-EN020","Common","1st Edition",0.25,69048,45141844,"Old Vindictive Magician"],
 ["YS13-EN021","Common","1st Edition",0.44,69050,93087299,"Swords of Burning Light"],
 ["YS13-EN022","Common","1st Edition",0.1,69051,22346472,"Blustering Winds"],
@@ -28,7 +28,7 @@
 ["YS13-EN027","Common","1st Edition",0.28,69056,13032689,"Xyz Unit"],
 ["YS13-EN028","Common","1st Edition",0.4,69057,403847,"The A. Forces"],
 ["YS13-EN029","Common","1st Edition",0.17,69058,32807846,"Reinforcement of the Army"],
-["YS13-EN030","Common","1st Edition",0.35,69059,95281259,"The Warrior Returning Alive"],
+["YS13-EN030","Common","1st Edition",0.31,69059,95281259,"The Warrior Returning Alive"],
 ["YS13-EN031","Common","1st Edition",0.15,69060,30585393,"Puzzle Reborn"],
 ["YS13-EN032","Common","1st Edition",0.1,69061,18446701,"Gagagashield"],
 ["YS13-EN033","Common","1st Edition",0.29,69062,21843307,"Copy Knight"],
@@ -40,5 +40,5 @@
 ["YS13-EN039","Common","1st Edition",0.15,69068,97077563,"Call of the Haunted"],
 ["YS13-EN040","Common","1st Edition",0.59,69069,77538567,"Dark Bribe"],
 ["YS13-EN041","Super Rare","1st Edition",0.48,69070,84013237,"Number 39: Utopia"],
-["YS13-EN042","Ultra Rare","1st Edition",0.28,69071,56840427,"Number C39: Utopia Ray"]
+["YS13-EN042","Ultra Rare","1st Edition",0.29,69071,56840427,"Number C39: Utopia Ray"]
 ]

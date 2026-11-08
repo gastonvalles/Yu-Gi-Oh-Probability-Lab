@@ -1,10 +1,10 @@
 [
 ["SDMY-EN001","Super Rare","1st Edition",0.7,123799,42023223,"Alpha The Electromagnet Warrior"],
-["SDMY-EN002","Super Rare","1st Edition",4.57,123800,79418928,"Beta The Electromagnet Warrior"],
+["SDMY-EN002","Super Rare","1st Edition",4.26,123800,79418928,"Beta The Electromagnet Warrior"],
 ["SDMY-EN003","Super Rare","1st Edition",1.11,123801,15502037,"Gamma The Electromagnet Warrior"],
 ["SDMY-EN004","Ultra Rare","1st Edition",3.25,123802,42901635,"Berserkion the Electromagna Warrior"],
 ["SDMY-EN005","Common","1st Edition",0.33,123803,78355370,"Kuribohrn"],
-["SDMY-EN006","Common","1st Edition",0.82,123804,75347539,"Valkyrion the Magna Warrior"],
+["SDMY-EN006","Common","1st Edition",0.84,123804,75347539,"Valkyrion the Magna Warrior"],
 ["SDMY-EN007","Common","1st Edition",0.45,123805,99785935,"Alpha The Magnet Warrior"],
 ["SDMY-EN008","Common","1st Edition",0.77,123806,39256679,"Beta The Magnet Warrior"],
 ["SDMY-EN009","Common","1st Edition",0.6,123807,11549357,"Gamma the Magnet Warrior"],
@@ -21,7 +21,7 @@
 ["SDMY-EN020","Common","1st Edition",0.41,123818,40640057,"Kuriboh"],
 ["SDMY-EN021","Common","1st Edition",0.41,123819,73752131,"Skilled Dark Magician"],
 ["SDMY-EN022","Common","1st Edition",0.25,123820,46363422,"Skilled White Magician"],
-["SDMY-EN023","Common","1st Edition",0.14,123821,43586926,"Twin-Headed Behemoth"],
+["SDMY-EN023","Common","1st Edition",0.15,123821,43586926,"Twin-Headed Behemoth"],
 ["SDMY-EN024","Common","1st Edition",1.42,123822,4740489,"Magnetic Field"],
 ["SDMY-EN025","Common","1st Edition",1.24,123823,41735184,"Dark Magic Inheritance"],
 ["SDMY-EN026","Common","1st Edition",0.32,123824,2314238,"Dark Magic Attack"],
@@ -42,6 +42,6 @@
 ["SDMY-EN041","Ultra Rare","1st Edition",1.86,123839,4628897,"Imperion Magnum the Superconductive Battlebot"],
 ["SDMY-EN042","Common","1st Edition",0.43,123840,6150044,"Arcana Knight Joker"],
 ["SDMY-EN043","Common","1st Edition",0.55,123841,98502113,"Dark Paladin"],
-["SDMY-EN044","Common","1st Edition",0.21,123842,4796100,"Chimera the Flying Mythical Beast"],
+["SDMY-EN044","Common","1st Edition",0.22,123842,4796100,"Chimera the Flying Mythical Beast"],
 ["SDMY-EN045","Common","1st Edition",2.1,123843,86240887,"Buster Blader, the Dragon Destroyer Swordsman"]
 ]
