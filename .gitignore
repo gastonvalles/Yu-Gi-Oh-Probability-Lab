@@ -23,6 +23,8 @@ duel-relay/.wrangler/
 !.claude/agents/ti-*.md
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+# El commit que se publica (`scripts/write-build-id.mjs`): lo escribe cada build.
+public/build.json
 # Lo que deja `npm run test:e2e` (capturas, trazas, informe).
 test-results/
 playwright-report/
