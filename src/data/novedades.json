@@ -1,0 +1,47 @@
+{
+  "entries": [
+    {
+      "id": "2026-11-09-paleta",
+      "date": "2026-11-09",
+      "tags": ["nuevo", "mejora"],
+      "es": {
+        "title": "Paleta nueva: carbón, violeta eléctrico y lima",
+        "novedades": [
+          "La página estrena colores: fondo carbón, violeta eléctrico para lo principal y lima ácida para lo que elegís o resaltás (el menú activo, los enlaces, el foco).",
+          "Los estados se separan de la marca: menta para lo que salió bien, naranja para los avisos y rojo para el peligro.",
+          "La mesa de práctica y el duelo mantienen su arena violeta."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Los textos en rojo (mensajes inválidos, tendencias a la baja, las vidas que bajan) se leen con más contraste.",
+          "Los números de los filtros elegidos se leen mejor sobre el violeta.",
+          "Los roles del deck cambian de color (Extender, Payoff y Recovery) para no confundirse con el menta ni con la lima.",
+          "Las imágenes que exportás del deck y de las tier lists salen con la paleta nueva.",
+          "Las páginas de privacidad y de error y el color de la barra del navegador pasan al carbón."
+        ],
+        "ojo": [
+          "El ícono de la app instalada, el favicon y la imagen que se ve al compartir el enlace todavía tienen los colores anteriores."
+        ]
+      },
+      "en": {
+        "title": "New palette: charcoal, electric violet and lime",
+        "novedades": [
+          "The site has new colors: a charcoal background, electric violet for the main actions and acid lime for what you pick or highlight (the active menu item, links, focus).",
+          "Status colors now stand apart from the brand: mint for what went well, orange for warnings and red for danger.",
+          "The practice table and duels keep their violet arena."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Red text (invalid messages, downward trends, falling life points) is easier to read.",
+          "The counts on selected filters are easier to read on the violet.",
+          "Deck role colors change (Extender, Payoff and Recovery) so they are not mistaken for mint or lime.",
+          "The deck and tier list images you export use the new palette.",
+          "The privacy and error pages and the browser bar color move to charcoal."
+        ],
+        "ojo": [
+          "The installed app icon, the favicon and the image shown when you share the link still use the previous colors."
+        ]
+      }
+    }
+  ]
+}

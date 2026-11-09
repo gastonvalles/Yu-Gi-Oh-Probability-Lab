@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'solo' | 'practice' | 'duel' | 'life' | 'meta' | 'tier-maker' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'solo' | 'practice' | 'duel' | 'life' | 'meta' | 'tier-maker' | 'tournaments' | 'replays' | 'expansions' | 'banlists' | 'novedades'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -51,6 +51,8 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'replays',
   'expansions',
   'banlists',
+  // No va en el menú: se llega por el enlace «Novedades» de abajo del menú (`SidebarLegal`, el cajón) o por un enlace compartido (`#novedades?entrada=<id>`).
+  'novedades',
 ]
 
 export function isDeckWorkflowStepKey(value: string): value is DeckWorkflowStepKey {
