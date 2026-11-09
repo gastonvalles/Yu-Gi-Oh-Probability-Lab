@@ -30,10 +30,12 @@ En orden de valor sobre costo.
    la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
 6. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax;
    en la sala, mientras gira, el dado de un jugador tapa su chip «Listo» (`DieSeat` en `toss-views.tsx`); en un celular bajo,
-   antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo).
+   antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo); en Jugar solo, salir de
+   la mesa a otro paso y volver con Atrás cambia la mano y la fase (medido con «Inicio» y con «Tier lists»): la práctica no se conserva.
 7. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
-8. **Textos en español por área** (M): hoy todos viajan en el archivo principal (56 KB gz de sus 143); una visita nueva a la
-   landing baja 153 KB de JS y la meta era 60. Separarlos por área toca `i18n/index.ts`.
+8. **Arranque de «Inicio»** (M): la visita nueva en `/` baja ~342 KB gz de JS (la app entera). Los textos en español viajan todos
+   en el archivo principal (56 KB gz de sus 143): separarlos por área toca `i18n/index.ts`. Además `MainApp` pide reglas de
+   cartas y tablas de Edison/Genesys también en `#inicio`: que esperen a que el paso no sea `inicio`.
 9. **`/playground` tarda 30 a 50 s** en mostrar su título en producción con un celular emulado (el smoke le da 90 s): medir en una
    máquina libre (S). **Textos apagados con opacidad** bajo 4,5:1: insignia «Atacar» (4,33), inicial de una carta sin imagen
    (4,24), «Interacción y soporte externo» (3,81) y «Sin objetivo» del catálogo (S). `Segmented` sin flechas (S).

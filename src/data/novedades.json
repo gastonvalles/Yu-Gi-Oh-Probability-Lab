@@ -1,6 +1,48 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-2-inicio",
+      "date": "2026-11-09",
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
+      "es": {
+        "title": "«Inicio» en el menú, con la portada dentro de la app",
+        "novedades": [
+          "Hay un primer paso nuevo en el menú, «Inicio», con todo lo de la portada: la cuenta de cuántas veces abrís tu carta, el duelo por enlace, las cartas más jugadas del meta y lo último de Novedades.",
+          "Si entrás por primera vez, la página abre directo ahí, con el menú y las barras de siempre.",
+          "«Lo más jugado del meta» muestra las seis cartas del Main que aparecen en más decks de torneo (TCG) de las últimas 8 semanas, con cuántos decks las usan."
+        ],
+        "comoSeUsa": [
+          "Tocá «Inicio» arriba de todo en el menú para volver a la portada.",
+          "En el celular, abrí el menú y elegí «Inicio», o tocá el logo de la barra de arriba."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "La portada sigue viéndola solo quien llega sin un deck guardado: quien ya usa la página entra donde estaba, como siempre.",
+          "En «Solo», salir de la mesa a otro paso y volver no conserva la mano ni la fase."
+        ]
+      },
+      "en": {
+        "title": "\"Home\" in the menu, with the front page inside the app",
+        "novedades": [
+          "There is a new first item in the menu, \"Home\", with everything from the front page: the odds of opening your card, duel by link, the most played cards in the meta and the latest updates.",
+          "On a first visit the site now opens straight there, with the usual menu and bars.",
+          "\"Most played in the meta\" shows the six Main Deck cards that appear in the most tournament decks (TCG) of the last 8 weeks, with how many decks run them."
+        ],
+        "comoSeUsa": [
+          "Tap \"Home\" at the very top of the menu to go back to the front page.",
+          "On a phone, open the menu and pick \"Home\", or tap the logo in the top bar."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Only visitors without a saved deck land on the front page: if you already use the site, you go in where you were, as usual.",
+          "In \"Solo\", leaving the mat for another step and coming back does not keep the hand or the phase."
+        ]
+      }
+    },
+    {
       "id": "2026-11-09-1-portada",
       "date": "2026-11-09",
       "tags": [
