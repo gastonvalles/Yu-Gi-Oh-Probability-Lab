@@ -1,6 +1,6 @@
 [
 ["SP14-EN001","Common","1st Edition",0.15,79812,62476815,"Gogogo Golem"],
-["SP14-EN001","Starfoil Rare","1st Edition",0.11,79813,62476815,"Gogogo Golem"],
+["SP14-EN001","Starfoil Rare","1st Edition",0.13,79813,62476815,"Gogogo Golem"],
 ["SP14-EN002","Common","1st Edition",0.23,79814,29116732,"Daybreaker"],
 ["SP14-EN002","Starfoil Rare","1st Edition",0.25,79815,29116732,"Daybreaker"],
 ["SP14-EN003","Common","1st Edition",0.11,79816,39695323,"Gogogo Giant"],
@@ -28,7 +28,7 @@
 ["SP14-EN014","Common","1st Edition",0.13,80046,42851643,"Jumbo Drill"],
 ["SP14-EN014","Starfoil Rare","1st Edition",0.04,80047,42851643,"Jumbo Drill"],
 ["SP14-EN015","Common","1st Edition",0.11,79850,79850798,"Rocket Arrow Express"],
-["SP14-EN015","Starfoil Rare","1st Edition",0.84,79852,79850798,"Rocket Arrow Express"],
+["SP14-EN015","Starfoil Rare","1st Edition",0.58,79852,79850798,"Rocket Arrow Express"],
 ["SP14-EN016","Common","1st Edition",null,79853,42969214,"Aye-Iron"],
 ["SP14-EN016","Starfoil Rare","1st Edition",null,79854,42969214,"Aye-Iron"],
 ["SP14-EN017","Common","1st Edition",1.63,79855,18063928,"Tin Goldfish"],
@@ -45,8 +45,8 @@
 ["SP14-EN022","Starfoil Rare","1st Edition",0.88,79879,56840427,"Number C39: Utopia Ray"],
 ["SP14-EN023","Common","1st Edition",1.14,79880,65676461,"Number 32: Shark Drake"],
 ["SP14-EN023","Starfoil Rare","1st Edition",2.06,79882,65676461,"Number 32: Shark Drake"],
-["SP14-EN024","Common","1st Edition",4,79883,92661479,"Photon Strike Bounzer"],
-["SP14-EN024","Starfoil Rare","1st Edition",8.48,79884,92661479,"Photon Strike Bounzer"],
+["SP14-EN024","Common","1st Edition",4.17,79883,92661479,"Photon Strike Bounzer"],
+["SP14-EN024","Starfoil Rare","1st Edition",8.05,79884,92661479,"Photon Strike Bounzer"],
 ["SP14-EN025","Common","1st Edition",2.21,79888,28150174,"Photon Papilloperative"],
 ["SP14-EN025","Starfoil Rare","1st Edition",4.13,79890,28150174,"Photon Papilloperative"],
 ["SP14-EN026","Common","1st Edition",2.05,79893,64554883,"Number 25: Force Focus"],
@@ -56,7 +56,7 @@
 ["SP14-EN028","Common","1st Edition",0.34,79899,26563200,"Muzurhythm the String Djinn"],
 ["SP14-EN028","Starfoil Rare","1st Edition",0.46,79900,26563200,"Muzurhythm the String Djinn"],
 ["SP14-EN029","Common","1st Edition",0.78,79903,52558805,"Temtempo the Percussion Djinn"],
-["SP14-EN029","Starfoil Rare","1st Edition",0.62,79904,52558805,"Temtempo the Percussion Djinn"],
+["SP14-EN029","Starfoil Rare","1st Edition",0.64,79904,52558805,"Temtempo the Percussion Djinn"],
 ["SP14-EN030","Common","1st Edition",2.89,79907,88942504,"Melomelody the Brass Djinn"],
 ["SP14-EN030","Starfoil Rare","1st Edition",7.69,79908,88942504,"Melomelody the Brass Djinn"],
 ["SP14-EN031","Common","1st Edition",2.39,79909,25341652,"Maestroke the Symphony Djinn"],
@@ -80,7 +80,7 @@
 ["SP14-EN040","Common","1st Edition",0.87,79870,32362575,"Magical Merchant"],
 ["SP14-EN040","Starfoil Rare","1st Edition",6.25,79871,32362575,"Magical Merchant"],
 ["SP14-EN041","Common","1st Edition",0.74,79866,58577036,"Reasoning"],
-["SP14-EN041","Starfoil Rare","1st Edition",1.04,79867,58577036,"Reasoning"],
+["SP14-EN041","Starfoil Rare","1st Edition",1.18,79867,58577036,"Reasoning"],
 ["SP14-EN042","Common","1st Edition",0.19,79859,18631392,"Ma'at"],
 ["SP14-EN042","Starfoil Rare","1st Edition",0.57,79881,18631392,"Ma'at"],
 ["SP14-EN043","Common","1st Edition",0.53,79857,64599569,"Chimeratech Overdragon"],
@@ -98,5 +98,5 @@
 ["SP14-EN049","Common","1st Edition",0.23,79834,67098114,"Loki, Lord of the Aesir"],
 ["SP14-EN049","Starfoil Rare","1st Edition",0.71,79835,67098114,"Loki, Lord of the Aesir"],
 ["SP14-EN050","Common","1st Edition",0.52,79826,93483212,"Odin, Father of the Aesir"],
-["SP14-EN050","Starfoil Rare","1st Edition",4.92,79827,93483212,"Odin, Father of the Aesir"]
+["SP14-EN050","Starfoil Rare","1st Edition",5.56,79827,93483212,"Odin, Father of the Aesir"]
 ]

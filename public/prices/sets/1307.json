@@ -3,7 +3,7 @@
 ["SDCR-EN001","Super Rare","Unlimited",0.14,79482,23893227,"Cyber Dragon Core"],
 ["SDCR-EN002","Super Rare","1st Edition",0.35,79483,59281922,"Cyber Dragon Drei"],
 ["SDCR-EN002","Super Rare","Unlimited",0.21,79483,59281922,"Cyber Dragon Drei"],
-["SDCR-EN003","Common","1st Edition",0.27,79484,70095154,"Cyber Dragon","White"],
+["SDCR-EN003","Common","1st Edition",0.28,79484,70095154,"Cyber Dragon","White"],
 ["SDCR-EN003","Common","1st Edition",0.54,79485,70095154,"Cyber Dragon","Black"],
 ["SDCR-EN003","Common","Unlimited",0.22,79484,70095154,"Cyber Dragon","White"],
 ["SDCR-EN003","Common","Unlimited",0.29,79485,70095154,"Cyber Dragon","Black"],
@@ -43,7 +43,7 @@
 ["SDCR-EN020","Common","Unlimited",0.13,79502,52875873,"Evolution Burst"],
 ["SDCR-EN021","Common","1st Edition",4.79,79503,48130397,"Super Polymerization"],
 ["SDCR-EN021","Common","Unlimited",4.13,79503,48130397,"Super Polymerization"],
-["SDCR-EN022","Common","1st Edition",0.3,79504,37630732,"Power Bond"],
+["SDCR-EN022","Common","1st Edition",0.31,79504,37630732,"Power Bond"],
 ["SDCR-EN022","Common","Unlimited",0.22,79504,37630732,"Power Bond"],
 ["SDCR-EN023","Common","1st Edition",0.16,79505,23171610,"Limiter Removal"],
 ["SDCR-EN023","Common","Unlimited",0.19,79505,23171610,"Limiter Removal"],
@@ -64,7 +64,7 @@
 ["SDCR-EN031","Common","1st Edition",0.19,79513,47594192,"Three of a Kind"],
 ["SDCR-EN031","Common","Unlimited",0.18,79513,47594192,"Three of a Kind"],
 ["SDCR-EN032","Common","1st Edition",3.24,79514,59616123,"Trap Stun"],
-["SDCR-EN032","Common","Unlimited",3.73,79514,59616123,"Trap Stun"],
+["SDCR-EN032","Common","Unlimited",3.7,79514,59616123,"Trap Stun"],
 ["SDCR-EN033","Common","1st Edition",10.53,79515,70342110,"Dimensional Prison"],
 ["SDCR-EN033","Common","Unlimited",9.33,79515,70342110,"Dimensional Prison"],
 ["SDCR-EN034","Common","1st Edition",0.23,79516,1224927,"Malevolent Catastrophe"],
@@ -75,6 +75,6 @@
 ["SDCR-EN036","Common","Unlimited",0.19,79518,97077563,"Call of the Haunted"],
 ["SDCR-EN037","Ultra Rare","1st Edition",0.86,79519,74157028,"Cyber Twin Dragon"],
 ["SDCR-EN037","Ultra Rare","Unlimited",0.58,79519,74157028,"Cyber Twin Dragon"],
-["SDCR-EN038","Ultra Rare","1st Edition",2.69,79520,58069384,"Cyber Dragon Nova"],
-["SDCR-EN038","Ultra Rare","Unlimited",2.31,79520,58069384,"Cyber Dragon Nova"]
+["SDCR-EN038","Ultra Rare","1st Edition",2.68,79520,58069384,"Cyber Dragon Nova"],
+["SDCR-EN038","Ultra Rare","Unlimited",2.29,79520,58069384,"Cyber Dragon Nova"]
 ]
