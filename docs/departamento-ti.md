@@ -72,6 +72,9 @@ de revertir, revisión de seguridad) se le propone a Gastón con la razón en un
   build) sirva el commit mergeado. Una repetición por caso; si sigue rojo, card Expedite con traza y captura (`test-results/`) y,
   si falla lo crítico (portada, armador, Lab, Solo) dos veces seguidas, **el Jefe revierte el último merge** con una PR y le avisa
   a Gastón. `npm run test:e2e` (el duelo con relay y Vite locales) es otra cosa y no cambia.
+- **Revertir:** `git revert -m 1 <merge>` en una rama desde `origin/main`, gate, PR y merge desde su worktree, y el smoke con
+  `EXPECT_SHA`. Simulado con el merge de una card de prueba: aplicó sin conflictos y el gate dio verde en 58 s (el camino
+  completo, con deploy y smoke, ronda los 7 min).
 
 ## Dashboard
 

@@ -56,7 +56,8 @@ Referencia competitiva: YGOPocket (se adoptan decisiones de UX, nunca se clona s
 - **Tipografía:** Lexend Deca (400 / 600 / 700), escala de seis pasos.
 - **Reglas visuales vinculantes:** cartas con esquinas rectas y dorso real de YGOPRODeck; los porcentajes son anillos, nunca barras; cada dato se dice una sola vez; una acción principal por grupo; íconos decorativos en blanco (`text-foreground`) que se encienden en lima al pasar el mouse o al activarse; el campo de la mesa nunca se mueve ni achica las cartas en defensa; animaciones con sentido (anillos que se llenan, cartas que vuelan, giros 3D) que respetan "reducir movimiento".
 - **Logo:** anillo con carta y destello lima (`AppBrand`); uno nuevo, en pausa.
-- **Voz:** directa, rioplatense (vos), sin pronombres de género para los jugadores; botones con verbo + objeto, nunca "Sí / No / OK".
+- **Voz:** directa, rioplatense (vos), sin pronombres de género para los jugadores; botones con verbo + objeto, nunca "Sí / No / OK". Una sola voz, impersonal, para quien hace la página (ni «nosotros» ni «yo»).
+- **Delatores de IA, fuera:** ningún rótulo en mayúsculas arriba de un título que dice lo mismo (portada y Novedades); ni eslóganes ni tríadas («en segundos», «rápido, simple y…»): un hecho con su número; los títulos de una lista no repiten la forma «Tema: frase»; en inglés, la palabra del juego (mat, out of 100), no la traducción literal; en una página de presentación, ninguna grilla de tarjetas iguales con el ícono en un círculo.
 - **Mascotas** (Cupsy, Kuriboh alado): parte de la personalidad; no entran en el duelo.
 
 ## Evidence on Hand
