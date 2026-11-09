@@ -42,8 +42,8 @@ En orden de valor sobre costo.
 
 ## Espera a Gastón
 
-- **Reportar un problema:** cargar `GITHUB_BUG_TOKEN` en Vercel (token fino, sólo Issues de este repo) y redeploy; hasta entonces
-  el endpoint contesta 503 y la pantalla manda a GitHub. Después: un reporte propio que se borra y la entrada de Novedades.
+- **Reportar un problema:** el token de `GITHUB_BUG_TOKEN` vence en la fecha que se eligió al crearlo; renovarlo (token fino nuevo,
+  sólo Issues de este repo, y redeploy) antes, o el endpoint contesta 502 y la pantalla avisa que no se pudo enviar.
 
 - **Cuentas:** activar «Allow GitHub Actions to create and approve pull requests» (Settings → Actions → General) para que
   `sync-auto-data.yml` abra su PR semanal; las tareas de `docs/seguridad.md` («Lo que sólo hace quien administra las cuentas»),

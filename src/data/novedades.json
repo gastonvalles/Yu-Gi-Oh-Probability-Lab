@@ -1,6 +1,49 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-3-reportar",
+      "date": "2026-11-09",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "Reportar un problema desde la página",
+        "novedades": [
+          "Si algo no anda, ahora podés avisarlo desde la propia página, sin cuenta de GitHub ni mail.",
+          "El reporte se publica como un issue público de GitHub, donde se ve cómo avanza.",
+          "Si querés, el reporte lleva el navegador, el sistema, el idioma y la versión de la página: el formulario muestra qué se manda y se puede apagar."
+        ],
+        "comoSeUsa": [
+          "Tocá «Reportar un problema» al pie del menú o de «Inicio».",
+          "Contá qué pasó (entre 10 y 2000 caracteres) y elegí en qué parte de la página fue.",
+          "Si querés, sumá qué esperabas y los pasos para repetirlo, y tocá «Enviar el reporte»."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Lo que escribas se publica tal cual en GitHub: no pongas datos personales (nombre, mail, teléfono).",
+          "Una vulnerabilidad de seguridad no va por acá: el formulario explica cómo avisar en privado."
+        ]
+      },
+      "en": {
+        "title": "Report a problem from the site",
+        "novedades": [
+          "If something breaks, you can now report it from the site itself, with no GitHub account or email.",
+          "The report is published as a public GitHub issue, where you can follow its progress.",
+          "If you want, the report includes your browser, system, language and site version: the form shows what is sent and you can turn it off."
+        ],
+        "comoSeUsa": [
+          "Tap \"Report a problem\" at the bottom of the menu or of \"Home\".",
+          "Say what happened (between 10 and 2000 characters) and pick which part of the site it was.",
+          "Optionally add what you expected and the steps to repeat it, then tap \"Send the report\"."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "What you write is published as is on GitHub: do not include personal data (name, email, phone).",
+          "A security vulnerability does not go here: the form explains how to report it privately."
+        ]
+      }
+    },
+    {
       "id": "2026-11-09-2-inicio",
       "date": "2026-11-09",
       "tags": [
