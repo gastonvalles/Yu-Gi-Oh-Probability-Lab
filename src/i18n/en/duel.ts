@@ -94,9 +94,8 @@ export const duel: Translated<typeof es> = {
   'duel.announce.set': '{name} Sets a card',
   'duel.announce.setMonster': '{name} Sets a monster',
 
-  'duel.play.subtitle': 'Jump into a duel in seconds.',
   'duel.play.now': 'Play now',
-  'duel.play.nowHint': 'You join an open room or open your own.',
+  'duel.play.nowHint': 'Join an open room or open your own.',
   'duel.play.needDeck': 'Pick your deck to play',
   'duel.play.searching': 'Looking for a {format} room…',
   'duel.play.joining': "Joining {name}'s room…",

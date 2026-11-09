@@ -132,10 +132,9 @@ export function NovedadesScreen() {
 
                 {lists.map((list, index) => (
                   <div key={list} className={cx('grid gap-2', index > 0 && 'border-t border-border-subtle pt-4')}>
-                    <Heading level="kicker" as="h3">
-                      {t(`novedades.list.${list}`)}
-                    </Heading>
-                    <ul className="m-0 grid list-disc gap-1.5 pl-5 text-body text-foreground marker:text-soft">
+                    <Heading level="card">{t(`novedades.list.${list}`)}</Heading>
+                    {/* El ancho de la lista, no el de la tarjeta: en escritorio los renglones no pasan de ~75 caracteres. */}
+                    <ul className="m-0 grid max-w-lg list-disc gap-1.5 pl-5 text-body text-foreground marker:text-soft">
                       {copy[list].map((item) => (
                         <li key={item}>{item}</li>
                       ))}

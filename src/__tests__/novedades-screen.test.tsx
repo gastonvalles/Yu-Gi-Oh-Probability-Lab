@@ -17,7 +17,7 @@ vi.mock('../data/novedades.json', async (importOriginal) => {
 
 const newest = sortEntries(data.entries as NovedadesEntry[])[0]!
 const LISTS = [
-  ['novedades', 'Novedades'],
+  ['novedades', 'Qué trae'],
   ['comoSeUsa', 'Cómo se usa'],
   ['arreglos', 'Cambios y arreglos'],
   ['ojo', 'Ojo'],

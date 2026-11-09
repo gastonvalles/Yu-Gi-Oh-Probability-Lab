@@ -45,8 +45,8 @@ const AREA_KEYS = {
 
 type Status = { kind: 'idle' } | { kind: 'sending' } | { kind: 'failed'; result: Exclude<ReportResult, { kind: 'sent' }> } | Extract<ReportResult, { kind: 'sent' }>
 
-/** Un texto de varias líneas o la lista de áreas: el campo lavanda de la app; con error, el borde en rojo. */
-const control = cx(field, 'w-full px-3 text-body aria-[invalid=true]:border-danger')
+/** Un texto de varias líneas o la lista de áreas: el campo lavanda de la app; con error, el borde y el anillo de foco en rojo (la lima sobre el rojo se veía oliva). */
+const control = cx(field, 'w-full px-3 text-body aria-[invalid=true]:border-danger aria-[invalid=true]:focus:shadow-[0_0_0_3px_rgb(var(--danger-rgb)/0.3)]')
 
 function errorText(name: ReportField, error: FieldError | 'server'): string {
   if (error === 'server') return t('reportar.error.server')

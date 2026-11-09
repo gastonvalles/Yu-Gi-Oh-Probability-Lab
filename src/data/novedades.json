@@ -42,7 +42,7 @@
         "nuevo"
       ],
       "es": {
-        "title": "Novedades: qué cambió, en un solo lugar",
+        "title": "Una pantalla con todo lo que cambió",
         "novedades": [
           "Hay una pantalla nueva con las notas de cada actualización, la más reciente arriba.",
           "Podés filtrar por Nuevo, Mejora o Arreglo.",
@@ -60,7 +60,7 @@
         ]
       },
       "en": {
-        "title": "What's new: what changed, in one place",
+        "title": "One screen with everything that changed",
         "novedades": [
           "There is a new screen with the notes for every update, newest on top.",
           "You can filter by New, Improvement or Fix.",
@@ -86,36 +86,36 @@
         "mejora"
       ],
       "es": {
-        "title": "Paleta nueva: carbón, violeta eléctrico y lima",
+        "title": "Colores nuevos en toda la página",
         "novedades": [
-          "La página estrena colores: fondo carbón, violeta eléctrico para lo principal y lima ácida para lo que elegís o resaltás (el menú activo, los enlaces, el foco).",
-          "Los estados se separan de la marca: menta para lo que salió bien, naranja para los avisos y rojo para el peligro.",
+          "Cambiaron los colores: fondo casi negro, violeta en los botones principales y lima en lo que elegís, los enlaces y el foco.",
+          "Los avisos tienen colores propios: verde si salió bien, naranja para avisar y rojo para el peligro.",
           "La mesa de práctica y el duelo mantienen su arena violeta."
         ],
         "comoSeUsa": [],
         "arreglos": [
           "Los textos en rojo (mensajes inválidos, tendencias a la baja, las vidas que bajan) se leen con más contraste.",
           "Los números de los filtros elegidos se leen mejor sobre el violeta.",
-          "Los roles del deck cambian de color (Extender, Payoff y Recovery) para no confundirse con el menta ni con la lima.",
+          "Los roles del deck cambian de color (Extender, Payoff y Recovery) para no confundirse con el verde ni con la lima.",
           "Las imágenes que exportás del deck y de las tier lists salen con la paleta nueva.",
-          "Las páginas de privacidad y de error y el color de la barra del navegador pasan al carbón."
+          "Las páginas de privacidad y de error y el color de la barra del navegador pasan a los colores nuevos."
         ],
         "ojo": []
       },
       "en": {
-        "title": "New palette: charcoal, electric violet and lime",
+        "title": "New colors across the site",
         "novedades": [
-          "The site has new colors: a charcoal background, electric violet for the main actions and acid lime for what you pick or highlight (the active menu item, links, focus).",
-          "Status colors now stand apart from the brand: mint for what went well, orange for warnings and red for danger.",
-          "The practice table and duels keep their violet arena."
+          "New colors: a near-black background, violet on main buttons and lime on what you pick, links and focus.",
+          "Messages get their own colors: green when it worked, orange for a heads-up, red for danger.",
+          "The practice mat and duels keep their violet arena."
         ],
         "comoSeUsa": [],
         "arreglos": [
           "Red text (invalid messages, downward trends, falling life points) is easier to read.",
           "The counts on selected filters are easier to read on the violet.",
-          "Deck role colors change (Extender, Payoff and Recovery) so they are not mistaken for mint or lime.",
+          "Deck role colors change (Extender, Payoff and Recovery) so they are not mistaken for the green or the lime.",
           "The deck and tier list images you export use the new palette.",
-          "The privacy and error pages and the browser bar color move to charcoal."
+          "The privacy and error pages and the browser bar color switch to the new colors."
         ],
         "ojo": []
       }
@@ -129,7 +129,7 @@
       "es": {
         "title": "Ícono e imagen para compartir con el logo de la app",
         "novedades": [
-          "El ícono de la app instalada, el de la pestaña del navegador y el del iPhone pasan a ser el logo de YGOUltraLab (el anillo con la carta) sobre carbón.",
+          "El ícono de la app instalada, el de la pestaña del navegador y el del iPhone pasan a ser el logo de YGOUltraLab (el anillo con la carta) sobre fondo oscuro.",
           "La imagen que se ve al compartir el enlace es nueva: el nombre, «Medí tu deck con probabilidad exacta» y cuántas manos buenas abrís de cada 100."
         ],
         "comoSeUsa": [],
@@ -143,7 +143,7 @@
       "en": {
         "title": "App icon and share image with the app logo",
         "novedades": [
-          "The installed app icon, the browser tab icon and the iPhone icon are now the YGOUltraLab logo (the ring with the card) on charcoal.",
+          "The installed app icon, the browser tab icon and the iPhone icon are now the YGOUltraLab logo (the ring with the card) on a dark background.",
           "The image shown when you share the link is new: the name, a line about measuring your deck with exact probability and how many good hands you open out of 100."
         ],
         "comoSeUsa": [],
@@ -163,7 +163,7 @@
         "arreglo"
       ],
       "es": {
-        "title": "Duelo por enlace: registro completo y chat que sobrevive a recargar",
+        "title": "El registro del duelo por enlace cuenta más y el chat sigue al recargar",
         "novedades": [
           "El registro cuenta más de lo que hace el rival: cuándo coloca una carta (sin decir cuál), los cambios de vidas de los dos y el nombre de la carta en sus invocaciones, si quedó boca arriba. Nunca nombra una carta boca abajo ni de la mano.",
           "Si recargás en pleno duelo, volvés con la mesa, el registro y el chat.",
@@ -180,7 +180,7 @@
         ]
       },
       "en": {
-        "title": "Link duels: full log and a chat that survives a reload",
+        "title": "The link duel log shows more, and the chat stays after a reload",
         "novedades": [
           "The log tells you more of what your rival does: when they Set a card (without saying which), Life Point changes for both of you and the card name in their Summons, if it is face-up. It never names a face-down card or one in hand.",
           "If you reload mid-duel, you come back to the field, the log and the chat.",
@@ -222,7 +222,7 @@
       "en": {
         "title": "Your Draw Phase and Standby Phase go by on their own",
         "novedades": [
-          "In automatic duels (against a bot and by link), when your turn starts the table moves through your Draw Phase and Standby Phase by itself, up to Main Phase 1.",
+          "In automatic duels (against a bot and by link), when your turn starts the mat moves through your Draw Phase and Standby Phase by itself, up to Main Phase 1.",
           "If you have something to activate in those phases and responses are set to Always, you still get asked; once you answer or pass, the turn keeps going on its own.",
           "From Main Phase 1 on you change phases yourself, and the button only offers the ones the game allows: if an effect skips your Battle Phase or Main Phase 2, you can't pick it."
         ],
@@ -232,7 +232,7 @@
           "Your phase banners no longer show up on top of your rival's turn notice."
         ],
         "ojo": [
-          "If an effect skips your Draw Phase, the table shows it for a moment and moves on."
+          "If an effect skips your Draw Phase, the mat shows it for a moment and moves on."
         ]
       }
     },
@@ -315,7 +315,7 @@
       "en": {
         "title": "3D card flight and life point hits",
         "novedades": [
-          "When a card crosses the table (Summoning from the hand, sending to the GY, banishing or returning to the hand), it lifts, tilts in perspective and lands with a thud and a bit of dust.",
+          "When a card crosses the mat (Summoning from the hand, sending to the GY, banishing or returning to the hand), it lifts, tilts in perspective and lands with a thud and a bit of dust.",
           "When a monster reaches its zone, it shows its Level (★ 4), Rank (R 8) or LINK (LINK 2) on top, and its ATK/DEF rises from below.",
           "When Life Points drop, the box shakes, the number swells and the “−N” rises underneath. At 2000 or less the number turns red and pulses; when they go up, the “+N” shows without moving."
         ],
@@ -359,7 +359,7 @@
         ]
       },
       "en": {
-        "title": "Table panels move on desktop",
+        "title": "The mat's panels move on desktop",
         "novedades": [
           "On desktop you can drag anywhere on the screen the duel questions, the chain stack, the GY, Main, Extra and banished viewers, More options, confirmations and Steps and combos, among others.",
           "They stay where you leave them: the next one opens there, even after you reload the page.",
@@ -387,7 +387,7 @@
         "nuevo"
       ],
       "es": {
-        "title": "Combos guardados: notas por paso y variantes con handtrap",
+        "title": "Los combos guardados llevan notas por paso y variantes con handtrap",
         "novedades": [
           "Cada combo guardado dice, sin abrirlo, con qué cartas de tu mano arranca y en qué tablero termina («Arranca con» y «Termina con»).",
           "Podés escribir una nota de hasta 140 caracteres en cada paso: se ve debajo de la jugada y viaja en el enlace cuando compartís el combo.",
@@ -407,7 +407,7 @@
         ]
       },
       "en": {
-        "title": "Saved combos: step notes and hand trap variants",
+        "title": "Saved combos get step notes and hand trap variants",
         "novedades": [
           "Each saved combo tells you, without opening it, which cards from your hand it starts with and which board it ends on (“Starts with” and “Ends with”).",
           "You can write a note of up to 140 characters on each step: it shows under the play and travels in the link when you share the combo.",
@@ -435,7 +435,7 @@
         "arreglo"
       ],
       "es": {
-        "title": "Celular: la cadena y las preguntas en una sola hoja de abajo",
+        "title": "En el celular, la cadena y las preguntas van en una sola hoja de abajo",
         "novedades": [
           "En el celular, la cadena del duelo automático va en una hoja de abajo que se arrastra, de borde a borde, y ya no tapa el campo del rival. Bajada es una cinta con un chip por eslabón; subida, la pila entera.",
           "Las preguntas («¿Activás el efecto?», responder a una cadena) salen en esa misma hoja, debajo de las cartas. El visor del Cementerio, del Extra y de las demás pilas usa la misma hoja: hay una sola a la vez.",
@@ -457,7 +457,7 @@
         ]
       },
       "en": {
-        "title": "Mobile: the chain and the questions in a single bottom sheet",
+        "title": "On mobile, the chain and the questions share one bottom sheet",
         "novedades": [
           "On mobile, the automatic duel chain sits in a bottom sheet you can drag, edge to edge, and it no longer covers your rival's field. Pulled down it's a strip with one chip per link; pulled up, the whole stack.",
           "Questions (“Activate the effect?”, responding to a chain) show up in that same sheet, under the cards. The GY, Extra and other pile viewers use the same sheet: there's only one at a time.",
@@ -487,7 +487,7 @@
         "arreglo"
       ],
       "es": {
-        "title": "Duelo automático: preguntas más claras",
+        "title": "El duelo automático pregunta con más claridad",
         "novedades": [
           "Si tenés un efecto rápido o un disparo opcional, el duelo te pregunta en cada momento en que podés activarlo, también en la Standby, la Battle y la End Phase del rival y en tu Battle Phase.",
           "El cartel dice de qué carta es la pregunta y si es su costo, algo que elegís al activarla o su efecto («Costo de Trade-In», «Al activar Monster Reincarnation»), y lleva arriba la fase y de quién es el turno.",
@@ -509,7 +509,7 @@
         ]
       },
       "en": {
-        "title": "Automatic duels: clearer questions",
+        "title": "Automatic duels ask clearer questions",
         "novedades": [
           "If you have a Quick Effect or an optional trigger, the duel asks you at every moment you can activate it, including your rival's Standby, Battle and End Phase and your own Battle Phase.",
           "The panel says which card the question comes from and whether it's the cost, something you pick when activating it or its effect (“Cost of Trade-In”, “Activating Monster Reincarnation”), and shows the phase and whose turn it is on top.",
@@ -539,7 +539,7 @@
         "mejora"
       ],
       "es": {
-        "title": "Solo: un bot por mazo y «Probá tu combo»",
+        "title": "En Solo hay un bot por mazo y «Probá tu combo»",
         "novedades": [
           "Jugar tiene dos entradas, Solo y Online. Solo es la lista de rivales: arriba, «Probá tu combo» con Handtraps y Pasivo; abajo, un bot por mazo: Sky Striker, Angelechy y Elfnote Ars Magna Power Patron.",
           "«Ver mazo» muestra la lista completa de cada bot, y con «Cambiar cartas» reemplazás sus handtraps y staples por otras handtraps que el bot sabe usar.",
@@ -562,7 +562,7 @@
         ]
       },
       "en": {
-        "title": "Solo: one bot per deck and Test your combo",
+        "title": "Solo now has one bot per deck and Test your combo",
         "novedades": [
           "Play has two entries, Solo and Online. Solo is the list of opponents: at the top, Test your combo with Hand traps and Passive; below, one bot per deck: Sky Striker, Angelechy and Elfnote Ars Magna Power Patron.",
           "View deck shows each bot's full list, and with Change cards you swap its hand traps and staples for other hand traps the bot knows how to use.",
