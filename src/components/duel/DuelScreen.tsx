@@ -924,7 +924,7 @@ function WatchRoom({ onBack, onWatch }: WatchRoomProps) {
               </IconButton>
             ) : null}
           </div>
-          <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
+          <p className={invalid ? 'm-0 text-micro text-danger-soft' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
             {invalid ? t('duel.lobby.joinInvalid') : t('duel.watchRoom.hint')}
           </p>
         </div>

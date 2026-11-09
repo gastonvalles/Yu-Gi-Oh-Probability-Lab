@@ -36,7 +36,7 @@ export function phaseRowEntries(items: readonly MenuItem[]) {
 /**
  * Las fases en una línea (lámina 06, como el selector de fase de Master Duel): sale del botón de la fase de ahora (el «M1» del campo), arriba de él (abajo si no entra) y sin
  * velo, en el lugar donde salía el menú de fases; en el celular también (reemplaza a la hoja). Cada fase es la caja de la mesa con su nombre debajo (`TileButton`): la actual, en
- * ámbar; las que todavía no, apagadas pero enfocables. Elegir una hace lo mismo que el menú (`items`, las mismas opciones); «Cancelar» (sin caja), Escape o tocar afuera la
+ * lima; las que todavía no, apagadas pero enfocables. Elegir una hace lo mismo que el menú (`items`, las mismas opciones); «Cancelar» (sin caja), Escape o tocar afuera la
  * cierran. ← → Inicio y Fin recorren las que se pueden elegir; Enter elige. El foco arranca en la fase de ahora y vuelve al botón al cerrar.
  */
 export function PhaseRow({ anchor, items, onClose }: { anchor: DOMRect | null; items: MenuItem[]; onClose: () => void }) {
@@ -101,7 +101,7 @@ export function PhaseRow({ anchor, items, onClose }: { anchor: DOMRect | null; i
       >
         <p className={cx('m-0 px-1 [grid-area:title]', overline)}>{title}</p>
         <div role="menu" aria-orientation="horizontal" aria-label={title} className="flex [grid-area:row]" onKeyDown={onKey}>
-          {/* Cada fase es la caja de la mesa con su nombre (`TileButton`, como la botonera): la de ahora en ámbar; las que todavía no, en lila y enfocables. */}
+          {/* Cada fase es la caja de la mesa con su nombre (`TileButton`, como la botonera): la de ahora en lima; las que todavía no, en lila y enfocables. */}
           {entries.map(({ item, short, word, name }) => (
             <TileButton
               key={item.label}

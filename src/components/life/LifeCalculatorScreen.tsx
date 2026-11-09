@@ -483,7 +483,7 @@ function DuelistPanel({ position, big = false, name, lp, selected, disabled = fa
         style={{ '--digits': Math.max(3, String(lp).length) } as CSSProperties}
         className={cx(
           'max-w-full text-score font-bold leading-none tracking-tight tabular-nums transition-colors duration-200',
-          flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : lp === 0 ? 'text-danger-soft' : selected || disabled ? ACCENT[position] : 'text-soft',
+          flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger-soft' : lp === 0 ? 'text-danger-soft' : selected || disabled ? ACCENT[position] : 'text-soft',
         )}
       >
         {shown}

@@ -30,7 +30,7 @@ interface OverflowMenuProps {
   /** El nombre del botón para lectores de pantalla («Más opciones de …»). */
   label: string
   items: ReadonlyArray<OverflowItem>
-  /** bar: el ⋯ de la barra de la mesa (blanco de 44 px como los demás íconos de la barra, ámbar con el menú abierto) y un menú más ancho, en grupos. */
+  /** bar: el ⋯ de la barra de la mesa (blanco de 44 px como los demás íconos de la barra, lima con el menú abierto) y un menú más ancho, en grupos. */
   trigger?: 'ghost' | 'bar'
   /** Arranca abierto (la muestra del catálogo): el foco no entra hasta que alguien lo toca. */
   defaultOpen?: boolean

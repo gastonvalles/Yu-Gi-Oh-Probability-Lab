@@ -26,7 +26,7 @@ const DETAIL_TONE = { success: 'font-semibold text-success-soft', danger: 'font-
 /**
  * track: pista lavanda con la opción elegida en violeta · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) ·
  * cards: tarjetas (como las fechas del diseño) · lens: la pista lavanda con una tarjeta por opción y su anillo arriba (la lente del Lab: Promedio / Yendo 1º / Yendo 2º). Lo elegido es violeta con el texto blanco, como en toda la app: en la pista y las pastillas,
- * relleno violeta con el texto blanco; en `cards`, el borde y el texto ámbar · list: las tarjetas una debajo de otra, alineadas a la izquierda y con el detalle que se parte (opciones con
+ * relleno violeta con el texto blanco; en `cards`, el borde y el texto lima · list: las tarjetas una debajo de otra, alineadas a la izquierda y con el detalle que se parte (opciones con
  * una frase, como «Volver atrás» de «Seguir en manual»).
  */
 type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards' | 'lens' | 'list'
@@ -56,7 +56,7 @@ const GROUP: Record<SegmentedVariant, string> = {
   list: 'grid gap-2',
 }
 
-/** Opción elegida con color propio (verde / rojo) en lugar del ámbar de lo elegido, con el texto blanco y sin brillo debajo (regla 9 de docs/design-system.md). */
+/** Opción elegida con color propio (verde / rojo) en lugar de la lima de lo elegido, con el texto blanco y sin brillo debajo (regla 9 de docs/design-system.md). */
 const TONE_ON = {
   success: 'bg-success-solid text-white',
   danger: 'bg-danger text-white',
@@ -85,14 +85,14 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
   },
   cards: {
     base: 'rounded-card border px-3 max-[400px]:px-1',
-    // Una tarjeta elegida dice su estado con el borde (regla G.1 de docs/ux-ui-guidelines.md, como el ganador de Comparar), en ámbar y con el texto ámbar:
-    // rellena de ámbar era lo más brillante de la pantalla y le ganaba al número que decide (el anillo del Lab), y teñida se ve marrón (como en `MatSnapshot`).
+    // Una tarjeta elegida dice su estado con el borde (regla G.1 de docs/ux-ui-guidelines.md, como el ganador de Comparar), en lima y con el texto lima:
+    // rellena de lima era lo más brillante de la pantalla y le ganaba al número que decide (el anillo del Lab), y teñida se ve sucia (como en `MatSnapshot`).
     on: 'border-info bg-card-background text-info-soft',
     off: 'border-border-subtle bg-card-background text-foreground hover:bg-surface-hover',
   },
   lens: {
     base: 'min-h-14 rounded-control px-1 py-1.5 text-body',
-    // La elegida se enmarca en ámbar (no se rellena: el relleno era lo más brillante y le ganaba al número grande) y no repite su anillo: su número es el grande.
+    // La elegida se enmarca en lima (no se rellena: el relleno era lo más brillante y le ganaba al número grande) y no repite su anillo: su número es el grande.
     on: 'text-info-soft inset-ring-2 inset-ring-info',
     off: 'text-foreground hover:bg-tint/10',
   },
@@ -136,10 +136,10 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             {option.leading ? <span className="mb-0.5 grid place-items-center" aria-hidden="true">{option.leading}</span> : null}
             <span className={cx('flex items-center gap-1.5', list ? 'justify-start' : 'justify-center text-center', dense ? 'whitespace-nowrap' : 'max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap')}>
               {option.label}
-              {option.count !== undefined ? <span className="text-micro font-semibold tabular-nums opacity-70">{option.count}</span> : null}
+              {option.count !== undefined ? <span className={cx('text-micro font-semibold tabular-nums', !active && 'opacity-70')}>{option.count}</span> : null}
             </span>
             {option.detail ? (
-              // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (blanco sobre el ámbar, el verde o el rojo; ámbar en la tarjeta).
+              // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (blanco sobre la lima, el verde o el rojo; lima en la tarjeta).
               <span aria-hidden={option.detailLabel ? true : undefined} className={cx('text-micro tabular-nums', list ? 'min-w-0 break-words' : dense ? 'max-[400px]:whitespace-normal min-[400px]:whitespace-nowrap' : 'max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
                 {option.detail}
               </span>

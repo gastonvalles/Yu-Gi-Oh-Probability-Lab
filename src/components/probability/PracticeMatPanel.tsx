@@ -430,7 +430,7 @@ export function SharedComboBar({ combo, onSave, onClose, onVideo }: { combo: Sha
 /** Cuántas cartas se nombran en «Qué se mueve» (un Enlace con cuatro materiales son cinco); las demás, «y N cartas más». */
 const MAX_MOVES = 6
 
-/** El círculo de cada paso en la línea: el actual en ámbar (como su pastilla en el reproductor), los ya jugados llenos y los que faltan, sólo el borde. */
+/** El círculo de cada paso en la línea: el actual en lima (como su pastilla en el reproductor), los ya jugados llenos y los que faltan, sólo el borde. */
 const CIRCLE = {
   current: 'bg-info text-accent-foreground',
   past: 'bg-lavender text-foreground',

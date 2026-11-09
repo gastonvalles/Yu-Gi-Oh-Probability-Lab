@@ -21,7 +21,7 @@ interface MiniGuideProps {
   mascots?: boolean
 }
 
-/** Un botón de la mini guía: el ícono arriba y su nombre abajo, como la guía contraída de YouTube. El grupo en el que estás va en ámbar con el ícono relleno. */
+/** Un botón de la mini guía: el ícono arriba y su nombre abajo, como la guía contraída de YouTube. El grupo en el que estás va en lima con el ícono relleno. */
 function MiniItem({ icon, label, active = false, expanded, onClick }: { icon: IconName; label: string; active?: boolean; expanded?: boolean; onClick: (event: MouseEvent<HTMLButtonElement>) => void }) {
   return (
     <button
@@ -91,7 +91,7 @@ export function MiniGuide({ groups, activeKey, onSelect, searchAvailable = false
 }
 
 /**
- * La lista de destinos de un grupo, pegada a la derecha de la mini guía (como el menú que se abre al lado de un botón): el nombre del grupo y sus destinos con el que estás en ámbar.
+ * La lista de destinos de un grupo, pegada a la derecha de la mini guía (como el menú que se abre al lado de un botón): el nombre del grupo y sus destinos con el que estás en lima.
  * Se cierra al elegir, al tocar afuera y con Escape; al cerrarse se achica y se funde, la inversa de su entrada.
  */
 function GroupFlyout({ group, top, activeKey, onSelect, onClose }: { group: NavGroup; top: number; activeKey: string | null; onSelect: (key: string) => void; onClose: () => void }) {

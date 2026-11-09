@@ -84,7 +84,7 @@ interface HandtrapPoolCardProps {
 }
 
 /**
- * Una carta de la hoja: su arte, su nombre y, debajo, cuántas copias tiene el rival en su deck (de 0 a `MAX_COPIES`). Con una o más lleva el aro ámbar de lo elegido; con 0, apagada.
+ * Una carta de la hoja: su arte, su nombre y, debajo, cuántas copias tiene el rival en su deck (de 0 a `MAX_COPIES`). Con una o más lleva el aro lima de lo elegido; con 0, apagada.
  * La carta se elige subiendo su contador (la fila no es un botón).
  */
 export function HandtrapPoolCard({ card, copies, onChange, note, max = MAX_COPIES }: HandtrapPoolCardProps) {
@@ -92,7 +92,7 @@ export function HandtrapPoolCard({ card, copies, onChange, note, max = MAX_COPIE
 
   return (
     <li className={cx('flex min-w-0 items-center gap-2.5 rounded-control p-1.5 transition-colors duration-150 motion-reduce:transition-none', chosen && listItemSelected)}>
-      {/* `rounded-none`: las cartas van rectas. La tilde de elegida, en ámbar como todo lo elegido. La imagen no se lee: el nombre ya va al lado. */}
+      {/* `rounded-none`: las cartas van rectas. La tilde de elegida, en lima como todo lo elegido. La imagen no se lee: el nombre ya va al lado. */}
       <span aria-hidden="true" className="relative aspect-[421/614] w-10 shrink-0 overflow-hidden rounded-none bg-input">
         <CardArt remoteUrl={cardSmallImageUrl(card.id)} name={card.name} className={cx('block h-full w-full object-cover transition-opacity duration-150 motion-reduce:transition-none', !chosen && 'opacity-55')} />
         {chosen ? (

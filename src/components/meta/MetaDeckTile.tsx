@@ -134,7 +134,7 @@ function MetaDeckCard({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
 
   return (
     // Cuatro filas (nombre, portada, contexto, puesto y botón) que comparten las tarjetas de la misma fila de la grilla (`grid-rows-subgrid`): el nombre de dos líneas de una no corre la portada de las demás.
-    // Al pasar el mouse o con el foco del teclado en su botón, el borde se enciende en ámbar (el énfasis y el hover son ámbar; el violeta, el fondo).
+    // Al pasar el mouse o con el foco del teclado en su botón, el borde se enciende en lima (el énfasis y el hover son lima; el violeta, el fondo).
     <article className="row-span-4 grid min-w-0 grid-rows-subgrid rounded-card border border-border-subtle bg-card-background p-3 transition-colors duration-150 hover:border-info/60 has-focus-visible:border-info/60">
       {/* Quién es: el nombre del deck y, pegado a él, quién lo jugó. */}
       <div className="grid min-w-0 gap-0.5">
@@ -187,7 +187,7 @@ function MetaDeckCard({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
             </span>
           ) : null}
         </div>
-        {/* La única acción de la tarjeta: con borde fino (la lavanda no se veía sobre la tarjeta) y en ámbar al apuntarla, como el borde de la tarjeta. */}
+        {/* La única acción de la tarjeta: con borde fino (la lavanda no se veía sobre la tarjeta) y en lima al apuntarla, como el borde de la tarjeta. */}
         <Button variant="outline" icon="layers" aria-label={t('meta.tournaments.viewDeckLabel', { name: deck.name })} onClick={onOpen}>
           {t('meta.tournaments.viewDeck')}
         </Button>

@@ -202,7 +202,7 @@ export function TierMakerScreen({ header, switcher, onCountChange }: TierMakerSc
               />
             </FieldBox>
 
-            {/* Dos renglones de siete círculos en todos los tamaños: a 390 px no entran catorce de 44 px en uno. El elegido, con el aro ámbar y la tilde. */}
+            {/* Dos renglones de siete círculos en todos los tamaños: a 390 px no entran catorce de 44 px en uno. El elegido, con el aro lima y la tilde. */}
             <div role="group" aria-label={t('meta.maker.tierColor')} className="grid grid-cols-7 justify-items-center gap-1">
               {TIER_PALETTE.map((color) => (
                 <IconButton

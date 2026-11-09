@@ -5,7 +5,7 @@ import { cx } from '../ui/cx'
 
 interface SearchFiltersToggleProps {
   open: boolean
-  /** Cuántos filtros hay puestos: se dice en una insignia ámbar sobre el botón (y el botón se enmarca en ámbar aunque esté cerrado, como lo elegido). */
+  /** Cuántos filtros hay puestos: se dice en una insignia lima sobre el botón (y el botón se enmarca en lima aunque esté cerrado, como lo elegido). */
   activeCount: number
   onToggle: () => void
   /** El tamaño lo da el que lo usa (`size-10` en escritorio, `size-11` en el celular). */
@@ -14,7 +14,7 @@ interface SearchFiltersToggleProps {
 
 /**
  * El botón que abre el cajón de filtros, al lado del campo de búsqueda (el mismo en escritorio y en el celular): un ícono con la cuenta de filtros puestos. El ícono va
- * blanco y se pone ámbar al apuntarlo; abierto o con filtros puestos, el borde y el ícono quedan ámbar y la cuenta va rellena de ámbar, como el chip de un filtro puesto.
+ * blanco y se pone lima al apuntarlo; abierto o con filtros puestos, el borde y el ícono quedan lima y la cuenta va rellena de lima, como el chip de un filtro puesto.
  */
 export function SearchFiltersToggle({ open, activeCount, onToggle, className }: SearchFiltersToggleProps) {
   return (

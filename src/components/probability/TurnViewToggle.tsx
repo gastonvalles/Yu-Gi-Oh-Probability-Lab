@@ -24,7 +24,7 @@ const OPTIONS = [
   { value: 'second', label: 'lab.turnView.second' },
 ] as const satisfies ReadonlyArray<{ value: TurnView; label: MessageKey }>
 
-/** La lente del Lab: qué manos se miran (el promedio o cada turno). Cada opción con su anillo; la elegida, enmarcada en ámbar y con cuántas cartas tiene la mano. */
+/** La lente del Lab: qué manos se miran (el promedio o cada turno). Cada opción con su anillo; la elegida, enmarcada en lima y con cuántas cartas tiene la mano. */
 export function TurnViewToggle({ activeView, onChange, values, details, measuring = false }: TurnViewToggleProps) {
   const options: SegmentedOption<TurnView>[] = OPTIONS.map((option) => {
     const label = t(option.label)

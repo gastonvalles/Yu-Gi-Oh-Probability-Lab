@@ -212,7 +212,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
                 <span className="text-body font-semibold text-foreground">{rulesLine(prefs, false)}</span>
               </span>
               {/* Lo que se distingue de la vista: verde lleno con el texto blanco sobre la portada violeta («listo, a jugar»; el violeta lleno no se despegaba de ella y la lavanda clara no tenía color) y, con
-                  deck, el marco ámbar que se mueve (`ShineFrame`). Con un duelo en pausa, lo principal es volver a él. */}
+                  deck, el marco lima que se mueve (`ShineFrame`). Con un duelo en pausa, lo principal es volver a él. */}
               <ShineFrame className="ml-auto" active={!paused && deckReady && !busy}>
                 <Button variant={paused ? 'secondary' : 'primary'} color={paused ? 'brand' : 'success'} icon="play" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
                   {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
@@ -256,7 +256,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
                   {t('duel.arena.watch')}
                 </Button>
               </div>
-              <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
+              <p className={invalid ? 'm-0 text-micro text-danger-soft' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
                 {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
               </p>
             </form>

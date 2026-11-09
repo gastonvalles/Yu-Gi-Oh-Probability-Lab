@@ -155,7 +155,7 @@ function paint(current: Session, board: HTMLElement, ghost: HTMLElement | null, 
 /**
  * Arrastrar y soltar una carta del creador de tier lists, como en el builder (`useDeckPointerDrag`, con sus mismos umbrales): con el mouse o el lápiz la carta se levanta al moverla 6 px; con el
  * dedo, al mantenerla apretada 350 ms sin moverla (si el dedo se desliza antes, se desplaza la página). Levantada, un fantasma sigue al puntero (`ghost`, `ghostRef`), la fila de abajo se resalta
- * (`over`) y una línea ámbar marca dónde entra (`lineRef`); cerca del borde, la página se desplaza sola. Al soltarla en otro lugar, `onMove` la lleva ahí, antes de la carta que ocupa ese lugar (al
+ * (`over`) y una línea lima marca dónde entra (`lineRef`); cerca del borde, la página se desplaza sola. Al soltarla en otro lugar, `onMove` la lleva ahí, antes de la carta que ocupa ese lugar (al
  * final si no hay); en su propio lugar, fuera del tablero o con Escape, no pasa nada. Las cajas se miden una vez al levantarla (y otra si cambia la ventana) y cada cuadro sólo escribe estilos:
  * React vuelve a dibujar el tablero al levantarla, al soltarla y cuando cambia la fila de abajo. El clic que deja un arrastre no elige la carta (`consumeClick`). Es de presentación: el lugar
  * nuevo lo decide quien recibe `onMove`.

@@ -67,7 +67,7 @@ interface MirrorRowProps {
   row: MirrorRowData
   view: TurnView
   moversOf: MoversOf
-  /** El punto de color de la fila (sin salida rojo, con problema ámbar: los colores de su tramo en el anillo). */
+  /** El punto de color de la fila (sin salida rojo, con problema naranja: los colores de su tramo en el anillo). */
   dot?: keyof typeof DOT
   /** Arranca abierta (la muestra de `/playground`). */
   defaultOpen?: boolean

@@ -59,7 +59,7 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
             aria-expanded={!collapsed}
             aria-label={collapsed ? t('shell.nav.expand') : t('shell.nav.collapse')}
             title={collapsed ? t('shell.nav.expand') : t('shell.nav.collapse')}
-            // El ámbar es de la navegación: se ilumina así, como el destino abierto del menú.
+            // El lima es de la navegación: se ilumina así, como el destino abierto del menú.
             className="hover:text-nav-active! focus-visible:text-nav-active!"
             onClick={onToggleCollapsed}
           >

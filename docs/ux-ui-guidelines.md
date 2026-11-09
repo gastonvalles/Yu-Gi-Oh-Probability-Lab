@@ -7,7 +7,7 @@ Cómo se lee un pedido de diseño y cómo se decide una mejora visual. Las regla
 
 - Si falta algo importante, se pregunta lo mínimo o se asume y se declara la suposición en una línea.
 - Una captura sin texto es una **referencia**, no una especificación: se toma lo que sirve y se adapta a la estética propia
-  (violeta, ámbar y verde sobre índigo, Lexend Deca). Nunca un clon de otra app.
+  (carbón, violeta y lima, Lexend Deca). Nunca un clon de otra app.
 - «Esta vista necesita revisión» pide una **crítica completa** (estados, celular, accesibilidad), no un retoque.
 - El contexto: duelistas que arman y miden su deck, muchas veces desde el celular (390–440 px) y en un torneo. Tono directo,
   en voseo, sin jerga de marketing.
@@ -16,7 +16,7 @@ Cómo se lee un pedido de diseño y cómo se decide una mejora visual. Las regla
 
 - **Cambio cosmético no es cambio de lógica.** No se toca el estado (RTK, hooks), el flujo de datos, las props públicas de un
   componente ni `src/app/*`; si hace falta, se frena y se avisa antes. Los tests de la pantalla pasan sin tocarlos.
-- **Dos niveles de caja** (lienzo → `Card`), superficies índigo, **tokens y no valores sueltos** (`docs/design-system.md`, 1 a 3)
+- **Dos niveles de caja** (lienzo → `Card`), superficies de carbón, **tokens y no valores sueltos** (`docs/design-system.md`, 1 a 3)
   y **componentes con variantes**: antes de escribir clases se busca en `src/components/ui/` y en `/playground`; si falta una
   variante, se suma al componente (con su muestra), no se copia el markup.
 - **Mobile-first:** se diseña a 390 px. Un solo corte escritorio/menú lateral, **1101 px** (`min-[1101px]`,

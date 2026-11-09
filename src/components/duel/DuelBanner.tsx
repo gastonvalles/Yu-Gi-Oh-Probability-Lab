@@ -56,7 +56,7 @@ interface ResultHeroProps {
 }
 
 /**
- * El cartel del final del duelo: la medalla en 3D (ámbar con rayos y confeti si ganaste, roja que cae y se agrieta si perdiste, lavanda si empataron), el título en
+ * El cartel del final del duelo: la medalla en 3D (lima con rayos y confeti si ganaste, roja que cae y se agrieta si perdiste, lavanda si empataron), el título en
  * grande sobre una banda del color del resultado, por qué terminó y qué sigue. Lo usan los jugadores (con sus botones) y quienes miran (sin ellos).
  */
 export function ResultHero({ tone, icon, title, reason, note, titleId, children }: ResultHeroProps) {
@@ -86,7 +86,7 @@ export const WATCH_RETURN_MS = 8000
 export const WATCH_NEXT_MS = 5000
 
 /**
- * El final de lo que se mira, para un espectador: la medalla (ámbar para el ganador, lavanda si empataron) con quién ganó y por qué. Cuando se terminó todo (un duelo suelto, o el
+ * El final de lo que se mira, para un espectador: la medalla (lima para el ganador, lavanda si empataron) con quién ganó y por qué. Cuando se terminó todo (un duelo suelto, o el
  * Match) vuelve solo al inicio a los pocos segundos (o ya, con el botón); si es un duelo de un Match que sigue, el cartel se va y se sigue mirando.
  */
 export function WatchResultBanner({ end, nameOf, onLeave, onClose }: { end: SpectatorEnd; nameOf: (player: Duelist) => string; onLeave: () => void; onClose: () => void }) {

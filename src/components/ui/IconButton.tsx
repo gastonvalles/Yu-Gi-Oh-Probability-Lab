@@ -6,15 +6,15 @@ import { Icon } from './Icon'
 type IconButtonSize = 'sm' | 'md' | 'lg'
 
 /**
- * Los botones que son sólo un ícono no llevan fondo y son siempre blancos: el aviso de que se pueden tocar es que el ícono se pone ámbar
- * al pasar el mouse, y ámbar se queda mientras el botón está seleccionado (`aria-pressed`, `aria-selected` o `data-active`); un poco menos
+ * Los botones que son sólo un ícono no llevan fondo y son siempre blancos: el aviso de que se pueden tocar es que el ícono se pone lima
+ * al pasar el mouse, y lima se queda mientras el botón está seleccionado (`aria-pressed`, `aria-selected` o `data-active`); un poco menos
  * de opacidad al apretar; el foco lleva el aro de siempre. El tono sólo cambia el tamaño y la forma:
  * raised: el de las barras de herramientas (por defecto) · close: la X de los encabezados · ghost: el de las zonas del deck (papelera, ordenar) ·
- * flat: el grande de la práctica · outline: redondo con borde, que también se enciende en ámbar (cambiar A y B en Comparar) · tile: el de la mesa (el + y la fase del campo, la fila de abajo
- * del duelo), en una caja oscura de 44 px con un borde fino que se vuelve ámbar si está prendido (`aria-pressed`, `data-active`: la fase en tu turno); apagado, el ícono o la sigla en lila (se sigue leyendo).
+ * flat: el grande de la práctica · outline: redondo con borde, que también se enciende en lima (cambiar A y B en Comparar) · tile: el de la mesa (el + y la fase del campo, la fila de abajo
+ * del duelo), en una caja oscura de 44 px con un borde fino que se vuelve lima si está prendido (`aria-pressed`, `data-active`: la fase en tu turno); apagado, el ícono o la sigla en lila (se sigue leyendo).
  * Con su nombre debajo es `TileButton`.
- * primary y play son la excepción: redondos y con relleno, la acción principal de una barra: primary, violeta (enviar un mensaje); play, ámbar (reproducir un replay: el ámbar es lo que se toca, como el botón de la fase de ahora).
- * swatch: un círculo que es su color (`style={{ backgroundColor }}`; el color del ícono lo pone quien lo usa, para que contraste): el color de una fila de tier list. El elegido (`aria-pressed`) lleva el aro ámbar.
+ * primary y play son la excepción: redondos y con relleno, la acción principal de una barra: primary, violeta (enviar un mensaje); play, lima (reproducir un replay: la lima es lo que se toca, como el botón de la fase de ahora).
+ * swatch: un círculo que es su color (`style={{ backgroundColor }}`; el color del ícono lo pone quien lo usa, para que contraste): el color de una fila de tier list. El elegido (`aria-pressed`) lleva el aro lima.
  */
 type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat' | 'outline' | 'tile' | 'primary' | 'play' | 'swatch'
 
@@ -26,7 +26,7 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const BASE =
   'inline-flex shrink-0 items-center justify-center p-0 transition-[opacity,color,border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus [&_svg]:block'
 
-/** Lo común de los que van sin fondo: ícono blanco que se pone ámbar al pasar el mouse o al estar seleccionado, más tenue al apretar o si está deshabilitado. */
+/** Lo común de los que van sin fondo: ícono blanco que se pone lima al pasar el mouse o al estar seleccionado, más tenue al apretar o si está deshabilitado. */
 const BARE =
   'bg-transparent text-white hover:text-info aria-pressed:text-info aria-selected:text-info data-[active=true]:text-info active:opacity-70 disabled:pointer-events-none disabled:opacity-40'
 
@@ -73,7 +73,7 @@ export function IconButton({ size = 'md', tone = 'raised', className = '', type 
 
 /**
  * La caja de la mesa (`tile`, de 40 px) con su nombre debajo: la botonera de «Jugar solo automático» (Automático, Cadena, Pasos, Opciones) y la línea de fases. Se toca todo el botón (56 × 56) y el estado lo
- * dicen la caja y el nombre a la vez: blancos en reposo, ámbar al apuntarlo, y ámbar con el borde ámbar si está prendido (`aria-pressed`) o es el de ahora (`aria-current`); apagado pero enfocable
+ * dicen la caja y el nombre a la vez: blancos en reposo, lima al apuntarlo, y lima con el borde lima si está prendido (`aria-pressed`) o es el de ahora (`aria-current`); apagado pero enfocable
  * (`aria-disabled`, «Todavía no»), en lila. Sin rellenos: en la mesa el violeta lleno es sólo de la acción principal con texto (Listo, Pasar turno). `children`: el ícono o la sigla; `label`, el nombre.
  */
 export function TileButton({ label, children, className, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {

@@ -38,7 +38,7 @@ const log: string[] = []
 let session: AutoSession | null = null
 let snapshot: AutoSnapshot | null = null
 
-document.body.style.cssText = 'font: 13px/1.4 ui-monospace, monospace; margin: 12px; background: #150a24; color: #eee'
+document.body.style.cssText = 'font: 13px/1.4 ui-monospace, monospace; margin: 12px; background: #18181c; color: #eee'
 const deckSelect = el('select')
 const seedInput = Object.assign(el('input'), { value: params.get('seed') ?? String(Date.now() >>> 0), size: 10 })
 const controls = el('div', '', 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px')

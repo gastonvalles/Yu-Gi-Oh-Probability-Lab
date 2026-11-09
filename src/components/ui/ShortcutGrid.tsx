@@ -13,10 +13,10 @@ import { Skeleton } from './Skeleton'
  * - **Props de `ShortcutGrid`:** `label` (el nombre de la grilla para el lector) · `loading` (cuántos esqueletos del mismo alto, con `aria-busy`).
  * - **La regla del 4 o 2:** cuatro por fila si la grilla mide 19 rem (304 px, unos 70 px por atajo) o más, si no dos por fila (2 × 2): un teléfono de 320 px queda
  *   en dos y uno de 360 en cuatro. Lo mide la grilla (`@container`), no la pantalla: también vale en una columna angosta.
- * - **Estados:** reposo · al pasar el mouse o apretar, la superficie de arriba (`bg-surface-hover`) · foco `shadow-focus` y el ícono en ámbar · apagado al 40 % pero
+ * - **Estados:** reposo · al pasar el mouse o apretar, la superficie de arriba (`bg-surface-hover`) · foco `shadow-focus` y el ícono en lima · apagado al 40 % pero
  *   enfocable (`aria-disabled`): el clic llega, para que quien lo usa diga qué falta · cargando.
- * - **Von Restorff:** un solo tinte para todos los círculos (el lila de siempre, con el ícono blanco); lo único que resalta es la insignia, con aro ámbar sobre el lienzo
- *   (nunca un relleno ámbar con texto blanco), y una sola por grilla.
+ * - **Von Restorff:** un solo tinte para todos los círculos (el lila de siempre, con el ícono blanco); lo único que resalta es la insignia, con aro lima sobre el lienzo
+ *   (nunca un relleno lima con texto blanco), y una sola por grilla.
  * - **Hacer:** 4 u 8 atajos, nombres de una o dos palabras. **No hacer:** una línea de apoyo dentro del atajo (eso es una `ListRow`), colores distintos por atajo, cajas adentro.
  * - **Usos:** las entradas de Online (Retar a un amigo, Entrar con un código, Reglas), los pasos del deck (Deck, Roles, Lab, Comparar), Exportar y Vidas.
  */

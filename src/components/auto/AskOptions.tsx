@@ -44,7 +44,7 @@ const LONG_LABEL = 22
 
 /**
  * Las opciones de una pregunta del núcleo que el campo no puede expresar, en una hoja chica (`Modal keypad`, de 26 rem, al centro de la fila Extra: `anchor="mat"`; se minimiza sin contestar). Con `'one'`, los
- * botones de la hoja de una carta (`CardSheet`: de a dos por fila, `menuitem`) y un toque contesta. Con `{ count }`, pastillas que se prenden en ámbar (`aria-pressed`) y bajan de renglón, así se ven los 25
+ * botones de la hoja de una carta (`CardSheet`: de a dos por fila, `menuitem`) y un toque contesta. Con `{ count }`, pastillas que se prenden en lima (`aria-pressed`) y bajan de renglón, así se ven los 25
  * Tipos a la vez (`FilterChips` exige una cuenta por chip y en el celular es una sola fila que se desliza): con `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan.
  * Va dentro de un `Presence` (así sale al contestarse).
  */

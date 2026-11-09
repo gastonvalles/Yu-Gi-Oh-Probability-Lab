@@ -32,7 +32,7 @@ const packBackground = (code: string) => ({
 })
 
 /**
- * El botón de precios: un ícono blanco con una moneda que se pone ámbar al pasar el mouse, como los demás íconos de la app. Va siempre afuera de la carta
+ * El botón de precios: un ícono blanco con una moneda que se pone lima al pasar el mouse, como los demás íconos de la app. Va siempre afuera de la carta
  * (que se inclina en 3D hacia el mouse), así que no se mueve con ella; el que lo usa le da la posición y qué hacer al tocarlo.
  */
 export function CardPricesButton({ onClick, className }: { onClick: () => void; className?: string }) {
@@ -42,7 +42,7 @@ export function CardPricesButton({ onClick, className }: { onClick: () => void; 
       size="lg"
       aria-label={t('search.prices.button')}
       title={t('search.prices.button')}
-      // Un $ blanco, sin círculo, que se ilumina en ámbar al tocarlo.
+      // Un $ blanco, sin círculo, que se ilumina en lima al tocarlo.
       className={cx('hover:text-info! active:text-info! focus-visible:text-info!', className)}
       onClick={(event) => {
         // Está sobre el fondo del detalle y al lado de una carta que se agranda al tocarla: acá sólo se abren los precios.

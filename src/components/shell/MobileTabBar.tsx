@@ -7,7 +7,7 @@ import { PLAY_GROUP_KEY, type NavGroup } from './nav-model'
 
 interface MobileTabBarProps {
   groups: NavGroup[]
-  /** El destino abierto: el grupo que lo contiene se marca en ámbar. */
+  /** El destino abierto: el grupo que lo contiene se marca en lima. */
   activeKey: string | null
   /** El grupo cuya hoja está abierta (el botón lo anuncia). */
   openKey: string | null
@@ -26,7 +26,7 @@ const TAB = 'relative flex h-[calc(4rem-1px)] min-w-0 flex-1 flex-col items-cent
 /** El rótulo de un lugar: en 320 px cada lugar mide 64 y «Descubrir» o «Your deck» no entraban (salían con «…»); por eso el relleno es mínimo y, debajo de 360 px, las letras se juntan un poco. */
 const LABEL = 'max-w-full truncate px-0.5 max-[359px]:tracking-tight'
 
-/** La rayita ámbar arriba del lugar abierto: lo marca también por la forma, no sólo por el color del texto. */
+/** La rayita lima arriba del lugar abierto: lo marca también por la forma, no sólo por el color del texto. */
 const Indicator = () => <span aria-hidden="true" className="absolute top-0 h-0.75 w-8 rounded-b-full bg-nav-active" />
 
 /**
@@ -37,7 +37,7 @@ const Indicator = () => <span aria-hidden="true" className="absolute top-0 h-0.7
  * exportar), así que abre su hoja.
  *
  * - **Props:** `groups`, `activeKey`, `openKey`/`onOpen` (la hoja), `onSearch`/`searchOpen` (el buscador), `placement`.
- * - **Estados:** reposo · abierto (el grupo de la pantalla, o el de la hoja abierta: texto e ícono lleno en ámbar con la rayita arriba; el círculo, con un aro ámbar) · hoja abierta
+ * - **Estados:** reposo · abierto (el grupo de la pantalla, o el de la hoja abierta: texto e ícono lleno en lima con la rayita arriba; el círculo, con un aro lima) · hoja abierta
  *   (sin línea arriba) · foco (`shadow-focus`) · presionado (se apaga un poco; sin movimiento, así que nada cambia con `prefers-reduced-motion`).
  * - **Accesibilidad:** `nav` «Navegación principal»; cada lugar es un botón con su nombre (el círculo se llama «Jugar»; la lupa, «Buscar en la app»), `aria-expanded` de su hoja y
  *   `aria-current` el de la pantalla abierta; 64 px de alto y un quinto del ancho cada uno.
@@ -51,7 +51,7 @@ export function MobileTabBar({ groups, activeKey, openKey, onOpen, onSearch, sea
     .filter((group) => group !== play)
     .map((group) => {
       const open = openKey === group.key
-      // Con una hoja abierta el ámbar es del grupo de esa hoja; sin hoja, del grupo de la pantalla en que estás.
+      // Con una hoja abierta la lima es del grupo de esa hoja; sin hoja, del grupo de la pantalla en que estás.
       const hasActive = openKey === null ? group.items.some((item) => item.key === activeKey) : open
 
       return (
@@ -102,7 +102,7 @@ export function MobileTabBar({ groups, activeKey, openKey, onOpen, onSearch, sea
         className={cx(TAB, 'justify-end pb-1', hasActive ? 'text-nav-active' : 'text-foreground')}
         onClick={() => onOpen(play.key)}
       >
-        {/* Asoma 12 px por arriba de la barra (`TAB_BAR_PX` lo cuenta). El aro del color del lienzo lo despega de la barra sin sombra; abierto, por fuera, otro ámbar. */}
+        {/* Asoma 12 px por arriba de la barra (`TAB_BAR_PX` lo cuenta). El aro del color del lienzo lo despega de la barra sin sombra; abierto, por fuera, otro lima. */}
         <span aria-hidden="true" className={cx('absolute -top-3 left-1/2 grid size-13 -translate-x-1/2 place-items-center rounded-full bg-primary text-white ring-3 ring-background', hasActive && 'outline-2 outline-offset-3 outline-nav-active')}>
           <Icon name={play.icon} size={26} strokeWidth={2} />
         </span>

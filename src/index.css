@@ -47,7 +47,7 @@
   --radius-card: 1rem;
   --radius-panel: 1.5rem;
 
-  /* Elevación: la tarjeta, el overlay y el aro de foco (ámbar). */
+  /* Elevación: la tarjeta, el overlay y el aro de foco (lima). */
   --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04);
   --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
   --shadow-focus: 0 0 0 2px var(--background), 0 0 0 4px rgb(var(--info-rgb) / 0.6);
@@ -56,7 +56,7 @@
   --spacing-gutter: 1.375rem;
 
   /* Lavanda clara del diseño: botón y anillo sobre una tarjeta violeta. */
-  --color-lavender-light: #eee9ff;
+  --color-lavender-light: #ece5ff;
 
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;
@@ -1706,7 +1706,7 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
-  /* El texto (y el pulgar del interruptor) sobre un relleno ámbar: el índigo del fondo (12,3:1; el blanco sobre ámbar no se lee, 1,5:1). */
+  /* El texto (y el pulgar del interruptor) sobre un relleno lima: el carbón del fondo (13,59:1; el blanco sobre lima no se lee, 1,30:1). */
   --color-info-foreground: var(--accent-foreground);
   --color-field-line: var(--field-line);
   --color-handtrap: var(--handtrap);
@@ -1717,47 +1717,47 @@
 
 @layer theme {
   :root {
-    --background: #150a24;
-    --background-rgb: 21 10 36;
+    --background: #18181c;
+    --background-rgb: 24 24 28;
     --foreground: #fdffff;
     --foreground-rgb: 253 255 255;
-    --secondary: #231238;
-    --card-background: #231238;
-    --card-background-rgb: 35 18 56;
-    --border: #3a2459;
-    --input: #2b1745;
-    --input-hover: #352052;
-    --primary: #8000cb;
-    --primary-rgb: 128 0 203;
-    --primary-hover: #9a26e0;
-    --primary-hover-rgb: 154 38 224;
+    --secondary: #201f27;
+    --card-background: #201f27;
+    --card-background-rgb: 32 31 39;
+    --border: #3a3747;
+    --input: #292733;
+    --input-hover: #33303f;
+    --primary: #723bfa;
+    --primary-rgb: 114 59 250;
+    --primary-hover: #7f4dfb;
+    --primary-hover-rgb: 127 77 251;
     --primary-foreground: #fdffff;
-    --accent: #c77dff;
-    --accent-rgb: 199 125 255;
-    --accent-foreground: #150a24;
-    --destructive: #da0000;
-    --destructive-rgb: 218 0 0;
+    --accent: #b69dff;
+    --accent-rgb: 182 157 255;
+    --accent-foreground: #18181c;
+    --destructive: #d42a35;
+    --destructive-rgb: 212 42 53;
 
-    /* Superficies: lienzo < tarjeta < elevada < hover. */
-    --surface-raised: #2b1745;
-    --surface-hover: #352052;
-    --border-subtle: #2e1c4a;
-    /* Violeta legible como texto sobre fondo oscuro (el de marca queda para rellenos). */
-    --primary-soft: #c77dff;
-    --primary-soft-rgb: 199 125 255;
+    /* Superficies: lienzo < tarjeta < elevada < hover. Carbón con un matiz frío apenas violáceo (~250°), para que no den un gris muerto. */
+    --surface-raised: #292733;
+    --surface-hover: #33303f;
+    --border-subtle: #2a2833;
+    /* Violeta legible como texto sobre fondo oscuro (el de marca, 3,14:1 sobre el carbón, queda para rellenos y arcos grandes). */
+    --primary-soft: #b69dff;
+    --primary-soft-rgb: 182 157 255;
     /* Lavanda oscura: el fondo de chips, botones secundarios y barras de navegación (la lavanda del diseño, sobre oscuro). */
-    --lavender: #2b1745;
+    --lavender: #292733;
     /* Lavanda al pasar el mouse: más clara que la base (el hover siempre aclara). */
-    --lavender-hover: #352052;
-    --info: #ffc100;
-    --info-rgb: 255 193 0;
+    --lavender-hover: #33303f;
+    --info: #b9f500;
+    --info-rgb: 185 245 0;
     /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
-    --success-soft: #6bf55c;
-    --warning-soft: #ffd84d;
-    --danger-soft: #ff4d4d;
+    --success-soft: #7cefb9;
+    --warning-soft: #ffbe66;
+    --danger-soft: #ff6b6e;
     /* El rojo de un arco (un anillo de un problema, la cola de «sin salida»): el `danger` de la paleta no llega a 3:1 contra la pista. */
-    --danger-soft-rgb: 255 77 77;
-    --info-soft: #ffd84d;
+    --danger-soft-rgb: 255 107 110;
+    --info-soft: #d2ff5c;
     /* El blanco de las líneas que delimitan las casillas de la mesa (todas iguales, sin zonas de otro color). */
     --field-line: #ffffff;
     --field-line-rgb: 255 255 255;
@@ -1765,26 +1765,27 @@
     /* El Extra Deck y los monstruos Sincro y Enlace: el azul de siempre (las zonas del deck son categorías y se distinguen por color). */
     --handtrap: #3b82f6;
     --handtrap-rgb: 59 130 246;
-    --success: #1aef06;
-    --success-rgb: 26 239 6;
-    /* El verde de un botón lleno con texto blanco: el verde de la paleta con 45 % de negro (el blanco sobre el verde claro no se lee). */
-    --success-solid: color-mix(in srgb, #1aef06 55%, black);
-    /* Ojo / a medio hacer: ámbar de la paleta (el violeta es de lo tuyo: acción principal y selección). */
-    --warning: #ffc100;
-    --warning-rgb: 255 193 0;
+    /* Bien / listo: un verde frío (~153°) que se separa de la lima (75°); siempre con ícono o texto. */
+    --success: #2ee08f;
+    --success-rgb: 46 224 143;
+    /* El verde de un botón lleno con texto blanco (5,33:1; el blanco sobre el verde claro no se lee). */
+    --success-solid: #167a4c;
+    /* Ojo / a medio hacer: naranja propio (~35°), lejos de la lima y del violeta (el violeta es de lo tuyo). */
+    --warning: #ff9f1c;
+    --warning-rgb: 255 159 28;
     /* Lo que podés hacer ahora con una carta de la mesa (`can` de `app/card-glow.ts`): un celeste casi blanco, con el peso de los otros brillos; el ámbar queda para lo que se activa o se resuelve. */
     --playable-rgb: 168 236 255;
-    --danger: #da0000;
-    --danger-rgb: 218 0 0;
+    --danger: #d42a35;
+    --danger-rgb: 212 42 53;
 
-    /* Navegación: índigo con el destino activo en ámbar (el ámbar es de la navegación, del rival, de la build B, de los hipervínculos y del «ojo»: `warning`). */
-    --nav: #400065;
-    --nav-raised: #5a2a80;
-    --nav-active: #ffc100;
+    /* Navegación y tarjeta `hero`: el carbón cargado de violeta (~255°), lo único de la marca en una superficie, con el destino activo en lima (la lima es de la navegación, del rival, de la build B, de los hipervínculos y del foco). */
+    --nav: #221a3a;
+    --nav-raised: #352a55;
+    --nav-active: #b9f500;
 
     --text-main: var(--foreground);
-    --text-muted: #b4a2d4;
-    --text-soft: #9b86c4;
+    --text-muted: #b6b3c6;
+    --text-soft: #9a96ad;
 
     --bg-canvas: var(--background);
     --border-strong: rgb(var(--primary-rgb) / 0.58);
@@ -1802,9 +1803,9 @@
     /* El menú lateral al contraerse o abrirse: el ancho, los rótulos y lo flotante que lo sigue (mascota, botones) van con la misma duración y curva. */
     --sidebar-duration: 280ms;
     --sidebar-ease: var(--ease-snap);
-    --app-scrollbar-track: #1c0f30;
-    --app-scrollbar-thumb: #45296b;
-    --app-scrollbar-thumb-hover: #6a4b96;
+    --app-scrollbar-track: #1d1c23;
+    --app-scrollbar-thumb: #3a3747;
+    --app-scrollbar-thumb-hover: #57536a;
 
     /* Cada zona se distingue por su tinte (sin marco): el borde sólo se enciende al arrastrar una carta encima. */
     --zone-main-background: rgb(var(--primary-rgb) / 0.14);
@@ -1937,7 +1938,7 @@
     color: inherit;
   }
 
-  /* Seleccionar texto: ámbar sobre el fondo violeta, para que resalte (y un enlace seleccionado sigue siendo ámbar: el verde es sólo de lo que salió bien). */
+  /* Seleccionar texto: lima sobre el fondo violeta, para que resalte (y un enlace seleccionado sigue siendo lima: el verde es sólo de lo que salió bien). */
   ::selection {
     background: var(--info);
     color: var(--background);

@@ -8,7 +8,7 @@ const STEP_PX = 16
 const BIG_STEP_PX = 64
 
 /**
- * En reposo no se ve (quedan los bordes de siempre de los paneles); con el mouse encima, arrastrándolo o con el foco del teclado, el cursor ↔ y una línea ámbar de 2 px a todo el alto,
+ * En reposo no se ve (quedan los bordes de siempre de los paneles); con el mouse encima, arrastrándolo o con el foco del teclado, el cursor ↔ y una línea lima de 2 px a todo el alto,
  * justo sobre el borde. El área que se agarra mide 12 px (6 a cada lado del borde) y es `absolute`: no ocupa lugar, así que pasar el mouse no corre nada.
  */
 const HANDLE = cx(

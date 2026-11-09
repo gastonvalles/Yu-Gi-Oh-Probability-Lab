@@ -91,7 +91,7 @@ interface SourceSheetProps {
 
 /**
  * «Mis builds»: de dónde puede salir A o B (tu deck, «Tu deck de antes», el borrador del Lab y las builds guardadas, con su origen, su fecha y sus cartas),
- * una por fila; la elegida con el aro ámbar y la del otro lado apagada. Elegir es un toque. Las builds guardadas se renombran y se borran desde sus tres puntos.
+ * una por fila; la elegida con el aro lima y la del otro lado apagada. Elegir es un toque. Las builds guardadas se renombran y se borran desde sus tres puntos.
  * Es una hoja de abajo en el celular y un diálogo chico en escritorio (`Modal keypad`).
  */
 export function SourceSheet({ side, options, selection, onChoose, onRename, onDelete, onImport, onSaveCurrent, onClose }: SourceSheetProps) {
