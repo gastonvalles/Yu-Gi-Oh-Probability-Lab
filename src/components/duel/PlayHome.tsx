@@ -423,7 +423,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, autoRooms, onClose, on
 
           <RuleRow label={t('duel.create.format')}>
             <FieldBox className="w-40 shrink-0">
-              <select aria-label={t('duel.create.format')} value={draft.format} onChange={(event) => set({ format: event.target.value as DeckFormat })} className={fieldInline}>
+              <select aria-label={t('duel.create.format')} value={draft.format} onChange={(event) => set({ format: event.target.value as DeckFormat })} className={cx(fieldInline, 'cursor-pointer')}>
                 {DUEL_FORMATS.map((value) => (
                   <option key={value} value={value}>
                     {getDeckFormatLabel(value)}

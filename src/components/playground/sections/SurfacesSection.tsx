@@ -89,7 +89,7 @@ export function SurfacesSection() {
 
         <Specimen title="Campos" layout="column" note={<>Clases de <Tag>ui/surfaces.ts</Tag> (<Tag>field</Tag>), <Tag>ui/FieldBox.tsx</Tag> (campo en tarjeta de una línea: sin etiqueta, el valor o el placeholder dicen qué es) y <Tag>ui/SearchField.tsx</Tag> (todo campo de búsqueda lleva la lupa) y <Tag>ui/MultiSelect.tsx</Tag> (selector desplegable de elección múltiple: el campo dice qué hay elegido y se abre con una lista de casillas).</>}>
           <input aria-label="Texto" placeholder="Campo de texto" className={cx(field, 'h-11 w-full px-3 text-body')} />
-          <select aria-label="Opciones" className={cx(field, 'h-11 w-full px-3 text-body')}>
+          <select aria-label="Opciones" className={cx(field, 'h-11 w-full cursor-pointer px-3 text-body')}>
             <option>Un select</option>
             <option>Otra opción</option>
           </select>

@@ -52,7 +52,7 @@ const ADD_REVEAL =
 /** El «+» de cada resultado (`rowAddButton`: oscuro con el ícono blanco, lima al apuntarlo); recién agregada, verde; al máximo, «MÁX» apagado. */
 function addButton(state: 'idle' | 'added' | 'maxed'): string {
   return cx(
-    'absolute bottom-2 right-2 grid h-8 min-w-8 place-items-center rounded-full border px-2 font-bold leading-none transition-[opacity,transform,color,border-color,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92]',
+    'absolute bottom-2 right-2 grid h-8 min-w-8 place-items-center rounded-full border px-2 font-bold leading-none transition-[opacity,transform,color,border-color,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92] disabled:cursor-not-allowed',
     state === 'added' && 'border-success-solid bg-success-solid text-lead text-white opacity-100',
     state === 'idle' && [rowAddButton, 'text-lead', ADD_REVEAL],
     state === 'maxed' && ['border-border-subtle bg-card-background text-micro text-soft', ADD_REVEAL],

@@ -44,7 +44,7 @@ const ACCENT: Record<Duelist, string> = { 0: 'text-primary-soft', 1: 'text-(--in
 const BADGE: Record<Duelist, string> = { 0: 'bg-primary/25 text-primary-soft', 1: 'bg-[rgb(var(--info-rgb)/0.25)] text-(--info-soft)' }
 /** Teclas y acciones: grandes, sin retardo táctil y con respuesta inmediata al apretar. Van con las esquinas rectas (el radio lo pone cada pieza: las teclas, ninguno). */
 export const PRESSABLE =
-  'touch-manipulation select-none font-semibold text-foreground transition-[background-color,transform,color] duration-100 focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.96] disabled:opacity-35 [-webkit-tap-highlight-color:transparent]'
+  'touch-manipulation select-none font-semibold text-foreground transition-[background-color,transform,color] duration-100 focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35 [-webkit-tap-highlight-color:transparent]'
 /** Las teclas se reparten el alto que deja la pantalla (46 px en el celular más bajo, 360 × 640; ~85 px en uno de 844): 40 px es el piso para que entre todo sin scroll. */
 export const KEY = cx(PRESSABLE, 'min-h-10 rounded-none bg-lavender active:bg-lavender-hover')
 

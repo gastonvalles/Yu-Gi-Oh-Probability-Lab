@@ -71,7 +71,7 @@ export function TitlesSection() {
           side={
             <>
               <input aria-label="Nombre" defaultValue="Mi deck" className={`${field} h-11 px-3 text-body`} />
-              <select aria-label="Formato" className={`${field} h-11 px-3 text-body`}>
+              <select aria-label="Formato" className={`${field} h-11 cursor-pointer px-3 text-body`}>
                 <option>TCG</option>
               </select>
             </>
