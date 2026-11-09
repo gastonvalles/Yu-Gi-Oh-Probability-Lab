@@ -32,8 +32,16 @@ En orden de valor sobre costo.
    en la sala, mientras gira, el dado de un jugador tapa su chip «Listo» (`DieSeat` en `toss-views.tsx`); en un celular bajo,
    antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo).
 7. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
+8. **Textos en español por área** (M): hoy todos viajan en el archivo principal (56 KB gz de sus 143); una visita nueva a la
+   landing baja 153 KB de JS y la meta era 60. Separarlos por área toca `i18n/index.ts`.
+9. **`/playground` tarda 30 a 50 s** en mostrar su título en producción con un celular emulado (el smoke le da 90 s): medir en una
+   máquina libre (S). **Textos apagados con opacidad** bajo 4,5:1: insignia «Atacar» (4,33), inicial de una carta sin imagen
+   (4,24), «Interacción y soporte externo» (3,81) y «Sin objetivo» del catálogo (S). `Segmented` sin flechas (S).
 
 ## Espera a Gastón
+
+- **Reportar un problema:** cargar `GITHUB_BUG_TOKEN` en Vercel (token fino, sólo Issues de este repo) y redeploy; hasta entonces
+  el endpoint contesta 503 y la pantalla manda a GitHub. Después: un reporte propio que se borra y la entrada de Novedades.
 
 - **Cuentas:** activar «Allow GitHub Actions to create and approve pull requests» (Settings → Actions → General) para que
   `sync-auto-data.yml` abra su PR semanal; las tareas de `docs/seguridad.md` («Lo que sólo hace quien administra las cuentas»),
@@ -74,8 +82,7 @@ No se vuelve a proponer sin un motivo nuevo.
 
 Inventario, sin ejecutar. `npx knip` es la fuente de lo que no se usa.
 
-- **Archivos sin uso:** `src/components/probability/lab-styles.ts` (nadie lo importa). `scripts/barrido-alineacion.js` es a
-  propósito: se pega en la consola (`docs/design-system.md`).
+- **Archivos sin uso:** ninguno. `scripts/barrido-alineacion.js` es a propósito: se pega en la consola (`docs/design-system.md`).
 - **Exports sin uso fuera de su archivo:** ~40 (p. ej. `getDerivedCardId` en `calculator-state.ts`, `isSessionActive` y
   `recordDeckChange` en `deck-before.ts`, `useMatTableItems` en `MatBarActions.tsx`, `rematchLabel` en `DuelResult.tsx`) y ~25
   tipos: sacarles el `export` o borrarlos si tampoco se usan adentro. Los de `duel-relay/src/index.ts` son la entrada del Worker.
