@@ -27,7 +27,7 @@ const formatSpeed =(speed: number) => `${new Intl.NumberFormat(numberLocale()).f
 /** La mano inicial, verde: el principio. */
 const START_TONE: FxTone = 'green'
 
-/** Cada paso con el color de lo que hace (`--pill`, el de su destello en la mesa): los ya vistos, vivos; el actual, ámbar y más alto (como el botón de reproducir) y con un resplandor; los que faltan, apagados. */
+/** Cada paso con el color de lo que hace (`--pill`, el de su destello en la mesa): los ya vistos, vivos; el actual, lima y más alto (como el botón de reproducir) y con un resplandor; los que faltan, apagados. */
 const PILL = {
   done: 'h-2.5 bg-[rgb(var(--pill)/0.95)]',
   current: 'h-3.5 bg-info shadow-[0_0_10px_rgb(var(--info-rgb)/0.75)]',

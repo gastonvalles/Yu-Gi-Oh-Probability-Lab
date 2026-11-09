@@ -104,7 +104,7 @@ export function VersusMark() {
   )
 }
 
-/** Cada uno de los dos jugadores: su inicial en una chapa de su color (violeta el tuyo, ámbar el rival), su nombre y, abajo, si ya está listo (la tarjeta se enciende en verde), y debajo lo que tiró. `showReady: false`: antes de que llegue el rival no hay nada que decir. */
+/** Cada uno de los dos jugadores: su inicial en una chapa de su color (violeta el tuyo, lima el rival), su nombre y, abajo, si ya está listo (la tarjeta se enciende en verde), y debajo lo que tiró. `showReady: false`: antes de que llegue el rival no hay nada que decir. */
 export function PlayerCard({ side, caption, name, ready, showReady = true, rename, children }: { side: PlayerSide; caption: string; name: string; ready: boolean; showReady?: boolean; rename?: DuelOpeningProps['rename']; children?: React.ReactNode }) {
   const color = PLAYER_COLOR[side]
 

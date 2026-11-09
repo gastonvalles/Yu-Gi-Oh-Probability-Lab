@@ -194,7 +194,7 @@ function MoreOptions({ isOpen, onClose, inDock = false, chain, onChain, place, o
   )
 }
 
-/** Un botón de la botonera (`TileButton`, el de la línea de fases): la caja de la mesa con su ícono y el nombre debajo. Prendido (`aria-pressed`: el modo de ahora, los pasos abiertos), en ámbar. */
+/** Un botón de la botonera (`TileButton`, el de la línea de fases): la caja de la mesa con su ícono y el nombre debajo. Prendido (`aria-pressed`: el modo de ahora, los pasos abiertos), en lima. */
 function DockButton({ icon, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string }) {
   return (
     <TileButton {...props}>

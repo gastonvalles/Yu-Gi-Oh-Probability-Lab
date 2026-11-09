@@ -22,7 +22,7 @@ interface BuildDeckViewProps {
 }
 
 /**
- * Una zona de una build en «Las dos listas»: las copias que cambian llevan el aro y la cantidad en el color de su build (A lila, B ámbar: −2 en A, +1 en B, en la
+ * Una zona de una build en «Las dos listas»: las copias que cambian llevan el aro y la cantidad en el color de su build (A lila, B lima: −2 en A, +1 en B, en la
  * primera de ellas) y las demás se atenúan. Las cartas van rectas (también el botón: el reset global le da radio a todo `<button>`). La grilla crece con su
  * columna (`@container`): 4 cartas por fila en el celular, hasta 8 en escritorio.
  */

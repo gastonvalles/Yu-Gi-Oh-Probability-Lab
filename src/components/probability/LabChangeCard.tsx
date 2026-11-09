@@ -37,7 +37,7 @@ interface LabChangeCardProps extends ChangeActions {
 
 /**
  * «Estás probando un cambio»: ocupa el lugar de «Lo que más te frena» mientras todo el Lab mide tu deck con el cambio. Dice que no se guarda nada, las dos cartas
- * (rectas, con cuántas quedan) y, en escritorio, las tres acciones. El borde ámbar es el de la build B de Comparar: es tu deck con el cambio.
+ * (rectas, con cuántas quedan) y, en escritorio, las tres acciones. El borde lima es el de la build B de Comparar: es tu deck con el cambio.
  */
 export function LabChangeCard({ lines, actionsInCard, autoFocus = false, onDiscard, onCompare, onApply, className }: LabChangeCardProps) {
   const headerRef = useRef<HTMLElement>(null)

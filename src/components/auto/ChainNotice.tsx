@@ -34,11 +34,11 @@ interface ChainNoticeProps {
  *   arriba): número, carta, de quién y su estado (en espera, resolviendo, resuelta, negada o sin efecto, con quién lo negó si se sabe: «Sin efecto · por CL2»). Tiene tope de alto
  *   y se desplaza; con una pregunta abierta debajo en el celular, la mesa la acorta a lo que queda (`data-chain-list`) y, sin lugar ni para un eslabón, se ve el resumen de la
  *   píldora (`data-squeezed` en la capa, `group/chain`) hasta que se conteste.
- * - **Plegada** (la píldora): «Cadena · CL2 · Rival» (el eslabón del que habla y su dueño, en su color; la cuenta, sólo si no es ese número) y debajo, en ámbar, qué le pasa,
+ * - **Plegada** (la píldora): «Cadena · CL2 · Rival» (el eslabón del que habla y su dueño, en su color; la cuenta, sólo si no es ese número) y debajo, en lima, qué le pasa,
  *   corto y sin nombres («En espera», «Sin efecto · por CL2»: la carta la marca su insignia en la mesa), y la flecha que la despliega (44 px, `aria-expanded`).
  * - **En el celular** (`compact`) no es nada de esto: es `ChainSheet`, una hoja de abajo que se arrastra (una cinta de chips y, subida, la pila); la píldora y la pila desplegada son de escritorio.
- * - **El color del dueño** (violeta claro lo tuyo, ámbar lo del rival: el de las vidas, `PLAYER_COLOR`) va en la etiqueta del número, rellena, y en el «de quién». No se confunde
- *   con el ámbar de lo que se resuelve, que es un **aro** alrededor de toda la fila (`listItemSelected`, como el brillo de las cartas): forma distinta, mismo significado de siempre.
+ * - **El color del dueño** (violeta claro lo tuyo, lima lo del rival: el de las vidas, `PLAYER_COLOR`) va en la etiqueta del número, rellena, y en el «de quién». No se confunde
+ *   con la lima de lo que se resuelve, que es un **aro** alrededor de toda la fila (`listItemSelected`, como el brillo de las cartas): forma distinta, mismo significado de siempre.
  * - **Tocar un eslabón** (`onPick`) lo muestra para leerlo: cada fila es un botón de 44 px o más con su nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»).
  * - El ritmo, cuándo aparece y cuándo se va lo decide quien la usa (`use-auto-asks.tsx`); acá sólo se dibuja. El cartel no entra ni sale animado (tiene temporizador); sus filas sí, al cambiar un eslabón (`ChainListRows`).
  *   Terminada la cadena se va sola (`CHAIN_LINGER_MS` después del último toque): ni tocarla ni desplegarla la dejan flotando; sólo «Cómo se resuelve», abierto, la retiene (`onReading`).

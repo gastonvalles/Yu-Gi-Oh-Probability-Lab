@@ -6,7 +6,7 @@ import { Icon, type IconName } from './Icon'
 /**
  * primary: la acción principal del grupo (una sola, y al final del pie) · secondary: una alternativa que hace algo, o acciones de igual peso (lavanda) ·
  * tertiary: lo que descarta o vuelve, sin caja (Cancelar, Volver) · onBrand: sobre una tarjeta violeta · outline: la acción de una tarjeta de una grilla
- * («Ver deck»), donde la lavanda no se distingue de la tarjeta; borde fino y ámbar al apuntarlo. Las reglas completas, en docs/design-system.md.
+ * («Ver deck»), donde la lavanda no se distingue de la tarjeta; borde fino y lima al apuntarlo. Las reglas completas, en docs/design-system.md.
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'onBrand' | 'outline'
 type ButtonSize = 'sm' | 'md' | 'lg'
@@ -59,7 +59,7 @@ const ON_BRAND: Record<ButtonColor, string> = {
 
 /**
  * Sin relleno y con un borde fino claro: se ve como botón sobre una tarjeta (la lavanda queda a 1,08:1 del fondo de la tarjeta) sin sumar un bloque de color por tarjeta.
- * Al apuntarlo (mouse o teclado) el borde, el texto y el ícono se encienden en ámbar, como el borde de la tarjeta. Como `onBrand`, no cambia con `color`.
+ * Al apuntarlo (mouse o teclado) el borde, el texto y el ícono se encienden en lima, como el borde de la tarjeta. Como `onBrand`, no cambia con `color`.
  */
 const OUTLINE_LOOK = 'border border-tint/45 bg-transparent text-foreground hover:border-info/80 hover:text-info-soft focus-visible:border-info/80 focus-visible:text-info-soft'
 const OUTLINE: Record<ButtonColor, string> = { brand: OUTLINE_LOOK, danger: OUTLINE_LOOK, success: OUTLINE_LOOK, confirm: OUTLINE_LOOK }

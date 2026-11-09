@@ -67,7 +67,7 @@ const CARD_TYPES: readonly CardType[] = ['monster', 'spell', 'trap']
 
 const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-/** Chip de un rol o de un criterio de «Más»: elegido, el aro ámbar por dentro y el texto ámbar (no corre nada de lugar). De a dos por fila desde 360 px; en 320, de a uno (de a dos, «Disruption» se cortaba). */
+/** Chip de un rol o de un criterio de «Más»: elegido, el aro lima por dentro y el texto lima (no corre nada de lugar). De a dos por fila desde 360 px; en 320, de a uno (de a dos, «Disruption» se cortaba). */
 const CHIP =
   'flex min-h-13 w-full items-center gap-2.5 rounded-control bg-input px-3 text-left text-body font-semibold text-foreground transition-[background-color,color,box-shadow] duration-150 hover:bg-input-hover focus-visible:outline-none focus-visible:shadow-focus aria-pressed:text-info-soft aria-pressed:inset-ring-2 aria-pressed:inset-ring-info disabled:pointer-events-none disabled:opacity-45'
 

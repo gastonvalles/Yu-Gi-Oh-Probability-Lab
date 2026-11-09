@@ -147,7 +147,7 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
               aria-label={lowered ? t('common.sheet.raise', { title: label }) : t('common.sheet.lower')}
               className={cx('group flex w-full items-center justify-center px-4 outline-none', asTab ? 'h-11' : 'h-7')}
             >
-              {/* El aro del foco va en la pastilla de adentro: el de todo el botón lo cortaría el borde de la hoja. Como un botón de ícono, se enciende en ámbar al apuntarla. */}
+              {/* El aro del foco va en la pastilla de adentro: el de todo el botón lo cortaría el borde de la hoja. Como un botón de ícono, se enciende en lima al apuntarla. */}
               <span className={cx('flex min-w-0 items-center gap-1.5 rounded-full px-3 text-foreground group-hover:text-info group-focus-visible:shadow-focus', asTab ? 'h-8' : 'h-5')}>
                 {asTab ? (
                   <>

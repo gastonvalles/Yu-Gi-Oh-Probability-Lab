@@ -13,7 +13,7 @@ interface SectionHeaderProps {
   /** Controles a la derecha (filtros, botones). */
   actions?: ReactNode
   /**
-   * Una acción corta a la derecha que se lee como enlace («Ver las 12», «Actualizar»): ámbar como todo hipervínculo (`textLink`), con la flecha si lleva a otra vista
+   * Una acción corta a la derecha que se lee como enlace («Ver las 12», «Actualizar»): lima como todo hipervínculo (`textLink`), con la flecha si lleva a otra vista
    * (`chevron`, por defecto sí). Toca en 44 px de alto sin agrandar el renglón: el margen negativo deja que ocupe el alto del título. Una por encabezado.
    */
   link?: { label: ReactNode; href?: string; onClick?: () => void; chevron?: boolean }

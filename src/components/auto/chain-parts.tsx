@@ -47,7 +47,7 @@ const voidedState = (state: ChainRowState) => state === 'negated' || state === '
  * El movimiento de la pila, una animación por cambio de estado de un eslabón (comparado por su número con el dibujo anterior): al montarse, una pila ya armada se ve como está, sin entrar. Todo de
  * compositor y corto (Web Animations, `cancelWhenDone`, nada con movimiento reducido): se leen todas las medidas primero y después se anima.
  * - Se suma un eslabón: entra arriba desde arriba (280 ms, `EASE_SNAP`) y los de abajo bajan su lugar (FLIP de `transform`, 280 ms, `EASE_OUT`).
- * - Resuelve: la fila hace un pop (320 ms) y su aro ámbar (una capa ya dibujada) se enciende con `opacity`; la marca de la izquierda viaja desde el que resolvió antes (300 ms, `EASE_IN_OUT`): se
+ * - Resuelve: la fila hace un pop (320 ms) y su aro lima (una capa ya dibujada) se enciende con `opacity`; la marca de la izquierda viaja desde el que resolvió antes (300 ms, `EASE_IN_OUT`): se
  *   lee que se resuelve de arriba hacia abajo.
  * - Resuelta: el tilde entra girando sobre el arte (260 ms), el arte se apaga (`opacity` 1 → 0,6) y el aro se va.
  * - Negada o sin efecto: la cruz cae como un sello (260 ms) y la fila se sacude (300 ms); el arte queda gris latiendo (`VOIDED_ART`, como en la mesa).
@@ -134,7 +134,7 @@ function useChainRowMotion(rows: readonly ChainNoticeRow[]) {
 /**
  * Las filas de la pila de la cadena, en el orden en que se resuelven (el último eslabón arriba): número en el color de su dueño, arte, nombre, de quién y un solo chip: su estado o, resuelta, lo que hizo si se
  * sabe (`outcome`: «Añade 1 carta»; el chip cambia con el mismo movimiento que al resolverse). Cada una es un botón de 44 px o más con su
- * nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»); el que se resuelve lleva el aro ámbar y la marca de la izquierda; el resuelto, un tilde sobre el arte apagado; el negado o sin efecto, una
+ * nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»); el que se resuelve lleva el aro lima y la marca de la izquierda; el resuelto, un tilde sobre el arte apagado; el negado o sin efecto, una
  * cruz sobre el arte gris y latiendo (sólo el negado tacha su nombre). Cada cambio se anima (`useChainRowMotion`). Sin `who`, el dueño sólo por el color de su número (la hoja del celular: nada dicho dos
  * veces). La usan la pila de escritorio (`ChainNotice`) y el detalle de la hoja del celular (`ChainSheet`).
  */
@@ -158,7 +158,7 @@ export function ChainListRows({ rows, onPick, who = true }: { rows: readonly Cha
           className={cx(listItem, 'relative flex min-h-11 w-full items-center gap-2.5 p-1.5 text-left focus-visible:outline-none focus-visible:shadow-focus')}
           onClick={(event) => onPick(rows.length - 1 - at, event.currentTarget.getBoundingClientRect())}
         >
-          {/* El aro ámbar y el velo ya dibujados: se anima su opacidad, nunca la sombra ni el fondo. */}
+          {/* El aro lima y el velo ya dibujados: se anima su opacidad, nunca la sombra ni el fondo. */}
           <span data-part="ring" aria-hidden="true" className={cx('pointer-events-none absolute inset-0 rounded-card bg-tint/10 inset-ring-2 inset-ring-info/80', solving ? 'opacity-100' : 'opacity-0')} />
           <span className={cx('w-9 shrink-0 rounded-tag border py-0.5 text-center text-micro font-bold tabular-nums text-white', color.border, color.bubble)}>{`CL${link.number}`}</span>
           <span className="relative block aspect-[421/614] w-8 shrink-0 overflow-hidden bg-input">

@@ -16,7 +16,7 @@ interface AppNavbarProps {
 }
 
 /**
- * La barra de arriba de escritorio, como la de YouTube: a la izquierda la hamburguesa (contrae y abre el menú lateral; se ilumina en ámbar) con la marca, en el centro el buscador de la app (una lupa y lo que
+ * La barra de arriba de escritorio, como la de YouTube: a la izquierda la hamburguesa (contrae y abre el menú lateral; se ilumina en lima) con la marca, en el centro el buscador de la app (una lupa y lo que
  * se puede buscar: pantallas, herramientas y cartas; también se abre con `/` y Ctrl/Cmd+K) y a la derecha las preferencias: las mascotas y el idioma, que ya no están en el menú lateral. Es del color del
  * menú lateral, así los dos forman un solo marco. No está en las pantallas a pantalla completa (la práctica y la mesa de un duelo): ahí manda la mesa.
  */
@@ -30,7 +30,7 @@ export function AppNavbar({ collapsed, onToggleCollapsed, onSearch, onMascots, c
           aria-expanded={!collapsed}
           aria-label={collapsed ? t('shell.nav.expand') : t('shell.nav.collapse')}
           title={collapsed ? t('shell.nav.expand') : t('shell.nav.collapse')}
-          // El ámbar es de la navegación: se ilumina así, como el destino abierto del menú.
+          // El lima es de la navegación: se ilumina así, como el destino abierto del menú.
           className="hover:text-nav-active! focus-visible:text-nav-active!"
           onClick={onToggleCollapsed}
         >

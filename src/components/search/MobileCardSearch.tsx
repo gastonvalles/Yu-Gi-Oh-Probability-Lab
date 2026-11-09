@@ -190,7 +190,7 @@ export function MobileCardSearch({
                 onClick={() => actions.onFilterChange(chip.updates)}
                 aria-label={t('search.chip.removeAria', { label: chip.label, value: chip.value })}
               >
-                {/* El chip es ámbar (un filtro puesto): el texto y la X van del oscuro del chip. */}
+                {/* El chip es lima (un filtro puesto): el texto y la X van del oscuro del chip. */}
                 <span className="truncate">
                   {chip.label}: {chip.value}
                 </span>
@@ -355,7 +355,7 @@ const MobileResultRow = memo(function MobileResultRow({
 
       <span className={cx('shrink-0 text-micro tabular-nums', isMaxed ? 'text-muted' : 'text-soft')}>{t('search.result.copies', { copies: copiesInDeck, limit: copyLimit })}</span>
 
-      {/* El «+» de cada fila (`rowAddButton`): oscuro con el ícono blanco, ámbar al apuntarlo o con el foco; recién agregada, verde. */}
+      {/* El «+» de cada fila (`rowAddButton`): oscuro con el ícono blanco, lima al apuntarlo o con el foco; recién agregada, verde. */}
       <button
         type="button"
         className={cx(

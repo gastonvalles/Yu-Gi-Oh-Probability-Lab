@@ -13,7 +13,7 @@ import { IconButton } from './IconButton'
  * - **Cómo:** CSS (`snap-x snap-mandatory`, cada tarjeta `snap-start` del 80 % del carril, hasta 20 rem): el deslizamiento lo hace el navegador. Los puntos siguen a la
  *   tarjeta que más se ve (`IntersectionObserver`) y cada uno lleva a la suya; en escritorio, flechas a los costados de los puntos y `←` / `→` con el foco adentro.
  *   Con `prefers-reduced-motion` salta sin deslizarse.
- * - **Estados:** la actual, una píldora ámbar (navegación); las demás, puntos `tint/30`; en las puntas, la flecha de ese lado se apaga. Con una sola tarjeta no hay puntos.
+ * - **Estados:** la actual, una píldora lima (navegación); las demás, puntos `tint/30`; en las puntas, la flecha de ese lado se apaga. Con una sola tarjeta no hay puntos.
  * - **Accesibilidad:** región con `aria-roledescription="carrusel"` y su `label`; cada tarjeta, `role="group"` con «2 de 4»; los puntos son botones con nombre
  *   («Ver la 2 de 4») y `aria-current`: no son el único medio (Tab entra a cada tarjeta y el navegador la trae).
  * - **Hacer:** hasta 5 o 6 tarjetas (Miller); con más, un «Ver las N» en el `SectionHeader`. **No hacer:** pasar solo (autoplay), escribir «deslizá», un carrusel dentro de una tarjeta.

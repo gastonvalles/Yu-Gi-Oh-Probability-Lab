@@ -10,7 +10,7 @@ interface KindToggleProps {
 }
 
 /**
- * Salida (si se cumple, la mano arranca) o problema (la frena). Es la excepción al ámbar de lo elegido: la elegida va llena de verde (salida) o de rojo (problema) con el
+ * Salida (si se cumple, la mano arranca) o problema (la frena). Es la excepción a la lima de lo elegido: la elegida va llena de verde (salida) o de rojo (problema) con el
  * texto blanco, el mismo color que la etiqueta de la regla (`KindBadge`).
  */
 export function KindToggle({ patternId, currentKind, actions }: KindToggleProps) {

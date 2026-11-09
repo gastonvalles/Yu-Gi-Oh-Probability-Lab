@@ -31,12 +31,12 @@ interface TabsProps<T extends string> {
 export const tabId = (panelId: string, value: string) => `${panelId}-tab-${value}`
 
 /**
- * La vista: lo que cambia la pantalla entera (otra lista, otra cosa que ver). Texto con un subrayado ámbar de 3 px, como la navegación, sin píldora: no se confunde con un
+ * La vista: lo que cambia la pantalla entera (otra lista, otra cosa que ver). Texto con un subrayado lima de 3 px, como la navegación, sin píldora: no se confunde con un
  * `Segmented` ni con una fila de filtros.
  *
  * - **Props:** `value`, `onChange`, `options` (`value`, `label`, `count?`, `icon?`, `disabled?`, `ariaLabel?`), `label`, `fullWidth?`, `panelId?`.
  * - **Variantes:** a su ancho (escritorio) o `fullWidth` (partes iguales, el celular). Si no entran, la fila se desliza de costado sin barra, como `ScrollRow`.
- * - **Estados:** normal · hover (tinte) · foco (`shadow-focus`) · elegida (texto y subrayado ámbar, rótulo en negrita) · apagada (`disabled`, tenue y sin hover).
+ * - **Estados:** normal · hover (tinte) · foco (`shadow-focus`) · elegida (texto y subrayado lima, rótulo en negrita) · apagada (`disabled`, tenue y sin hover).
  * - **Accesibilidad:** `tablist` con su nombre; cada `tab` con `aria-selected` y *roving tabindex* (sólo la elegida entra con Tab); ← → mueven y eligen (saltando las apagadas) e
  *   Inicio/Fin van a la primera y la última; `aria-controls` cuando hay `panelId`. 44 px de alto. La elegida no cambia de ancho: el rótulo reserva el de la negrita (regla 7).
  * - **Hacer:** una por pantalla, arriba de todo lo que aparece o desaparece al cambiar de pestaña. **No hacer:** usarla para un filtro (va `Segmented scroll` o `FilterChips`)

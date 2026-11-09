@@ -36,7 +36,7 @@ interface DesktopSearchPanelProps {
 
 const RESULTS_GRID = 'grid min-h-0 grid-cols-2 content-start gap-2 p-2'
 
-/** Tarjeta de resultado: la elegida (la de la vista previa: aro ámbar) y la que ya está al máximo cambian de aspecto. */
+/** Tarjeta de resultado: la elegida (la de la vista previa: aro lima) y la que ya está al máximo cambian de aspecto. */
 function resultCard({ selected, maxed, dragging }: { selected: boolean; maxed: boolean; dragging: boolean }): string {
   return cx(
     'group/card relative grid min-w-0 [contain-intrinsic-size:auto_6.9rem] [content-visibility:auto] cursor-pointer grid-cols-[4.2rem_minmax(0,1fr)] items-start gap-2.5 rounded-control p-2 transition-colors duration-150',
@@ -49,7 +49,7 @@ function resultCard({ selected, maxed, dragging }: { selected: boolean; maxed: b
 const ADD_REVEAL =
   'opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'
 
-/** El «+» de cada resultado (`rowAddButton`: oscuro con el ícono blanco, ámbar al apuntarlo); recién agregada, verde; al máximo, «MÁX» apagado. */
+/** El «+» de cada resultado (`rowAddButton`: oscuro con el ícono blanco, lima al apuntarlo); recién agregada, verde; al máximo, «MÁX» apagado. */
 function addButton(state: 'idle' | 'added' | 'maxed'): string {
   return cx(
     'absolute bottom-2 right-2 grid h-8 min-w-8 place-items-center rounded-full border px-2 font-bold leading-none transition-[opacity,transform,color,border-color,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92]',
@@ -171,7 +171,7 @@ export function DesktopSearchPanel({
                 onClick={() => actions.onFilterChange(chip.updates)}
                 title={t('search.chip.removeTitle', { label: chip.label.toLowerCase() })}
               >
-                {/* El chip es ámbar (un filtro puesto): el texto y la X van del oscuro del chip. */}
+                {/* El chip es lima (un filtro puesto): el texto y la X van del oscuro del chip. */}
                 <span className="truncate">
                   {chip.label}: {chip.value}
                 </span>

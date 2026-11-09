@@ -16,7 +16,7 @@ import { TONE, type Tone } from './tone'
  *   `icon` o `initials` (un círculo de 40 px teñido con el ícono o las letras en blanco; `tone` le da un tinte con significado, si no es el lila de siempre) o `media`
  *   (una carta, recta) · el final, uno solo: `end` (un `Button` secondary si la fila hace algo distinto de abrir, una `Badge`), `toggle` (la fila entera es el
  *   interruptor) o `value` + la flecha (que sale sola si la fila abre algo) · qué es: `href` (un enlace), `onClick` (un botón) o nada (una fila quieta) ·
- *   `selected` (`aria-current`, el aro ámbar de `listItemSelected`) · `disabled` · `wrap` (un registro: el título es una frase entera, en varios renglones y sin negrita, como
+ *   `selected` (`aria-current`, el aro lima de `listItemSelected`) · `disabled` · `wrap` (un registro: el título es una frase entera, en varios renglones y sin negrita, como
  *   «Qué hizo el bot y por qué») · `choice` (una opción de una elección única, adentro de un `role="radiogroup"`: la fila es un `radio` con `selected` de `aria-checked`, sin flecha
  *   —elegir no abre nada— y apagada con `aria-disabled`, enfocable y con el porqué en el apoyo; los rivales de Solo) · `below` (algo debajo de la fila, fuera de su botón —no se anida un
  *   botón en otro— y dentro del mismo aro de `selected`, alineado con el título: las cartas y «Elegir…» de Handtraps en Solo).

@@ -4,7 +4,7 @@ import { t } from '../../i18n'
 import { Badge } from '../ui/Badge'
 import type { Tone } from '../ui/tone'
 
-/** El color de cada rasgo es el mismo con que `CardEffectText` resalta esa parte del texto: ámbar el efecto rápido, rojo el costo, violeta el objetivo; los límites, sin color. */
+/** El color de cada rasgo es el mismo con que `CardEffectText` resalta esa parte del texto: naranja el efecto rápido, rojo el costo, violeta el objetivo; los límites, sin color. */
 const TRAITS: ReadonlyArray<{ fact: EffectFactName; tone: Tone }> = [
   { fact: 'quick', tone: 'warning' },
   { fact: 'hardOnce', tone: 'neutral' },
