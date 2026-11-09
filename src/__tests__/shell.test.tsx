@@ -222,6 +222,7 @@ describe('el menú lateral, como el de YouTube', () => {
       'https://www.instagram.com/gaston_valles/',
       'https://github.com/gastonvalles',
       '#novedades',
+      '#reportar',
       '/privacidad.html',
     ])
     expect(legal).toHaveTextContent(`© ${new Date().getFullYear()} Gastón Valles`)
@@ -254,6 +255,7 @@ describe('el cajón del menú del celular', () => {
       'https://www.instagram.com/gaston_valles/',
       'https://github.com/gastonvalles',
       '#novedades',
+      '#reportar',
       '/privacidad.html',
     ])
     // Sin destinos (no se los pasó): sólo los ajustes; con ellos, ver el armazón.

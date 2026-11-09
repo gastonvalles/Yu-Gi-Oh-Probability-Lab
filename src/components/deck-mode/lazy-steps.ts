@@ -22,6 +22,7 @@ const loaders = {
   banlists: () => import('../banlists/BanlistsScreen'),
   life: () => import('../life/LifeCalculatorScreen'),
   novedades: () => import('../novedades/NovedadesScreen'),
+  reportar: () => import('../reportar/ReportarScreen'),
 }
 
 /** Lo que se precarga de fondo, en este orden: primero los decks y replays del buscador de la app (se abre desde cualquier pantalla) y después los pasos. */
@@ -89,6 +90,7 @@ export const LazyExpansionsScreen = lazy(orReload(() => loaders.expansions().the
 export const LazyBanlistsScreen = lazy(orReload(() => loaders.banlists().then((m) => ({ default: m.BanlistsScreen }))))
 export const LazyLifeCalculatorScreen = lazy(orReload(() => loaders.life().then((m) => ({ default: m.LifeCalculatorScreen }))))
 export const LazyNovedadesScreen = lazy(orReload(() => loaders.novedades().then((m) => ({ default: m.NovedadesScreen }))))
+export const LazyReportarScreen = lazy(orReload(() => loaders.reportar().then((m) => ({ default: m.ReportarScreen }))))
 
 /**
  * De a una carga por vez, cada una en un momento ocioso y recién cuando terminó la anterior. Si una falla de fondo (p. ej. sin red) no pasa nada: se sigue

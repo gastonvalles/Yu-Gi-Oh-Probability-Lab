@@ -34,6 +34,11 @@ Un sitio sin cuentas ni base de datos: lo del usuario vive en su navegador y el 
 - **El relay** (`duel-relay/`): sólo los orígenes de `ALLOWED_ORIGINS`, códigos de sala al azar (8 símbolos, unos 40 bits),
   topes de tamaño y de ritmo, binarios prohibidos a los jugadores (los avisos del relay no se falsifican) y espectadores que no
   mandan nada; no registra mensajes, códigos ni direcciones. Los números, en `docs/duelo-relay.md`.
+- **El reporte de errores** (`api/bug.ts`, `bug-report.ts`): un issue **público** con lo escrito y el entorno marcado, sin
+  cuenta ni contacto. Sólo POST del propio sitio, listas cerradas, topes, honeypot, repetidos, 3 cada 10 min / 10 por día por
+  IP (IPv6 por /48) y 20 issues por hora en total (en memoria y por instancia: se resetea al reciclarse; la IP no se escribe). El
+  texto va en un bloque de código con una valla más larga que sus backticks (ni menciones, ni `#123`, ni HTML). Sin
+  `GITHUB_BUG_TOKEN`, 503; vencido o revocado, 502 `upstream`. No es para vulnerabilidades.
 - **La cadena de suministro:** las acciones de GitHub, fijadas por commit, con `persist-credentials: false` y el token sólo en
   el paso del `git push`; `.npmrc` con `ignore-scripts=true` y Dependabot semanal para npm y Actions.
 
@@ -42,8 +47,8 @@ Un sitio sin cuentas ni base de datos: lo del usuario vive en su navegador y el 
 1. **Verificación en dos pasos** (mejor con llaves de acceso) en GitHub, Vercel y Cloudflare: quien entra a una puede publicar
    código.
 2. **Cloudflare:** una regla de límite por IP sobre `/room/*` (WAF → Reglas de límite), para que nadie abra salas a montones.
-3. **Vercel:** una regla del Firewall que limite por IP `/api/card-image` (y «Attack Challenge» mientras dure un abuso), y
-   Deployment Protection para que las vistas previas no sean públicas.
+3. **Vercel:** una regla del Firewall que limite por IP `/api/card-image` y `/api/bug` (y «Attack Challenge» mientras dure un
+   abuso), Deployment Protection para las vistas previas y `GITHUB_BUG_TOKEN`: un token fino con Issues de este único repo.
 4. **GitHub:** en «Code security», el escaneo de secretos con protección de push y el aviso privado de vulnerabilidades.
 5. Revisar cada tanto las integraciones y los tokens de las tres cuentas y revocar lo que no se use.
 

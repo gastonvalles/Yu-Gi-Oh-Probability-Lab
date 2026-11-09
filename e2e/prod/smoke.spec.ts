@@ -138,6 +138,23 @@ test('Novedades lista las entradas, filtra por etiqueta y baja hasta una entrada
   await expect(page.locator('#novedad-2026-11-01-solo-y-bots')).toBeInViewport()
 })
 
+test('Reportar un problema abre y un envío vacío marca los errores sin mandar nada', async ({ page }) => {
+  // Nunca se manda un reporte real: el pedido queda cortado por si algo lo dispara, y se cuenta.
+  const posts: string[] = []
+  await page.route('**/api/bug', (route) => {
+    posts.push(route.request().method())
+    return route.abort()
+  })
+  await page.goto('/#reportar')
+  await expect(heading(page, 'Reportar un problema')).toBeVisible()
+
+  await page.locator('#reportar').getByRole('button', { name: 'Enviar el reporte' }).click()
+  const que = page.locator('#reportar').getByRole('textbox', { name: '¿Qué pasó?' })
+  await expect(que).toHaveAttribute('aria-invalid', 'true')
+  await expect(que).toBeFocused()
+  expect(posts).toEqual([])
+})
+
 test('Online abre el lobby (sólo GET /rooms, sin crear salas)', async ({ page }) => {
   const rooms = page.waitForResponse((response) => /\/rooms$/.test(new URL(response.url()).pathname))
   await page.goto('/#duel')
