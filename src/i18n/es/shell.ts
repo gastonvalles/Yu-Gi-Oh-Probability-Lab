@@ -73,6 +73,8 @@ export const shell = {
   'shell.settings.language': 'Idioma',
   'shell.nav.open': 'Abrir el menú',
   'shell.nav.close': 'Cerrar el menú',
+  'shell.nav.home': 'Inicio',
+  'shell.nav.toHome': 'Ir a Inicio',
   'shell.nav.collapse': 'Contraer menú',
   'shell.nav.expand': 'Expandir menú',
   'shell.nav.group.deck': 'Tu deck',

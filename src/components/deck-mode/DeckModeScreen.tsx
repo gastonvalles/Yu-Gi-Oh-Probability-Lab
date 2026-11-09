@@ -46,6 +46,7 @@ import {
   LazyDuelScreen,
   LazyExpansionsScreen,
   LazyExportDeckPanel,
+  LazyInicioScreen,
   LazyLifeCalculatorScreen,
   LazyNovedadesScreen,
   LazyPracticeSection,
@@ -380,6 +381,12 @@ export function DeckModeScreen() {
         isCategorizationStep ? 'h-full min-h-0' : isPracticeStep || isDuelStep || isLifeStep ? 'h-full min-h-0 grid-rows-[minmax(0,1fr)]' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)]',
       )}
     >
+      {activeStep === 'inicio' ? (
+        <div id="inicio" className="min-w-0 min-[1101px]:min-h-full">
+          <LazyInicioScreen />
+        </div>
+      ) : null}
+
       {activeStep === 'categorization' ? (
         <div id="categorization" className="h-full min-h-0 min-w-0">
           <LazyDeckRolesPanel {...controller.roles} onOpenLab={() => handleStepChange('probability-lab')} />

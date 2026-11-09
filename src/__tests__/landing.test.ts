@@ -28,7 +28,6 @@ describe('shouldShowLanding', () => {
     ['la app instalada: no', { standalone: true }, false],
     ['ya entró en esta sesión: no', { entered: true }, false],
     ['?landing=1 la fuerza aunque haya deck y hash', { search: '?landing=1', hash: '#duel', savedDeck: deck([{}]), entered: true, standalone: true }, true],
-    ['#inicio (el «Inicio» del menú) la muestra aunque haya deck y ya se haya entrado', { hash: '#inicio', savedDeck: deck([{}]), entered: true, standalone: true }, true],
   ])('%s', (_, input, expected) => {
     expect(shouldShowLanding({ ...base, ...input })).toBe(expected)
   })
@@ -75,6 +74,23 @@ describe('las cifras de la landing (scripts/write-build-id.mjs)', () => {
   it('una banlist anunciada que todavía no rige no es la vigente', () => {
     const banlists = { lists: [{ region: 'tcg', date: '2026-01-01' }, { region: 'tcg', date: '2026-12-01' }, { region: 'ocg', date: '2026-11-01' }] }
 
-    expect(landingStats({ metaDecks: { decks: [], windowDays: 56 }, banlists, prices: { updated: '2026-11-08' }, today: '2026-11-09' })).toEqual({ tcgDecks: 0, weeks: 8, banlist: '2026-01-01', prices: '2026-11-08' })
+    expect(landingStats({ metaDecks: { decks: [], windowDays: 56 }, banlists, prices: { updated: '2026-11-08' }, today: '2026-11-09' })).toEqual({ tcgDecks: 0, weeks: 8, banlist: '2026-01-01', prices: '2026-11-08', topCards: [] })
+  })
+
+  it('lo más jugado: en cuántos decks TCG está cada carta del Main (una vez por deck), las seis primeras', () => {
+    const decks = [
+      { region: 'tcg', main: [[1, 3], [2, 1]] },
+      { region: 'tcg', main: [[1, 2], [3, 3]] },
+      { region: 'ocg', main: [[3, 3], [4, 3]] },
+    ]
+    const stats = landingStats({ metaDecks: { decks, windowDays: 56, cards: { 1: { name: 'Uno' }, 2: { name: 'Dos' } } }, banlists: { lists: [] }, prices: { updated: '' } })
+
+    expect(stats.topCards).toEqual([{ id: 1, name: 'Uno', decks: 2 }, { id: 2, name: 'Dos', decks: 1 }, { id: 3, name: '3', decks: 1 }])
+
+    const real = landingStats({ metaDecks: META_DECKS, banlists: banlistsJson, prices: { updated: '' } }).topCards
+    const first = real[0]!
+
+    expect(real).toHaveLength(6)
+    expect(first.decks).toBe(META_DECKS.decks.filter((deck) => deck.region === 'tcg' && deck.main.some(([id]) => id === first.id)).length)
   })
 })

@@ -61,8 +61,16 @@ export function MiniGuide({ groups, activeKey, onSelect, searchAvailable = false
             icon={entry.icon}
             label={entry.label}
             active={entry.items.some((item) => item.key === activeKey)}
-            expanded={open?.key === entry.key}
+            // «Inicio» (`top`) tiene un solo destino: va a él, sin lista al costado.
+            expanded={entry.top ? undefined : open?.key === entry.key}
             onClick={(event) => {
+              if (entry.top) {
+                setOpen(null)
+                onSelect(entry.items[0]!.key)
+                return
+              }
+
+
               const top = event.currentTarget.getBoundingClientRect().top
 
               setOpen((current) => (current?.key === entry.key ? null : { key: entry.key, top }))

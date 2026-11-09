@@ -18,6 +18,8 @@ interface MobileTopBarProps {
   onMenu: () => void
   /** El nombre de la pantalla (lo que dice el menú: «Lab», «Replays»); sin él, la marca. */
   title?: string
+  /** Con él, la marca es un botón que lleva a «Inicio». */
+  onHome?: () => void
   /** Recibe el lugar de los botones de la pantalla (`TopBarToolsContext`); sólo hay lugar con título. */
   toolsRef?: (element: HTMLElement | null) => void
   className?: string
@@ -28,7 +30,7 @@ interface MobileTopBarProps {
  * acá sino en la barra de abajo, al alcance del pulgar (`MobileTabBar`). En escritorio no existe (lo reemplaza el menú lateral). El título se dice una sola vez: con él acá, el
  * encabezado de la pantalla lo guarda para el lector de pantalla (su `h1`) y pasa sus botones chicos a la derecha de esta barra.
  */
-export function MobileTopBar({ menuOpen, onMenu, title, toolsRef, className }: MobileTopBarProps) {
+export function MobileTopBar({ menuOpen, onMenu, title, onHome, toolsRef, className }: MobileTopBarProps) {
   return (
     <header className={cx('sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border-subtle bg-background pl-[calc(env(safe-area-inset-left,0px)+0.75rem)] pr-3 pt-[env(safe-area-inset-top,0px)]', className)}>
       <IconButton aria-label={t('shell.nav.open')} aria-haspopup="dialog" aria-expanded={menuOpen} onClick={onMenu}>
@@ -39,6 +41,10 @@ export function MobileTopBar({ menuOpen, onMenu, title, toolsRef, className }: M
           <span className="min-w-0 flex-1 truncate text-lead font-bold text-foreground">{title}</span>
           <div ref={toolsRef} className="flex shrink-0 items-center gap-1 empty:hidden" />
         </>
+      ) : onHome ? (
+        <button type="button" aria-label={t('shell.nav.toHome')} onClick={onHome} className="-mx-1 flex min-h-11 min-w-0 items-center rounded-control px-1 focus-visible:shadow-focus focus-visible:outline-none">
+          <AppBrand />
+        </button>
       ) : (
         <AppBrand />
       )}

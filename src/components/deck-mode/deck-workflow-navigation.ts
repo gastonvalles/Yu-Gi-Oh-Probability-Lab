@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'solo' | 'practice' | 'duel' | 'life' | 'meta' | 'tier-maker' | 'tournaments' | 'replays' | 'expansions' | 'banlists' | 'novedades' | 'reportar'
+export type DeckWorkflowStepKey = 'inicio' | 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'solo' | 'practice' | 'duel' | 'life' | 'meta' | 'tier-maker' | 'tournaments' | 'replays' | 'expansions' | 'banlists' | 'novedades' | 'reportar'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -36,6 +36,8 @@ interface DeckWorkflowNavigationSnapshot {
 }
 
 const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
+  // La portada de la app: adonde llega una visita nueva en `/` (`app/landing.ts`) y el primer destino del menú.
+  'inicio',
   'deck-builder',
   'categorization',
   'probability-lab',
@@ -242,7 +244,7 @@ interface AppNavTools {
 }
 
 /**
- * El menú de la app, en cuatro grupos, uno por lo que se viene a hacer: **Tu deck** (el recorrido del Lab: armarlo, clasificar sus cartas, medirlo, comparar builds y exportarlo), **Jugar** (Solo —tu combo
+ * El menú de la app: «Inicio» arriba y cuatro grupos, uno por lo que se viene a hacer: **Tu deck** (el recorrido del Lab: armarlo, clasificar sus cartas, medirlo, comparar builds y exportarlo), **Jugar** (Solo —tu combo
  * contra handtraps o un duelo contra un bot—, Online —sólo con relay— y la calculadora de LP), **Descubrir** (lo que gana en los torneos: tier lists, decks y replays) y **Cartas** (la referencia:
  * expansiones y banlists). Las mascotas no son un destino sino una preferencia: van abajo, con el idioma, y abren su panel.
  * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; Jugar, Descubrir y Cartas
@@ -258,8 +260,11 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
   const online: NavItem[] = tools.duel ? [{ key: 'duel', label: t('shell.online.title'), title: t('shell.online.title'), icon: 'link' as const, blurb: t('shell.blurb.online') }] : []
   const paused = tools.duel ? tools.paused ?? null : null
   const life: NavItem = { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const, blurb: t('shell.blurb.life') }
+  const home = t('shell.nav.home')
 
   return [
+    // «Inicio», arriba de todo y sin nombre de grupo (`top`): en el celular no ocupa un lugar de la barra de abajo.
+    { key: 'home', label: home, icon: 'home' as const, top: true, items: [{ key: 'inicio', label: home, title: home, icon: 'home' as const }] },
     // Exportar (la lista en PDF para un torneo, el YDK para un simulador) cierra el recorrido del deck: va en «Tu deck», después de Comparar.
     { key: 'deck', label: t('shell.nav.group.deck'), icon: 'cards' as const, sheet: 'status' as const, items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
     {

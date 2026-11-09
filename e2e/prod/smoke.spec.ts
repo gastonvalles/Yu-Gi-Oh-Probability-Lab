@@ -174,7 +174,7 @@ test('/playground responde', async ({ page }) => {
   await expect(heading(page, 'Playground')).toBeVisible({ timeout: 90_000 })
 })
 
-// La landing es sólo para una visita nueva en `/` (sin hash, sin deck guardado): un contexto limpio, sin el deck que siembra `beforeEach`.
+// A «Inicio» llega sola sólo una visita nueva en `/` (sin hash, sin deck guardado): un contexto limpio, sin el deck que siembra `beforeEach`.
 // Hereda del proyecto el User-Agent con el sufijo de QA, el viewport y el toque.
 async function freshVisitor(browser: Browser, baseURL: string, project: { use: Record<string, unknown> }) {
   const { userAgent, viewport, deviceScaleFactor, isMobile, hasTouch } = project.use as Pick<BrowserContextOptions, 'userAgent' | 'viewport' | 'deviceScaleFactor' | 'isMobile' | 'hasTouch'>
@@ -185,11 +185,14 @@ async function freshVisitor(browser: Browser, baseURL: string, project: { use: R
 
 const LANDING_TITLE = '¿Cuántas veces abrís tu carta?'
 
-test('la landing: una visita nueva la ve, cambia la cuenta al elegir 1 copia y «Medir mi deck» abre la app', async ({ browser, baseURL }, testInfo) => {
+test('«Inicio»: una visita nueva llega adentro de la app, cambia la cuenta al elegir 1 copia y «Medir mi deck» abre el armador', async ({ browser, baseURL }, testInfo) => {
   const context = await freshVisitor(browser, baseURL!, testInfo.project)
   const page = await context.newPage()
   await page.goto('/')
+  await expect(page).toHaveURL(/\/#inicio$/)
   await expect(heading(page, LANDING_TITLE)).toBeVisible()
+  // Ya adentro de la app: con el menú (o la barra de abajo) de siempre.
+  await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toBeVisible()
 
   // El anillo de la calculadora (role="meter"): con otra cantidad de copias cambia su valor.
   const ring = page.getByRole('meter').first()
@@ -200,14 +203,29 @@ test('la landing: una visita nueva la ve, cambia la cuenta al elegir 1 copia y �
   await page.getByRole('radio', { name: '1 copia', exact: true }).click()
   await expect.poll(read).not.toBe(before)
 
-  await page.getByRole('link', { name: 'Medir mi deck' }).or(page.getByRole('button', { name: 'Medir mi deck' })).first().click()
+  await page.getByRole('button', { name: 'Medir mi deck' }).click()
   await expect(page).toHaveURL(/#deck-builder$/)
   await expect(heading(page, 'Armá tu deck')).toBeVisible()
   await context.close()
 })
 
-test('la landing no sale con un hash ni con un deck guardado', async ({ page, browser, baseURL }, testInfo) => {
-  // Visita nueva pero con una pantalla por hash: abre la pantalla, no la landing.
+test('«Inicio» desde el menú vuelve, y ?landing=1 lleva ahí aunque haya deck', async ({ page }, testInfo) => {
+  // Con el deck sembrado, `/?landing=1` lleva a «Inicio» y se saca de la dirección.
+  await page.goto('/?landing=1')
+  await expect(page).toHaveURL(/\/#inicio$/)
+  await expect(heading(page, LANDING_TITLE)).toBeVisible()
+
+  // De otra pantalla, el «Inicio» del menú (en el celular, en el cajón de la hamburguesa) vuelve.
+  await page.goto('/#meta')
+  await expect(heading(page, LANDING_TITLE)).toHaveCount(0)
+  if (testInfo.project.use.isMobile) await page.getByRole('button', { name: 'Abrir el menú' }).click()
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click()
+  await expect(page).toHaveURL(/#inicio$/)
+  await expect(heading(page, LANDING_TITLE)).toBeVisible()
+})
+
+test('«Inicio» no sale solo con un hash ni con un deck guardado', async ({ page, browser, baseURL }, testInfo) => {
+  // Visita nueva pero con una pantalla por hash: abre la pantalla, no «Inicio».
   const context = await freshVisitor(browser, baseURL!, testInfo.project)
   const visitor = await context.newPage()
   const rooms = visitor.waitForResponse((response) => /\/rooms$/.test(new URL(response.url()).pathname))
@@ -217,7 +235,7 @@ test('la landing no sale con un hash ni con un deck guardado', async ({ page, br
   await expect(heading(visitor, LANDING_TITLE)).toHaveCount(0)
   await context.close()
 
-  // Con el deck sembrado (el `page` de siempre), `/` abre la app, no la landing.
+  // Con el deck sembrado (el `page` de siempre), `/` abre el paso de siempre, no «Inicio».
   await page.goto('/')
   await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toBeVisible()
   await expect(heading(page, LANDING_TITLE)).toHaveCount(0)

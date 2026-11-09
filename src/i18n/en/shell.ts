@@ -75,6 +75,8 @@ export const shell: Translated<typeof es> = {
   'shell.settings.language': 'Language',
   'shell.nav.open': 'Open the menu',
   'shell.nav.close': 'Close the menu',
+  'shell.nav.home': 'Home',
+  'shell.nav.toHome': 'Go to Home',
   'shell.nav.collapse': 'Collapse menu',
   'shell.nav.expand': 'Expand menu',
   'shell.nav.group.deck': 'Your deck',

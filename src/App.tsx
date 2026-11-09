@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useTransition } from 'react'
+import { lazy, Suspense, useState } from 'react'
 
 import { HOME_HASH, markEntered, readLandingInput, shouldShowLanding } from './app/landing'
 
@@ -8,16 +8,27 @@ const Playground = lazy(() => import('./components/playground/Playground'))
 /** El tablero del departamento de TI, sólo en `npm run dev`: en el build `import.meta.env.DEV` es `false`, el import se cae y `/ti` es una ruta más. */
 const TiDashboard = import.meta.env.DEV ? lazy(() => import('./components/ti/TiDashboard')) : null
 
-/** PROTOTIPO de TI-113 (propuesta B, «Inicio» adentro de la app), sólo en `npm run dev`: `/?landing=b`. */
-const InicioPrototype = import.meta.env.DEV ? lazy(() => import('./components/landing/InicioPrototype')) : null
-
-/** La app y la landing, cada una en su archivo: quien llega por primera vez baja sólo la landing (y la app, precargada cuando el navegador está libre). */
-const loadMainApp = () => import('./MainApp')
-const MainApp = lazy(loadMainApp)
-const Landing = lazy(() => import('./components/landing/Landing'))
+/** La app va en su propio archivo (`MainApp`): el arranque baja sólo esto y la pide al dibujarse. */
+const MainApp = lazy(() => import('./MainApp'))
 
 function isPlaygroundPath(): boolean {
   return typeof window !== 'undefined' && /^\/playground(\/|$)/.test(window.location.pathname)
+}
+
+/**
+ * Antes de montar la app: la visita nueva en `/` (`shouldShowLanding`) y `?landing=1` llegan a «Inicio» (`#inicio`), un paso más de la app. El hash se reemplaza sin sumar una
+ * entrada al historial, y la marca de la sesión queda puesta: en esta pestaña, `/` sin hash vuelve al paso de siempre.
+ */
+function routeToHome(): void {
+  if (shouldShowLanding(readLandingInput())) {
+    const url = new URL(window.location.href)
+
+    url.searchParams.delete('landing')
+    url.hash = HOME_HASH
+    window.history.replaceState(null, '', url)
+  }
+
+  markEntered()
 }
 
 export default function App() {
@@ -39,58 +50,16 @@ export default function App() {
     )
   }
 
-  if (InicioPrototype && new URLSearchParams(window.location.search).get('landing') === 'b') {
-    return (
-      <Suspense fallback={null}>
-        <MainApp>
-          <InicioPrototype />
-        </MainApp>
-      </Suspense>
-    )
-  }
-
   return <Home />
 }
 
-/**
- * `/`: la landing para quien llega por primera vez (`shouldShowLanding`) o la app. «Inicio» (`#inicio`) vuelve a la landing **encima** de la app, que queda montada y escondida:
- * no se recarga nada, así que un duelo en curso, la mesa o lo que no se guardó siguen ahí. Cualquier otro hash (un enlace de la landing, el botón Atrás) la saca.
- */
 function Home() {
-  const [landing, setLanding] = useState(() => shouldShowLanding(readLandingInput()))
-  // La app, una vez montada, no se desmonta más: la landing de «Inicio» la tapa.
-  const [appMounted, setAppMounted] = useState(!landing)
-  const [entering, startEntering] = useTransition()
-
-  useEffect(() => {
-    if (!landing) markEntered()
-  }, [landing])
-
-  useEffect(() => {
-    // En una transición: la landing queda a la vista hasta que la app llegó.
-    const onHash = () => {
-      if (window.location.hash === HOME_HASH) setLanding(true)
-      else if (window.location.hash.length > 1) {
-        startEntering(() => {
-          setAppMounted(true)
-          setLanding(false)
-        })
-      }
-    }
-
-    window.addEventListener('hashchange', onHash)
-
-    return () => window.removeEventListener('hashchange', onHash)
-  }, [])
+  // Una vez, antes que la app lea el hash (es perezosa: se dibuja después). Repetirla no cambia nada: el hash ya es `#inicio`.
+  useState(routeToHome)
 
   return (
     <Suspense fallback={null}>
-      {appMounted ? (
-        <div hidden={landing}>
-          <MainApp />
-        </div>
-      ) : null}
-      {landing ? <Landing entering={entering} onPrefetch={loadMainApp} /> : null}
+      <MainApp />
     </Suspense>
   )
 }

@@ -32,19 +32,21 @@ export function SidebarNav({ groups, activeKey, onSelect, className }: SidebarNa
   return (
     <nav aria-label={t('shell.nav.main')} className={cx('grid grid-cols-[minmax(0,1fr)] content-start gap-1', className)}>
       {groups.map((group, index) => (
-        <div key={group.key} role="group" aria-labelledby={`${id}-${group.key}`} className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
-          {/* El renglón del nombre del grupo mide lo mismo con el menú abierto o contraído (contraído, sólo queda la línea). */}
-          <p id={`${id}-${group.key}`} className={cx(NAV_OVERLINE, 'm-0 flex items-end px-3 pb-1', index === 0 ? 'h-6' : 'h-9')}>
-            <span className="flex h-4 w-full items-center">
-              <span className="min-w-0 max-w-40 overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-(--sidebar-duration) ease-(--sidebar-ease) group-data-[collapsed=true]/sidebar:max-w-0 group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none">
-                <span className="block pr-3">{group.label}</span>
+        <div key={group.key} role={group.top ? undefined : 'group'} aria-labelledby={group.top ? undefined : `${id}-${group.key}`} className={cx('grid grid-cols-[minmax(0,1fr)] gap-0.5', group.top && 'pt-2')}>
+          {/* El renglón del nombre del grupo mide lo mismo con el menú abierto o contraído (contraído, sólo queda la línea). «Inicio» (`top`) va sin él: su destino ya lo dice. */}
+          {group.top ? null : (
+            <p id={`${id}-${group.key}`} className={cx(NAV_OVERLINE, 'm-0 flex items-end px-3 pb-1', index === 0 ? 'h-6' : 'h-9')}>
+              <span className="flex h-4 w-full items-center">
+                <span className="min-w-0 max-w-40 overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-(--sidebar-duration) ease-(--sidebar-ease) group-data-[collapsed=true]/sidebar:max-w-0 group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none">
+                  <span className="block pr-3">{group.label}</span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className={cx('h-px min-w-3 flex-1 bg-nav-raised transition-opacity duration-150 motion-reduce:transition-none', index === 0 && 'group-data-[collapsed=true]/sidebar:opacity-0')}
+                />
               </span>
-              <span
-                aria-hidden="true"
-                className={cx('h-px min-w-3 flex-1 bg-nav-raised transition-opacity duration-150 motion-reduce:transition-none', index === 0 && 'group-data-[collapsed=true]/sidebar:opacity-0')}
-              />
-            </span>
-          </p>
+            </p>
+          )}
           {/* `minmax(0, 1fr)`: la columna no crece por lo que mide un rótulo (si no, contraído cada fila seguiría midiendo lo mismo que abierta). */}
           <ul className="m-0 grid list-none grid-cols-[minmax(0,1fr)] gap-0.5 p-0">
             {group.items.filter((item) => !item.hidden).map((item) => (

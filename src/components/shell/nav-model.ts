@@ -39,6 +39,11 @@ export interface NavGroup {
   sheetCards?: NavItem[]
   /** Un aviso arriba de la hoja con una acción (el duelo en pausa). */
   sheetNotice?: { title: string; text: string; actionLabel: string; actionKey: string }
+  /**
+   * El grupo de arriba de todo («Inicio»): sin nombre encima en el menú lateral ni en el cajón (su único destino ya lo dice), fuera de la barra de abajo del celular (ahí se llega
+   * tocando la marca de la barra de arriba) y, abierto, la barra de arriba lleva la marca en vez del nombre de la pantalla.
+   */
+  top?: boolean
 }
 
 /** El grupo que la barra de abajo del celular pone en el centro, en el círculo violeta: jugar es lo que más se viene a hacer desde el teléfono. */

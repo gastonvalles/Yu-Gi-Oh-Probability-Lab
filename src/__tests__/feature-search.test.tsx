@@ -72,7 +72,7 @@ describe('qué se puede buscar', () => {
     const entries = buildFindEntries(GROUPS, { cards: false })
 
     expect(filterFindEntries(entries, '   ')).toEqual(entries)
-    expect(entries[0]?.label).toBe('Deck')
+    expect(entries.slice(0, 2).map((entry) => entry.label)).toEqual(['Inicio', 'Deck'])
   })
 })
 
