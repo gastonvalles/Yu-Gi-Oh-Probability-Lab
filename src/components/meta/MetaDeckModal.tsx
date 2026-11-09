@@ -245,7 +245,7 @@ function MetaDeckDialog({ deck, onClose, onOpenDeck }: MetaDeckModalProps) {
               cover === null
                 ? undefined
                 : {
-                    backgroundImage: `linear-gradient(90deg, rgb(19 15 43 / 0.97) 40%, rgb(19 15 43 / 0.6)), url(${cardImageSrc(coverArtUrl(cover))})`,
+                    backgroundImage: `linear-gradient(90deg, rgb(var(--background-rgb) / 0.97) 40%, rgb(var(--background-rgb) / 0.6)), url(${cardImageSrc(coverArtUrl(cover))})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'right center',
                   }

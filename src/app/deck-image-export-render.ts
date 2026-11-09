@@ -10,15 +10,15 @@ import type { DeckFormat } from '../types'
 const ZONE_TITLES: Record<DeckZone, string> = { main: 'Main', extra: 'Extra', side: 'Side' }
 
 // Los mismos colores que el builder (src/index.css y deck-zone-styles.ts): la imagen es una captura de la pantalla.
-const ZONE_DOT: Record<DeckZone, string> = { main: '#8000cb', extra: '#c77dff', side: '#6a4b96' }
+const ZONE_DOT: Record<DeckZone, string> = { main: '#723bfa', extra: '#3b82f6', side: '#2ee08f' }
 const ZONE_TINT: Record<DeckZone, string> = {
-  main: 'rgba(128, 0, 203, 0.14)',
-  extra: 'rgba(199, 125, 255, 0.13)',
-  side: 'rgba(199, 125, 255, 0.09)',
+  main: 'rgba(114, 59, 250, 0.14)',
+  extra: 'rgba(59, 130, 246, 0.13)',
+  side: 'rgba(46, 224, 143, 0.09)',
 }
 const TYPE_SWATCH: Record<string, string> = {
-  monster: '#ff9142',
-  spell: '#00ffa3',
+  monster: '#ff9f1c',
+  spell: '#2ee08f',
   trap: 'rgb(236, 72, 153)',
   // Los colores del marco de la carta (los mismos que los puntos del builder, `ZONE_TYPE_SWATCH`).
   fusion: 'rgb(167, 110, 205)',
@@ -28,11 +28,11 @@ const TYPE_SWATCH: Record<string, string> = {
 }
 /** El punto negro de la Xyz lleva un borde claro: sobre el fondo oscuro, solo se pierde. */
 const OUTLINED_TYPES = new Set(['xyz'])
-const PAGE_BACKGROUND = '#150a24'
-const SURFACE_BASE = 'rgba(35, 18, 56, 0.6)'
+const PAGE_BACKGROUND = '#18181c'
+const SURFACE_BASE = 'rgba(32, 31, 39, 0.6)'
 const TEXT_MAIN = '#fdffff'
-const TEXT_MUTED = '#b4a2d4'
-const CARD_BACKGROUND = '#2b1745'
+const TEXT_MUTED = '#b6b3c6'
+const CARD_BACKGROUND = '#292733'
 const SURFACE_RADIUS = 16
 // 150px lógicos × 2 = 300px por carta: cerca del tamaño nativo de card_small (268px).
 const EXPORT_RESOLUTION_SCALE = 2
@@ -104,7 +104,7 @@ function drawCredit(context: CanvasRenderingContext2D, width: number, height: nu
   context.font = `500 12px ${FONT_STACK}`
   context.textAlign = 'right'
   context.textBaseline = 'alphabetic'
-  context.fillStyle = 'rgba(191, 187, 217, 0.55)'
+  context.fillStyle = 'rgba(182, 179, 198, 0.55)'
   // i18n-ignore: nombre propio, no se traduce
   context.fillText(`${host ? `${host} · ` : ''}© Gastón Valles`, width - PAGE_PADDING, height - 8)
   context.restore()

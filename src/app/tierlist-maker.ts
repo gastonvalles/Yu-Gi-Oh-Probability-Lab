@@ -40,8 +40,8 @@ function luminance(hex: string): number {
 }
 
 const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
-/** Los dos textos posibles de la etiqueta: el índigo del fondo (`accent-foreground`) y el claro de la app (`foreground`). */
-const DARK_TEXT = luminance('#150a24')
+/** Los dos textos posibles de la etiqueta: el carbón del fondo (`accent-foreground`) y el claro de la app (`foreground`). */
+const DARK_TEXT = luminance('#18181c')
 const LIGHT_TEXT = luminance('#fdffff')
 
 /** ¿La letra de una fila de este color se lee mejor clara? Sobre los pasteles va oscura (de 5,2:1 a 18:1); sobre el gris oscuro (1,7:1 con la oscura), clara (11:1). */

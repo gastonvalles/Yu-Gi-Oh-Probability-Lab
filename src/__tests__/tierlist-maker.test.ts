@@ -201,7 +201,7 @@ describe('los colores de las filas', () => {
 
   it('la letra de la fila se lee (AA, 4,5:1) sobre cada color: oscura sobre los pasteles y clara sólo sobre el gris oscuro', () => {
     for (const color of TIER_PALETTE) {
-      const ink = prefersLightText(color) ? '#fdffff' : '#150a24'
+      const ink = prefersLightText(color) ? '#fdffff' : '#18181c'
 
       expect(ratio(color, ink), color).toBeGreaterThanOrEqual(4.5)
     }
