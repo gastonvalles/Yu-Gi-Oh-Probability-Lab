@@ -71,6 +71,32 @@ describe('el arco se lee: 3:1 o más contra la tarjeta, el lienzo, la lente y la
   })
 })
 
+describe('los pares de texto de la paleta se leen (WCAG AA sobre los tokens de index.css)', () => {
+  it('el texto blanco sobre el violeta de marca (relleno) da 4,5:1 o más', () => {
+    expect(contrast(tokenRgb('primary-foreground'), tokenRgb('primary'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('el carbón sobre la lima (relleno) da 7:1 o más; el blanco sobre la lima no se lee', () => {
+    expect(contrast(tokenRgb('accent-foreground'), tokenRgb('info'))).toBeGreaterThanOrEqual(7)
+    expect(contrast(tokenRgb('primary-foreground'), tokenRgb('info'))).toBeLessThan(3)
+  })
+
+  it('el lila (`primary-soft`, el violeta como texto) se lee sobre la tarjeta y sobre el lienzo; el violeta de marca, no', () => {
+    expect(contrast(tokenRgb('primary-soft'), SURFACES.tarjeta)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(tokenRgb('primary-soft'), SURFACES.lienzo)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(tokenRgb('primary'), SURFACES.lienzo)).toBeLessThan(4.5)
+  })
+
+  it.each(['success-soft', 'warning-soft', 'danger-soft', 'info-soft'])('el texto %s se lee sobre la tarjeta', (token) => {
+    expect(contrast(tokenRgb(token), SURFACES.tarjeta)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('el texto blanco sobre el verde y el rojo llenos da 4,5:1 o más', () => {
+    expect(contrast(tokenRgb('primary-foreground'), tokenRgb('success-solid'))).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(tokenRgb('primary-foreground'), tokenRgb('danger'))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 describe('los cinco anillos', () => {
   it('medida con juicio, progreso y builds dicen su color con una regla', () => {
     expect(judgeTone(true)).toBe<Tone>('success')

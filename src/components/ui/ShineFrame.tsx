@@ -12,7 +12,7 @@ interface ShineFrameProps {
 }
 
 /**
- * El marco de la acción principal de una pantalla (la «Jugar ahora» de la portada, verde lleno): un hilo ámbar que le da la vuelta al botón y, de a ratos, un brillo blanco que lo barre. Es lo único que se
+ * El marco de la acción principal de una pantalla (la «Jugar ahora» de la portada, verde lleno): un hilo lima que le da la vuelta al botón y, de a ratos, un brillo blanco que lo barre. Es lo único que se
  * mueve de la portada, así que se distingue (Von Restorff); va en **un solo botón por pantalla**.
  *
  * - **Rendimiento:** las dos capas sólo mueven `transform`/`translate` (el hilo es un degradé cónico grande que gira, `animate-spin`; el brillo, una barra que cruza con `animate-shine`):

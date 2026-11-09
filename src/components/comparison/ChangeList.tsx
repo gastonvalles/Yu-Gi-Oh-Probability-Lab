@@ -19,7 +19,7 @@ import { deltaPoints, type Side } from './comparison-rows'
 /** Hasta acá se ven los cambios de una; los demás, a un toque (comparar con un deck muy distinto daría una lista de 40). */
 const SHOWN_CHANGES = MAX_MEASURED_CHANGES
 
-/** La carta de un lado del cambio, recta y con el marco de su build (A lila, B ámbar); sin carta, el lugar vacío. */
+/** La carta de un lado del cambio, recta y con el marco de su build (A lila, B lima); sin carta, el lugar vacío. */
 function ChangeThumb({ side, copies, build }: { side: MainChangeSide | null; copies: number; build: Side }) {
   if (!side) {
     return <span aria-hidden="true" className="block aspect-[421/614] w-9 shrink-0 border border-dashed border-border" />

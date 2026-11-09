@@ -541,7 +541,7 @@ interface PileViewerProps {
   info: (id: string) => MatCardInfo
   /** Cartas marcadas como objetivo: llevan la mira (como en la mano y en el campo). */
   targeted: ReadonlySet<string>
-  /** En un duelo, las que podés usar ahora (celeste) y las que se activan (ámbar), como en la mesa: `app/card-glow.ts`. */
+  /** En un duelo, las que podés usar ahora (celeste) y las que se activan (lima), como en la mesa: `app/card-glow.ts`. */
   glow?: (id: string) => DuelGlow | null
   onPick: (id: string, rect: DOMRect) => void
   /** Cada toque de una carta, también eligiendo varias: la mesa la muestra en el detalle fijo de la izquierda. */
@@ -568,7 +568,7 @@ export const PileStripContext = createContext(false)
 /**
  * Las cartas de una pila. El deck y el Extra se muestran en el orden de `ids` (el real: tope primero; al cerrar el
  * deck se baraja, como en la mesa real; el deck del duelo automático va por nombre: su orden no se sabe) y con buscador; cementerio y destierro, la más reciente primero.
- * Con `many`, el pie ofrece elegir varias: tocar elige o suelta (aro ámbar y número de orden), Mayús+clic elige el tramo,
+ * Con `many`, el pie ofrece elegir varias: tocar elige o suelta (aro lima y número de orden), Mayús+clic elige el tramo,
  * la principal le pasa las elegidas a quien abrió el visor y Escape sale del modo antes de cerrar el visor.
  * Es uno solo para todas las pilas y queda montado: al cerrarse sale (la inversa de su entrada) y cada vez que se abre arranca de cero.
  *

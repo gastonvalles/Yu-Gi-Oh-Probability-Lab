@@ -196,7 +196,7 @@ function CardPeekView({ name, card, back = false, highlight = null, now = null, 
                 <dt className={overline}>{stat.label}</dt>
                 <dd className="m-0 text-lead font-bold tabular-nums text-foreground">
                   {stat.value}
-                  {/* El número de ahora (el duelo automático), en el ámbar de lo que está pasando. */}
+                  {/* El número de ahora (el duelo automático), en la lima de lo que está pasando. */}
                   {stat.now ? <span className="text-body font-semibold text-info">{` · ${t('auto.dock.now', { value: stat.now })}`}</span> : null}
                 </dd>
               </div>

@@ -21,7 +21,7 @@ const ITEM = cx(
 
 /**
  * La lista de destinos del menú, agrupada: es lo que se ve en el menú lateral (escritorio) y en el cajón del celular, así que un cambio
- * acá cambia los dos. Los íconos son blancos, como los de todo botón sin texto, y se ponen ámbar al pasar el mouse; el destino abierto lleva fondo índigo claro, ícono relleno y texto ámbar (el ámbar es de la navegación). Cómo viene cada paso (listo, a medio hacer) va en el tooltip y en
+ * acá cambia los dos. Los íconos son blancos, como los de todo botón sin texto, y se ponen lima al pasar el mouse; el destino abierto lleva fondo índigo claro, ícono relleno y texto lima (la lima es de la navegación). Cómo viene cada paso (listo, a medio hacer) va en el tooltip y en
  * el nombre accesible, no en un punto de color: un punto suelto en el borde de un ícono se lee como una notificación.
  * Contraído (el menú lateral lo marca con `data-collapsed`), la misma lista se queda con los íconos: nada se vuelve a armar, los rótulos
  * sólo se desvanecen y el menú los recorta (ver `rail.ts`), así el cambio de ancho se anima sin que nada salte.

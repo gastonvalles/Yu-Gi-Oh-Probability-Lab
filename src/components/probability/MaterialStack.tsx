@@ -6,7 +6,7 @@ import { CARD_BACK } from './practice-styles'
 
 /**
  * Los materiales de un Xyz en el campo (Gastón, 2026-10-21, con la captura de otro simulador: «los xyz deben mostrar su materiales como en la imagen»): detrás de la carta, sus
- * materiales de dorso asomando por el costado izquierdo (`MaterialStack`) y, sobre la carta, la cantidad en grande dentro de un aro ámbar con un tramo por material
+ * materiales de dorso asomando por el costado izquierdo (`MaterialStack`) y, sobre la carta, la cantidad en grande dentro de un aro lima con un tramo por material
  * (`MaterialCount`). Ninguna pieza recibe toques (siguen yendo a la carta) ni lleva `data-card-id`: los vuelos de la mesa (`use-card-flights`) miden las cartas por esa marca.
  */
 
@@ -67,7 +67,7 @@ export function MaterialStack({ count, sideways, rival = false, className }: Mat
 }
 
 /**
- * La cantidad de materiales, en grande en el medio de la carta (es hija de la carta: viaja, se eleva y se atenúa con ella), dentro de un aro ámbar con un tramo por material sobre un
+ * La cantidad de materiales, en grande en el medio de la carta (es hija de la carta: viaja, se eleva y se atenúa con ella), dentro de un aro lima con un tramo por material sobre un
  * disco oscuro que la deja leer sobre cualquier arte. El aro mide una parte de la carta y el número crece con el aro (`@container`): se lee igual en la casilla de 48 px del celular
  * y en la de 15 rem del escritorio. Queda derecha siempre: en defensa gira al revés que la carta. El número rebota al cambiar.
  */

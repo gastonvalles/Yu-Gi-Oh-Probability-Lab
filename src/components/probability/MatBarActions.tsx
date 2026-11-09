@@ -62,7 +62,7 @@ export function useMatTableItems(): OverflowItem[] {
   ]
 }
 
-/** El ⋯ de la barra de la mesa (blanco de 44 px; ámbar al apuntarlo, al enfocarlo o abierto): «La mesa» y lo de cada una, en grupos. */
+/** El ⋯ de la barra de la mesa (blanco de 44 px; lima al apuntarlo, al enfocarlo o abierto): «La mesa» y lo de cada una, en grupos. */
 export function MatMoreMenu({ items, lead = [], defaultOpen = false }: { items: OverflowItem[]; /** Lo que va antes de «La mesa» («Pasos y combos»). */ lead?: OverflowItem[]; /** Abierto de entrada (la muestra del catálogo). */ defaultOpen?: boolean }) {
   return <OverflowMenu trigger="bar" label={t('practice.mat.more')} items={[...lead, ...useMatTableItems(), ...items]} defaultOpen={defaultOpen} />
 }
@@ -95,8 +95,8 @@ interface MatBarActionsProps {
  * que lleva lo demás en dos grupos: «La mesa» (la vista 3D, los sonidos y la ventana grande, con su interruptor) y «El duelo» (las handtraps del rival, «Nueva mano», «Guardar combo» y lo de cada mesa).
  * La flecha de salir va antes, en la barra de cada una (Gastón, 2026-10-26: «muchos íconos juntos»; antes eran siete a la vista).
  *
- * - Estados: blancos y en ámbar sólo al apuntarlos, al enfocarlos (el aro de siempre) o con el menú abierto; deshacer se apaga sin nada que deshacer y «Guardar combo» sin jugadas («sin jugadas»).
- *   Ningún ícono de la barra queda en ámbar por estar prendido: lo prendido se lee en su interruptor, adentro del ⋯.
+ * - Estados: blancos y en lima sólo al apuntarlos, al enfocarlos (el aro de siempre) o con el menú abierto; deshacer se apaga sin nada que deshacer y «Guardar combo» sin jugadas («sin jugadas»).
+ *   Ningún ícono de la barra queda en lima por estar prendido: lo prendido se lee en su interruptor, adentro del ⋯.
  * - Accesibilidad: cada uno con `aria-label` y `title`; el menú es `role="menu"` (los ajustes, `menuitemcheckbox`), ↑ ↓ lo recorren y Escape lo cierra.
  * - El estado es de toda la app (la vista, los sonidos, la ventana grande y las handtraps se recuerdan): las mesas lo comparten y acá no se guarda nada.
  * - Hacer: lo propio de una mesa va en `more` o después, en su barra. No hacer: sacar uno de estos al lado del ⋯ ni copiar uno en otra barra.

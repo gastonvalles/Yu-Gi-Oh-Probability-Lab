@@ -26,8 +26,8 @@ interface ChainSheetProps {
  * dato se dice una sola vez. **Cada eslabón que se suma la abre entera** (Gastón, 2026-11-02: «el desplegable debe estar maximizado al activar un eslabón»); bajarla es de la persona y nunca se baja sola,
  * salvo mientras se elige algo en la mesa o la mano (un costo, un objetivo): ahí cede el lugar y queda su asa, y al terminar vuelve como estaba. Lo que se decide (las preguntas de la mesa: responder,
  * «¿Activás el efecto?») va en su pie, siempre a la vista y debajo de la pila: una sola hoja, con una sola asa.
- * Cada chip lleva su número en el color de su dueño, su arte y el ícono de cómo va (`CHIP_ICON`, el mismo tono que el chip de la pila): en espera, un reloj; el que se resuelve, ▶ con el aro ámbar, y crece un
- * poco; el resuelto, un tilde; el negado, una cruz roja; el sin efecto, un «prohibido» ámbar (los dos últimos, con el eslabón que los negó). Un eslabón que se suma entra desde la derecha y dice «Nuevo» un momento; con más chips de los que entran, la cinta se desplaza y deja a la vista el del que se habla. Tocar un chip lo muestra para
+ * Cada chip lleva su número en el color de su dueño, su arte y el ícono de cómo va (`CHIP_ICON`, el mismo tono que el chip de la pila): en espera, un reloj; el que se resuelve, ▶ con el aro lima, y crece un
+ * poco; el resuelto, un tilde; el negado, una cruz roja; el sin efecto, un «prohibido» lima (los dos últimos, con el eslabón que los negó). Un eslabón que se suma entra desde la derecha y dice «Nuevo» un momento; con más chips de los que entran, la cinta se desplaza y deja a la vista el del que se habla. Tocar un chip lo muestra para
  * leerlo. Subida, el ⓘ de su cabeza abre «Cómo se resuelve» (`ChainLesson`). El texto de siempre («Cadena · 2 · Resuelve CL2 · Resolviendo») va para el lector de pantalla (`status`).
  */
 export function ChainSheet({ rows, focus, resolving, onPick }: ChainSheetProps) {

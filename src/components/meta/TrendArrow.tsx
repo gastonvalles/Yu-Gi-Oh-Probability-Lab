@@ -28,7 +28,7 @@ export function TrendArrow({ trend, size = 24, className }: TrendArrowProps) {
       className={cx('inline-grid shrink-0 place-items-center [&>*]:col-start-1 [&>*]:row-start-1', className)}
     >
       <Icon name={name} size={size} strokeWidth={8.5} className="text-black/90" />
-      <Icon name={name} size={size} strokeWidth={4.5} className={trend === 'up' ? 'text-success' : 'text-danger'} />
+      <Icon name={name} size={size} strokeWidth={4.5} className={trend === 'up' ? 'text-success' : 'text-danger-soft'} />
     </span>
   )
 }

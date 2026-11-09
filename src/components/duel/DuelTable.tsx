@@ -55,7 +55,7 @@ export interface DuelSideView {
   pickStats?: ReadonlyMap<string, PickStat>
   /** Las casillas de este lado que se pueden elegir ahora (el duelo automático: la casilla del rival donde va un Kaiju, las que se inutilizan): llevan las marcas de elegir de la mesa y se tocan. */
   zones?: { targets: readonly { zone: MatSpot; index: number }[]; onPick: (zone: MatSpot, index: number) => void }
-  /** Las cartas de este lado cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar, y la pila que tenga una adentro, también. */
+  /** Las cartas de este lado cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en lima, y la pila que tenga una adentro, también. */
   act?: ReadonlySet<string>
   /** Las cartas de este lado que están en la cadena a la vista, con sus eslabones: llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
   links?: ReadonlyMap<string, ChainBadgeData>
@@ -167,7 +167,7 @@ const THEIR_HAND_BACK_MOTION = '[transition:transform_var(--motion-duration)_var
 /**
  * La mano del rival: sólo se ve cuántas cartas tiene, de dorso, en abanico y encimadas como las nuestras (ascendente: el centro más alto y los extremos más cerca del campo). `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
  * como la mano reserva su alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos. Con `cards` (el rival de handtraps del duelo automático) va boca arriba, en el mismo lugar y del mismo tamaño.
- * Con `null` en un lugar de `cards`, esa carta sigue de dorso: las que son de conocimiento público (se mostraron, o vinieron a la mano de una zona a la vista: `public`) van boca arriba con un aro ámbar que late (el color del rival) y se abren al
+ * Con `null` en un lugar de `cards`, esa carta sigue de dorso: las que son de conocimiento público (se mostraron, o vinieron a la mano de una zona a la vista: `public`) van boca arriba con un aro naranja que late (el del aviso) y se abren al
  * tocarlas, y las demás no se ven ni por el lector de pantalla.
  */
 export function TheirHand({
@@ -299,7 +299,7 @@ function PhaseTag({ short, name, active }: { short: string; name: string; active
       aria-label={active ? t('duel.phase.current', { phase: name }) : name}
       className={cx(
         'grid aspect-square w-full min-w-0 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none min-[1101px]:text-micro',
-        // La de ahora, en ámbar como la caja de la fase en la mesa que se juega: el violeta lleno queda para la acción con texto.
+        // La de ahora, en lima como la caja de la fase en la mesa que se juega: el violeta lleno queda para la acción con texto.
         active ? 'border-info text-info' : 'border-tint/25 text-soft',
       )}
     >

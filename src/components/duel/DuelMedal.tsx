@@ -5,7 +5,7 @@ import { Icon, type IconName } from '../ui/Icon'
 
 /**
  * La medalla en 3D de los carteles del duelo (el turno que te toca, y ganar, perder o empatar): una moneda de metal con grosor (una pila de discos en
- * profundidad), aro y disco de adentro, que entra con su propia animación y, quieta, flota. El color del metal es el que dice qué pasó (ámbar si ganaste, rojo si
+ * profundidad), aro y disco de adentro, que entra con su propia animación y, quieta, flota. El color del metal es el que dice qué pasó (lima si ganaste, rojo si
  * perdiste, verde si vas primero, lavanda si vas segundo o empataron). Con `prefers-reduced-motion` se ve quieta, ya en su lugar.
  */
 export type MedalTone = 'win' | 'lose' | 'draw' | 'first' | 'second'

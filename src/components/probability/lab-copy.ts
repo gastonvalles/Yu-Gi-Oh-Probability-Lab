@@ -28,7 +28,7 @@ export const KPI_TONE_LABELS: Record<KpiTone, string> = {
   },
 }
 
-/** Color de cada nota: rojo → ámbar → verde (Sólido y Excelente, los dos verdes: el ámbar es de lo elegido y de lo que está a medio hacer). El color siempre dice lo mismo en toda la app. */
+/** Color de cada nota: rojo → naranja → verde (Sólido y Excelente, los dos verdes: la lima es de lo elegido y el naranja, de lo que está a medio hacer). El color siempre dice lo mismo en toda la app. */
 export const KPI_TONE: Record<KpiTone, Tone> = {
   excellent: 'success',
   good: 'success',

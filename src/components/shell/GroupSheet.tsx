@@ -49,7 +49,7 @@ function SheetRow({ item, status, active, onSelect }: { item: NavItem; status: b
 }
 
 /**
- * Una entrada de primer nivel en grande (Solo | Online, como el SOLO/ONLINE de Master Duel): el ícono en un círculo violeta, el nombre y su línea. La abierta, con el borde ámbar.
+ * Una entrada de primer nivel en grande (Solo | Online, como el SOLO/ONLINE de Master Duel): el ícono en un círculo violeta, el nombre y su línea. La abierta, con el borde lima.
  * Dos por fila: van juntas, arriba de las filas de la hoja (`sheetCards`).
  */
 function SheetCard({ item, active, onSelect }: { item: NavItem; active: boolean; onSelect: (key: string) => void }) {
@@ -80,7 +80,7 @@ function SheetCard({ item, active, onSelect }: { item: NavItem; active: boolean;
  * el mismo índigo y sin la línea que las separaba, sin velo ni sombra (lo de arriba se ve igual; tocarlo cierra la hoja). La barra queda a la vista y a mano: tocar otro grupo
  * cambia de hoja y tocar el mismo la cierra. La hoja mide lo que mide su contenido (cada grupo es un submenú con sus propias filas) y, si no entra, se desplaza. Los pasos del deck llevan su ícono y su estado a la derecha; el duelo, las herramientas y
  * Descubrir, el nombre con una línea que explica y, en Jugar, Solo y Online en dos tarjetas grandes arriba (`SheetCard`) y el aviso de una sala en pausa para volver a ella. Elegir una abre su pantalla y cierra la hoja
- * (también el velo y Escape). El destino abierto va en ámbar, como en el menú lateral.
+ * (también el velo y Escape). El destino abierto va en lima, como en el menú lateral.
  */
 export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)

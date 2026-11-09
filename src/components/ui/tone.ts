@@ -88,19 +88,19 @@ export const RING_ARC: Record<Tone, string> = {
 
 /*
  * Los cinco anillos de la app (un anillo dice una sola cosa y el número del centro es lo que dibuja el arco):
- * 1. Reparto (`SegmentedRing`): un total en tramos, verde / ámbar / rojo claro desde las 12; el centro es el tramo protagonista.
+ * 1. Reparto (`SegmentedRing`): un total en tramos, verde / naranja / rojo claro desde las 12; el centro es el tramo protagonista.
  * 2. Medida con juicio: `judgeTone` (verde si más es mejor, rojo claro si más es peor).
  * 3. Identidad: el color del rol (`color` de `ProgressRing`), sin juzgar: un 0 de Bricks no es malo.
- * 4. Progreso de una tarea: `progressTone` (ámbar a medio hacer, verde listo), con «9 de 17» al centro.
- * 5. Las dos builds de Comparar: `BUILD_TONE` (A lila, B ámbar); quién gana lo dice el borde de su tarjeta, no el anillo.
+ * 4. Progreso de una tarea: `progressTone` (naranja a medio hacer, verde listo), con «9 de 17» al centro.
+ * 5. Las dos builds de Comparar: `BUILD_TONE` (A lila, B lima); quién gana lo dice el borde de su tarjeta, no el anillo.
  * Y «sin medir» (`ProgressRing unmeasured`): la pista punteada y «?».
  */
 
 /** Medida con juicio: verde si más es mejor (una salida, las manos buenas), rojo claro si más es peor (un problema). */
 export const judgeTone = (higherIsBetter: boolean): Tone => (higherIsBetter ? 'success' : 'danger')
 
-/** Progreso de una tarea (clasificar, importar): ámbar mientras falta, verde cuando está lista. */
+/** Progreso de una tarea (clasificar, importar): naranja mientras falta, verde cuando está lista. */
 export const progressTone = (done: number, total: number): Tone => (total > 0 && done >= total ? 'success' : 'warning')
 
-/** Las builds de Comparar: A es lo tuyo (lila) y B la otra (ámbar), en todos sus anillos. */
+/** Las builds de Comparar: A es lo tuyo (lila) y B la otra (lima), en todos sus anillos. */
 export const BUILD_TONE = { A: 'brand', B: 'info' } as const satisfies Record<'A' | 'B', Tone>

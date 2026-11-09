@@ -155,7 +155,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
         const to: Place = { kind: 'tier', id: tier.id }
 
         return (
-          // La fila que se arrastra va por encima de las demás (con el fondo de la página, para que no se vea lo de abajo por la columna del agarre) y con el aro ámbar de toda la fila.
+          // La fila que se arrastra va por encima de las demás (con el fondo de la página, para que no se vea lo de abajo por la columna del agarre) y con el aro lima de toda la fila.
           <div key={tier.id} data-tier-row={tier.id} data-tier-drop={tier.id} className={cx(rowDrag.draggingId === tier.id && 'relative z-10 bg-background shadow-focus')}>
             <TierStrip
               label={tier.label}
@@ -177,7 +177,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
                     aria-label={t('meta.maker.tierMove', { label: tier.label })}
                     aria-describedby={hintId}
                     title={t('meta.maker.tierMoveHint')}
-                    // Mientras se arrastra queda ámbar (`data-active`), como un ícono elegido.
+                    // Mientras se arrastra queda lima (`data-active`), como un ícono elegido.
                     data-active={rowDrag.draggingId === tier.id ? 'true' : undefined}
                     className={cx('touch-none focus-visible:text-info', rowDrag.draggingId === tier.id ? 'cursor-grabbing' : 'cursor-grab')}
                     {...rowDrag.gripProps(tier.id, index)}

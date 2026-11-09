@@ -12,7 +12,7 @@ import { CARD_BACK } from './practice-styles'
 /**
  * El tablero chico de un paso (Gastón, 2026-10-20, con la lista de otro simulador: «nuestras replays y movimientos no se ven así»): la mesa como quedó después de la jugada,
  * con las mismas áreas que la de verdad (siete columnas: la zona de campo y el Extra Deck a la izquierda; el destierro, el cementerio y el deck a la derecha; las Zonas Extra arriba),
- * lo que cambió enmarcado en ámbar (el color de lo que se toca, el del paso actual del reproductor) y, debajo, la mano. Las cartas boca abajo se ven atenuadas, como en la mesa
+ * lo que cambió enmarcado en lima (el color de lo que se toca, el del paso actual del reproductor) y, debajo, la mano. Las cartas boca abajo se ven atenuadas, como en la mesa
  * (son tuyas); el deck, el Extra y lo desterrado boca abajo, de dorso. Encima, las flechas blancas de lo que se movió (`arrows`; ver `Arrows`, al final).
  *
  * Es sólo un dibujo (`aria-hidden`: la frase del paso ya lo dice) y no recibe toques: en la lista, el paso entero es el botón. `content-visibility: auto`: en un combo de 70 pasos
@@ -21,7 +21,7 @@ import { CARD_BACK } from './practice-styles'
 
 interface MatSnapshotProps {
   state: MatState
-  /** Lo que cambió con la jugada (las casillas, las pilas y las cartas que llegaron a la mano): se enmarca en ámbar. Sin esto, nada. */
+  /** Lo que cambió con la jugada (las casillas, las pilas y las cartas que llegaron a la mano): se enmarca en lima. Sin esto, nada. */
   change?: BoardChange
   /** De dónde a dónde fue cada carta (`matArrows`): una flecha blanca por camino. Sin esto, ninguna. */
   arrows?: readonly MatArrow[]
@@ -29,7 +29,7 @@ interface MatSnapshotProps {
   className?: string
 }
 
-/** Una casilla: la línea blanca tenue del campo sobre un fondo más hundido que la tarjeta; la que cambió, con el marco ámbar (sólo el marco: un relleno ámbar sobre el índigo se ve marrón). */
+/** Una casilla: la línea blanca tenue del campo sobre un fondo más hundido que la tarjeta; la que cambió, con el marco lima (sólo el marco: un relleno lima sobre el carbón se ve sucio). */
 const CELL = 'relative min-w-0 border bg-background/60'
 const LOOK = 'border-field-line/15'
 const CHANGED = 'border-info'
@@ -63,7 +63,7 @@ export const MatSnapshot = memo(function MatSnapshot({ state, change, arrows, ar
 
       <div className="flex min-w-0 items-center gap-2">
         <span className={cx('shrink-0 text-micro font-semibold tabular-nums', pileChanged('hand') ? 'text-info-soft' : 'text-soft')}>{t('practice.snapshot.hand', { count: state.hand.length })}</span>
-        {/* Encimadas como la mano de la mesa; la que acaba de llegar, con el marco ámbar y por delante. */}
+        {/* Encimadas como la mano de la mesa; la que acaba de llegar, con el marco lima y por delante. */}
         <span className="flex min-w-0 overflow-hidden py-px pl-px">
           {state.hand.map((id, index) => (
             <span key={id} className={cx('relative aspect-[421/614] h-7 shrink-0 overflow-hidden shadow-[0_0_0_1px_rgb(var(--background-rgb)/0.9)]', index > 0 && '-ml-2', change?.toHand.has(id) && 'z-1 outline-1 outline-info')}>

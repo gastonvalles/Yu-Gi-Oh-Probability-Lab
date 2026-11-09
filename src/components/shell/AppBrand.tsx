@@ -2,7 +2,7 @@ import { cx } from '../ui/cx'
 import { RAIL_LABEL } from './rail'
 
 /**
- * La marca de la app: el anillo con una carta y el nombre, YGO·Ultra·Lab (Ultra en ámbar). En el menú lateral contraído el nombre se desvanece
+ * La marca de la app: el anillo con una carta y el nombre, YGO·Ultra·Lab (Ultra en lima). En el menú lateral contraído el nombre se desvanece
  * y el menú lo recorta (no se quita: así el logo no se mueve y el ancho se anima sin saltos).
  */
 export function AppBrand({ className }: { className?: string }) {

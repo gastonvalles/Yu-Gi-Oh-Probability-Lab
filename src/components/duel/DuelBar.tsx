@@ -76,7 +76,7 @@ const RoundClock = memo(function RoundClock({ timer, limitMin, onToggle }: { tim
       type="button"
       aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
       title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-      // La caja de la mesa (la de `IconButton tone="tile"`): ámbar al apuntarlo, como todo lo que se toca del duelo.
+      // La caja de la mesa (la de `IconButton tone="tile"`): lima al apuntarlo, como todo lo que se toca del duelo.
       className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border bg-card-background px-2.5 text-body font-bold transition-colors hover:text-info focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:text-micro min-[1101px]:text-lead max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
       onClick={onToggle}
     >
@@ -151,7 +151,7 @@ export type LaneNotice =
   | { kind: 'passHeld' }
   /** El rival activó una carta o un efecto y estas cartas mías podrían responder (`app/mat-responders.ts`: avisa, no decide). */
   | { kind: 'chain'; card: string; /** El lugar del efecto que activó, si eligió uno entre varios. */ effect?: number; names: readonly string[] }
-  /** Un aviso ya armado (el duelo automático: la cadena, «No responder»): con botones se contesta y va enmarcado en ámbar; sin botones sólo informa. La principal va al final. */
+  /** Un aviso ya armado (el duelo automático: la cadena, «No responder»): con botones se contesta y va enmarcado en lima; sin botones sólo informa. La principal va al final. */
   | { kind: 'ask'; text: string; actions: ReadonlyArray<{ label: string; onSelect: () => void; primary?: boolean; /** Una salida que se ve pero no compite con la principal de otra barra («Volver al duelo» del repaso, con el ⏯ abajo): lavanda. */ secondary?: boolean }> }
   /** El otro lado está trabajando (el núcleo resuelve, el rival elige): el punto que late y, pasados `THINKING_CANCEL_MS`, «Cancelar» si se puede. */
   | { kind: 'thinking'; /** Lo que dice, si no es «El núcleo está resolviendo…». */ text?: string; onCancel?: () => void; /** Lo que dice el botón, si no es «Cancelar» («Cancelar pedido»). */ cancelLabel?: string }
@@ -245,7 +245,7 @@ export function LaneBanner({ lane, rivalName, rail = false, detail }: { lane: La
     )
   }
 
-  // Lo que hay que contestar va enmarcado en ámbar.
+  // Lo que hay que contestar va enmarcado en lima.
   const asked = lane.kind === 'undoAsked' || (lane.kind === 'ask' && lane.actions.length > 0)
 
   return (
@@ -621,7 +621,7 @@ export function RivalLife({ snapshot, onOpen, signal = null, signalKey, size = '
  * Las vidas de un jugador, una placa (Gastón, 2026-10-26: «la vida de ambos jugadores junta y con estética plana»; el anillo se probó en 2026-10-19 y no le gustó): la chapa del dueño rellena y honda con el
  * texto blanco (violeta la tuya y la del rival, con su aro), las cartas de la mano a su lado (`hand`, «▯ 5»), el número blanco y grande que cuenta hasta el valor nuevo (se tiñe de verde o de rojo un instante al
  * subir o bajar; en 0, rojo) con la diferencia («−1000») al lado, y debajo la **barra de 8000** en el color del dueño (en rojo con un cuarto o menos): la excepción escrita a «los porcentajes son anillos», sólo
- * para las vidas (`role="meter"`). En escritorio, además, el **corazón** que cambia de color con la salud (verde con más de la mitad, ámbar hasta un cuarto, rojo debajo) y late al cambiar. Flota sobre la mesa
+ * para las vidas (`role="meter"`). En escritorio, además, el **corazón** que cambia de color con la salud (verde con más de la mitad, naranja hasta un cuarto, rojo debajo) y late al cambiar. Flota sobre la mesa
  * (`life-plate`: relieve tonal, la mesa es la excepción a «sin brillos»). Al bajar se sacude como en el impacto. Tocarla abre la calculadora (`onClick`).
  * - Tamaños: en escritorio, el número a 33 px, con el corazón y 72 px de alto (`compact`: 56, sin corazón y del ancho justo, para no tapar la mano del rival en una mesa angosta); en el
  *   celular, 56 px, el número a 24 y sin corazón (`compact` debajo de 380 px: a 19 y 64 de mínimo, para que la del rival no roce su último dorso a 360). Miden lo que medían las de antes: nada se corre.
@@ -679,7 +679,7 @@ export function LifeTile({ name, label, life: real, mine = false, color, bubble 
         </span>
         <span className="flex min-w-0 items-baseline justify-between gap-1.5">
           {/* A 33 px el renglón recorta 2 px arriba y abajo (los números no tienen ni rasgos que suban ni que bajen): entra en 56 px con la chapa y la barra. */}
-          <span ref={number} className={cx('min-w-0 truncate text-title font-extrabold leading-none tabular-nums transition-colors duration-200 min-[1101px]:-my-0.5 min-[1101px]:text-stat', compact && 'max-[379px]:text-lead', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>{shown}</span>
+          <span ref={number} className={cx('min-w-0 truncate text-title font-extrabold leading-none tabular-nums transition-colors duration-200 min-[1101px]:-my-0.5 min-[1101px]:text-stat', compact && 'max-[379px]:text-lead', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger-soft' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>{shown}</span>
           {change ? (
             <span key={change.key} aria-hidden="true" style={{ animationDuration: `${DELTA_MS}ms` }} className={cx('shrink-0 animate-linger text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
               {change.delta < 0 ? '−' : '+'}
