@@ -45,6 +45,38 @@ de revertir, revisión de seguridad) se le propone a Gastón con la razón en un
   en el tablero y no en el chat, que se compacta.
 - **El reporte a Gastón** dice hecho, en curso y bloqueado, con a lo sumo 3 decisiones pendientes.
 
+## Pruebas: una capa antes de mergear y QA en producción
+
+- **Capa única, `npm run gate`** (`scripts/ti/gate.mjs`): la corre `ti-release` **una vez** por PR sobre el último commit. Los
+  archivos salen de `origin/main...HEAD` más lo sin commitear. En orden y cortando en el primer rojo: `typecheck`, `eslint` (sólo
+  lo cambiado), `vitest related` más las guardas baratas (docs, tailwind-only, licencia, site-meta, vercel-headers e i18n;
+  `playground`, `src/index.css` y el relay sólo si cambió su zona) y el `build` sin el `tsc` que el typecheck ya cubre. Meta: ≤ 2 min.
+  Uno solo a la vez en toda la PC (`.claude/ti/gate.lock`, con cola de hasta 15 min). `--dry` muestra el plan; `GATE_BASE` cambia
+  la base del diff.
+- **Node:** vitest pide ≥ 22.22 (con 22.14 cae `i18n.test.tsx`). Si el de la PC es más viejo, el gate usa el de
+  `.claude/ti/config.json` (`{"node": "<ruta a node>"}`, local: el repo es público).
+- **Mientras se itera,** sólo el test del archivo que se toca. La suite completa corre en `ci.yml`; `test:auto` sigue aparte.
+- **QA en producción** (`npm run test:prod`, `playwright.prod.config.ts`, `e2e/prod/`): smoke de sólo lectura contra el sitio
+  publicado, en celular (390×844, con toque) y en escritorio (1440×900), con User-Agent `YGOUltraLab-QA`. Cubre la portada sin
+  errores de consola ni respuestas ≥ 400 propias, el armador con un deck sembrado, el Lab («de cada 100»), Solo, Tier lists,
+  Banlists, el lobby de Online (sólo `GET /rooms`) y `/playground`. El catálogo de YGOPRODeck se responde vacío: no se le pega en
+  cada corrida. **Nunca** crea salas ni envía formularios; las salas (privadas, con código al azar y cerradas al final) sólo van en
+  una corrida nocturna aparte.
+- **Después de cada deploy:** `EXPECT_SHA=<commit> npm run test:prod` espera hasta 10 min a que `/build.json` (lo escribe cada
+  build) sirva el commit mergeado. Una repetición por caso; si sigue rojo, card Expedite con traza y captura (`test-results/`) y,
+  si falla lo crítico (portada, armador, Lab, Solo) dos veces seguidas, **el Jefe revierte el último merge** con una PR y le avisa
+  a Gastón. `npm run test:e2e` (el duelo con relay y Vite locales) es otra cosa y no cambia.
+
+## Dashboard
+
+`/ti` existe sólo en `npm run dev` (nunca en el build) y es de sólo lectura. Los hooks de `SubagentStart`, `SubagentStop`,
+`PreToolUse` y `PostToolUse` llaman a `tools/ti/log-event.mjs`, que agrega líneas a `.claude/ti/events.jsonl` (el contrato:
+`.claude/ti/contrato-eventos.md`; nunca guarda contenido y tapa los secretos); `/api/ti/state` las reduce con las cards y la
+pantalla pregunta cada segundo: meta del sprint, Pendiente de Gastón, cola del gate, último QA, una tarjeta por agente y el
+tablero con su WIP. `TI_DIR` mueve la carpeta para simular. **En otra PC:** copiar a `.claude/settings.local.json`, dentro de
+`hooks`, cada uno de esos cuatro eventos con
+`[{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/tools/ti/log-event.mjs\"", "timeout": 5 }] }]`.
+
 ## Reglas de todos los agentes
 
 - La card es el brief: leela entera. Si te hace falta tocar un archivo que no declara, frená y avisá.
