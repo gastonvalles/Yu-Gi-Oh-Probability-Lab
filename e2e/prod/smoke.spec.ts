@@ -180,7 +180,7 @@ test('la landing: una visita nueva la ve, cambia la cuenta al elegir 1 copia y Â
   const read = () => ring.evaluate((el) => `${el.getAttribute('aria-valuenow') ?? ''}|${el.textContent ?? ''}`)
   const before = await read()
   expect(before).toContain('de cada 100')
-  await page.getByRole('button', { name: '1', exact: true }).or(page.getByRole('radio', { name: '1', exact: true })).first().click()
+  await page.getByRole('radio', { name: '1 copia', exact: true }).click()
   await expect.poll(read).not.toBe(before)
 
   await page.getByRole('link', { name: 'Medir mi deck' }).or(page.getByRole('button', { name: 'Medir mi deck' })).first().click()
