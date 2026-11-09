@@ -235,9 +235,9 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
 
   // Los dos LP lado a lado; en el medio, reiniciar y deshacer, como en Neuron. Se toca un duelista para elegir a quién va la operación.
   const lifePanels = (
-    <div className={cx('grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-1.5 [grid-area:lp]', landscape ? 'items-stretch gap-3' : 'items-center')}>
+    <div className={cx('grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-1.5 [grid-area:lp]', landscape ? 'items-stretch gap-3' : 'items-center @xl/life:grid-cols-1 @xl/life:grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] @xl/life:gap-3')}>
       <DuelistPanel position={0} big={landscape} name={nameOf(order[0])} lp={state.lp[order[0]]} selected={selected === order[0]} disabled={!editable(order[0])} onSelect={() => select(order[0])} />
-      <div className={cx('grid justify-items-center', landscape ? 'content-center gap-4' : 'gap-1')}>
+      <div className={cx('grid justify-items-center', landscape ? 'content-center gap-4' : 'gap-1 @xl/life:grid-flow-col @xl/life:gap-8')}>
         {duel ? null : (
           <>
             <MiddleAction icon="refresh" big={landscape} label={t('shell.life.reset')} onClick={() => setConfirmReset(true)} />
@@ -331,7 +331,7 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
           ? // El marcador: el reloj arriba, las vidas en todo lo que queda y la fila de botones abajo; sin barra de abajo de la app, deja él el margen seguro de abajo y de los costados (la muesca).
             "grid h-full min-h-0 gap-2 overflow-hidden bg-background pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pl-[max(0.75rem,env(safe-area-inset-left,0px))] pr-[max(0.75rem,env(safe-area-inset-right,0px))] [grid-template-areas:'head'_'lp'_'bar'] [grid-template-rows:auto_minmax(0,1fr)_auto]"
           : // Entra entera en el alto que le da el armazón, sin scroll: el teclado y el «=» (una fila más de teclas) se reparten lo que dejan el reloj, las vidas y el número que se escribe. Si ni con teclas de 40 px entra (320 × 568), scrollea en vez de pisarse.
-            "@container grid h-full min-h-0 gap-2 overflow-y-auto overflow-x-hidden bg-background px-3 [grid-template-areas:'head'_'lp'_'disp'_'pad'_'eq'] [grid-template-rows:auto_minmax(auto,1.2fr)_auto_minmax(auto,4fr)_minmax(3rem,1fr)] @xl:[grid-template-areas:'head_head'_'lp_pad'_'disp_pad'_'._pad'_'._eq'] @xl:[grid-template-columns:minmax(0,1fr)_minmax(0,1.1fr)] @xl:[grid-template-rows:auto_auto_auto_minmax(0,1fr)_auto] @xl:gap-x-4",
+            "@container grid h-full min-h-0 gap-2 overflow-y-auto overflow-x-hidden bg-background px-3 [grid-template-areas:'head'_'lp'_'disp'_'pad'_'eq'] [grid-template-rows:auto_minmax(auto,1.2fr)_auto_minmax(auto,4fr)_minmax(3rem,1fr)] @xl:[grid-template-areas:'head_head'_'lp_pad'_'disp_pad'_'._pad'_'._eq'] @xl:[grid-template-columns:minmax(0,1fr)_minmax(0,1.1fr)] @xl:[grid-template-rows:auto_minmax(0,1fr)_auto_auto_auto] @xl:gap-x-4",
         // Como vista de la app, las barras del armazón ya dejan los márgenes seguros; a pantalla completa (la del duelo), los pone ella.
         landscape ? (onClose ? 'pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]' : 'pt-2') : onClose ? 'pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]' : 'py-2',
       )}
@@ -471,7 +471,7 @@ function DuelistPanel({ position, big = false, name, lp, selected, disabled = fa
         PRESSABLE,
         'grid min-w-0 content-center justify-items-center gap-1 rounded-card px-1',
         // Acostado, el panel es contenedor también a lo alto: el número no pasa del alto que le deja el nombre (`--score-max`).
-        big ? 'py-1 [--score-max:calc(100cqh-2.75rem)] [container-type:size]' : '@container py-3 @xl:py-1',
+        big ? 'py-1 [--score-max:calc(100cqh-2.75rem)] [container-type:size]' : '@container py-3 @xl:py-1 @xl/life:[--score-max:11rem]',
         selected ? 'bg-card-background/70' : 'bg-transparent',
         disabled && 'cursor-default active:scale-100',
       )}
