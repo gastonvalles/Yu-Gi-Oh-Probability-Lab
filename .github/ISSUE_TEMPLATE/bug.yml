@@ -1,0 +1,37 @@
+name: Reportar un error / Report a bug
+description: Algo de la página no anda como debería. / Something on the site doesn't work as it should.
+title: '[Área] '
+labels: [bug-reportado]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Este issue es **público**: no pongas datos personales. Una vulnerabilidad de seguridad no va acá: seguí [SECURITY.md](https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab/blob/main/SECURITY.md).
+        This issue is **public**: don't include personal data. Security vulnerabilities don't go here: follow SECURITY.md.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área / Area
+      options: [Deck, Roles, Lab, Comparar, Jugar solo, Duelo, Datos, Otro]
+    validations:
+      required: true
+  - type: textarea
+    id: que
+    attributes:
+      label: Qué pasó / What happened
+    validations:
+      required: true
+  - type: textarea
+    id: esperaba
+    attributes:
+      label: Qué esperabas / What you expected
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para repetirlo / Steps to reproduce
+      placeholder: "1. …\n2. …"
+  - type: input
+    id: entorno
+    attributes:
+      label: Navegador y sistema / Browser and OS
+      placeholder: Chrome, Android
