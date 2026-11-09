@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import data from '../../data/novedades.json'
-import { entryFromHash, entryHash, filterByTag, NOVEDADES_LISTS, NOVEDADES_TAGS, sortEntries, writeLastSeen, type NovedadesEntry, type NovedadesTag } from '../../app/novedades'
+import { entryFromHash, entryHash, filterByTag, NOVEDADES_LISTS, NOVEDADES_TAGS, sortEntries, writeLastSeen, type NovedadesEntry, type NovedadesList, type NovedadesTag } from '../../app/novedades'
 import { showToastMessage } from '../../app/use-toast-message'
 import { formatDay, getLocale, t } from '../../i18n'
 import { StepHero } from '../StepHero'
@@ -20,6 +20,20 @@ const ENTRIES = sortEntries(data.entries as NovedadesEntry[])
 
 /** El `id` de la tarjeta de una entrada (adonde lleva el ancla). */
 const cardId = (id: string) => `novedad-${id}`
+
+/** Una lista de la entrada («Qué trae», «Cómo se usa»…): su título y sus renglones, que no pasan de ~65 caracteres. */
+function EntryList({ list, items, className }: { list: NovedadesList; items: readonly string[]; className?: string }) {
+  return (
+    <div className={cx('grid content-start gap-2', className)}>
+      <Heading level="card">{t(`novedades.list.${list}`)}</Heading>
+      <ul className="m-0 grid max-w-prose list-disc gap-1.5 pl-5 text-body text-foreground marker:text-soft">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 async function copyLink(id: string): Promise<void> {
   const url = `${window.location.origin}${window.location.pathname}${entryHash(id)}`
@@ -67,7 +81,7 @@ export function NovedadesScreen() {
     <StepPage as="article">
       <StepHero title={t('novedades.title')} icon="book" subtitle={t('novedades.subtitle')} />
 
-      <div className="grid w-full max-w-3xl gap-4">
+      <div className="grid w-full max-w-3xl gap-4 min-[1101px]:max-w-none">
         <FilterChips
           label={t('novedades.filter.label')}
           all={t('novedades.filter.all')}
@@ -100,7 +114,7 @@ export function NovedadesScreen() {
         ) : (
           shown.map((entry) => {
             const copy = entry[locale]
-            const lists = NOVEDADES_LISTS.filter((list) => copy[list].length > 0)
+            const [first, ...rest] = NOVEDADES_LISTS.filter((list) => copy[list].length > 0)
 
             return (
               <Card
@@ -130,17 +144,19 @@ export function NovedadesScreen() {
                   </Heading>
                 </header>
 
-                {lists.map((list, index) => (
-                  <div key={list} className={cx('grid gap-2', index > 0 && 'border-t border-border-subtle pt-4')}>
-                    <Heading level="card">{t(`novedades.list.${list}`)}</Heading>
-                    {/* El ancho de la lista, no el de la tarjeta: en escritorio los renglones no pasan de ~75 caracteres. */}
-                    <ul className="m-0 grid max-w-lg list-disc gap-1.5 pl-5 text-body text-foreground marker:text-soft">
-                      {copy[list].map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
+                {/* En escritorio, dos columnas: lo que trae a la izquierda y, apiladas a la derecha, las demás (cómo se usa, arreglos, ojo). Chico, todo en fila con una línea fina entre listas. */}
+                {first ? (
+                  <div className="grid gap-4 min-[1101px]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] min-[1101px]:gap-x-10">
+                    <EntryList list={first} items={copy[first]} />
+                    {rest.length > 0 ? (
+                      <div className="grid content-start gap-4 border-t border-border-subtle pt-4 min-[1101px]:border-t-0 min-[1101px]:pt-0">
+                        {rest.map((list, index) => (
+                          <EntryList key={list} list={list} items={copy[list]} className={index > 0 ? 'border-t border-border-subtle pt-4' : undefined} />
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
-                ))}
+                ) : null}
               </Card>
             )
           })
