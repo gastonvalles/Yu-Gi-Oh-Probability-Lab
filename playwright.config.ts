@@ -14,6 +14,8 @@ const APP = `http://127.0.0.1:${APP_PORT}`
 
 export default defineConfig({
   testDir: 'e2e',
+  // El smoke de producción tiene su propia config (playwright.prod.config.ts).
+  testIgnore: 'prod/**',
   // Dos navegadores por prueba contra un solo relay: de a una.
   workers: 1,
   fullyParallel: false,

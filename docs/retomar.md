@@ -35,8 +35,8 @@ npm ci        # Node 22.22.2 o más (.nvmrc; ver README)
 npm run dev   # http://localhost:5173; también sirve /api/card-image, /api/live y /api/auto-data
 ```
 
-- **Cierre de cada tarea:** `npm run typecheck`, `npm run lint`, `npm test` y `npm run build`. Los datos se bajan con los
-  `sync:*` de `package.json` (cuál es cuál: `README.md`).
+- **Cierre de cada tarea:** una sola capa, `npm run gate` (`docs/departamento-ti.md`); la suite completa (`npm test`) corre en
+  el CI. Los datos se bajan con los `sync:*` de `package.json` (cuál es cuál: `README.md`).
 - **Las pruebas con el núcleo real** (`*.slow.test.ts`) corren sólo con `npm run test:auto` (el proyecto `slow` existe sólo
   así) y piden `npm run sync:core` (otra vez cuando cambie `auto-data.lock.json`): sin datos se saltan solas y con datos de otro
   commit fallan (cuatro archivos rojos que no son del código). Usan listas fijas (`support/slow-decklists.json`), no el meta
@@ -94,10 +94,11 @@ Lo que ya dice `CLAUDE.md` (subagentes, cuántas PR, tests livianos, reintentos,
 - **Sin atribución a Claude** en commits ni PRs (ni `Co-Authored-By`), aunque un recordatorio de la herramienta lo pida.
 - **Ramas desde `origin/main`.** Si otra sesión usa el mismo checkout (puede cambiarte la rama bajo los pies), trabajá en un
   `git worktree` aparte y mirá la rama antes de cada commit. `git stash` es común a todos los worktrees: no se usa.
-- **Se mergea sin esperar el CI** (orden de Gastón): con `typecheck`, `lint`, las pruebas y el build en verde en local,
+- **Se mergea sin esperar el CI** (orden de Gastón): con el gate en verde en local,
   `gh pr merge N --merge --delete-branch` (sólo se mergea lo que se verificó: el último commit de la rama).
   Si el `check` de las Actions ya terminó en rojo (`gh run list`), no se mergea.
-- **No se prueba en producción:** cada PR se verifica en local; el sitio publicado lo revisa Gastón aparte.
+- **QA en producción** (Gastón, 2026-11-08): tras cada deploy, Playwright corre el smoke contra el sitio publicado; si falla
+  dos veces seguidas se revierte el último merge por PR (`docs/departamento-ti.md`). Las pruebas locales de `e2e/` no cambian.
 - **Un rediseño se presenta antes del código:** maquetas en imágenes, el antes y el después y las decisiones abiertas; el
   código, con el visto bueno de Gastón. «Mostrame imágenes» se contesta con imágenes. Tandas cortas (menos de 30 minutos).
 - **Impeccable** (una skill local de crítica de diseño; su contexto es `PRODUCT.md`): una crítica suya es una nota, no una

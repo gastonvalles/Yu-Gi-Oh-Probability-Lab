@@ -23,31 +23,21 @@ Sin contexto previo (otra PC, sin la memoria de Claude), leé `docs/retomar.md` 
 Pocos documentos, cada uno con su trabajo, y **no son un diario**: el historial es `git log` y el cuerpo de cada PR.
 
 - `README.md` (qué es, cómo se corre, dónde está cada cosa) y `PRODUCT.md` (para quién es y el tono).
-- `docs/`: `roadmap.md`, `retomar.md`, `design-system.md` (reglas y tokens), `movimiento.md`, `ux-ui-guidelines.md`, `duelo.md`, `duelo-relay.md`, `motor-de-cartas.md`, `duelos-automaticos.md`, `i18n.md` y `seguridad.md`.
+- `docs/`: `roadmap.md`, `retomar.md`, `design-system.md` (reglas y tokens), `movimiento.md`, `ux-ui-guidelines.md`, `duelo.md`, `duelo-relay.md`, `motor-de-cartas.md`, `duelos-automaticos.md`, `departamento-ti.md` (el equipo de agentes, el tablero y las pruebas), `i18n.md` y `seguridad.md`.
 - **Un renglón se queda sólo si** un test o el código lo hace cumplir, **o** dice algo que no se ve leyendo el código (una decisión, regla, trampa o límite, con su porqué), **o** orienta (dónde vive algo, cómo se corre). Lo demás sobra: lo que ya dice el comentario del archivo, la historia, las citas, las mediciones.
 - **Se toca un doc sólo si cambia una regla, un componente o un comportamiento**, en una o dos líneas y donde corresponde: sin entradas con fecha ni números de PR. Los planes y los informes de una sola vez se borran al cumplirse (quedan en git; los de antes de la poda, en el commit `e4b63f6`).
 - `src/__tests__/docs.test.ts` le pone un tope de tamaño a cada doc, no deja ninguno huérfano y revisa que toda ruta `docs/….md` exista.
 
-## Orquestación: este chat coordina, los subagentes trabajan
+## Orquestación: este chat es el Jefe de TI
 
-Decisión de Gastón (2026-10-20): el chat principal es el **orquestador**. Reparte el trabajo en subagentes (herramienta `Agent`), junta lo que cada uno le reporta y le cuenta a Gastón el resultado. Lo trivial (una línea, un archivo que ya está abierto, el `git` de un cierre) lo hace él directo: lanzar un agente cuesta más.
+Decisión de Gastón (2026-11-08): el chat principal dirige un **departamento de TI** de subagentes (herramienta `Agent`), **sin tope de agentes**, con Scrum + Kanban sobre cards locales (`.claude/ti/`). Gastón sólo habla con este chat. Plantel, tablero, WIP, candados, la capa única de pruebas, el QA en producción y el dashboard: `docs/departamento-ti.md`.
 
-| Tarea | Agente (`subagent_type`) | Modelo (`model`) |
-|---|---|---|
-| **Buscar y leer código rápido**: dónde está algo, qué hace, quién lo usa, qué tests lo cubren, cómo lo resuelve otro sitio | `Explore` (o `general-purpose` si tiene que correr algo) | `sonnet` (Sonnet 5.5) |
-| **Cambios mecánicos y livianos**: renombrar o mover, claves de i18n, ajustar un test o un doc, repetir un patrón ya decidido | `general-purpose` | `haiku` |
-| **Planificar y diseñar**: arquitectura, diseño de una pantalla o un componente, plan de varios pasos, crítica de diseño (y construir lo que es de diseño) | `Plan` (sólo el plan) o `general-purpose` (plan y construcción) | `opus` (Opus 5.5) |
-
-- **Esfuerzo `high` y a lo sumo 3 agentes a la vez** (Gastón, 2026-10-26): todo subagente se lanza con `effort: "high"`; nunca más de tres simultáneos.
-- **Fable (`fable`) se sugiere, no se usa solo:** en un caso específico (un bug que ya falló dos intentos, un cambio que cruza varias capas, una decisión difícil de revertir, una revisión de seguridad, una arquitectura con mucha incertidumbre) el orquestador le propone a Gastón usar Fable, con la razón en una línea, y espera el sí antes de lanzarlo.
-- **El brief es todo lo que el agente sabe:** el objetivo con las palabras de Gastón, lo que ya se hizo o se descartó, los archivos que importan (con ruta), la rama y el worktree donde trabaja (desde `origin/main`; no `isolation: "worktree"`, que parte del checkout principal, que puede estar atrasado), las reglas del repo que le tocan y el formato del reporte. Sin un brief claro no se lanza.
-- **Reporte quirúrgico:** cada agente devuelve un resumen corto —qué hizo o encontró, `archivo:línea`, decisiones y por qué, riesgos o lo que dejó afuera, y el resultado de `typecheck`, `lint`, `test` y `build` si tocó código—, sin volcar archivos ni logs.
-- **El orquestador verifica antes de contar:** mira el diff y corre lo que sea barato (no da por hecho lo que el agente dice haber hecho) y recién entonces le reporta a Gastón en pocas líneas: qué quedó, qué falta y qué decisión le toca a él. **Una sola verificación por PR** (Gastón, 2026-10-26): el constructor mide una vez en la app real y con números; el orquestador revisa el diff y corre `typecheck`, `lint` y `docs.test.ts`, sin repetir la medición.
-- **Lo que sale del repo lo hace el orquestador** (push, PR, merge), con las reglas de siempre: mergear sin esperar el CI y sin atribución a Claude. Los agentes trabajan en su worktree y dejan el commit local hecho.
-- **En paralelo sólo lo que no toca los mismos archivos;** si no, uno atrás del otro.
-- **Un mismo test que se reintenta 2 veces, se frena** (Gastón, 2026-10-21): si el orquestador o un agente corre de nuevo el mismo test dos veces porque falla o se comporta distinto, para y reporta en resumen el problema (qué test, qué dice el fallo, qué se probó) en vez de seguir reintentando; si no, sigue. Va en el brief de todo agente.
-- **Cuántas PR lo dice Gastón en cada pedido:** «hacé una sola PR» = las ramas de los agentes se juntan en una y se sube una única PR; «una PR por pieza, de la más barata a la más cara, y mergeá cada una por separado» = eso. Sin indicación, una PR por tarea. **Un merge por fase** (Gastón, 2026-10-26): las láminas de una fase se integran en una rama local `fase-N` (los agentes rebasan sobre ella, sin push) y se sube una sola PR, con las notas del parche de cada lámina, que se mergea una vez.
-- **Tests livianos** (Gastón, 2026-10-21): mientras se itera se corre **sólo lo que se toca** (`npx vitest --run src/__tests__/<archivo>` o `npx vitest related <archivos> --run`) y la suite completa (`npm test`, ~50 s) **una sola vez al cierre**. Cada suite abre ~15 procesos: con **tres agentes a la vez**, `VITEST_MAX_WORKERS=6` (los timeouts «por carga» de `playground`, `replays-screen` o `expansions-memo` eran de eso, no de un bug). Un test nuevo que pase de ~20 s se parte, como `duel-screen-*` y `practice-mat-*` (con el arnés común en `src/__tests__/support/`). No se migra a Jest: no acelera lo que pesa. Va en el brief de todo agente.
+- **Lo trivial lo hace el Jefe directo** (una línea, un archivo abierto, el `git` de un cierre): lanzar un agente cuesta más.
+- **Modelos:** buscar y leer código, `sonnet` (`Explore`); cambios mecánicos, `haiku`; planificar, diseñar y construir diseño, `opus`. Todo subagente con `effort: "high"`. **Fable** se sugiere, no se usa solo: la razón en una línea y se espera el sí de Gastón.
+- **La card es el brief:** el objetivo con las palabras de Gastón, lo hecho o descartado, los archivos con ruta, la rama y el worktree (desde `origin/main`; no `isolation: "worktree"`, que parte del checkout principal, que puede estar atrasado) y el formato del reporte. Sin un brief claro no se lanza. Reporte quirúrgico; el Jefe mira el diff antes de contar.
+- **Pruebas:** mientras se itera, sólo el test que se toca; **una sola capa antes de mergear** (`npm run gate`, la corre `ti-release`); la suite completa corre en el CI; el QA corre Playwright contra producción tras el deploy. Un mismo test reintentado 2 veces se frena y se reporta (va en todo brief).
+- **Lo que sale del repo lo hace el Jefe** (push, PR, merge): sin esperar el CI y sin atribución a Claude. Los agentes dejan el commit local en su worktree.
+- **Cuántas PR lo dice Gastón;** sin indicación, una por tarea. **Un merge por fase:** las láminas se integran en una rama local `fase-N` (los agentes rebasan sobre ella, sin push) y se sube una sola PR con las notas del parche de cada una.
 
 ## Notas del parche: cada cosa que se termina se le explica a los usuarios
 
