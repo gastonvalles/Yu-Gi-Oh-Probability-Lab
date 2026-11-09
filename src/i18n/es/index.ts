@@ -10,6 +10,7 @@ import { landing } from './landing'
 import { meta } from './meta'
 import { novedades } from './novedades'
 import { practice } from './practice'
+import { reportar } from './reportar'
 import { roles } from './roles'
 import { rules } from './rules'
 import { search } from './search'
@@ -17,6 +18,6 @@ import { shell } from './shell'
 import { solo } from './solo'
 
 /** Un área por archivo y por prefijo de clave (`shell.…`, `deck.…`): cada parte de la app edita sólo el suyo. */
-export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel, handtraps, auto, solo, novedades, landing }
+export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel, handtraps, auto, solo, novedades, landing, reportar }
 
-export const es = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel, ...handtraps, ...auto, ...solo, ...novedades, ...landing }
+export const es = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel, ...handtraps, ...auto, ...solo, ...novedades, ...landing, ...reportar }

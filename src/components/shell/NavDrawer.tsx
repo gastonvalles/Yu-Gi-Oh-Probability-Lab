@@ -33,7 +33,7 @@ interface DrawerPanelProps {
 
 /**
  * Lo de adentro del cajón del menú: la marca con su X, los destinos, las mascotas, el idioma (Español | English, de 44 px), «Tus datos» (guardar y restaurar la copia de
- * seguridad) y, abajo, lo legal: las redes, las novedades, la privacidad y la autoría.
+ * seguridad) y, abajo, lo legal: las redes, las novedades, el reporte de un problema, la privacidad y la autoría.
  */
 export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
   const id = useId()
@@ -93,6 +93,9 @@ export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
           <div className="flex flex-wrap items-center gap-x-4">
             {/* Va a una pantalla de la app: el cajón se cierra. */}
             <NovedadesLink className="min-h-11 text-body" onClick={onClose} />
+            <a href="#reportar" onClick={onClose} className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
+              {t('reportar.link')}
+            </a>
             <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
               {t('shell.legal.label')}
             </a>

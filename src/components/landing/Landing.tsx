@@ -197,6 +197,9 @@ export default function Landing({ entering = false, onPrefetch }: LandingProps) 
       {/* El pie va con la columna de la derecha en escritorio; en el celular deja lugar para la barra de abajo. */}
       <footer className="mx-auto grid max-w-content gap-2 px-gutter pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-10 min-[1101px]:grid-cols-[35rem_minmax(0,1fr)] min-[1101px]:gap-x-20 min-[1101px]:px-12 min-[1101px]:pb-10">
         <div className="grid gap-1 border-t border-border-subtle pt-4 min-[1101px]:col-start-2">
+          <a href="#reportar" className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
+            {t('reportar.link')}
+          </a>
           <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
             {t('shell.legal.label')}
           </a>
