@@ -47,9 +47,14 @@ export function NovedadesScreen() {
     if (ENTRIES[0]) writeLastSeen(ENTRIES[0].id)
   }, [])
 
-  // Pegar otro enlace estando acá no cambia de paso: el ancla se lee del hash cada vez que cambia.
+  // Pegar otro enlace estando acá no cambia de paso: el ancla se lee del hash cada vez que cambia. Si pide una entrada, el
+  // filtro vuelve a «Todas»: con una etiqueta puesta la entrada podría no dibujarse y el enlace quedaría sin efecto.
   useEffect(() => {
-    const onHash = () => setAnchor(entryFromHash(window.location.hash))
+    const onHash = () => {
+      const next = entryFromHash(window.location.hash)
+      setAnchor(next)
+      if (next) setTag('all')
+    }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
