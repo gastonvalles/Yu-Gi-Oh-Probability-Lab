@@ -51,6 +51,7 @@ import {
   LazyPracticeSection,
   LazyProbabilityPanel,
   LazyReplaysScreen,
+  LazyReportarScreen,
   LazySoloScreen,
   LazyTierListsScreen,
   LazyTournamentDecksScreen,
@@ -501,6 +502,12 @@ export function DeckModeScreen() {
       {activeStep === 'novedades' ? (
         <div id="novedades" className="min-w-0 min-[1101px]:min-h-full">
           <LazyNovedadesScreen />
+        </div>
+      ) : null}
+
+      {activeStep === 'reportar' ? (
+        <div id="reportar" className="min-w-0 min-[1101px]:min-h-full">
+          <LazyReportarScreen />
         </div>
       ) : null}
     </section>
