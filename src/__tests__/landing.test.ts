@@ -28,6 +28,7 @@ describe('shouldShowLanding', () => {
     ['la app instalada: no', { standalone: true }, false],
     ['ya entró en esta sesión: no', { entered: true }, false],
     ['?landing=1 la fuerza aunque haya deck y hash', { search: '?landing=1', hash: '#duel', savedDeck: deck([{}]), entered: true, standalone: true }, true],
+    ['#inicio (el «Inicio» del menú) la muestra aunque haya deck y ya se haya entrado', { hash: '#inicio', savedDeck: deck([{}]), entered: true, standalone: true }, true],
   ])('%s', (_, input, expected) => {
     expect(shouldShowLanding({ ...base, ...input })).toBe(expected)
   })

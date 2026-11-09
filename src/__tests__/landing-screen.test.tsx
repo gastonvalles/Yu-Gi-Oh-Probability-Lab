@@ -26,7 +26,7 @@ describe('la landing', () => {
     expect(screen.getByRole('main')).toBeInTheDocument()
     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Medir mi deck' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: 'Jugar ahora' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Jugar ahora' }).length).toBeGreaterThan(0)
     // Las novedades bajan aparte: primero el esqueleto, después las tres más nuevas.
     expect(await screen.findByRole('link', { name: 'Ver todas las novedades' })).toHaveAttribute('href', '#novedades')
     expect(await screen.findAllByRole('heading', { level: 3 })).not.toHaveLength(0)
@@ -62,7 +62,7 @@ describe('la landing', () => {
   it('«Jugar ahora» lleva al duelo', () => {
     render(<Landing />)
 
-    fireEvent.click(screen.getAllByRole('link', { name: 'Jugar ahora' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Jugar ahora' })[0]!)
     expect(sessionStorage.getItem(LANDING_ENTERED_KEY)).toBe('1')
     expect(window.location.hash).toBe('#duel')
   })

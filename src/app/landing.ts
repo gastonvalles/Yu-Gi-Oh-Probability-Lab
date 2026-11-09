@@ -31,9 +31,12 @@ function hasMainDeck(saved: string): boolean {
   }
 }
 
-/** La landing sólo la ve quien llega a `/` por primera vez; `?landing=1` la fuerza (para probarla). */
+/** «Inicio» del menú: la landing vuelve encima de la app montada (nada se recarga: un duelo en curso sigue). */
+export const HOME_HASH = '#inicio'
+
+/** La landing sólo la ve quien llega a `/` por primera vez o pide «Inicio» (`#inicio`); `?landing=1` la fuerza (para probarla). */
 export function shouldShowLanding({ hash, search, savedDeck, standalone, entered }: LandingInput): boolean {
-  if (new URLSearchParams(search).get('landing') === '1') return true
+  if (new URLSearchParams(search).get('landing') === '1' || hash === HOME_HASH) return true
   if (hash !== '' && hash !== '#') return false
   if (standalone || entered || savedDeck === undefined) return false
 
@@ -68,7 +71,7 @@ export function markEntered(): void {
 }
 
 /** Entra a la app sin recargar: la marca y el hash (la app escucha `hashchange`). */
-export function enterApp(hash: '#deck-builder' | '#duel'): void {
+export function enterApp(hash: string): void {
   markEntered()
   window.location.hash = hash
 }
@@ -95,4 +98,6 @@ export interface LandingStats {
   banlist: string
   /** AAAA-MM-DD del día de los precios. */
   prices: string
+  /** PROPUESTA (TI-113): las seis cartas que más decks TCG llevan en el Main, con cuántos. Falta sumarlas en `landingStats` del script. */
+  topCards?: Array<{ id: number; name: string; decks: number }>
 }
