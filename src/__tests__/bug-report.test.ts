@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   BUG_FOOTER,
   clientKey,
+  GLOBAL_HOUR_MAX,
+  cleanText,
+  createGlobalLimiter,
   createRateLimiter,
   createRecentReports,
   fenced,
@@ -52,6 +55,16 @@ describe('parseBugReport', () => {
     expect(parseBugReport({ ...valid, entorno: { build: '<script>' } })).toEqual({ ok: false, field: 'entorno' })
   })
 
+  it('un sustituto suelto se reemplaza antes de contar (GitHub no recibe UTF-16 roto)', () => {
+    const lone = String.fromCharCode(0xd800)
+    const cleaned = cleanText(`texto con ${lone} suelto`)
+
+    expect(cleaned.isWellFormed()).toBe(true)
+    expect(cleaned).toBe('texto con � suelto')
+    expect(parseBugReport({ ...valid, que: `${lone}`.repeat(2001) })).toEqual({ ok: false, field: 'que' })
+    expect(reportOf({ ...valid, que: `${valid.que} ${lone}` }).que.isWellFormed()).toBe(true)
+  })
+
   it('cuenta caracteres, no unidades de UTF-16: 2000 emojis entran', () => {
     expect(parseBugReport({ ...valid, que: '🃏'.repeat(2000) }).ok).toBe(true)
   })
@@ -78,6 +91,9 @@ describe('neutralización', () => {
     'nulos \u0000\u0001 y bidi \u202Eesrever\u202C y BOM \uFEFF',
     'emojis 👨\u200D👩\u200D👧 🃏 ✨',
     'x'.repeat(1990),
+    'separador de línea\u2028@alguien\u2029#5 aparte',
+    'CRLF\r\n```\r\n@alguien\r\n```\r\nfin',
+    'valla con sangría\n   ```\n@alguien #7\n   ```\nfin',
   ]
 
   it('la valla es más larga que cualquier racha de backticks y nada de adentro la cierra', () => {
@@ -145,12 +161,39 @@ describe('isAllowedOrigin', () => {
 })
 
 describe('clientKey', () => {
-  it('IPv4 entera; IPv6 por /64; IPv4 dentro de IPv6 como IPv4', () => {
+  it('IPv4 entera; IPv6 por /48 (una casa, una llave); IPv4 dentro de IPv6 como IPv4', () => {
     expect(clientKey('203.0.113.7')).toBe('203.0.113.7')
-    expect(clientKey('2001:db8:0:1:aaaa::1')).toBe('2001:db8:0:1::/64')
-    expect(clientKey('2001:0DB8:0000:0001:ffff:ffff:ffff:ffff')).toBe('2001:db8:0:1::/64')
-    expect(clientKey('2001:db8::1')).toBe('2001:db8:0:0::/64')
+    expect(clientKey('2001:db8:0:1:aaaa::1')).toBe('2001:db8:0::/48')
+    expect(clientKey('2001:0DB8:0000:ffff:ffff:ffff:ffff:ffff')).toBe('2001:db8:0::/48')
+    expect(clientKey('2001:db8:7::1')).toBe('2001:db8:7::/48')
     expect(clientKey('::ffff:198.51.100.2')).toBe('198.51.100.2')
+  })
+
+  it('sin corchetes ni puerto, y la IPv4 mapeada en hex no se junta con ::1', () => {
+    expect(clientKey('203.0.113.7:8080')).toBe('203.0.113.7')
+    expect(clientKey('[2001:db8:7::1]:443')).toBe('2001:db8:7::/48')
+    expect(clientKey('[2001:db8:7::1]')).toBe('2001:db8:7::/48')
+    expect(clientKey('[::ffff:198.51.100.2]:80')).toBe('198.51.100.2')
+    expect(clientKey('::ffff:0102:0304')).toBe('1.2.3.4')
+    expect(clientKey('::ffff:c633:6402')).toBe('198.51.100.2')
+    expect(clientKey('::1')).toBe('0:0:0::/48')
+    expect(clientKey('::ffff:0102:0304')).not.toBe(clientKey('::1'))
+  })
+})
+
+describe('createGlobalLimiter', () => {
+  it('hasta 20 issues por hora entre todos, con el tiempo que falta', () => {
+    let now = 0
+    const limitAll = createGlobalLimiter(() => now)
+
+    for (let index = 0; index < GLOBAL_HOUR_MAX; index++) {
+      expect(limitAll()).toBe(0)
+      now += 60_000
+    }
+    expect(GLOBAL_HOUR_MAX).toBe(20)
+    expect(limitAll()).toBe(40 * 60)
+    now = 60 * 60_000 + 1
+    expect(limitAll()).toBe(0)
   })
 })
 
@@ -185,6 +228,23 @@ describe('createRateLimiter', () => {
     limit('a')
     now += 24 * 60 * 60_000 + 1
     expect(limit('a')).toBe(0)
+  })
+
+  it('con la tabla llena desaloja la llave que hace más que no pide, en vez de rechazar a la nueva', () => {
+    let now = 0
+    const limit = createRateLimiter(() => now, 3)
+
+    for (const key of ['a', 'b', 'c']) {
+      limit(key)
+      now += 1000
+    }
+    limit('a') // «a» vuelve a pedir: ahora la más vieja es «b»
+    now += 1000
+    expect(limit('d')).toBe(0)
+    // «b» fue desalojada y arranca de cero; «a» sigue contada (2 de 3).
+    expect([limit('b'), limit('b'), limit('b')]).toEqual([0, 0, 0])
+    expect(limit('a')).toBe(0)
+    expect(limit('a')).toBeGreaterThan(0)
   })
 })
 

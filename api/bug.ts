@@ -1,6 +1,7 @@
 import {
   MAX_BODY_BYTES,
   clientKey,
+  createGlobalLimiter,
   createRateLimiter,
   createRecentReports,
   isAllowedOrigin,
@@ -18,6 +19,7 @@ const REPO = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/
 const LOCAL_API = /^http:\/\/(?:localhost|127\.0\.0\.1):\d+$/
 
 const limit = createRateLimiter()
+const limitAll = createGlobalLimiter()
 const recent = createRecentReports<{ number: number; url: string }>()
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -92,7 +94,8 @@ export async function POST(request: Request): Promise<Response> {
   if (already) return json(200, { ok: true, ...already })
   // Vercel pisa `x-forwarded-for` con la IP real; la llave sólo vive en la memoria del limitador.
   const ip = request.headers.get('x-real-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown'
-  const retryAfter = limit(clientKey(ip))
+  // Primero el de la llave y después el de todos: así una llave ya frenada no gasta el balde común.
+  const retryAfter = limit(clientKey(ip)) || limitAll()
 
   if (retryAfter > 0) return json(429, { error: 'rate_limited' }, { 'Retry-After': String(retryAfter) })
   const issue = await createIssue(token, { title: issueTitle(report), body: issueBody(report), labels: issueLabels(report) })

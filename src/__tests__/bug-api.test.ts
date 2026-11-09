@@ -30,6 +30,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -161,6 +162,46 @@ describe('POST /api/bug', () => {
     expect(await limited.json()).toEqual({ error: 'rate_limited' })
     expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(ip)
     expect(JSON.stringify(errors.mock.calls)).not.toContain(ip)
+  })
+
+  it('un content-length declarado enorme se corta sin leer el cuerpo', async () => {
+    const text = vi.fn(async () => '{}')
+    const huge = { headers: new Headers({ origin: SITE, 'content-type': 'application/json', 'content-length': '50000000' }), text } as unknown as Request
+    const response = await POST(huge)
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({ error: 'too_large' })
+    expect(text).not.toHaveBeenCalled()
+  })
+
+  it('x-real-ip manda sobre x-forwarded-for, y sin Origin vale el Referer del propio sitio', async () => {
+    const viaRealIp = (forwarded: string) =>
+      new Request(`${SITE}/api/bug`, {
+        method: 'POST',
+        headers: { referer: `${SITE}/lab`, 'content-type': 'application/json', 'x-real-ip': '192.0.2.77', 'x-forwarded-for': forwarded },
+        body: JSON.stringify(report()),
+      })
+    const statuses = []
+
+    for (let index = 0; index < 4; index++) statuses.push((await POST(viaRealIp(`203.0.113.${200 + index}`))).status)
+    expect(statuses).toEqual([201, 201, 201, 429])
+
+    const foreign = new Request(`${SITE}/api/bug`, { method: 'POST', headers: { referer: 'https://evil.example/', 'content-type': 'application/json' }, body: JSON.stringify(report()) })
+
+    expect((await POST(foreign)).status).toBe(403)
+  })
+
+  // Va al final de las que crean issues: deja el balde lleno (con la hora adelantada).
+  it('el balde de todos: con 20 issues en la hora, el siguiente (de otra casa) espera con 429', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.now() + 3 * 60 * 60_000) // lo de las otras pruebas ya venció
+
+    for (let index = 0; index < 20; index++) expect((await POST(request(report(), { ip: `2001:db8:${index + 100}::1` }))).status).toBe(201)
+    const limited = await POST(request(report(), { ip: '2001:db8:999::1' }))
+
+    expect(limited.status).toBe(429)
+    expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0)
+    expect(fetchMock).toHaveBeenCalledTimes(20)
   })
 
   it('otros métodos: 405 con Allow', async () => {

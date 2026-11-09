@@ -56,9 +56,9 @@ export type BugParse = { ok: true; report: BugReport; honeypot: false } | { ok: 
 // eslint-disable-next-line no-control-regex
 const HIDDEN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u061C\u200B\u200C\u200E\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/g
 
-/** El texto limpio: saltos unificados, sin lo invisible y sin espacios a los costados. */
+/** El texto limpio: sin sustitutos sueltos (GitHub contestaría 422), saltos unificados, sin lo invisible y sin espacios a los costados. */
 export function cleanText(text: string): string {
-  return text.replace(/\r\n?|[\u2028\u2029]/g, '\n').replace(HIDDEN, '').trim()
+  return text.toWellFormed().replace(/\r\n?|[\u2028\u2029]/g, '\n').replace(HIDDEN, '').trim()
 }
 
 const length = (text: string) => [...text].length
@@ -188,21 +188,32 @@ export function isAllowedOrigin(origin: string | null, referer: string | null): 
   return url.protocol === 'https:' && url.port === '' && (url.hostname === PRODUCTION_HOST || PREVIEW_HOST.test(url.hostname))
 }
 
-/** La llave del límite: la IPv4 entera y, en IPv6, el /64 (una casa tiene millones de direcciones y rotarlas es gratis). */
+/**
+ * La llave del límite: la IPv4 entera y, en IPv6, el /48 (a una casa le dan un /48 o un /56: rotar dentro es gratis, así que una
+ * casa es una llave). Se sacan antes los corchetes y el puerto (`[::1]:443`, `1.2.3.4:80`), y una IPv4 dentro de IPv6, en la
+ * forma con puntos o en hex (`::ffff:0102:0304`), cuenta como esa IPv4.
+ */
 export function clientKey(ip: string): string {
-  const address = ip.trim().toLowerCase()
+  let address = ip.trim().toLowerCase()
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(address)
 
+  address = bracketed ? bracketed[1]! : address.replace(/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/, '$1')
   if (!address.includes(':')) return address
-  if (address.includes('.')) return address.slice(address.lastIndexOf(':') + 1) // IPv4 dentro de IPv6 (::ffff:1.2.3.4)
+  if (address.includes('.')) return address.slice(address.lastIndexOf(':') + 1) // ::ffff:1.2.3.4
   const [head = '', tail] = address.split('::')
   const left = head ? head.split(':') : []
   const right = tail ? tail.split(':') : []
   const groups = tail === undefined ? left : [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right]
+  const words = groups.map((group) => parseInt(group, 16) || 0)
 
-  return `${groups
-    .slice(0, 4)
-    .map((group) => group.replace(/^0+(?=.)/, ''))
-    .join(':')}::/64`
+  if (words.length === 8 && words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff) {
+    return [words[6]! >> 8, words[6]! & 255, words[7]! >> 8, words[7]! & 255].join('.')
+  }
+
+  return `${words
+    .slice(0, 3)
+    .map((word) => word.toString(16))
+    .join(':')}::/48`
 }
 
 const MINUTE = 60_000
@@ -211,14 +222,18 @@ const WINDOW_MAX = 3
 const DAY_MS = 24 * 60 * MINUTE
 const DAY_MAX = 10
 const MAX_KEYS = 5000
+const HOUR_MS = 60 * MINUTE
+/** Issues creados por hora entre todos: el techo de lo que alguien con muchas direcciones puede publicar. */
+export const GLOBAL_HOUR_MAX = 20
 
 /**
  * Hasta 3 reportes cada 10 minutos y 10 por día por llave (`clientKey`). Devuelve 0 si pasa (y lo cuenta) o los segundos que faltan.
- * Las llaves viven sólo en memoria y se barren a las 24 h; nunca se escriben.
+ * Las llaves viven sólo en memoria y se barren a las 24 h; nunca se escriben. Con la tabla llena se desaloja la llave que hace más
+ * que no pide (el `Map` queda en el orden del último pedido): la memoria tiene tope y nadie nuevo queda afuera.
  * ponytail: límite por instancia de la función; se resetea al reciclarse y cada instancia cuenta aparte. Si llega spam de verdad,
  * subir a una regla del Firewall de Vercel sobre /api/bug o a un contador en KV.
  */
-export function createRateLimiter(now: () => number = Date.now): (key: string) => number {
+export function createRateLimiter(now: () => number = () => Date.now(), maxKeys = MAX_KEYS): (key: string) => number {
   const hits = new Map<string, number[]>()
   let lastSweep = 0
 
@@ -234,16 +249,36 @@ export function createRateLimiter(now: () => number = Date.now): (key: string) =
 
     if (recent.length >= WINDOW_MAX) return Math.ceil((recent[0]! + WINDOW_MS - at) / 1000)
     if (today.length >= DAY_MAX) return Math.ceil((today[0]! + DAY_MS - at) / 1000)
-    // Con la tabla llena (una lluvia de direcciones), una llave nueva espera: se prefiere frenar a quedarse sin memoria.
-    if (!hits.has(key) && hits.size >= MAX_KEYS) return 60
+    hits.delete(key)
     hits.set(key, [...today, at])
+    if (hits.size > maxKeys) hits.delete(hits.keys().next().value!)
+
+    return 0
+  }
+}
+
+/**
+ * El balde de todos: hasta `GLOBAL_HOUR_MAX` issues por hora. Se consulta recién cuando se va a crear el issue (después del límite
+ * por llave) y devuelve 0 (y lo cuenta) o los segundos que faltan.
+ * ponytail: por instancia y se resetea al reciclarse, así que el techo real es 20 por hora por instancia viva. Si hay spam, subir a
+ * una regla del Firewall de Vercel sobre /api/bug o a un contador en KV.
+ */
+export function createGlobalLimiter(now: () => number = () => Date.now(), max = GLOBAL_HOUR_MAX): () => number {
+  let hits: number[] = []
+
+  return () => {
+    const at = now()
+
+    hits = hits.filter((hit) => hit > at - HOUR_MS)
+    if (hits.length >= max) return Math.ceil((hits[0]! + HOUR_MS - at) / 1000)
+    hits.push(at)
 
     return 0
   }
 }
 
 /** Lo ya enviado en los últimos 10 minutos, por huella del texto: el mismo reporte dos veces (un doble toque, un bot) no abre dos issues. */
-export function createRecentReports<T>(now: () => number = Date.now, max = 500) {
+export function createRecentReports<T>(now: () => number = () => Date.now(), max = 500) {
   const seen = new Map<string, { at: number; value: T }>()
 
   return {
