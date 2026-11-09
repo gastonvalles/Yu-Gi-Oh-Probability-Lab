@@ -136,7 +136,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             {option.leading ? <span className="mb-0.5 grid place-items-center" aria-hidden="true">{option.leading}</span> : null}
             <span className={cx('flex items-center gap-1.5', list ? 'justify-start' : 'justify-center text-center', dense ? 'whitespace-nowrap' : 'max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap')}>
               {option.label}
-              {option.count !== undefined ? <span className="text-micro font-semibold tabular-nums opacity-70">{option.count}</span> : null}
+              {option.count !== undefined ? <span className={cx('text-micro font-semibold tabular-nums', !active && 'opacity-70')}>{option.count}</span> : null}
             </span>
             {option.detail ? (
               // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (blanco sobre la lima, el verde o el rojo; lima en la tarjeta).
