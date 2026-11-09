@@ -9,6 +9,9 @@ const SUFFIX = 'YGOUltraLab-QA'
 
 export default defineConfig({
   testDir: 'e2e/prod',
+  // La sala privada de la noche (`@noche`) escribe en el relay: nunca en el smoke de después de un deploy. `npm run test:prod:noche` pide `--grep @noche`; el `grepInvert` de la
+  // config no se anula desde la línea de comandos, así que se saca cuando se pide un grep.
+  grepInvert: process.argv.some((arg) => arg === '--grep' || arg === '-g' || arg.startsWith('--grep=')) ? undefined : /@noche/,
   globalSetup: './e2e/prod/esperar-build.ts',
   // Una repetición y nada más; dos navegadores a la vez.
   retries: 1,
