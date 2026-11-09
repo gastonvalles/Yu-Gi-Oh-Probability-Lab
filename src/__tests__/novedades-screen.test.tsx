@@ -70,6 +70,24 @@ describe('Novedades', () => {
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
   })
 
+  it('un enlace a una entrada que el filtro esconde lo vuelve a «Todas» y la muestra', () => {
+    const hidden = (data.entries as NovedadesEntry[]).find((entry) => !entry.tags.includes('nuevo'))
+    // Sin una entrada que no sea «Nuevo» no hay cómo esconderla con ese filtro: nada que probar.
+    if (!hidden) return
+
+    render(<NovedadesScreen />)
+    fireEvent.click(screen.getByRole('button', { name: /^Nuevo/ }))
+    expect(document.getElementById(`novedad-${hidden.id}`)).toBeNull()
+
+    act(() => {
+      window.history.replaceState(null, '', `#novedades?entrada=${hidden.id}`)
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+
+    expect(document.getElementById(`novedad-${hidden.id}`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Todas' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('el enlace del menú lleva un punto mientras la más nueva no se vio', async () => {
     render(<NovedadesLink />)
 
