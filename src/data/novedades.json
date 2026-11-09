@@ -1,9 +1,55 @@
 {
   "entries": [
     {
-      "id": "2026-11-09-paleta",
-      "date": "2026-11-09",
-      "tags": ["nuevo", "mejora"],
+      "id": "2026-11-08-3-novedades",
+      "date": "2026-11-08",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "Novedades: qué cambió, en un solo lugar",
+        "novedades": [
+          "Hay una pantalla nueva con las notas de cada actualización, la más reciente arriba.",
+          "Podés filtrar por Nuevo, Mejora o Arreglo.",
+          "Cada entrada tiene su propio enlace, para mandársela a alguien.",
+          "Un punto lima junto a «Novedades» te avisa cuando hay algo que todavía no viste."
+        ],
+        "comoSeUsa": [
+          "Abrí el menú y tocá «Novedades», junto a «Privacidad y aviso legal».",
+          "Elegí una etiqueta para ver sólo ese tipo de cambios; tocala de nuevo para volver a verlas todas.",
+          "Tocá el ícono de enlace de una entrada para copiar su dirección."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Por ahora están las novedades de las últimas semanas."
+        ]
+      },
+      "en": {
+        "title": "What's new: what changed, in one place",
+        "novedades": [
+          "There is a new screen with the notes for every update, newest on top.",
+          "You can filter by New, Improvement or Fix.",
+          "Each entry has its own link, so you can send it to someone.",
+          "A lime dot next to \"What's new\" tells you when there is something you have not seen yet."
+        ],
+        "comoSeUsa": [
+          "Open the menu and tap \"What's new\", next to \"Privacy and legal notice\".",
+          "Pick a tag to see only that kind of change; tap it again to see them all.",
+          "Tap an entry's link icon to copy its address."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "For now it only has the updates from the last few weeks."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-08-1-paleta",
+      "date": "2026-11-08",
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
       "es": {
         "title": "Paleta nueva: carbón, violeta eléctrico y lima",
         "novedades": [
@@ -19,9 +65,7 @@
           "Las imágenes que exportás del deck y de las tier lists salen con la paleta nueva.",
           "Las páginas de privacidad y de error y el color de la barra del navegador pasan al carbón."
         ],
-        "ojo": [
-          "El ícono de la app instalada, el favicon y la imagen que se ve al compartir el enlace todavía tienen los colores anteriores."
-        ]
+        "ojo": []
       },
       "en": {
         "title": "New palette: charcoal, electric violet and lime",
@@ -38,15 +82,15 @@
           "The deck and tier list images you export use the new palette.",
           "The privacy and error pages and the browser bar color move to charcoal."
         ],
-        "ojo": [
-          "The installed app icon, the favicon and the image shown when you share the link still use the previous colors."
-        ]
+        "ojo": []
       }
     },
     {
-      "id": "2026-11-08-iconos",
+      "id": "2026-11-08-2-iconos",
       "date": "2026-11-08",
-      "tags": ["mejora"],
+      "tags": [
+        "mejora"
+      ],
       "es": {
         "title": "Ícono e imagen para compartir con el logo de la app",
         "novedades": [
@@ -79,7 +123,10 @@
     {
       "id": "2026-11-04-duelo-por-enlace",
       "date": "2026-11-04",
-      "tags": ["mejora", "arreglo"],
+      "tags": [
+        "mejora",
+        "arreglo"
+      ],
       "es": {
         "title": "Duelo por enlace: registro completo y chat que sobrevive a recargar",
         "novedades": [
@@ -118,7 +165,9 @@
     {
       "id": "2026-11-04-fases-solas",
       "date": "2026-11-04",
-      "tags": ["mejora"],
+      "tags": [
+        "mejora"
+      ],
       "es": {
         "title": "Tu Draw Phase y tu Standby Phase pasan solas",
         "novedades": [
@@ -155,7 +204,10 @@
     {
       "id": "2026-11-03-cadena",
       "date": "2026-11-03",
-      "tags": ["nuevo", "mejora"],
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
       "es": {
         "title": "La cadena del duelo automático, animada y explicada",
         "novedades": [
@@ -204,7 +256,10 @@
     {
       "id": "2026-11-03-movimiento",
       "date": "2026-11-03",
-      "tags": ["nuevo", "arreglo"],
+      "tags": [
+        "nuevo",
+        "arreglo"
+      ],
       "es": {
         "title": "Vuelo de carta en 3D y golpe de vidas",
         "novedades": [
@@ -243,7 +298,10 @@
     {
       "id": "2026-11-03-carteles-escritorio",
       "date": "2026-11-03",
-      "tags": ["nuevo", "mejora"],
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
       "es": {
         "title": "Los carteles de la mesa se mueven en escritorio",
         "novedades": [
@@ -290,7 +348,9 @@
     {
       "id": "2026-11-02-combos",
       "date": "2026-11-02",
-      "tags": ["nuevo"],
+      "tags": [
+        "nuevo"
+      ],
       "es": {
         "title": "Combos guardados: notas por paso y variantes con handtrap",
         "novedades": [
@@ -335,7 +395,10 @@
     {
       "id": "2026-11-02-hoja-celular",
       "date": "2026-11-02",
-      "tags": ["nuevo", "arreglo"],
+      "tags": [
+        "nuevo",
+        "arreglo"
+      ],
       "es": {
         "title": "Celular: la cadena y las preguntas en una sola hoja de abajo",
         "novedades": [
@@ -384,7 +447,10 @@
     {
       "id": "2026-11-02-preguntas",
       "date": "2026-11-02",
-      "tags": ["mejora", "arreglo"],
+      "tags": [
+        "mejora",
+        "arreglo"
+      ],
       "es": {
         "title": "Duelo automático: preguntas más claras",
         "novedades": [
@@ -433,7 +499,10 @@
     {
       "id": "2026-11-01-solo-y-bots",
       "date": "2026-11-01",
-      "tags": ["nuevo", "mejora"],
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
       "es": {
         "title": "Solo: un bot por mazo y «Probá tu combo»",
         "novedades": [

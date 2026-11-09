@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -8,7 +8,20 @@ import { readLastSeen, sortEntries, writeLastSeen, type NovedadesEntry } from '.
 import { NovedadesLink } from '../components/novedades/NovedadesLink'
 import { NovedadesScreen } from '../components/novedades/NovedadesScreen'
 
+// Los datos reales, pero sin la etiqueta «arreglo»: así el estado vacío del filtro se prueba con cualquier cantidad de entradas.
+vi.mock('../data/novedades.json', async (importOriginal) => {
+  const original = await importOriginal<{ default: { entries: NovedadesEntry[] } }>()
+
+  return { default: { entries: original.default.entries.map((entry) => ({ ...entry, tags: entry.tags.filter((tag) => tag !== 'arreglo') })) } }
+})
+
 const newest = sortEntries(data.entries as NovedadesEntry[])[0]!
+const LISTS = [
+  ['novedades', 'Novedades'],
+  ['comoSeUsa', 'Cómo se usa'],
+  ['arreglos', 'Cambios y arreglos'],
+  ['ojo', 'Ojo'],
+] as const
 
 describe('Novedades', () => {
   beforeEach(() => {
@@ -25,10 +38,15 @@ describe('Novedades', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Novedades' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: newest.es.title })).toBeInTheDocument()
-    // Las listas vacías no se dibujan.
-    expect(screen.queryByRole('heading', { name: 'Cómo se usa' })).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Cambios y arreglos' })).toBeInTheDocument()
+    // Las listas vacías no se dibujan y las que tienen algo, sí (con los datos reales, sean los que sean).
+    const card = document.getElementById(`novedad-${newest.id}`)!
+    for (const [list, name] of LISTS) {
+      const heading = within(card).queryByRole('heading', { name })
+      if (newest.es[list].length > 0) expect(heading).toBeInTheDocument()
+      else expect(heading).toBeNull()
+    }
 
+    // El mock saca «arreglo» de todas las entradas: esa etiqueta queda sin nada.
     fireEvent.click(screen.getByRole('button', { name: 'Arreglo 0' }))
     expect(screen.getByText('No hay novedades con esta etiqueta')).toBeInTheDocument()
 
