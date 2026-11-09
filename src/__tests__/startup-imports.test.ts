@@ -89,11 +89,24 @@ function staticGraph(entry: string): Set<string> {
   return seen
 }
 
-describe('el arranque (lo que importa estático src/main.tsx)', () => {
-  const graph = [...staticGraph(join(ROOT, 'src/main.tsx'))].map((file) => relative(ROOT, file).split('\\').join('/'))
+const relativeGraph = (entry: string) => [...staticGraph(join(ROOT, entry))].map((file) => relative(ROOT, file).split('\\').join('/'))
 
-  it('lleva la app, no los datos que se cargan cuando se usan', () => {
-    expect(graph).toContain('src/components/shell/FeatureSearch.tsx')
-    expect(graph.filter((file) => NOT_AT_STARTUP.includes(file))).toEqual([])
+describe('el arranque (lo que importa estático src/main.tsx)', () => {
+  const entry = relativeGraph('src/main.tsx')
+  const app = relativeGraph('src/MainApp.tsx')
+
+  it('no lleva los datos que se cargan cuando se usan', () => {
+    expect(entry.filter((file) => NOT_AT_STARTUP.includes(file))).toEqual([])
+  })
+
+  it('la app va aparte (`lazy` en `App.tsx`): el arranque, que es lo que baja una visita nueva a la landing, no trae el armazón ni el buscador', () => {
+    expect(entry).not.toContain('src/MainApp.tsx')
+    expect(entry).not.toContain('src/components/deck-mode/DeckModeScreen.tsx')
+    expect(entry).not.toContain('src/components/shell/FeatureSearch.tsx')
+  })
+
+  it('la app lleva el armazón y tampoco los datos pesados', () => {
+    expect(app).toContain('src/components/shell/FeatureSearch.tsx')
+    expect(app.filter((file) => NOT_AT_STARTUP.includes(file))).toEqual([])
   })
 })

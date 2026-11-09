@@ -6,11 +6,17 @@ import { createInitialState, STORAGE_KEY } from '../app/model'
 import genesysCardData from '../data/genesys-card-data.json'
 import type { DeckFormat } from '../types'
 
-const { render } = vi.hoisted(() => ({ render: vi.fn() }))
+const { shown } = vi.hoisted(() => ({ shown: vi.fn() }))
 
-// La pantalla de verdad no hace falta: interesa cuándo se pinta y con qué deck.
-vi.mock('react-dom/client', () => ({ createRoot: () => ({ render }) }))
-vi.mock('../App', () => ({ default: () => null }))
+// Las pantallas de verdad no hacen falta: interesa cuándo se pinta la primera y con qué deck (`shown` se llama cada vez que se dibuja la primera pantalla).
+vi.mock('../components/deck-mode/DeckModeScreen', () => ({
+  DeckModeScreen: () => {
+    shown()
+    return null
+  },
+}))
+vi.mock('../components/mascot/Mascot', () => ({ Mascot: () => null }))
+vi.mock('../components/ui/AppToaster', () => ({ AppToaster: () => null }))
 
 const [RATED_NAME, RATED_POINTS] = Object.entries(genesysCardData.cards as Record<string, number>).find(([, points]) => points > 0)!
 
@@ -31,8 +37,20 @@ function saveState(deckFormat: DeckFormat) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(toPortableConfig(state)))
 }
 
+/**
+ * Pinta `MainApp` (la app, que `App.tsx` carga aparte) como lo hace el arranque. Todo se importa después de `resetModules` para que `react`, `react-dom` y el store
+ * sean los mismos de este arranque y el estado de módulo de `MainApp` (las tablas pedidas) empiece de cero.
+ */
+let unmount: (() => void) | undefined
+
 async function boot() {
-  await import('../main')
+  const { createElement, Suspense } = await import('react')
+  const { createRoot } = await import('react-dom/client')
+  const { default: MainApp } = await import('../MainApp')
+  const root = createRoot(document.querySelector('#app')!)
+
+  root.render(createElement(Suspense, { fallback: null }, createElement(MainApp)))
+  unmount = () => root.unmount()
 
   const { formatDataLoaded } = await import('../app/format-data')
   const { store } = await import('../app/store')
@@ -42,19 +60,21 @@ async function boot() {
 
 beforeEach(() => {
   vi.resetModules()
-  render.mockClear()
+  shown.mockClear()
   localStorage.clear()
   document.body.innerHTML = '<div id="app"></div>'
 })
 
 afterEach(async () => {
+  unmount?.()
+  unmount = undefined
   // Nada de guardados atrasados de este arranque mientras empieza el siguiente.
   ;(await import('../app/store')).stopPersisting()
   vi.doUnmock('../app/format-tables')
   vi.unstubAllGlobals()
 })
 
-describe('el arranque con las tablas de Genesys y Edison bajo demanda', () => {
+describe('el arranque de la app con las tablas de Genesys y Edison bajo demanda', () => {
   it('con Genesys guardado, la primera pantalla espera las tablas y el deck ya sale con sus puntos resueltos', async () => {
     saveState('genesys')
 
@@ -71,10 +91,10 @@ describe('el arranque con las tablas de Genesys y Edison bajo demanda', () => {
 
     // Se leyó el deck sin las tablas: los puntos quedaron en null y todavía no se pinta nada.
     expect(pointsOfSavedCard()).toBeNull()
-    expect(render).not.toHaveBeenCalled()
+    expect(shown).not.toHaveBeenCalled()
 
     release()
-    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(shown).toHaveBeenCalledTimes(1))
 
     expect(formatDataLoaded()).toBe(true)
     expect(pointsOfSavedCard()).toBe(RATED_POINTS)
@@ -88,8 +108,8 @@ describe('el arranque con las tablas de Genesys y Edison bajo demanda', () => {
 
     const { formatDataLoaded, pointsOfSavedCard } = await boot()
 
-    // Pinta sin esperar las tablas: sólo espera los textos del idioma de la página (el español ya viene con el archivo principal: son un par de microtareas).
-    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1))
+    // Pinta sin esperar las tablas.
+    await vi.waitFor(() => expect(shown).toHaveBeenCalledTimes(1))
     expect(formatDataLoaded()).toBe(false)
     expect(idle).toHaveLength(1)
 
@@ -107,7 +127,7 @@ describe('el arranque con las tablas de Genesys y Edison bajo demanda', () => {
 
     const { formatDataLoaded, pointsOfSavedCard } = await boot()
 
-    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(shown).toHaveBeenCalledTimes(1))
 
     expect(formatDataLoaded()).toBe(false)
     expect(pointsOfSavedCard()).toBeNull()

@@ -7,7 +7,7 @@
 //
 // Fuera del smoke: el título de /playground (con el deck sembrado a veces no cambia en 20 s: sin explicar, se afirma el h1), los
 // valores de Tier lists y Banlists (cambian cada semana: sólo que haya datos) y jugar la mesa de práctica (sólo se abre desde Solo).
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Browser, type BrowserContextOptions, type Page } from '@playwright/test'
 
 // Un deck de 40: 13 monstruos normales (3 copias, la última 2), una Mágica y una Trampa, todos con rol de «starter» para que el Lab mida.
 const VANILLAS: [number, string][] = [
@@ -155,4 +155,53 @@ test('/playground responde', async ({ page }) => {
   const response = await page.goto('/playground')
   expect(response?.status()).toBe(200)
   await expect(heading(page, 'Playground')).toBeVisible({ timeout: 90_000 })
+})
+
+// La landing es sólo para una visita nueva en `/` (sin hash, sin deck guardado): un contexto limpio, sin el deck que siembra `beforeEach`.
+// Hereda del proyecto el User-Agent con el sufijo de QA, el viewport y el toque.
+async function freshVisitor(browser: Browser, baseURL: string, project: { use: Record<string, unknown> }) {
+  const { userAgent, viewport, deviceScaleFactor, isMobile, hasTouch } = project.use as Pick<BrowserContextOptions, 'userAgent' | 'viewport' | 'deviceScaleFactor' | 'isMobile' | 'hasTouch'>
+  const context = await browser.newContext({ baseURL, locale: 'es-AR', userAgent, viewport, deviceScaleFactor, isMobile, hasTouch })
+  await context.route('https://db.ygoprodeck.com/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"data":[]}' }))
+  return context
+}
+
+const LANDING_TITLE = '¿Cuántas veces abrís tu carta?'
+
+test('la landing: una visita nueva la ve, cambia la cuenta al elegir 1 copia y «Medir mi deck» abre la app', async ({ browser, baseURL }, testInfo) => {
+  const context = await freshVisitor(browser, baseURL!, testInfo.project)
+  const page = await context.newPage()
+  await page.goto('/')
+  await expect(heading(page, LANDING_TITLE)).toBeVisible()
+
+  // El anillo de la calculadora (role="meter"): con otra cantidad de copias cambia su valor.
+  const ring = page.getByRole('meter').first()
+  await expect(ring).toBeVisible()
+  const read = () => ring.evaluate((el) => `${el.getAttribute('aria-valuenow') ?? ''}|${el.textContent ?? ''}`)
+  const before = await read()
+  expect(before).toContain('de cada 100')
+  await page.getByRole('radio', { name: '1 copia', exact: true }).click()
+  await expect.poll(read).not.toBe(before)
+
+  await page.getByRole('link', { name: 'Medir mi deck' }).or(page.getByRole('button', { name: 'Medir mi deck' })).first().click()
+  await expect(page).toHaveURL(/#deck-builder$/)
+  await expect(heading(page, 'Armá tu deck')).toBeVisible()
+  await context.close()
+})
+
+test('la landing no sale con un hash ni con un deck guardado', async ({ page, browser, baseURL }, testInfo) => {
+  // Visita nueva pero con una pantalla por hash: abre la pantalla, no la landing.
+  const context = await freshVisitor(browser, baseURL!, testInfo.project)
+  const visitor = await context.newPage()
+  const rooms = visitor.waitForResponse((response) => /\/rooms$/.test(new URL(response.url()).pathname))
+  await visitor.goto('/#duel')
+  expect((await rooms).request().method()).toBe('GET')
+  await expect(heading(visitor, 'Jugar')).toBeVisible()
+  await expect(heading(visitor, LANDING_TITLE)).toHaveCount(0)
+  await context.close()
+
+  // Con el deck sembrado (el `page` de siempre), `/` abre la app, no la landing.
+  await page.goto('/')
+  await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toBeVisible()
+  await expect(heading(page, LANDING_TITLE)).toHaveCount(0)
 })

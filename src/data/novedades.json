@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-1-portada",
+      "date": "2026-11-09",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "Una portada nueva para quien llega por primera vez",
+        "novedades": [
+          "Si entrás por primera vez a la página, ahora ves una portada que te deja probar la cuenta: elegí cuántas copias de una carta tenés en 40 y mirá cuántas manos de cada 100 la traen.",
+          "Desde ahí, «Medir mi deck» abre el armador y «Jugar ahora» te lleva a las salas.",
+          "Más abajo se ve qué hay adentro (el Lab, la mesa, el duelo por enlace y el meta), los datos del día y lo último de Novedades."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "La portada la ve sólo quien llega sin un deck guardado: si ya usás la página, entrás directo como siempre.",
+          "Los enlaces a una pantalla o a un duelo siguen abriendo lo mismo que antes."
+        ]
+      },
+      "en": {
+        "title": "A new front page for first-time visitors",
+        "novedades": [
+          "If this is your first visit, you now land on a front page that lets you try the math: pick how many copies of a card you run in 40 and see how many hands out of 100 include it.",
+          "From there, \"Measure my deck\" opens the deck builder and \"Play now\" takes you to the rooms.",
+          "Further down you can see what is inside (the Lab, the practice mat, duel by link and the meta), today's data and the latest updates."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Only visitors without a saved deck see it: if you already use the site, you go straight in as usual.",
+          "Links to a screen or to a duel still open what they used to."
+        ]
+      }
+    },
+    {
       "id": "2026-11-08-3-novedades",
       "date": "2026-11-08",
       "tags": [

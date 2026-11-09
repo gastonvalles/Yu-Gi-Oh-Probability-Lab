@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "capturas:landing": "node scripts/landing-capturas.mjs",
     "build": "node scripts/write-build-id.mjs && node scripts/build-auto-data.mjs && tsc -p src/tsconfig.json && vite build",
     "gate": "node scripts/ti/gate.mjs",
     "lint": "eslint .",

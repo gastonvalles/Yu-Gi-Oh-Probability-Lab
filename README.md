@@ -46,6 +46,7 @@ npm run sync:core      # cards.cdb y scripts para los duelos automáticos, fuera
 ## Mapa de carpetas
 
 ```
+src/App.tsx         decide entre la landing y la app (src/MainApp.tsx, aparte)
 src/probability.ts  el motor exacto del Lab
 src/app/            la lógica sin interfaz: estado, builder, Lab, mesa, duelo y motor de cartas
 src/components/     las pantallas; ui/ son las piezas base y playground/ el catálogo /playground
@@ -58,6 +59,8 @@ scripts/            los syncs de datos y algunas herramientas
 public/             estáticos: íconos, precios, mascotas, 404 y privacidad
 docs/               la documentación
 ```
+
+**La landing** (`src/components/landing/`) sólo la ve una visita nueva en `/`: sin hash, sin deck con cartas (`ygo-probability-lab:v2`), fuera de la app instalada y sin la marca de sesión `ygo-lab:entered`; la decide `shouldShowLanding` (`src/app/landing.ts`) y `/?landing=1` la fuerza. La app se carga aparte (`src/MainApp.tsx`). Las cifras del meta las escribe el build en `src/data/landing-stats.json` (no se sube) y sus capturas, `npm run capturas:landing`, en `public/landing/`.
 
 ## Documentación
 

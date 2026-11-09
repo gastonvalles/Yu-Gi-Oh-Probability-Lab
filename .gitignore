@@ -25,6 +25,8 @@ duel-relay/.wrangler/
 .playwright-cli/
 # El commit que se publica (`scripts/write-build-id.mjs`): lo escribe cada build.
 public/build.json
+# Las cifras de la landing (`scripts/write-build-id.mjs`): las arma cada build.
+src/data/landing-stats.json
 # Lo que deja `npm run test:e2e` (capturas, trazas, informe).
 test-results/
 playwright-report/
