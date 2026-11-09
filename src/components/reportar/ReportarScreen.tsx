@@ -233,10 +233,11 @@ export function ReportarScreen() {
     <StepPage as="article">
       <StepHero title={t('reportar.title')} icon="flag" subtitle={t('reportar.subtitle')} />
 
-      <div className="grid w-full max-w-xl gap-4">
+      {/* En una pantalla ancha, el formulario a la izquierda y, a la derecha y fijo al bajar, el aviso de qué se publica; si no, el aviso arriba y todo en una columna. */}
+      <div className="grid w-full max-w-xl gap-4 min-[1280px]:max-w-none min-[1280px]:grid-cols-[minmax(0,1fr)_20rem] min-[1280px]:items-start min-[1280px]:gap-x-6">
         {/* Lo que se publica y adónde va una vulnerabilidad: hace falta antes de escribir, no después de enviar. */}
         {status.kind === 'sent' ? null : (
-          <Callout tone="neutral" icon="info">
+          <Callout tone="neutral" icon="info" className="min-[1280px]:sticky min-[1280px]:top-6 min-[1280px]:col-start-2 min-[1280px]:row-start-1">
             <p className="m-0">{t('reportar.notice.public')}</p>
             <p className="m-0 mt-2">
               {t('reportar.notice.security')}{' '}
@@ -248,7 +249,7 @@ export function ReportarScreen() {
         )}
 
         {status.kind === 'sent' ? (
-          <div ref={doneRef} tabIndex={-1} className="grid gap-3 rounded-control focus-visible:outline-none focus-visible:shadow-focus">
+          <div ref={doneRef} tabIndex={-1} className="grid max-w-xl gap-3 rounded-control focus-visible:outline-none focus-visible:shadow-focus">
             <Callout tone="success" title={t('reportar.done.title')}>
               <p className="m-0">{status.url ? t('reportar.done.text') : t('reportar.done.textNoLink')}</p>
               {status.url && status.number ? (
@@ -262,12 +263,15 @@ export function ReportarScreen() {
             </Button>
           </div>
         ) : (
-          <Card as="form" aria-label={t('reportar.form')} aria-busy={sending || undefined} onSubmit={(event: FormEvent) => void submit(event)} className="relative grid gap-5">
+          <Card as="form" aria-label={t('reportar.form')} aria-busy={sending || undefined} onSubmit={(event: FormEvent) => void submit(event)} className="relative grid gap-5 min-[1280px]:col-start-1 min-[1280px]:row-start-1">
             {/* i18n-ignore: los nombres de campo del contrato de /api/bug */}
             {textarea('que', 5, { hint: t('reportar.field.queHint', { min: MIN_QUE, max: MAX_TEXT }), optional: false })}
-            {textarea('esperaba', 3)}
-            {/* i18n-ignore: los nombres de campo del contrato de /api/bug */}
-            {textarea('pasos', 4, { placeholder: t('reportar.field.pasosPlaceholder') })}
+            {/* Lo opcional, lado a lado en una pantalla ancha: el formulario no se alarga más de lo que entra. */}
+            <div className="grid gap-5 min-[1280px]:grid-cols-2 min-[1280px]:gap-x-4">
+              {textarea('esperaba', 4)}
+              {/* i18n-ignore: los nombres de campo del contrato de /api/bug */}
+              {textarea('pasos', 4, { placeholder: t('reportar.field.pasosPlaceholder') })}
+            </div>
 
             <FieldRow id={fieldId('area')} label={t('reportar.field.area')} error={areaError}>
               <select
