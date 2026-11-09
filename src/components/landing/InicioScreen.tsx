@@ -37,7 +37,8 @@ const go = (hash: string) => () => {
   window.location.hash = hash
 }
 
-export function InicioScreen() {
+/** `stats` es de las pruebas: el archivo del build no se versiona, y sin él el CI no vería «Lo más jugado del meta». */
+export function InicioScreen({ stats = STATS }: { stats?: LandingStats | null } = {}) {
   return (
     <div className="stagger mx-auto grid w-full min-w-0 max-w-content content-start gap-10 px-gutter pb-8 pt-4 min-[1101px]:gap-12 min-[1101px]:px-6 min-[1101px]:pt-6">
       <section aria-labelledby="inicio-title" className="grid gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_26rem] min-[1101px]:gap-6">
@@ -64,7 +65,7 @@ export function InicioScreen() {
 
       <PlayBanner />
 
-      {STATS && STATS.topCards.length > 0 ? <TopCards stats={STATS} /> : null}
+      {stats && stats.topCards.length > 0 ? <TopCards stats={stats} /> : null}
 
       <LatestNews />
 
