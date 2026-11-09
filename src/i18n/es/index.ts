@@ -7,6 +7,7 @@ import { duel } from './duel'
 import { handtraps } from './handtraps'
 import { lab } from './lab'
 import { meta } from './meta'
+import { novedades } from './novedades'
 import { practice } from './practice'
 import { roles } from './roles'
 import { rules } from './rules'
@@ -15,6 +16,6 @@ import { shell } from './shell'
 import { solo } from './solo'
 
 /** Un área por archivo y por prefijo de clave (`shell.…`, `deck.…`): cada parte de la app edita sólo el suyo. */
-export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel, handtraps, auto, solo }
+export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel, handtraps, auto, solo, novedades }
 
-export const es = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel, ...handtraps, ...auto, ...solo }
+export const es = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel, ...handtraps, ...auto, ...solo, ...novedades }

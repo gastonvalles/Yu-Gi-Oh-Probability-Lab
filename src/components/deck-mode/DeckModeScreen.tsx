@@ -47,6 +47,7 @@ import {
   LazyExpansionsScreen,
   LazyExportDeckPanel,
   LazyLifeCalculatorScreen,
+  LazyNovedadesScreen,
   LazyPracticeSection,
   LazyProbabilityPanel,
   LazyReplaysScreen,
@@ -494,6 +495,12 @@ export function DeckModeScreen() {
       {activeStep === 'banlists' ? (
         <div id="banlists" className="min-w-0 min-[1101px]:min-h-full">
           <LazyBanlistsScreen />
+        </div>
+      ) : null}
+
+      {activeStep === 'novedades' ? (
+        <div id="novedades" className="min-w-0 min-[1101px]:min-h-full">
+          <LazyNovedadesScreen />
         </div>
       ) : null}
     </section>

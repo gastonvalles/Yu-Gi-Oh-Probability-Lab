@@ -119,6 +119,25 @@ test('Tier lists y Banlists listan datos', async ({ page }) => {
   await expect(page.locator('#banlists').getByText(/\d{1,2} de [a-záéíóú]+ de \d{4}/).first()).toBeVisible()
 })
 
+test('Novedades lista las entradas, filtra por etiqueta y baja hasta una entrada', async ({ page }) => {
+  await page.goto('/#novedades')
+  await expect(heading(page, 'Novedades')).toBeVisible()
+  const entries = page.locator('section[id^="novedad-"]')
+  await expect(entries.first()).toBeVisible()
+  const all = await entries.count()
+  expect(all).toBeGreaterThan(3)
+
+  // Una etiqueta deja sólo las suyas (la cuenta del chip dice cuántas).
+  await page.getByRole('button', { name: /^Arreglo \d+$/ }).click()
+  const fixes = await entries.count()
+  expect(fixes).toBeGreaterThan(0)
+  expect(fixes).toBeLessThan(all)
+
+  // El enlace a una entrada abre la pantalla con esa tarjeta a la vista (la más vieja de la tanda de relleno).
+  await page.goto('/#novedades?entrada=2026-11-01-solo-y-bots')
+  await expect(page.locator('#novedad-2026-11-01-solo-y-bots')).toBeInViewport()
+})
+
 test('Online abre el lobby (sólo GET /rooms, sin crear salas)', async ({ page }) => {
   const rooms = page.waitForResponse((response) => /\/rooms$/.test(new URL(response.url()).pathname))
   await page.goto('/#duel')

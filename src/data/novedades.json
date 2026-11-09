@@ -1,0 +1,554 @@
+{
+  "entries": [
+    {
+      "id": "2026-11-08-3-novedades",
+      "date": "2026-11-08",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "Novedades: qué cambió, en un solo lugar",
+        "novedades": [
+          "Hay una pantalla nueva con las notas de cada actualización, la más reciente arriba.",
+          "Podés filtrar por Nuevo, Mejora o Arreglo.",
+          "Cada entrada tiene su propio enlace, para mandársela a alguien.",
+          "Un punto lima junto a «Novedades» te avisa cuando hay algo que todavía no viste."
+        ],
+        "comoSeUsa": [
+          "Abrí el menú y tocá «Novedades», junto a «Privacidad y aviso legal».",
+          "Elegí una etiqueta para ver sólo ese tipo de cambios; tocala de nuevo para volver a verlas todas.",
+          "Tocá el ícono de enlace de una entrada para copiar su dirección."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Por ahora están las novedades de las últimas semanas."
+        ]
+      },
+      "en": {
+        "title": "What's new: what changed, in one place",
+        "novedades": [
+          "There is a new screen with the notes for every update, newest on top.",
+          "You can filter by New, Improvement or Fix.",
+          "Each entry has its own link, so you can send it to someone.",
+          "A lime dot next to \"What's new\" tells you when there is something you have not seen yet."
+        ],
+        "comoSeUsa": [
+          "Open the menu and tap \"What's new\", next to \"Privacy and legal notice\".",
+          "Pick a tag to see only that kind of change; tap it again to see them all.",
+          "Tap an entry's link icon to copy its address."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "For now it only has the updates from the last few weeks."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-08-1-paleta",
+      "date": "2026-11-08",
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
+      "es": {
+        "title": "Paleta nueva: carbón, violeta eléctrico y lima",
+        "novedades": [
+          "La página estrena colores: fondo carbón, violeta eléctrico para lo principal y lima ácida para lo que elegís o resaltás (el menú activo, los enlaces, el foco).",
+          "Los estados se separan de la marca: menta para lo que salió bien, naranja para los avisos y rojo para el peligro.",
+          "La mesa de práctica y el duelo mantienen su arena violeta."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Los textos en rojo (mensajes inválidos, tendencias a la baja, las vidas que bajan) se leen con más contraste.",
+          "Los números de los filtros elegidos se leen mejor sobre el violeta.",
+          "Los roles del deck cambian de color (Extender, Payoff y Recovery) para no confundirse con el menta ni con la lima.",
+          "Las imágenes que exportás del deck y de las tier lists salen con la paleta nueva.",
+          "Las páginas de privacidad y de error y el color de la barra del navegador pasan al carbón."
+        ],
+        "ojo": []
+      },
+      "en": {
+        "title": "New palette: charcoal, electric violet and lime",
+        "novedades": [
+          "The site has new colors: a charcoal background, electric violet for the main actions and acid lime for what you pick or highlight (the active menu item, links, focus).",
+          "Status colors now stand apart from the brand: mint for what went well, orange for warnings and red for danger.",
+          "The practice table and duels keep their violet arena."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Red text (invalid messages, downward trends, falling life points) is easier to read.",
+          "The counts on selected filters are easier to read on the violet.",
+          "Deck role colors change (Extender, Payoff and Recovery) so they are not mistaken for mint or lime.",
+          "The deck and tier list images you export use the new palette.",
+          "The privacy and error pages and the browser bar color move to charcoal."
+        ],
+        "ojo": []
+      }
+    },
+    {
+      "id": "2026-11-08-2-iconos",
+      "date": "2026-11-08",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Ícono e imagen para compartir con el logo de la app",
+        "novedades": [
+          "El ícono de la app instalada, el de la pestaña del navegador y el del iPhone pasan a ser el logo de YGOUltraLab (el anillo con la carta) sobre carbón.",
+          "La imagen que se ve al compartir el enlace es nueva: el nombre, «Medí tu deck con probabilidad exacta» y cuántas manos buenas abrís de cada 100."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Se fueron el Puzzle del Milenio y el rótulo «sitio no oficial»."
+        ],
+        "ojo": [
+          "Los navegadores y los chats guardan estas imágenes un buen rato: el cambio puede tardar en verse, y la app instalada puede pedir que la reinstales para cambiar el ícono."
+        ]
+      },
+      "en": {
+        "title": "App icon and share image with the app logo",
+        "novedades": [
+          "The installed app icon, the browser tab icon and the iPhone icon are now the YGOUltraLab logo (the ring with the card) on charcoal.",
+          "The image shown when you share the link is new: the name, a line about measuring your deck with exact probability and how many good hands you open out of 100."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "The Millennium Puzzle and the “unofficial site” label are gone."
+        ],
+        "ojo": [
+          "Browsers and chat apps keep these images for a while: the change can take time to show up, and the installed app may need a reinstall to update its icon."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-04-duelo-por-enlace",
+      "date": "2026-11-04",
+      "tags": [
+        "mejora",
+        "arreglo"
+      ],
+      "es": {
+        "title": "Duelo por enlace: registro completo y chat que sobrevive a recargar",
+        "novedades": [
+          "El registro cuenta más de lo que hace el rival: cuándo coloca una carta (sin decir cuál), los cambios de vidas de los dos y el nombre de la carta en sus invocaciones, si quedó boca arriba. Nunca nombra una carta boca abajo ni de la mano.",
+          "Si recargás en pleno duelo, volvés con la mesa, el registro y el chat.",
+          "Al atacar, el menú «Atacar» te recuerda que el objetivo se toca en la mesa."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Si el rival recarga, tu registro ya no pierde sus jugadas.",
+          "Cuando el rival se va de un duelo terminado ves un solo aviso, con los segundos que le quedan a la sala, en vez de tres a la vez."
+        ],
+        "ojo": [
+          "El chat y el registro se guardan en tu navegador hasta 2 horas, como el resto del duelo en pausa, y se borran al salir, en la revancha o cuando vence ese plazo.",
+          "En el celular, el cajón del chat puede seguir diciendo que tu rival no está en la sala además del aviso de la barra."
+        ]
+      },
+      "en": {
+        "title": "Link duels: full log and a chat that survives a reload",
+        "novedades": [
+          "The log tells you more of what your rival does: when they Set a card (without saying which), Life Point changes for both of you and the card name in their Summons, if it is face-up. It never names a face-down card or one in hand.",
+          "If you reload mid-duel, you come back to the field, the log and the chat.",
+          "When you attack, the Attack menu reminds you that you pick the target on the field."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "If your rival reloads, your log no longer loses their plays.",
+          "When your rival leaves a finished duel you get a single notice, with the seconds left before the room closes, instead of three at once."
+        ],
+        "ojo": [
+          "The chat and the log stay in your browser for up to 2 hours, like the rest of a paused duel, and are cleared when you leave, on a rematch or when that time runs out.",
+          "On mobile, the chat drawer can still say your rival isn't in the room on top of the notice in the bar."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-04-fases-solas",
+      "date": "2026-11-04",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Tu Draw Phase y tu Standby Phase pasan solas",
+        "novedades": [
+          "En los duelos automáticos (contra un bot y por enlace), al empezar tu turno la mesa recorre sola tu Draw Phase y tu Standby Phase hasta la Main Phase 1.",
+          "Si tenés algo para activar en esas fases y las respuestas están en «Siempre», la pregunta aparece igual; al contestar o pasar, el turno sigue solo.",
+          "Desde la Main Phase 1 las fases las cambiás vos, y el botón ofrece sólo las que el juego deja: si un efecto salta tu Battle Phase o tu Main Phase 2, no se puede elegir."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Las salidas de tu mano de apertura siguen a la vista en la Main Phase 1 hasta tu primera jugada.",
+          "Tus carteles de fase ya no salen encima del aviso del turno del rival."
+        ],
+        "ojo": [
+          "Si un efecto salta tu Draw Phase, la mesa la muestra un instante y sigue de largo."
+        ]
+      },
+      "en": {
+        "title": "Your Draw Phase and Standby Phase go by on their own",
+        "novedades": [
+          "In automatic duels (against a bot and by link), when your turn starts the table moves through your Draw Phase and Standby Phase by itself, up to Main Phase 1.",
+          "If you have something to activate in those phases and responses are set to Always, you still get asked; once you answer or pass, the turn keeps going on its own.",
+          "From Main Phase 1 on you change phases yourself, and the button only offers the ones the game allows: if an effect skips your Battle Phase or Main Phase 2, you can't pick it."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Your opening hand outs stay visible in Main Phase 1 until your first play.",
+          "Your phase banners no longer show up on top of your rival's turn notice."
+        ],
+        "ojo": [
+          "If an effect skips your Draw Phase, the table shows it for a moment and moves on."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-03-cadena",
+      "date": "2026-11-03",
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
+      "es": {
+        "title": "La cadena del duelo automático, animada y explicada",
+        "novedades": [
+          "La pila de la cadena se anima: cada eslabón nuevo entra desde arriba, el que se resuelve se enciende, el resuelto recibe un tilde y el negado o sin efecto, una cruz.",
+          "Cuando un eslabón se resuelve, su chip dice qué pasó si el motor lo sabe sin duda: «Añade 1 carta», «Roba 2 cartas», «Invoca 2 monstruos», «Manda 1 al Cementerio» o «Destierra 1 carta». Si no hay certeza, queda en «Resuelta».",
+          "El ⓘ de la cadena abre «Cómo se resuelve»: la regla en una línea y dos ejemplos con cartas reales (Effect Veiler contra Mirrorjade the Iceblade Dragon y Called by the Grave contra Maxx \"C\"), cada uno con el orden que sale bien y el que sale mal.",
+          "En el celular, cada chip de la cinta lleva el ícono de su estado, además del color."
+        ],
+        "comoSeUsa": [
+          "Cuando haya una cadena, tocá el ⓘ (en el celular, con la hoja de la cadena subida).",
+          "«Repetir» arma la pila del ejemplo otra vez, eslabón por eslabón.",
+          "Cerrala con la X, tocando afuera o con Escape."
+        ],
+        "arreglos": [
+          "En escritorio la pila se va sola 2,5 segundos después de terminar la cadena o de tu último toque. Antes, si la tocabas, quedaba flotando hasta que la plegaras.",
+          "Mientras leés «Cómo se resuelve», la pila se queda a la vista."
+        ],
+        "ojo": [
+          "«Manda N al Cementerio» sale también cuando un efecto destruye: el motor no dice el motivo, sólo adónde fueron las cartas.",
+          "Con movimiento reducido, la pila no se anima."
+        ]
+      },
+      "en": {
+        "title": "The automatic duel chain, animated and explained",
+        "novedades": [
+          "The chain stack animates: each new link drops in from the top, the one resolving lights up, a resolved link gets a check mark and a negated or no-effect link gets a cross.",
+          "When a link resolves, its chip says what happened if the engine knows for sure: “Adds 1 card”, “Draws 2 cards”, “Summons 2 monsters”, “Sends 1 to the GY” or “Banishes 1 card”. If it isn't certain, it stays at “Resolved”.",
+          "The chain's ⓘ opens “How it resolves”: the rule in one line and two examples with real cards (Effect Veiler against Mirrorjade the Iceblade Dragon and Called by the Grave against Maxx \"C\"), each with the order that works and the one that doesn't.",
+          "On mobile, each chip in the strip carries the icon for its state, not just the color."
+        ],
+        "comoSeUsa": [
+          "When there's a chain, tap the ⓘ (on mobile, with the chain sheet pulled up).",
+          "Replay builds the example stack again, link by link.",
+          "Close it with the X, by tapping outside or with Escape."
+        ],
+        "arreglos": [
+          "On desktop the stack goes away on its own 2.5 seconds after the chain ends or after your last tap. Before, if you tapped it, it stayed floating until you folded it.",
+          "While you read “How it resolves”, the stack stays in view."
+        ],
+        "ojo": [
+          "“Sends N to the GY” also shows up when an effect destroys: the engine doesn't give the reason, only where the cards went.",
+          "With reduced motion, the stack doesn't animate."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-03-movimiento",
+      "date": "2026-11-03",
+      "tags": [
+        "nuevo",
+        "arreglo"
+      ],
+      "es": {
+        "title": "Vuelo de carta en 3D y golpe de vidas",
+        "novedades": [
+          "Cuando una carta cruza la mesa (al invocar desde la mano, mandar al Cementerio, desterrar o volver a la mano), se levanta, se inclina con perspectiva y cae con un golpe y un poco de polvo.",
+          "Al llegar a su casilla, un monstruo muestra arriba su Nivel (★ 4), su Rango (R 8) o su LINK (LINK 2), y el ATK/DEF sube desde abajo.",
+          "Cuando bajan las vidas, la casilla se sacude, el número se infla y el «−N» sube debajo. Con 2000 o menos el número se pone rojo y late; al subir, el «+N» aparece quieto."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Con «reducir movimiento» activado en el sistema, las imágenes de las cartas aparecen de una vez, sin el fundido al cargar."
+        ],
+        "ojo": [
+          "Un salto a una casilla vecina sigue yendo derecho, y con dos vuelos en el aire el tercero también.",
+          "Los Péndulo, las fichas y las cartas sin datos van sin Nivel ni Rango: mejor callar que mostrar un dato dudoso.",
+          "Con movimiento reducido, la carta aparece con un fundido corto, el Nivel y los números quedan quietos y de las vidas sólo se ve el «±N»."
+        ]
+      },
+      "en": {
+        "title": "3D card flight and life point hits",
+        "novedades": [
+          "When a card crosses the table (Summoning from the hand, sending to the GY, banishing or returning to the hand), it lifts, tilts in perspective and lands with a thud and a bit of dust.",
+          "When a monster reaches its zone, it shows its Level (★ 4), Rank (R 8) or LINK (LINK 2) on top, and its ATK/DEF rises from below.",
+          "When Life Points drop, the box shakes, the number swells and the “−N” rises underneath. At 2000 or less the number turns red and pulses; when they go up, the “+N” shows without moving."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "With “reduce motion” turned on in your system, card images show up at once, without the fade-in while loading."
+        ],
+        "ojo": [
+          "A hop to a neighboring zone still goes straight, and with two flights in the air the third one does too.",
+          "Pendulum Monsters, Tokens and cards without data show no Level or Rank: better to stay quiet than show a doubtful number.",
+          "With reduced motion, the card fades in briefly, the Level and the numbers stay still and life points only show the “±N”."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-03-carteles-escritorio",
+      "date": "2026-11-03",
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
+      "es": {
+        "title": "Los carteles de la mesa se mueven en escritorio",
+        "novedades": [
+          "En escritorio podés llevar a cualquier lugar de la pantalla las preguntas del duelo, la pila de la cadena, los visores del Cementerio, el Main, el Extra y el destierro, «Más opciones», las confirmaciones y «Pasos y combos», entre otros.",
+          "Quedan donde los dejás: el próximo sale ahí, también después de recargar la página.",
+          "Las cartas de las preguntas ya no se cortan en una ventana baja: se achican hasta entrar enteras."
+        ],
+        "comoSeUsa": [
+          "Agarrá el cartel por su fila de arriba, la del título, y arrastralo.",
+          "Doble clic en esa fila: vuelve a su lugar de siempre.",
+          "Con el teclado y el foco dentro del cartel: Alt + flechas."
+        ],
+        "arreglos": [
+          "El cartel siempre queda a la vista: no se mete debajo del menú ni sale de la ventana, y se acomoda si la achicás.",
+          "La lista de la cadena se acorta de a eslabones enteros, sin uno cortado por el borde."
+        ],
+        "ojo": [
+          "Sólo en escritorio y con mouse o lápiz: en el celular nada cambia.",
+          "No se mueven los menús pegados a una carta, los destellos de fase y de ataque, el detalle de la carta, el chat ni la calculadora de vidas."
+        ]
+      },
+      "en": {
+        "title": "Table panels move on desktop",
+        "novedades": [
+          "On desktop you can drag anywhere on the screen the duel questions, the chain stack, the GY, Main, Extra and banished viewers, More options, confirmations and Steps and combos, among others.",
+          "They stay where you leave them: the next one opens there, even after you reload the page.",
+          "Cards in the questions are no longer cut off in a short window: they shrink until they fit whole."
+        ],
+        "comoSeUsa": [
+          "Grab the panel by its top row, the one with the title, and drag it.",
+          "Double-click that row: it goes back to its usual spot.",
+          "With the keyboard and focus inside the panel: Alt + arrow keys."
+        ],
+        "arreglos": [
+          "The panel always stays in view: it doesn't slip under the menu or out of the window, and it adjusts if you make the window smaller.",
+          "The chain list shortens by whole links, with none cut off at the edge."
+        ],
+        "ojo": [
+          "Desktop only, with a mouse or pen: nothing changes on mobile.",
+          "Menus attached to a card, phase and attack flashes, the card detail, the chat and the life point calculator don't move."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-02-combos",
+      "date": "2026-11-02",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "Combos guardados: notas por paso y variantes con handtrap",
+        "novedades": [
+          "Cada combo guardado dice, sin abrirlo, con qué cartas de tu mano arranca y en qué tablero termina («Arranca con» y «Termina con»).",
+          "Podés escribir una nota de hasta 140 caracteres en cada paso: se ve debajo de la jugada y viaja en el enlace cuando compartís el combo.",
+          "Si tenés de los dos tipos, la lista se separa en «Línea base» y «Con handtrap».",
+          "Una variante con handtrap queda ligada a su combo base: en el paso donde se separan, «Rama» te lleva a la variante y «Se separa de» te devuelve al base."
+        ],
+        "comoSeUsa": [
+          "En Solo, elegí Handtraps, grabá una línea y guardala con «Guardar combo».",
+          "Repasala hasta un paso, dejá que el rival use una handtrap de su mano, seguí con tu respuesta y guardala: queda como variante del base.",
+          "Para anotar un paso, abrí «Pasos y combos» y tocá el ícono de nota de ese paso."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Una variante se arma sólo si el combo base se grabó contra las handtraps.",
+          "Un combo que te llegó por enlace muestra las notas, pero no se editan hasta que lo guardás.",
+          "Un enlace con notas no lo abre una página cargada antes de esta actualización: hay que recargarla."
+        ]
+      },
+      "en": {
+        "title": "Saved combos: step notes and hand trap variants",
+        "novedades": [
+          "Each saved combo tells you, without opening it, which cards from your hand it starts with and which board it ends on (“Starts with” and “Ends with”).",
+          "You can write a note of up to 140 characters on each step: it shows under the play and travels in the link when you share the combo.",
+          "If you have both kinds, the list splits into “Baseline” and “With handtrap”.",
+          "A hand trap variant stays linked to its base combo: at the step where they split, “Branch” takes you to the variant and “Splits from” takes you back to the base."
+        ],
+        "comoSeUsa": [
+          "In Solo, pick Hand traps, record a line and keep it with Save combo.",
+          "Replay it up to a step, let your rival use a hand trap from their hand, play your answer and save it: it becomes a variant of the base.",
+          "To add a note, open Steps and combos and tap the note icon on that step."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "A variant only forms if the base combo was recorded against the hand traps.",
+          "A combo you got by link shows its notes, but you can't edit them until you save it.",
+          "A link with notes won't open on a page loaded before this update: reload it first."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-02-hoja-celular",
+      "date": "2026-11-02",
+      "tags": [
+        "nuevo",
+        "arreglo"
+      ],
+      "es": {
+        "title": "Celular: la cadena y las preguntas en una sola hoja de abajo",
+        "novedades": [
+          "En el celular, la cadena del duelo automático va en una hoja de abajo que se arrastra, de borde a borde, y ya no tapa el campo del rival. Bajada es una cinta con un chip por eslabón; subida, la pila entera.",
+          "Las preguntas («¿Activás el efecto?», responder a una cadena) salen en esa misma hoja, debajo de las cartas. El visor del Cementerio, del Extra y de las demás pilas usa la misma hoja: hay una sola a la vez.",
+          "Cuando podés responder, la hoja muestra con qué carta encadenás, con su miniatura y el ícono de dónde está; si es una sola, ya viene elegida.",
+          "Las hojas del duelo se minimizan arrastrando su encabezado hacia abajo y se abren arrastrando el asa hacia arriba."
+        ],
+        "comoSeUsa": [
+          "Tocá o arrastrá el asa (la rayita de arriba) para subir o bajar la hoja.",
+          "Para responder, elegí la carta y tocá «Encadenar como CL…»; para dejarla pasar, «No responder»."
+        ],
+        "arreglos": [
+          "Al pagar un costo con una carta de la mano, la hoja se reduce a su asa para que puedas tocarla y vuelve sola al terminar.",
+          "Se acabó la doble hoja con un hueco en el medio que tapaba la mano.",
+          "Mientras elegís una casilla o un objetivo, «Cancelar» y «Listo» se ven enteros."
+        ],
+        "ojo": [
+          "Con la cadena subida y una pregunta, la mano queda tapada a propósito: bajá la hoja para ver tus cartas.",
+          "«Encadenar como CL…» se corta en pantallas de 310 px o menos."
+        ]
+      },
+      "en": {
+        "title": "Mobile: the chain and the questions in a single bottom sheet",
+        "novedades": [
+          "On mobile, the automatic duel chain sits in a bottom sheet you can drag, edge to edge, and it no longer covers your rival's field. Pulled down it's a strip with one chip per link; pulled up, the whole stack.",
+          "Questions (“Activate the effect?”, responding to a chain) show up in that same sheet, under the cards. The GY, Extra and other pile viewers use the same sheet: there's only one at a time.",
+          "When you can respond, the sheet shows which card you chain with, with its thumbnail and an icon for where it is; if there's only one, it comes already picked.",
+          "Duel sheets minimize when you drag their header down and open when you drag the handle up."
+        ],
+        "comoSeUsa": [
+          "Tap or drag the handle (the little bar on top) to raise or lower the sheet.",
+          "To respond, pick the card and tap “Chain as CL…”; to let it go, “Don't respond”."
+        ],
+        "arreglos": [
+          "When you pay a cost with a card from your hand, the sheet shrinks to its handle so you can tap it, and comes back on its own when you're done.",
+          "No more double sheet with a gap in the middle covering your hand.",
+          "While you pick a zone or a target, Cancel and Done are fully visible."
+        ],
+        "ojo": [
+          "With the chain pulled up and a question open, your hand is covered on purpose: pull the sheet down to see your cards.",
+          "“Chain as CL…” gets cut off on screens 310 px wide or less."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-02-preguntas",
+      "date": "2026-11-02",
+      "tags": [
+        "mejora",
+        "arreglo"
+      ],
+      "es": {
+        "title": "Duelo automático: preguntas más claras",
+        "novedades": [
+          "Si tenés un efecto rápido o un disparo opcional, el duelo te pregunta en cada momento en que podés activarlo, también en la Standby, la Battle y la End Phase del rival y en tu Battle Phase.",
+          "El cartel dice de qué carta es la pregunta y si es su costo, algo que elegís al activarla o su efecto («Costo de Trade-In», «Al activar Monster Reincarnation»), y lleva arriba la fase y de quién es el turno.",
+          "Al elegir la casilla de una carta que jugás desde la mano, «Cancelar» (o Escape) la vuelve atrás sin gastar la jugada.",
+          "Lo que es público de la mano del rival (lo que te mostró o lo que volvió a su mano desde una zona a la vista) se ve boca arriba."
+        ],
+        "comoSeUsa": [
+          "Abrí «Más opciones» y mirá «Respuestas».",
+          "«Siempre» te pregunta en cada momento con algo para activar; «Nunca», sólo lo obligatorio."
+        ],
+        "arreglos": [
+          "La opción del medio desaparece del menú de respuestas: hacía lo mismo que «Siempre», y si la tenías elegida, quedás en «Siempre».",
+          "Una carta que se dispara porque otra se movió ya no dice «Tras la Invocación Especial» por una invocación anterior: dice «Efecto que se dispara».",
+          "Cuando no se sabe de qué carta viene la pregunta, el cartel muestra sólo lo que tenés que elegir."
+        ],
+        "ojo": [
+          "Con una Trampa o una Mágica Rápida colocada vas a ver más preguntas en el turno del rival (hasta unas 10 por turno); «Nunca» las apaga.",
+          "«Cancelar» no aparece al elegir la casilla durante una resolución ni en el duelo por enlace."
+        ]
+      },
+      "en": {
+        "title": "Automatic duels: clearer questions",
+        "novedades": [
+          "If you have a Quick Effect or an optional trigger, the duel asks you at every moment you can activate it, including your rival's Standby, Battle and End Phase and your own Battle Phase.",
+          "The panel says which card the question comes from and whether it's the cost, something you pick when activating it or its effect (“Cost of Trade-In”, “Activating Monster Reincarnation”), and shows the phase and whose turn it is on top.",
+          "When you pick the zone for a card you play from your hand, Cancel (or Escape) takes it back without spending the play.",
+          "Whatever is public in your rival's hand (what they revealed, or what returned to their hand from a face-up zone) shows face-up."
+        ],
+        "comoSeUsa": [
+          "Open More options and look at Responses.",
+          "Always asks you every time you have something to activate; Never asks only for mandatory ones."
+        ],
+        "arreglos": [
+          "The middle option is gone from the responses menu: it did the same as Always, and if you had it picked, you're now on Always.",
+          "A card that triggers because another one moved no longer says “After the Special Summon” because of an earlier Summon: it says “Trigger effect”.",
+          "When it's unknown which card the question comes from, the panel only shows what you need to pick."
+        ],
+        "ojo": [
+          "With a Trap or a Quick-Play Spell Set you'll see more questions on your rival's turn (up to about 10 per turn); Never turns them off.",
+          "Cancel doesn't show up when picking a zone during a resolution, or in link duels."
+        ]
+      }
+    },
+    {
+      "id": "2026-11-01-solo-y-bots",
+      "date": "2026-11-01",
+      "tags": [
+        "nuevo",
+        "mejora"
+      ],
+      "es": {
+        "title": "Solo: un bot por mazo y «Probá tu combo»",
+        "novedades": [
+          "Jugar tiene dos entradas, Solo y Online. Solo es la lista de rivales: arriba, «Probá tu combo» con Handtraps y Pasivo; abajo, un bot por mazo: Sky Striker, Angelechy y Elfnote Ars Magna Power Patron.",
+          "«Ver mazo» muestra la lista completa de cada bot, y con «Cambiar cartas» reemplazás sus handtraps y staples por otras handtraps que el bot sabe usar.",
+          "Los bots juegan con más criterio: atacan lo boca abajo cuando tienen con qué arriesgar, acomodan sus posiciones y, con una sola interrupción en la mano, la guardan para lo que importa.",
+          "«Qué hizo el bot y por qué» cuenta sus ataques, sus cambios de posición y cuándo se guardó una interrupción."
+        ],
+        "comoSeUsa": [
+          "Tocá Jugar y después Solo: la primera vez queda elegido Handtraps.",
+          "Elegí un rival y tocá «Jugar contra…».",
+          "Para ver o cambiar el mazo de un bot, tocá «Ficha y ajustes» y después «Ver mazo»."
+        ],
+        "arreglos": [
+          "Los mazos de los bots respetan la banlist TCG vigente; Sky Striker se actualizó para cumplirla.",
+          "Tier lists suma la pestaña «La tuya», con el creador de siempre, y Exportar vuelve a «Tu deck»."
+        ],
+        "ojo": [
+          "Contra un bot la partida es siempre automática.",
+          "Los bots siguen la banlist TCG aunque tu formato sea otro: sus listas salen de torneos TCG.",
+          "Un cambio de cartas puede hacer que el bot juegue peor."
+        ]
+      },
+      "en": {
+        "title": "Solo: one bot per deck and Test your combo",
+        "novedades": [
+          "Play has two entries, Solo and Online. Solo is the list of opponents: at the top, Test your combo with Hand traps and Passive; below, one bot per deck: Sky Striker, Angelechy and Elfnote Ars Magna Power Patron.",
+          "View deck shows each bot's full list, and with Change cards you swap its hand traps and staples for other hand traps the bot knows how to use.",
+          "Bots play smarter: they attack face-down monsters when they have something to risk, adjust their positions and, with a single interruption in hand, save it for what matters.",
+          "What the bot did and why tells you about its attacks, its position changes and when it held an interruption back."
+        ],
+        "comoSeUsa": [
+          "Tap Play and then Solo: Hand traps is picked the first time.",
+          "Pick an opponent and tap “Play vs…”.",
+          "To see or change a bot's deck, tap Details & settings and then View deck."
+        ],
+        "arreglos": [
+          "Bot decks follow the current TCG banlist; Sky Striker was updated to comply.",
+          "Tier lists adds the Yours tab, with the usual maker, and Export is back under Your deck."
+        ],
+        "ojo": [
+          "Against a bot the game is always automatic.",
+          "Bots follow the TCG banlist even if your format is another one: their lists come from TCG tournaments.",
+          "Changing cards can make a bot play worse."
+        ]
+      }
+    }
+  ]
+}

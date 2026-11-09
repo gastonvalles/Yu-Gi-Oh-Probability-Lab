@@ -16,6 +16,7 @@ import { mascotsNavItem, type NavGroup } from './nav-model'
 import { NAV_OVERLINE } from './rail'
 import { NavButton, SidebarNav } from './SidebarNav'
 import { textLink } from '../ui/typography'
+import { NovedadesLink } from '../novedades/NovedadesLink'
 
 /** El menú de destinos dentro del cajón: los mismos cuatro grupos de la barra de abajo y del menú lateral. En la mesa a pantalla completa (sin barra) es la única salida. */
 interface DrawerNav {
@@ -32,7 +33,7 @@ interface DrawerPanelProps {
 
 /**
  * Lo de adentro del cajón del menú: la marca con su X, los destinos, las mascotas, el idioma (Español | English, de 44 px), «Tus datos» (guardar y restaurar la copia de
- * seguridad) y, abajo, lo legal: las redes, la privacidad y la autoría.
+ * seguridad) y, abajo, lo legal: las redes, las novedades, la privacidad y la autoría.
  */
 export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
   const id = useId()
@@ -90,6 +91,8 @@ export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
         <div className="mt-auto grid gap-2">
           <SocialLinks size="lg" className="-ml-2" />
           <div className="flex flex-wrap items-center gap-x-4">
+            {/* Va a una pantalla de la app: el cajón se cierra. */}
+            <NovedadesLink className="min-h-11 text-body" onClick={onClose} />
             <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
               {t('shell.legal.label')}
             </a>

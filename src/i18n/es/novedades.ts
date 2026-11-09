@@ -1,0 +1,22 @@
+/** Novedades: la pantalla de las notas del parche (`#novedades`), su enlace en el menú y el punto de «hay novedades». El contenido de cada entrada está en `src/data/novedades.json`. */
+export const novedades = {
+  'novedades.title': 'Novedades',
+  'novedades.subtitle': 'Qué cambió en la página, dónde se ve y cómo se usa.',
+  'novedades.linkUnseen': 'Novedades (hay novedades sin leer)',
+  'novedades.filter.label': 'Filtrar novedades por etiqueta',
+  'novedades.filter.all': 'Todas',
+  'novedades.tag.nuevo': 'Nuevo',
+  'novedades.tag.mejora': 'Mejora',
+  'novedades.tag.arreglo': 'Arreglo',
+  'novedades.list.novedades': 'Novedades',
+  'novedades.list.comoSeUsa': 'Cómo se usa',
+  'novedades.list.arreglos': 'Cambios y arreglos',
+  'novedades.list.ojo': 'Ojo',
+  'novedades.empty.title': 'No hay novedades con esta etiqueta',
+  'novedades.empty.text': 'Probá con otra o mirá todas.',
+  'novedades.empty.none': 'Todavía no hay novedades',
+  'novedades.empty.all': 'Ver todas',
+  'novedades.copyLink': 'Copiar enlace a «{title}»',
+  'novedades.linkCopied': 'Enlace copiado.',
+  'novedades.copyFailed': 'No se pudo copiar. El enlace es {url}',
+} as const
