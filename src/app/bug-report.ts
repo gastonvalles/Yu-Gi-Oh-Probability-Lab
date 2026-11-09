@@ -103,16 +103,16 @@ export function parseBugReport(raw: unknown): BugParse {
 
   if (body.hp !== undefined && body.hp !== null && body.hp !== '') return { ok: true, honeypot: true }
   if (typeof body.area !== 'string' || !(BUG_AREAS as readonly string[]).includes(body.area)) return { ok: false, field: 'area' }
-  if (typeof body.que !== 'string') return { ok: false, field: 'que' }
+  if (typeof body.que !== 'string') return { ok: false, field: 'que' } // i18n-ignore: nombre de un campo del contrato con la API
   const que = cleanText(body.que)
 
-  if (length(que) < MIN_QUE || length(que) > MAX_TEXT) return { ok: false, field: 'que' }
+  if (length(que) < MIN_QUE || length(que) > MAX_TEXT) return { ok: false, field: 'que' } // i18n-ignore: nombre de un campo del contrato con la API
   const esperaba = optionalText(body.esperaba)
 
   if (esperaba === null) return { ok: false, field: 'esperaba' }
   const pasos = optionalText(body.pasos)
 
-  if (pasos === null) return { ok: false, field: 'pasos' }
+  if (pasos === null) return { ok: false, field: 'pasos' } // i18n-ignore: nombre de un campo del contrato con la API
   const entorno = parseEnv(body.entorno)
 
   if (entorno === null) return { ok: false, field: 'entorno' }
@@ -148,14 +148,14 @@ export function issueTitle(report: BugReport): string {
 
 export const issueLabels = (report: BugReport): string[] => [BUG_LABEL, AREA_LABELS[report.area]]
 
-export const BUG_FOOTER = 'Reportado desde la página (sin cuenta)'
+export const BUG_FOOTER = 'Reportado desde la página (sin cuenta)' // i18n-ignore: el issue se escribe en español: lo lee quien mantiene la página, no se muestra en la app
 
 /** El cuerpo del issue. Lo único fuera de un bloque de código sale de listas cerradas o patrones (área y entorno). */
 export function issueBody(report: BugReport): string {
-  const parts = [`**Área:** ${report.area}`, '### Qué pasó', fenced(report.que)]
+  const parts = [`**Área:** ${report.area}`, '### Qué pasó', fenced(report.que)] // i18n-ignore: el issue se escribe en español: lo lee quien mantiene la página, no se muestra en la app
 
-  if (report.esperaba) parts.push('### Qué esperaba', fenced(report.esperaba))
-  if (report.pasos) parts.push('### Pasos', fenced(report.pasos))
+  if (report.esperaba) parts.push('### Qué esperaba', fenced(report.esperaba)) // i18n-ignore: el issue se escribe en español: lo lee quien mantiene la página, no se muestra en la app
+  if (report.pasos) parts.push('### Pasos', fenced(report.pasos)) // i18n-ignore: el issue se escribe en español: lo lee quien mantiene la página, no se muestra en la app
   if (report.entorno) {
     const { navegador, sistema, idioma, build } = report.entorno
     const lines = [navegador && `- Navegador: ${navegador}`, sistema && `- Sistema: ${sistema}`, idioma && `- Idioma: ${idioma}`, build && `- Build: ${build}`]
