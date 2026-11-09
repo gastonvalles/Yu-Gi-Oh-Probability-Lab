@@ -65,8 +65,9 @@ de revertir, revisión de seguridad) se le propone a Gastón con la razón en un
   publicado, en celular (390×844, con toque) y en escritorio (1440×900), con User-Agent `YGOUltraLab-QA`. Cubre la portada sin
   errores de consola ni respuestas ≥ 400 propias, el armador con un deck sembrado, el Lab («de cada 100»), Solo, Tier lists,
   Banlists, el lobby de Online (sólo `GET /rooms`) y `/playground`. El catálogo de YGOPRODeck se responde vacío: no se le pega en
-  cada corrida. **Nunca** crea salas ni envía formularios; las salas (privadas, con código al azar y cerradas al final) sólo van en
-  una corrida nocturna aparte.
+  cada corrida. **Nunca** crea salas ni envía formularios; la única sala (privada, con código al azar y cerrada al final) es la de
+  `npm run test:prod:noche` (`@noche`), que el smoke deja afuera. **Todos los días** (09:30 UTC, sin la PC) lo corre todo
+  `.github/workflows/e2e-prod.yml`: si algo cae abre o comenta un issue `qa-prod-fallo` y, cuando vuelve a pasar, lo cierra.
 - **Después de cada deploy:** `EXPECT_SHA=<commit> npm run test:prod` espera hasta 10 min a que `/build.json` (lo escribe cada
   build) sirva el commit mergeado. Una repetición por caso; si sigue rojo, card Expedite con traza y captura (`test-results/`) y,
   si falla lo crítico (portada, armador, Lab, Solo) dos veces seguidas, **el Jefe revierte el último merge** con una PR y le avisa

@@ -25,6 +25,7 @@
     "test:auto": "vitest --run --project slow",
     "test:e2e": "playwright test",
     "test:prod": "playwright test -c playwright.prod.config.ts",
+    "test:prod:noche": "playwright test -c playwright.prod.config.ts --grep @noche",
     "typecheck": "tsc -p src/tsconfig.test.json"
   },
   "dependencies": {

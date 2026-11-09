@@ -1,0 +1,122 @@
+name: QA en producción
+
+# La red de seguridad que no depende de la PC de nadie: todos los días revisa el sitio PUBLICADO (el smoke de sólo lectura, `e2e/prod/smoke.spec.ts`) y abre una sala PRIVADA en el relay
+# y la cierra (`e2e/prod/sala-privada.spec.ts`, `@noche`). Si algo se rompe abre un issue con la etiqueta `qa-prod-fallo` (o comenta el que ya está abierto: no uno por día) y cuando
+# vuelve a dar verde lo comenta y lo cierra. El smoke de después de un deploy sigue siendo `npm run test:prod` desde la PC del Jefe (`docs/departamento-ti.md`).
+on:
+  schedule:
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+
+# El token sólo lee el repo y escribe issues: no toca código, ramas ni PRs.
+permissions:
+  contents: read
+  issues: write
+
+# Nunca dos corridas a la vez: la noche toca el relay y no se pisa con una a mano; la que está en curso termina.
+concurrency:
+  group: e2e-prod
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Acciones fijadas por commit (no por tag movible): lo que corre es exactamente lo que se revisó.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Ningún paso necesita el token en `.git`: el issue se abre con `GITHUB_TOKEN` por la API.
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      # Sin scripts de instalación (`.npmrc`): el navegador se baja a mano, con las librerías del sistema.
+      - run: npx playwright install --with-deps chromium
+
+      # El smoke (sólo lectura). Cada corrida escribe su lista de resultados y su carpeta aparte (Playwright vacía la carpeta de salida al empezar).
+      - name: Smoke
+        run: npm run test:prod -- --reporter=list,json --output=test-results/smoke
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: resultados-smoke.json
+
+      # La sala privada de la noche: corre aunque el smoke haya fallado (son independientes).
+      - name: Sala privada
+        if: ${{ !cancelled() }}
+        run: npm run test:prod:noche -- --reporter=list,json --output=test-results/noche
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: resultados-noche.json
+
+      # Trazas y capturas de lo que falló (retain-on-failure) más las listas de resultados.
+      - name: Subir test-results
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results
+          path: |
+            test-results/
+            resultados-*.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # El issue lo decide el resultado del job: rojo = abre (o comenta el abierto); verde = comenta «volvió a pasar» y lo cierra. Una corrida cancelada no decide nada.
+      - name: Issue de QA en producción
+        if: ${{ !cancelled() }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const fs = require('fs')
+            const label = 'qa-prod-fallo'
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+
+            // Los casos que fallaron (sin repetición que los salvara): «proyecto › archivo › título».
+            const failed = []
+            const walk = (suite) => {
+              for (const spec of suite.specs ?? []) {
+                for (const test of spec.tests ?? []) {
+                  if (test.status === 'unexpected') failed.push(`${test.projectName} › ${spec.file} › ${spec.title}`)
+                }
+              }
+              for (const child of suite.suites ?? []) walk(child)
+            }
+            for (const name of ['resultados-smoke.json', 'resultados-noche.json']) {
+              try {
+                walk(JSON.parse(fs.readFileSync(name, 'utf8')))
+              } catch {
+                // Sin lista: el paso falló antes de probar (instalación, navegador, espera del deploy) y se dice abajo.
+              }
+            }
+
+            const open = await github.paginate(github.rest.issues.listForRepo, { ...context.repo, state: 'open', labels: label, per_page: 100 })
+            const existing = open.filter((issue) => !issue.pull_request).sort((a, b) => a.number - b.number)[0]
+
+            if (process.env.JOB_STATUS === 'success') {
+              if (!existing) return
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body: `Volvió a pasar: la corrida de hoy dio verde (${run}). Se cierra solo.` })
+              await github.rest.issues.update({ ...context.repo, issue_number: existing.number, state: 'closed', state_reason: 'completed' })
+              return
+            }
+
+            const cases = failed.length ? failed.map((name) => `- ${name}`).join('\n') : '- (no hay lista de casos: la corrida falló antes de probar; ver el registro)'
+            const body = [
+              `Corrida: ${run}`,
+              '',
+              'Casos que fallaron:',
+              cases,
+              '',
+              'Las trazas y capturas están en el artefacto `test-results` de la corrida.',
+              '',
+              '**Defecto de producción hasta que se pruebe lo contrario: revisar antes de mergear.**',
+            ].join('\n')
+
+            if (existing) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body: `Sigue fallando.\n\n${body}` })
+            } else {
+              await github.rest.issues.create({ ...context.repo, title: 'QA en producción: falló el smoke', labels: [label], body })
+            }
