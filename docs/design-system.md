@@ -5,7 +5,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 ## 1. Idea general
 
 - **Plano y sin brillos de adorno;** las excepciones son la mesa (regla 9) y el foil de rareza (`RarityFoil`, sólo en la carta grande: dice la rareza).
-- **Sin grises:** superficies índigo y velos violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre una foto, el negro sí).
+- **Carbón con matiz frío:** superficies de carbón y velos violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre una foto, el negro sí).
 - **Dos niveles de caja, no tres:** lienzo → tarjeta (`Card`) y nada más; adentro, espacio y líneas finas (`border-t border-border-subtle`). Un aviso dentro de una tarjeta es un fondo teñido sin borde.
 - **Cada dato se dice una sola vez,** también entre pestaña, encabezado y contenido: el resumen de una sección sólo se ve plegada.
 - **Los porcentajes son anillos** (`ProgressRing` un valor, `SegmentedRing` un reparto); no hay barras de progreso. Las vidas son el número plano de `LifeScore`; la placa `LifeTile` sólo queda en el catálogo.
@@ -19,12 +19,12 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 | `success` | bien / listo, sólo en estadísticas y estados |
 | `warning` | ojo / a medio hacer («Mejorable») |
 | `danger` | mal / destructivo |
-| `info` (ámbar) | lo elegido y el énfasis, la navegación, el rival, la build B y los hipervínculos (`textLink`) |
+| `info` (lima) | lo elegido y el énfasis, la navegación, el rival, la build B y los hipervínculos (`textLink`) |
 | `neutral` | sin énfasis: un número o una etiqueta de adorno |
 
-**Quién lleva qué color.** El violeta es el primario y el ámbar, el secundario (lo elegido, el hover y el foco de lo que se toca); el verde y el rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en ámbar y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste (`--playable-rgb`), lo que puede atacar suma la espada (`AttackMark`), el tuyo que ataca mientras elegís a quién lleva el aro rojo del ataque (`aim`) y lo que se activa o resuelve, ámbar con la luz que gira (`card-glow.ts`); todo quieto, sin brillo en la mesa manual ni los replays. La estela de chevrones rojos (`AttackTrail`) une atacante y objetivo: al objetivo bajo el mouse (escritorio) y, del ataque del rival, mientras le podés responder.
+**Quién lleva qué color.** El violeta es el primario y la lima, la secundaria (lo elegido, el hover y el foco de lo que se toca); el menta, el naranja y el rojo son respuestas y estadísticas, fuera de la marca (al soltar una carta, la zona válida va en lima y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste (`--playable-rgb`), lo que puede atacar suma la espada (`AttackMark`), el tuyo que ataca mientras elegís a quién lleva el aro rojo del ataque (`aim`) y lo que se activa o resuelve, ámbar con la luz que gira (`card-glow.ts`); todo quieto, sin brillo en la mesa manual ni los replays. La estela de chevrones rojos (`AttackTrail`) une atacante y objetivo: al objetivo bajo el mouse (escritorio) y, del ataque del rival, mientras le podés responder.
 
-**Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): por eso el verde lleno es `success-solid` y el verde claro queda para texto, anillos y puntos; lo elegido y lo del rival van en violeta (sobre el ámbar el blanco no se lee). Excepción: «Qué es» de una regla, lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en ámbar (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
+**Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): por eso el verde lleno es `success-solid` y el verde claro queda para texto, anillos y puntos; lo elegido y lo del rival van en violeta (sobre la lima el texto es carbón: el blanco da 1,3:1). Excepción: «Qué es» de una regla, lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en lima (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
 
 **El violeta es de lo tuyo, no de todo:** roles y grupos (`deck-groups.ts`), zonas del deck, tipos de carta y tiers (`meta-format.ts`) llevan cada uno su color (`color-variety.test.ts` vigila roles y tiers).
 
@@ -39,8 +39,8 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 
 Los de `ui/` (los estilos sueltos de las superficies, en `ui/surfaces.ts`; los títulos, en `ui/typography.ts`), el detalle y la carta grande en `card-detail/`, la mesa en `probability/` y «Jugar solo automático» en `auto/`. Lo que no dice su comentario:
 
-- **Todo título pasa por `Heading`; todo hipervínculo, por `textLink`** (ámbar, un solo estilo: `link-rules.test.ts`).
-- **Un botón sólo ícono** va sin fondo y se enciende en ámbar (`icon-buttons.test.tsx`). En la mesa, todo lo que se toca es `IconButton tone="tile"` (`TileButton`) y el violeta lleno, sólo el texto. `MatBarActions` es la barra de toda mesa: salir, deshacer y el ⋯ (`MatMoreMenu`; lo prendido, en su interruptor).
+- **Todo título pasa por `Heading`; todo hipervínculo, por `textLink`** (lima, un solo estilo: `link-rules.test.ts`).
+- **Un botón sólo ícono** va sin fondo y se enciende en lima (`icon-buttons.test.tsx`). En la mesa, todo lo que se toca es `IconButton tone="tile"` (`TileButton`) y el violeta lleno, sólo el texto. `MatBarActions` es la barra de toda mesa: salir, deshacer y el ⋯ (`MatMoreMenu`; lo prendido, en su interruptor).
 - **Todo diálogo es `Modal`** (tamaños, regla 10); una confirmación, `ConfirmDialog`, con el texto como la muestra «Confirmación».
 - **Toda hoja de abajo del celular es `BottomSheet`** (la cadena, las preguntas de la mesa y el visor de una pila): una sola a la vez (`SheetHost`), se arrastra siempre y lo que se decide va en su pie. Toda pregunta (`MatPrompt`) es opaca de borde a borde en cada estado (nada asoma debajo de lo pegado: regla 11) y, si la mesa la sabe, dice arriba la fase y el turno (`PromptTurnContext`). En escritorio, todo cartel, diálogo y visor de la mesa se arrastra por la cabeza (`useDraggableOffset`).
 - **`Switch disabled`:** el porqué va en el texto de al lado.
