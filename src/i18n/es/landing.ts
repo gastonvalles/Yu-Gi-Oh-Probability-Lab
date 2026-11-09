@@ -1,4 +1,4 @@
-/** Landing: la portada para quien llega por primera vez a `/` (calculadora, «Adentro», «Gratis, sin cuenta y abierto», lo último de Novedades y el pie). */
+/** Landing: la portada para quien llega por primera vez a `/` (calculadora, lo que hay en la app, «Gratis, sin cuenta y abierto», lo último de Novedades y el pie). */
 export const landing = {
   'landing.title': '¿Cuántas veces abrís tu carta?',
   'landing.subtitle': 'Elegí las copias y mirá la cuenta. Con tu deck entero, el Lab la hace con tus reglas.',
@@ -20,7 +20,6 @@ export const landing = {
   'landing.cta.playAsk': '¿Preferís jugar?',
   'landing.cta.play': 'Jugar ahora',
   'landing.cta.bar': 'Accesos rápidos',
-  'landing.inside.kicker': 'Adentro',
   'landing.inside.title': 'Lo que hay en la app',
   'landing.inside.lab.title': 'El Lab',
   'landing.inside.lab.verb': 'medir',
@@ -44,8 +43,7 @@ export const landing = {
   'landing.open.title': 'Gratis, sin cuenta y abierto',
   'landing.open.text': 'Sin registrarte ni pagar: tus decks viven en tu navegador y te llevás una copia cuando quieras. El código es abierto (AGPL).',
   'landing.open.code': 'Ver el código en GitHub',
-  'landing.news.kicker': 'Novedades',
-  'landing.news.title': 'Lo último',
+  'landing.news.title': 'Novedades',
   'landing.news.loading': 'Cargando las novedades',
   'landing.news.all': 'Ver todas las novedades',
 } as const

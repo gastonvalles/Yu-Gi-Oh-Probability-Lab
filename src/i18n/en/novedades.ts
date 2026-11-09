@@ -10,7 +10,7 @@ export const novedades: Translated<typeof es> = {
   'novedades.tag.nuevo': 'New',
   'novedades.tag.mejora': 'Improvement',
   'novedades.tag.arreglo': 'Fix',
-  'novedades.list.novedades': "What's new",
+  'novedades.list.novedades': 'What it adds',
   'novedades.list.comoSeUsa': 'How to use it',
   'novedades.list.arreglos': 'Changes and fixes',
   'novedades.list.ojo': 'Heads-up',

@@ -165,7 +165,6 @@ export default function Landing({ entering = false, onPrefetch }: LandingProps) 
 
         <div className="grid min-w-0 content-start gap-12 min-[1101px]:pt-8">
           <section aria-labelledby="landing-inside" className="grid gap-1">
-            <Heading level="kicker">{t('landing.inside.kicker')}</Heading>
             <Heading level="page" as="h2" id="landing-inside">{t('landing.inside.title')}</Heading>
             <ul className="m-0 grid list-none p-0">
               {INSIDE.map((key) => (
@@ -279,7 +278,6 @@ function LatestNews() {
 
   return (
     <section aria-labelledby="landing-news" aria-busy={news.status === 'loading' || undefined} className="grid gap-1">
-      <Heading level="kicker">{t('landing.news.kicker')}</Heading>
       <Heading level="page" as="h2" id="landing-news">{t('landing.news.title')}</Heading>
       {news.status === 'loading' ? (
         <div role="status" aria-label={t('landing.news.loading')} className="grid gap-3 pt-4">

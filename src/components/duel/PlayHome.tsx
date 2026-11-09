@@ -189,7 +189,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
 
           {/* La portada (movimiento 4 de G): arriba el deck con que entrás (lleva al builder: ahí se tocan las cartas), el titular y lo que va a pasar; en la última fila, las reglas con que
               entrás a la izquierda y la acción principal a la derecha, al pulgar (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}
-          <section aria-label={t('duel.play.subtitle')} className="grid gap-3 rounded-panel border border-nav-raised bg-nav p-4 min-[1101px]:p-5">
+          <section aria-label={t('duel.play.now')} className="grid gap-3 rounded-panel border border-nav-raised bg-nav p-4 min-[1101px]:p-5">
             <div className="flex items-center gap-3">
               <span className="grid min-w-0 flex-1">
                 <span className="text-micro text-muted">{t('duel.room.deckTitle')}</span>
@@ -199,11 +199,9 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
                 {t('duel.play.deckChange')}
               </button>
             </div>
-            <div className="grid gap-1">
-              <h2 className="m-0 text-title font-extrabold leading-tight text-foreground">{t('duel.play.subtitle')}</h2>
-              <p className="m-0 min-h-5 text-body text-muted" role="status" aria-live="polite">
-                {deckReady ? statusText : ''}
-              </p>
+            {/* El titular dice lo que va a pasar y, mientras busca, cómo va (una sola línea, sin eslogan). */}
+            <div role="status" aria-live="polite">
+              <h2 className="m-0 text-title font-extrabold leading-tight text-foreground">{statusText}</h2>
             </div>
             <div className="flex flex-wrap items-center gap-3 border-t border-tint/18 pt-3">
               {/* Sin «Automáticas»: eso lo dice el atajo de las reglas, que lo lleva entero (cada dato una vez). */}

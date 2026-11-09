@@ -81,7 +81,7 @@ describe('Reportar un problema', () => {
   })
 
   it.each([
-    [() => json(503, { error: 'not_configured' }), /Todavía no podemos recibir reportes desde acá/],
+    [() => json(503, { error: 'not_configured' }), /Los reportes todavía no se pueden enviar desde acá/],
     [() => json(429, { error: 'rate_limited' }, { 'Retry-After': '300' }), /Probá de nuevo en 5 minutos\./],
     [() => json(502, { error: 'upstream' }), /GitHub no respondió/],
     [() => json(413, { error: 'too_large' }), /demasiado largo/],

@@ -101,7 +101,6 @@ export const duel = {
   'duel.announce.setMonster': '{name} coloca un monstruo',
 
   // Antes de entrar a una sala.
-  'duel.play.subtitle': 'Entrá a un duelo en segundos.',
   'duel.play.now': 'Jugar ahora',
   'duel.play.nowHint': 'Entrás a una sala abierta o abrís la tuya.',
   'duel.play.needDeck': 'Elegí tu deck para jugar',

@@ -8,7 +8,7 @@ export const novedades = {
   'novedades.tag.nuevo': 'Nuevo',
   'novedades.tag.mejora': 'Mejora',
   'novedades.tag.arreglo': 'Arreglo',
-  'novedades.list.novedades': 'Novedades',
+  'novedades.list.novedades': 'Qué trae',
   'novedades.list.comoSeUsa': 'Cómo se usa',
   'novedades.list.arreglos': 'Cambios y arreglos',
   'novedades.list.ojo': 'Ojo',
