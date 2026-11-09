@@ -3,18 +3,16 @@ import { configureStore } from '@reduxjs/toolkit'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { Provider } from 'react-redux'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { InicioScreen } from '../components/landing/InicioScreen'
 
-// Las cifras del build: sin el archivo, «Lo más jugado del meta» no sale.
-vi.mock('../data/landing-stats.json', () => ({
-  default: { tcgDecks: 564, weeks: 8, banlist: '2026-10-19', prices: '2026-11-08', topCards: [{ id: 14558127, name: 'Ash Blossom & Joyous Spring', decks: 492 }] },
-}))
+// Las cifras del build (`landing-stats.json`, que no se versiona): se pasan a mano, y sin ellas «Lo más jugado del meta» no sale.
+const STATS = { tcgDecks: 564, weeks: 8, banlist: '2026-10-19', prices: '2026-11-08', topCards: [{ id: 14558127, name: 'Ash Blossom & Joyous Spring', decks: 492 }] }
 
 // El arte de las cartas lee el formato del store (el límite de copias).
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
-const renderInicio = () => render(<Provider store={store}><InicioScreen /></Provider>)
+const renderInicio = () => render(<Provider store={store}><InicioScreen stats={STATS} /></Provider>)
 
 beforeEach(() => {
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
