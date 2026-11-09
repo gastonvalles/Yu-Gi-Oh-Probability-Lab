@@ -36,8 +36,9 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('el menú de la app', () => {
-  it('agrupa los destinos en cuatro grupos, uno por lo que se viene a hacer: el recorrido del Lab (y exportar lo armado), jugar (Solo y la calculadora), ver lo que gana y mirar las cartas', () => {
+  it('arriba «Inicio» y cuatro grupos, uno por lo que se viene a hacer: el recorrido del Lab (y exportar lo armado), jugar (Solo y la calculadora), ver lo que gana y mirar las cartas', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
+      ['Inicio', ['inicio']],
       ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace', 'export']],
       ['Jugar', ['solo', 'practice', 'life']],
       ['Descubrir', ['meta', 'tier-maker', 'tournaments', 'replays']],
@@ -59,7 +60,7 @@ describe('el menú de la app', () => {
   })
 
   it('Solo y la calculadora de LP están siempre (Solo dice qué falta si no hay deck); Exportar está en Tu deck aunque el deck esté vacío', () => {
-    expect(buildAppNavGroups(STEPS, {}).map((group) => group.key)).toEqual(['deck', 'duel', 'discover', 'cards'])
+    expect(buildAppNavGroups(STEPS, {}).map((group) => group.key)).toEqual(['home', 'deck', 'duel', 'discover', 'cards'])
     const empty = buildAppNavGroups(buildDeckWorkflowNavigationItems({ mainDeckCount: 0, roleCardCount: 0, unclassifiedCardCount: 0, hasCompletedRoleStep: false, patternCount: 0 }), {})
     expect(empty.find((group) => group.key === 'duel')?.items.map((item) => item.key)).toEqual(['solo', 'practice', 'life'])
     expect(empty.find((group) => group.key === 'deck')?.items.map((item) => item.key)).toContain('export')
@@ -68,8 +69,8 @@ describe('el menú de la app', () => {
   it('Online (#duel) es una pantalla del flujo que el menú ofrece sólo donde hay un relay, justo después de Solo', () => {
     expect(isDeckWorkflowStepKey('duel')).toBe(true)
     // Sin relay (o sin decirlo) el menú no lo ofrece.
-    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['solo', 'practice', 'life'])
-    const online = buildAppNavGroups(STEPS, { duel: true })[1]?.items
+    expect(GROUPS[2]?.items.map((item) => item.key)).toEqual(['solo', 'practice', 'life'])
+    const online = buildAppNavGroups(STEPS, { duel: true })[2]?.items
     expect(online?.map((item) => item.key)).toEqual(['solo', 'practice', 'duel', 'life'])
     expect(online?.find((item) => item.key === 'duel')?.label).toBe('Online')
   })
@@ -139,8 +140,8 @@ describe('el menú de la app', () => {
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     const buttons = within(nav).getAllByRole('button')
 
-    // Buscar, los cuatro grupos y las mascotas (y no los trece destinos), cada uno con su nombre a la vista.
-    expect(buttons.map((button) => button.textContent)).toEqual(['Buscar', 'Tu deck', 'Jugar', 'Descubrir', 'Cartas', 'Mascotas'])
+    // Buscar, «Inicio», los cuatro grupos y las mascotas (y no los trece destinos), cada uno con su nombre a la vista.
+    expect(buttons.map((button) => button.textContent)).toEqual(['Buscar', 'Inicio', 'Tu deck', 'Jugar', 'Descubrir', 'Cartas', 'Mascotas'])
     // El grupo en el que estás (Exportar es de Tu deck) va marcado.
     expect(within(nav).getByRole('button', { name: 'Tu deck' })).toHaveAttribute('aria-current', 'true')
     expect(within(nav).getByRole('button', { name: 'Jugar' })).not.toHaveAttribute('aria-current')
@@ -548,6 +549,28 @@ describe('las hojas del celular, como en el lienzo', () => {
     rerender(<MobileTopBar menuOpen={false} onMenu={() => {}} />)
     expect(screen.getByRole('banner')).toHaveTextContent('YGOUltraLab')
     expect(screen.queryByText('Sitio no oficial')).not.toBeInTheDocument()
+  })
+
+  it('«Inicio» va arriba del menú sin nombre de grupo, no ocupa un lugar de la barra de abajo y en el celular se llega tocando la marca', () => {
+    const onSelect = vi.fn()
+    render(<AppShell groups={GROUPS} activeKey="inicio" onSelect={onSelect}><p>Portada</p></AppShell>)
+
+    // El menú lateral: «Inicio» primero, sin el rótulo «Inicio» encima (sería decirlo dos veces), y abierto.
+    const side = screen.getAllByRole('navigation', { name: 'Navegación principal' })[0]!
+    expect(within(side).getAllByRole('button')[0]).toHaveAccessibleName('Inicio')
+    expect(within(side).getAllByRole('button')[0]).toHaveAttribute('aria-current', 'page')
+    expect(within(side).getAllByText('Inicio')).toHaveLength(2) // el rótulo y su gemelo invisible en negrita (`RAIL_LABEL_WIDTH`), del mismo botón
+    expect(within(side).queryByRole('group', { name: 'Inicio' })).not.toBeInTheDocument()
+
+    // La barra de abajo no cambia.
+    const bar = screen.getAllByRole('navigation', { name: 'Navegación principal' }).find((nav) => nav.className.includes('bottom-0'))!
+    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Descubrir', 'Jugar', 'Cartas', 'Buscar'])
+
+    // En «Inicio» la barra de arriba lleva la marca (no «Inicio»), y la marca lleva a «Inicio».
+    const banner = screen.getAllByRole('banner').find((header) => header.className.includes('sticky'))!
+    expect(banner).toHaveTextContent('YGOUltraLab')
+    fireEvent.click(within(banner).getByRole('button', { name: 'Ir a Inicio' }))
+    expect(onSelect).toHaveBeenCalledWith('inicio')
   })
 
   it('tocar el mismo grupo de la barra de abajo cierra su hoja, y tocar otro la cambia', () => {

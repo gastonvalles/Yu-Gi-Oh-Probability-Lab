@@ -1,10 +1,20 @@
 // @vitest-environment jsdom
+import { configureStore } from '@reduxjs/toolkit'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { LANDING_ENTERED_KEY } from '../app/landing'
-import Landing from '../components/landing/Landing'
+import { InicioScreen } from '../components/landing/InicioScreen'
+
+// Las cifras del build: sin el archivo, «Lo más jugado del meta» no sale.
+vi.mock('../data/landing-stats.json', () => ({
+  default: { tcgDecks: 564, weeks: 8, banlist: '2026-10-19', prices: '2026-11-08', topCards: [{ id: 14558127, name: 'Ash Blossom & Joyous Spring', decks: 492 }] },
+}))
+
+// El arte de las cartas lee el formato del store (el límite de copias).
+const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
+const renderInicio = () => render(<Provider store={store}><InicioScreen /></Provider>)
 
 beforeEach(() => {
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
@@ -12,28 +22,33 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-  sessionStorage.clear()
   window.history.pushState({}, '', '/')
 })
 
-describe('la landing', () => {
-  it('tiene un solo h1 con el titular, las dos entradas y los landmarks', async () => {
-    render(<Landing />)
+describe('«Inicio»', () => {
+  it('tiene un solo h1 con el titular, las dos entradas, lo más jugado y las novedades', async () => {
+    renderInicio()
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     expect(screen.getByRole('heading', { level: 1, name: '¿Cuántas veces abrís tu carta?' })).toBeInTheDocument()
-    expect(screen.getByRole('banner')).toBeInTheDocument()
-    expect(screen.getByRole('main')).toBeInTheDocument()
-    expect(screen.getByRole('contentinfo')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Medir mi deck' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: 'Jugar ahora' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Medir mi deck' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Lo que hay en la app' })).not.toBeInTheDocument()
+
+    // Lo más jugado: la carta real con su cifra, el arte por el proxy (nunca guardado en el repo).
+    const top = screen.getByRole('region', { name: 'Lo más jugado del meta' })
+    expect(within(top).getByText('en 492 decks')).toBeInTheDocument()
+    expect(within(top).getByRole('img', { name: 'Ash Blossom & Joyous Spring' })).toHaveAttribute('src', '/api/card-image/cards_small/14558127.jpg')
+
     // Las novedades bajan aparte: primero el esqueleto, después las tres más nuevas.
-    expect(await screen.findByRole('link', { name: 'Ver todas las novedades' })).toHaveAttribute('href', '#novedades')
-    expect(await screen.findAllByRole('heading', { level: 3 })).not.toHaveLength(0)
+    expect(screen.getByRole('status', { name: 'Cargando las novedades' })).toBeInTheDocument()
+    expect(await screen.findAllByRole('heading', { level: 3 })).toHaveLength(3)
+    expect(screen.getByRole('link', { name: 'Ver todas las novedades' })).toHaveAttribute('href', '#novedades')
+    expect(screen.getByRole('link', { name: 'Reportar un problema' })).toHaveAttribute('href', '#reportar')
   })
 
   it('elegir las copias y el turno cambia el número del anillo', () => {
-    render(<Landing />)
+    renderInicio()
 
     const ring = screen.getByRole('meter')
     expect(ring).toHaveAttribute('aria-valuetext', '34 de cada 100')
@@ -46,24 +61,13 @@ describe('la landing', () => {
     expect(ring).toHaveAttribute('aria-valuetext', '15 de cada 100')
   })
 
-  it('«Medir mi deck» escribe la marca de la sesión y lleva al armador', () => {
-    const prefetch = vi.fn()
-    render(<Landing onPrefetch={prefetch} />)
+  it('«Medir mi deck» lleva al armador y «Jugar ahora», al duelo', () => {
+    renderInicio()
 
-    const measure = screen.getAllByRole('button', { name: 'Medir mi deck' })[0]!
-    fireEvent.pointerEnter(measure)
-    expect(prefetch).toHaveBeenCalled()
-
-    fireEvent.click(measure)
-    expect(sessionStorage.getItem(LANDING_ENTERED_KEY)).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Medir mi deck' }))
     expect(window.location.hash).toBe('#deck-builder')
-  })
 
-  it('«Jugar ahora» lleva al duelo', () => {
-    render(<Landing />)
-
-    fireEvent.click(screen.getAllByRole('link', { name: 'Jugar ahora' })[0]!)
-    expect(sessionStorage.getItem(LANDING_ENTERED_KEY)).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Jugar ahora' }))
     expect(window.location.hash).toBe('#duel')
   })
 })

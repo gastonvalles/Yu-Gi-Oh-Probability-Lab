@@ -71,7 +71,7 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
 
   it('lo que envuelve al armazón mide el alto visible (`dvh`), no el de la pantalla sin la barra de direcciones (`vh`): la calculadora de LP no scrollea en el celular', () => {
     expect(source('index.css')).toMatch(/\bbody\s*\{\s*min-height: 100dvh;/)
-    // El armazón de la app vive en `MainApp.tsx` (la landing, en `App.tsx`, no lo baja).
+    // El armazón de la app vive en `MainApp.tsx` (el arranque, `App.tsx`, no lo baja).
     expect(source('MainApp.tsx')).toContain('<main className="min-h-dvh ')
     expect(source('MainApp.tsx')).not.toContain('min-h-screen')
     expect(source('App.tsx')).not.toContain('min-h-screen')

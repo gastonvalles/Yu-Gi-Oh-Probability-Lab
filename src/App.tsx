@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useState, useTransition } from 'react'
+import { lazy, Suspense, useState } from 'react'
 
-import { markEntered, readLandingInput, shouldShowLanding } from './app/landing'
+import { HOME_HASH, markEntered, readLandingInput, shouldShowLanding } from './app/landing'
 
 /** El catálogo de componentes vive en su propio archivo: la app no lo baja si no se pide `/playground`. */
 const Playground = lazy(() => import('./components/playground/Playground'))
@@ -8,13 +8,27 @@ const Playground = lazy(() => import('./components/playground/Playground'))
 /** El tablero del departamento de TI, sólo en `npm run dev`: en el build `import.meta.env.DEV` es `false`, el import se cae y `/ti` es una ruta más. */
 const TiDashboard = import.meta.env.DEV ? lazy(() => import('./components/ti/TiDashboard')) : null
 
-/** La app y la landing, cada una en su archivo: quien llega por primera vez baja sólo la landing (y la app, precargada cuando el navegador está libre). */
-const loadMainApp = () => import('./MainApp')
-const MainApp = lazy(loadMainApp)
-const Landing = lazy(() => import('./components/landing/Landing'))
+/** La app va en su propio archivo (`MainApp`): el arranque baja sólo esto y la pide al dibujarse. */
+const MainApp = lazy(() => import('./MainApp'))
 
 function isPlaygroundPath(): boolean {
   return typeof window !== 'undefined' && /^\/playground(\/|$)/.test(window.location.pathname)
+}
+
+/**
+ * Antes de montar la app: la visita nueva en `/` (`shouldShowLanding`) y `?landing=1` llegan a «Inicio» (`#inicio`), un paso más de la app. El hash se reemplaza sin sumar una
+ * entrada al historial, y la marca de la sesión queda puesta: en esta pestaña, `/` sin hash vuelve al paso de siempre.
+ */
+function routeToHome(): void {
+  if (shouldShowLanding(readLandingInput())) {
+    const url = new URL(window.location.href)
+
+    url.searchParams.delete('landing')
+    url.hash = HOME_HASH
+    window.history.replaceState(null, '', url)
+  }
+
+  markEntered()
 }
 
 export default function App() {
@@ -39,27 +53,13 @@ export default function App() {
   return <Home />
 }
 
-/** `/`: la landing para quien llega por primera vez (`shouldShowLanding`) o la app. */
 function Home() {
-  const [landing, setLanding] = useState(() => shouldShowLanding(readLandingInput()))
-  const [entering, startEntering] = useTransition()
+  // Una vez, antes que la app lea el hash (es perezosa: se dibuja después). Repetirla no cambia nada: el hash ya es `#inicio`.
+  useState(routeToHome)
 
-  useEffect(() => {
-    if (!landing) {
-      markEntered()
-      return
-    }
-
-    // Cualquier enlace de la landing que cambia el hash («Medir mi deck», «Jugar ahora», «Ver todas las novedades») entra a la app sin recargar.
-    // En una transición: la landing queda a la vista hasta que la app llegó.
-    const enter = () => {
-      if (window.location.hash.length > 1) startEntering(() => setLanding(false))
-    }
-
-    window.addEventListener('hashchange', enter)
-
-    return () => window.removeEventListener('hashchange', enter)
-  }, [landing])
-
-  return <Suspense fallback={null}>{landing ? <Landing entering={entering} onPrefetch={loadMainApp} /> : <MainApp />}</Suspense>
+  return (
+    <Suspense fallback={null}>
+      <MainApp />
+    </Suspense>
+  )
 }

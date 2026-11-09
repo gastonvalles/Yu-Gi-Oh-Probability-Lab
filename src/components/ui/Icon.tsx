@@ -8,6 +8,13 @@ import { cx } from './cx'
  */
 const PATHS = {
   // — Pasos de la app —
+  /** Inicio: una casa (el techo a dos aguas y la puerta). */
+  home: (
+    <>
+      <path data-fill d="M4 10.2 12 3.5l8 6.7V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z" />
+      <path data-cut d="M9.75 20.5v-5.25a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v5.25" />
+    </>
+  ),
   cards: (
     <>
       <rect data-fill x="7.5" y="3.5" width="12" height="16" rx="2.2" />

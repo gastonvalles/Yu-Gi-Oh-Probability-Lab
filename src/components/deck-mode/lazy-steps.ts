@@ -8,6 +8,7 @@ import { loadFinderDecks } from '../shell/finder-decks-loader'
  * `preloadHeavySteps` los trae en un momento ocioso para que cambiar de paso sea instantáneo.
  */
 const loaders = {
+  inicio: () => import('../landing/InicioScreen'),
   roles: () => import('../DeckRolesPanel'),
   probability: () => import('../ProbabilityPanel'),
   exportDeck: () => import('../ExportDeckPanel'),
@@ -76,6 +77,7 @@ export function orReload<T>(load: () => Promise<T>): () => Promise<T> {
   }
 }
 
+export const LazyInicioScreen = lazy(orReload(() => loaders.inicio().then((m) => ({ default: m.InicioScreen }))))
 export const LazyDeckRolesPanel = lazy(orReload(() => loaders.roles().then((m) => ({ default: m.DeckRolesPanel }))))
 export const LazyProbabilityPanel = lazy(orReload(() => loaders.probability().then((m) => ({ default: m.ProbabilityPanel }))))
 export const LazyExportDeckPanel = lazy(orReload(() => loaders.exportDeck().then((m) => ({ default: m.ExportDeckPanel }))))

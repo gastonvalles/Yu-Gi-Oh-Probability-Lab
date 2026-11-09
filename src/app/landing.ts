@@ -1,11 +1,11 @@
 import { atLeastProbability } from './quick-odds'
 
 /**
- * La portada para visitas nuevas en `/`: si se muestra, la cuenta de su calculadora y la entrada a la app. Va en el archivo chico de la landing:
- * no importa el store ni nada de las pantallas.
+ * «Inicio» (`#inicio`), el paso de la app al que llega una visita nueva en `/`: quién llega ahí y la cuenta de su calculadora. Lo lee el arranque (`App.tsx`) antes de bajar la
+ * app: no importa el store ni nada de las pantallas.
  */
 
-/** La marca de sesión «ya entré»: la escriben los botones de la landing y la app al mostrarse; con ella la landing no vuelve en esta pestaña. */
+/** La marca de sesión «ya entré»: la escribe el arranque; con ella, `/` sin hash no vuelve a «Inicio» en esta pestaña. */
 export const LANDING_ENTERED_KEY = 'ygo-lab:entered'
 /** La misma clave del deck guardado que `STORAGE_KEY` de `model.ts` (no se importa: arrastraría el modelo entero). */
 export const SAVED_DECK_KEY = 'ygo-probability-lab:v2'
@@ -31,7 +31,10 @@ function hasMainDeck(saved: string): boolean {
   }
 }
 
-/** La landing sólo la ve quien llega a `/` por primera vez; `?landing=1` la fuerza (para probarla). */
+/** El paso «Inicio», el primero del menú. */
+export const HOME_HASH = '#inicio'
+
+/** A «Inicio» llega sola sólo la visita nueva en `/`; `?landing=1` lleva siempre (para probarla). */
 export function shouldShowLanding({ hash, search, savedDeck, standalone, entered }: LandingInput): boolean {
   if (new URLSearchParams(search).get('landing') === '1') return true
   if (hash !== '' && hash !== '#') return false
@@ -64,16 +67,10 @@ export function readLandingInput(): LandingInput {
 export function markEntered(): void {
   try {
     window.sessionStorage.setItem(LANDING_ENTERED_KEY, '1')
-  } catch { /* sin almacenamiento la landing puede volver al recargar: nada se pierde */ }
+  } catch { /* sin almacenamiento, «Inicio» puede volver al recargar `/`: nada se pierde */ }
 }
 
-/** Entra a la app sin recargar: la marca y el hash (la app escucha `hashchange`). */
-export function enterApp(hash: '#deck-builder' | '#duel'): void {
-  markEntered()
-  window.location.hash = hash
-}
-
-export const LANDING_DECK_SIZE = 40
+const LANDING_DECK_SIZE = 40
 export const LANDING_COPIES = [1, 2, 3] as const
 export type LandingCopies = (typeof LANDING_COPIES)[number]
 export type LandingTurn = 'first' | 'second'
@@ -86,7 +83,7 @@ export function openingOdds(copies: number, turn: LandingTurn): number {
   return atLeastProbability(LANDING_DECK_SIZE, copies, handSizeFor(turn), 1)
 }
 
-/** Las cifras de «El meta» que arma el build (`scripts/write-build-id.mjs` → `src/data/landing-stats.json`). */
+/** Las cifras de «Lo más jugado del meta» que arma el build (`scripts/write-build-id.mjs` → `src/data/landing-stats.json`). */
 export interface LandingStats {
   /** Decks TCG de las últimas `weeks` semanas, los que lista Decks de torneo sin filtros. */
   tcgDecks: number
@@ -95,4 +92,6 @@ export interface LandingStats {
   banlist: string
   /** AAAA-MM-DD del día de los precios. */
   prices: string
+  /** Las seis cartas que más decks TCG de esas semanas llevan en el Main, con en cuántos. */
+  topCards: Array<{ id: number; name: string; decks: number }>
 }

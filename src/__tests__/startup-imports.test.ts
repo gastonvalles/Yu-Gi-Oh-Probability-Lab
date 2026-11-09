@@ -99,14 +99,15 @@ describe('el arranque (lo que importa estático src/main.tsx)', () => {
     expect(entry.filter((file) => NOT_AT_STARTUP.includes(file))).toEqual([])
   })
 
-  it('la app va aparte (`lazy` en `App.tsx`): el arranque, que es lo que baja una visita nueva a la landing, no trae el armazón ni el buscador', () => {
+  it('la app va aparte (`lazy` en `App.tsx`): el arranque no trae el armazón ni el buscador', () => {
     expect(entry).not.toContain('src/MainApp.tsx')
     expect(entry).not.toContain('src/components/deck-mode/DeckModeScreen.tsx')
     expect(entry).not.toContain('src/components/shell/FeatureSearch.tsx')
   })
 
-  it('la app lleva el armazón y tampoco los datos pesados', () => {
+  it('la app lleva el armazón y tampoco los datos pesados; «Inicio» es un paso perezoso más', () => {
     expect(app).toContain('src/components/shell/FeatureSearch.tsx')
+    expect(app).not.toContain('src/components/landing/InicioScreen.tsx')
     expect(app.filter((file) => NOT_AT_STARTUP.includes(file))).toEqual([])
   })
 })

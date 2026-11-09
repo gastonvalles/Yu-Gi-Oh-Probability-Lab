@@ -81,9 +81,10 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   const tabBar = !immersive && !scoreboard
   // La barra de arriba de escritorio: en las pantallas a pantalla completa (la práctica, la mesa de un duelo) no está, manda la mesa.
   const showNavbar = isDesktop && !bigWindow && navbar
-  // La barra de arriba del celular dice en qué pantalla estás (como en el lienzo); sin pantalla conocida, la marca.
+  // La barra de arriba del celular dice en qué pantalla estás (como en el lienzo); en «Inicio» (`top`) o sin pantalla conocida, la marca, que lleva a «Inicio».
   const activeGroup = groups.find((group) => group.items.some((item) => item.key === activeKey))
-  const screenTitle = activeGroup?.items.find((item) => item.key === activeKey)?.label
+  const screenTitle = activeGroup?.top ? undefined : activeGroup?.items.find((item) => item.key === activeKey)?.label
+  const homeKey = groups.find((group) => group.top)?.items[0]?.key
 
   // Otra pantalla (también con el botón Atrás): la hoja y el cajón que estaban abiertos se cierran.
   useEffect(() => {
@@ -139,7 +140,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
       {showNavbar ? <AppNavbar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} onSearch={openFind} onMascots={() => onSelect('mascots')} className="min-[1101px]:col-span-2" /> : null}
       {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && (tabBar ? 'max-[1101px]:h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))]' : 'max-[1101px]:h-dvh'), ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
-        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} toolsRef={setTopBarTools} className="min-[1101px]:hidden" />}
+        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} onHome={homeKey ? () => onSelect(homeKey) : undefined} toolsRef={setTopBarTools} className="min-[1101px]:hidden" />}
         <div
           ref={contentScrollRef}
           className={cx(

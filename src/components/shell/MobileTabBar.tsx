@@ -47,8 +47,9 @@ const Indicator = () => <span aria-hidden="true" className="absolute top-0 h-0.7
  */
 export function MobileTabBar({ groups, activeKey, openKey, onOpen, onSearch, searchOpen = false, placement = 'fixed', className }: MobileTabBarProps) {
   const play = groups.find((group) => group.key === PLAY_GROUP_KEY)
+  // «Inicio» (`top`) no ocupa un lugar: se llega tocando la marca de la barra de arriba.
   const slots: ReactNode[] = groups
-    .filter((group) => group !== play)
+    .filter((group) => group !== play && !group.top)
     .map((group) => {
       const open = openKey === group.key
       // Con una hoja abierta la lima es del grupo de esa hoja; sin hoja, del grupo de la pantalla en que estás.
