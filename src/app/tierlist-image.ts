@@ -10,10 +10,10 @@ const GAP = 2
 const MARGIN = 24
 const SCALE = 2
 
-const BACKGROUND = '#150a24'
-const ROW_BACKGROUND = '#231238'
+const BACKGROUND = '#18181c'
+const ROW_BACKGROUND = '#201f27'
 const TEXT = '#fdffff'
-const LABEL_TEXT = '#150a24'
+const LABEL_TEXT = '#18181c'
 const FONT = '"Lexend Deca", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
 
 export interface TierImageRow {
@@ -143,7 +143,7 @@ export async function renderTierListImage(list: MakerList): Promise<HTMLCanvasEl
       if (image) {
         context.drawImage(image, x, y, CARD_WIDTH, CARD_HEIGHT)
       } else {
-        context.fillStyle = '#2b1745'
+        context.fillStyle = '#292733'
         context.fillRect(x, y, CARD_WIDTH, CARD_HEIGHT)
         context.fillStyle = TEXT
         context.font = `600 12px ${FONT}`

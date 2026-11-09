@@ -14,7 +14,7 @@ const PANEL_THEME: Record<ClassificationStateKey, { color: string; rgb: string }
   all: { color: 'var(--info)', rgb: 'var(--info-rgb)' },
   unclassified: { color: 'var(--warning)', rgb: 'var(--warning-rgb)' },
   'missing-origin': { color: 'var(--warning)', rgb: 'var(--warning-rgb)' },
-  'missing-role': { color: '#b4a2d4', rgb: '180 162 212' },
+  'missing-role': { color: '#b6b3c6', rgb: '182 179 198' },
   review: { color: 'var(--info)', rgb: 'var(--info-rgb)' },
   complete: { color: 'var(--success)', rgb: 'var(--success-rgb)' },
 }

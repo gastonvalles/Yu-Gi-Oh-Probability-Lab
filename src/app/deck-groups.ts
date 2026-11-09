@@ -39,9 +39,9 @@ interface ParsedStoredGroupKey {
 }
 
 const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
-  // Los roles son categorías: cada uno con su color (trece tonos del violeta no se distinguen). El Starter, el rol que más se mira, lleva el violeta de marca; el rojo queda para lo que sale mal.
-  starter: { color: '#c77dff', rgb: '199 125 255' },
-  extender: { color: '#00ffa3', rgb: '0 255 163' },
+  // Los roles son categorías: cada uno con su color (trece tonos del violeta no se distinguen). El Starter, el rol que más se mira, lleva el lila de marca; el rojo queda para lo que sale mal. Ningún rol lleva un verde cerca del menta del éxito (153°) ni de la lima (75°): el Extender es rosa y el Payoff fucsia; el Recovery, un verde más amarillo.
+  starter: { color: '#b69dff', rgb: '182 157 255' },
+  extender: { color: '#ff5cb6', rgb: '255 92 182' },
   enabler: { color: '#14b8a6', rgb: '20 184 166' },
   handtrap: { color: '#3b82f6', rgb: '59 130 246' },
   disruption: { color: '#2563eb', rgb: '37 99 235' },
@@ -49,10 +49,10 @@ const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
   floodgate: { color: '#a855f7', rgb: '168 85 247' },
   searcher: { color: '#06b6d4', rgb: '6 182 212' },
   draw: { color: '#38bdf8', rgb: '56 189 248' },
-  recovery: { color: '#22c55e', rgb: '34 197 94' },
-  payoff: { color: '#10b981', rgb: '16 185 129' },
-  brick: { color: '#ff4d4d', rgb: '255 77 77' },
-  garnet: { color: '#da0000', rgb: '218 0 0' },
+  recovery: { color: '#59d846', rgb: '89 216 70' },
+  payoff: { color: '#e56ef7', rgb: '229 110 247' },
+  brick: { color: '#ff6b6e', rgb: '255 107 110' },
+  garnet: { color: '#d42a35', rgb: '212 42 53' },
 }
 
 const ORIGIN_THEME_BY_KEY: Record<CardOrigin, ClassificationTheme> = {
