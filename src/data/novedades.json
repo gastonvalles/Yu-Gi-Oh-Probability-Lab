@@ -31,14 +31,14 @@
       "en": {
         "title": "The app opens on \"Home\", with your deck one tap away, and installs better",
         "novedades": [
-          "When you open the site (in the browser or already installed) you land on \"Home\". If you have a saved deck, \"Pick up your deck\" shows at the top: its name, how many cards it has and a button that takes you to the next step.",
-          "A finished deck no longer takes you to Export: \"Pick up your deck\" opens it in the Lab, with its numbers.",
+          "When you open the site (in the browser or already installed) you land on \"Home\". If you have a saved deck, \"Continue with your deck\" shows at the top: its name, how many cards it has and a button that takes you to the next step.",
+          "A finished deck no longer takes you to Export: \"Continue with your deck\" opens it in the Lab, with its numbers.",
           "On a phone, \"Home\" shows you how to install the app: a button if Chrome allows it or, if not, the steps (Chrome's three-dot menu on Android, Share on iPhone). \"Not now\" hides it for 30 days.",
           "With the app installed, press and hold the icon to jump straight to My deck, Laboratory, Play solo or the LP Calculator."
         ],
         "comoSeUsa": [
           "Open YGOUltraLab: you land on \"Home\".",
-          "Tap \"Pick up your deck\" to continue where you left off.",
+          "Tap \"Continue with your deck\" to continue where you left off.",
           "To install it, follow the steps on the \"Install YGOUltraLab\" card."
         ],
         "arreglos": [
