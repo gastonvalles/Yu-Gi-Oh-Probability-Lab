@@ -46,7 +46,7 @@ npm run sync:core      # cards.cdb y scripts para los duelos automáticos, fuera
 ## Mapa de carpetas
 
 ```
-src/App.tsx         el arranque: manda la visita nueva a «Inicio» y baja la app (src/MainApp.tsx, aparte)
+src/App.tsx         el arranque: manda cada sesión a «Inicio» y baja la app (src/MainApp.tsx, aparte)
 src/probability.ts  el motor exacto del Lab
 src/app/            la lógica sin interfaz: estado, builder, Lab, mesa, duelo y motor de cartas
 src/components/     las pantallas; ui/ son las piezas base y playground/ el catálogo /playground
@@ -60,7 +60,7 @@ public/             estáticos: íconos, precios, mascotas, 404 y privacidad
 docs/               la documentación
 ```
 
-**«Inicio»** (`#inicio`, `src/components/landing/`) es un paso más de la app, el primero del menú. Llega sola la visita nueva en `/`: sin hash, sin deck con cartas (`ygo-probability-lab:v2`), fuera de la app instalada y sin la marca de sesión `ygo-lab:entered` (`shouldShowLanding`, `src/app/landing.ts`); `/?landing=1` lleva siempre. Sus cifras y «Lo más jugado del meta» los escribe el build en `src/data/landing-stats.json` (no se sube).
+**«Inicio»** (`#inicio`, `src/components/landing/`) es un paso más de la app, el primero del menú. Llega sola la primera carga de la sesión en `/` sin hash (sin la marca `ygo-lab:entered`), con deck (arriba, «Seguir con tu deck») o en la app instalada (`shouldShowLanding`, `src/app/landing.ts`); `/?landing=1` lleva siempre. Sus cifras y «Lo más jugado del meta» los escribe el build en `src/data/landing-stats.json` (no se sube).
 
 ## Documentación
 

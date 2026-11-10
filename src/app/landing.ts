@@ -1,67 +1,44 @@
 import { atLeastProbability } from './quick-odds'
+// Desde el arranque: el aviso de instalar de Chrome llega antes de que baje «Inicio», y sin escucharlo se pierde.
+import './use-install-prompt'
 
 /**
- * «Inicio» (`#inicio`), el paso de la app al que llega una visita nueva en `/`: quién llega ahí y la cuenta de su calculadora. Lo lee el arranque (`App.tsx`) antes de bajar la
- * app: no importa el store ni nada de las pantallas.
+ * «Inicio» (`#inicio`), el paso de la app al que llega la primera carga de cada sesión en `/`: quién llega ahí y la cuenta de su calculadora. Lo lee el arranque (`App.tsx`) antes
+ * de bajar la app: no importa el store ni nada de las pantallas.
  */
 
 /** La marca de sesión «ya entré»: la escribe el arranque; con ella, `/` sin hash no vuelve a «Inicio» en esta pestaña. */
 export const LANDING_ENTERED_KEY = 'ygo-lab:entered'
-/** La misma clave del deck guardado que `STORAGE_KEY` de `model.ts` (no se importa: arrastraría el modelo entero). */
-export const SAVED_DECK_KEY = 'ygo-probability-lab:v2'
 
 export interface LandingInput {
   hash: string
   search: string
-  /** Lo guardado en `SAVED_DECK_KEY`: `null` si no hay nada, `undefined` si el almacenamiento no se pudo leer. */
-  savedDeck: string | null | undefined
-  /** Abierta como la app instalada (PWA). */
-  standalone: boolean
   entered: boolean
-}
-
-/** Un deck con cartas en el Main. Lo que no se entiende cuenta como deck: quien tiene algo guardado vuelve, no llega. */
-function hasMainDeck(saved: string): boolean {
-  try {
-    const main = (JSON.parse(saved) as { deckBuilder?: { main?: unknown } } | null)?.deckBuilder?.main
-
-    return !Array.isArray(main) || main.length > 0
-  } catch {
-    return true
-  }
 }
 
 /** El paso «Inicio», el primero del menú. */
 export const HOME_HASH = '#inicio'
 
-/** A «Inicio» llega sola sólo la visita nueva en `/`; `?landing=1` lleva siempre (para probarla). */
-export function shouldShowLanding({ hash, search, savedDeck, standalone, entered }: LandingInput): boolean {
+/**
+ * A «Inicio» llega sola la primera carga de la sesión en `/` sin hash, para todos: visita nueva, quien ya tiene deck (ahí lo retoma con «Seguir con tu deck») y la app
+ * instalada. Un hash abre lo suyo; `?landing=1` lleva siempre (para probarla).
+ */
+export function shouldShowLanding({ hash, search, entered }: LandingInput): boolean {
   if (new URLSearchParams(search).get('landing') === '1') return true
   if (hash !== '' && hash !== '#') return false
-  if (standalone || entered || savedDeck === undefined) return false
 
-  return savedDeck === null || !hasMainDeck(savedDeck)
+  return !entered
 }
 
-function readStorage(storage: () => Storage, key: string): string | null | undefined {
-  try {
-    return storage().getItem(key)
-  } catch {
-    return undefined
-  }
-}
-
-/** Lo que decide la landing, leído de la página. */
+/** Lo que decide la landing, leído de la página. Sin almacenamiento cuenta como sesión nueva: «Inicio» puede volver al recargar `/`, nada se pierde. */
 export function readLandingInput(): LandingInput {
-  const nav = window.navigator as Navigator & { standalone?: boolean }
+  let entered = false
 
-  return {
-    hash: window.location.hash,
-    search: window.location.search,
-    savedDeck: readStorage(() => window.localStorage, SAVED_DECK_KEY),
-    standalone: nav.standalone === true || (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches),
-    entered: readStorage(() => window.sessionStorage, LANDING_ENTERED_KEY) === '1',
-  }
+  try {
+    entered = window.sessionStorage.getItem(LANDING_ENTERED_KEY) === '1'
+  } catch { /* ver arriba */ }
+
+  return { hash: window.location.hash, search: window.location.search, entered }
 }
 
 export function markEntered(): void {

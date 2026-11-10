@@ -4,6 +4,7 @@
     "api/**/*.ts",
     "src/app/auto/**/*.ts",
     "tools/ti/log-event.mjs",
-    "scripts/ti/gate.mjs"
+    "scripts/ti/gate.mjs",
+    "scripts/pwa-capturas.mjs"
   ]
 }

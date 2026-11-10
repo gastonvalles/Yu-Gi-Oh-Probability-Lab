@@ -1,5 +1,15 @@
-/** «Inicio»: la portada de la app (la promesa, la calculadora, el duelo por enlace, lo más jugado del meta, Novedades y el pie). */
+/** «Inicio»: la portada de la app («Seguir con tu deck», instalar la app, la promesa, la calculadora, el duelo por enlace, lo más jugado del meta, Novedades y el pie). */
 export const landing = {
+  'landing.resume.count': '{main} + {extra} + {side}',
+  'landing.resume.countLabel': 'Main {main}, Extra {extra} y Side {side}',
+  'landing.resume.missing': { one: 'Falta {n} carta en el Main', other: 'Faltan {n} cartas en el Main' },
+  'landing.resume.continue': 'Seguir con tu deck',
+  'landing.install.title': 'Instalá YGOUltraLab',
+  'landing.install.text': 'Se abre desde el cajón de apps, sin la barra del navegador.',
+  'landing.install.button': 'Instalar la app',
+  'landing.install.android': 'Tocá ⋮ y elegí «Instalar app».',
+  'landing.install.ios': 'Tocá «Compartir» y elegí «Añadir a pantalla de inicio».',
+  'landing.install.later': 'Ahora no',
   'landing.title': '¿Cuántas veces abrís tu carta?',
   'landing.subtitle': 'Elegí las copias y mirá la cuenta. Con tu deck entero, el Lab la hace con tus reglas.',
   'landing.calc.label': 'Calculadora: copias y turno',

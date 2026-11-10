@@ -51,9 +51,9 @@ describe('el sitio para compartir y para los buscadores', () => {
   })
 
   it('los íconos del manifiesto existen y miden lo que dicen, y el favicon.ico es un ICO', () => {
-    const { icons } = JSON.parse(text('public/site.webmanifest')) as { icons: Array<{ src: string; sizes: string }> }
+    const { icons } = JSON.parse(text('public/site.webmanifest')) as { icons: Array<{ src: string; sizes: string; purpose: string }> }
 
-    expect(icons.map((icon) => icon.sizes)).toEqual(['192x192', '512x512'])
+    expect(icons.map((icon) => `${icon.purpose} ${icon.sizes}`).sort()).toEqual(['any 192x192', 'any 512x512', 'maskable 192x192', 'maskable 512x512'])
 
     for (const icon of icons) {
       expect(inPublic(icon.src), icon.src).toBe(true)
@@ -61,6 +61,49 @@ describe('el sitio para compartir y para los buscadores', () => {
     }
 
     expect([...bytes('public/favicon.ico').subarray(0, 4)]).toEqual([0, 0, 1, 0])
+  })
+
+  // Chrome en Android regenera la app instalada (WebAPK) cuando cambia el manifiesto: la identidad (`id`, `start_url`, `scope`) no se toca.
+  it('el manifiesto de la app instalada: la identidad, los accesos directos, las capturas y las categorías', () => {
+    type Manifest = {
+      id: string
+      start_url: string
+      scope: string
+      categories: string[]
+      shortcuts: Array<{ name: string; url: string }>
+      screenshots: Array<{ src: string; sizes: string; type: string; form_factor: string; label: string }>
+    }
+    const manifest = JSON.parse(text('public/site.webmanifest')) as Manifest
+    // La lista de categorías del W3C (Web App Manifest, «Application Information»).
+    const W3C_CATEGORIES = ['books', 'business', 'education', 'entertainment', 'finance', 'fitness', 'food', 'games', 'government', 'health', 'kids', 'lifestyle', 'magazines', 'medical', 'music', 'navigation', 'news', 'personalization', 'photo', 'politics', 'productivity', 'security', 'shopping', 'social', 'sports', 'travel', 'utilities', 'weather']
+
+    expect(html).toContain('<link rel="manifest" href="/site.webmanifest" />')
+    expect([manifest.id, manifest.start_url, manifest.scope]).toEqual(['/', '/', '/'])
+    expect(manifest.categories.filter((category) => !W3C_CATEGORIES.includes(category))).toEqual([])
+
+    // Android muestra hasta 4.
+    expect(manifest.shortcuts.length).toBeGreaterThan(0)
+    expect(manifest.shortcuts.length).toBeLessThanOrEqual(4)
+    for (const shortcut of manifest.shortcuts) {
+      expect(shortcut.name.length, shortcut.url).toBeGreaterThan(0)
+      expect(shortcut.url, shortcut.name).toMatch(/^\/#[a-z-]+$/)
+    }
+
+    // De 1 a 5 angostas, del mismo tamaño, con lados de 320 a 3840 px y el lado largo hasta 2,3 veces el corto.
+    expect(manifest.screenshots.length).toBeGreaterThan(0)
+    expect(manifest.screenshots.length).toBeLessThanOrEqual(5)
+    expect(new Set(manifest.screenshots.map((shot) => shot.sizes)).size).toBe(1)
+    for (const shot of manifest.screenshots) {
+      const [width, height] = sizeOf(bytes(`public${shot.src}`))
+
+      expect(`${width}x${height}`, shot.src).toBe(shot.sizes)
+      expect(Math.min(width, height)).toBeGreaterThanOrEqual(320)
+      expect(Math.max(width, height)).toBeLessThanOrEqual(3840)
+      expect(Math.max(width, height) / Math.min(width, height)).toBeLessThanOrEqual(2.3)
+      expect(shot.type, shot.src).toBe(bytes(`public${shot.src}`).subarray(1, 4).toString() === 'PNG' ? 'image/png' : 'image/jpeg')
+      expect(shot.form_factor).toBe('narrow')
+      expect(shot.label.length, shot.src).toBeGreaterThan(0)
+    }
   })
 
   it('todo lo que enlazan el HTML y las páginas estáticas existe en public/, y la 404 no se indexa', () => {

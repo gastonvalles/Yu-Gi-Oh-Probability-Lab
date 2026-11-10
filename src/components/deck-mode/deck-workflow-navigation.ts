@@ -63,6 +63,13 @@ export function isDeckWorkflowStepKey(value: string): value is DeckWorkflowStepK
   return WORKFLOW_STEP_KEYS.some((stepKey) => stepKey === value)
 }
 
+/** El paso que le sigue al deck: armarlo hasta 40, clasificarlo y, con todo hecho, el Lab con sus números (Exportar es el final de la lista, no un lugar de inicio). */
+export function getRecommendedStep(mainDeckCount: number, hasCompletedRoleStep: boolean): DeckWorkflowStepKey {
+  if (mainDeckCount < 40) return 'deck-builder'
+
+  return hasCompletedRoleStep ? 'probability-lab' : 'categorization'
+}
+
 export function buildDeckWorkflowNavigationItems({
   mainDeckCount,
   roleCardCount,

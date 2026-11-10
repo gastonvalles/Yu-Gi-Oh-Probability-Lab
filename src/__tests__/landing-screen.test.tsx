@@ -11,8 +11,13 @@ import { InicioScreen } from '../components/landing/InicioScreen'
 const STATS = { tcgDecks: 564, weeks: 8, banlist: '2026-10-19', prices: '2026-11-08', topCards: [{ id: 14558127, name: 'Ash Blossom & Joyous Spring', decks: 492 }] }
 
 // El arte de las cartas lee el formato del store (el límite de copias).
-const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
-const renderInicio = () => render(<Provider store={store}><InicioScreen stats={STATS} /></Provider>)
+const EMPTY_DECK = { deckName: '', main: [] as unknown[], extra: [] as unknown[], side: [] as unknown[] }
+const storeWith = (deckBuilder: typeof EMPTY_DECK) =>
+  configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state, deckBuilder: (state = deckBuilder) => state } })
+const renderInicio = (deckBuilder = EMPTY_DECK) => render(<Provider store={storeWith(deckBuilder)}><InicioScreen stats={STATS} /></Provider>)
+// Lo que lee «Seguir con tu deck» de cada copia del Main: su carta, su origen y sus roles.
+const copies = (count: number, classified: boolean) =>
+  Array.from({ length: count }, (_, index) => ({ apiCard: { ygoprodeckId: index % 14 }, name: `Carta ${index % 14}`, origin: classified ? 'engine' : null, roles: classified ? ['starter'] : [], needsReview: false }))
 
 beforeEach(() => {
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
@@ -67,5 +72,27 @@ describe('«Inicio»', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Jugar ahora' }))
     expect(window.location.hash).toBe('#duel')
+  })
+
+  it('sin deck con cartas no hay «Seguir con tu deck»', () => {
+    renderInicio()
+
+    expect(screen.queryByRole('button', { name: 'Seguir con tu deck' })).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['incompleto: al armador, con cuánto falta', copies(32, false), '#deck-builder', 'Faltan 8 cartas en el Main'],
+    ['de 40 sin clasificar: a Clasificar', copies(40, false), '#categorization', null],
+    ['completo y clasificado: al Lab, nunca a Exportar', copies(40, true), '#probability-lab', null],
+  ])('«Seguir con tu deck», %s', (_, main, hash, missing) => {
+    renderInicio({ deckName: 'BLITZCLIQUE', main, extra: copies(3, false), side: copies(15, false) })
+
+    const resume = screen.getByRole('region', { name: 'BLITZCLIQUE' })
+    expect(within(resume).getByText(`Main ${main.length}, Extra 3 y Side 15`)).toBeInTheDocument()
+    if (missing) expect(within(resume).getByText(missing)).toBeInTheDocument()
+    else expect(within(resume).queryByText(/en el Main$/)).not.toBeInTheDocument()
+
+    fireEvent.click(within(resume).getByRole('button', { name: 'Seguir con tu deck' }))
+    expect(window.location.hash).toBe(hash)
   })
 })
