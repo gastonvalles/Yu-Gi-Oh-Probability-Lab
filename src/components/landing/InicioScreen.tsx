@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 
+import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { cardSmallImageUrl } from '../../app/card-prices'
 import { LANDING_COPIES, handSizeFor, openingOdds, type LandingCopies, type LandingStats, type LandingTurn } from '../../app/landing'
 import { NOVEDADES_LISTS, sortEntries, type NovedadesEntry } from '../../app/novedades'
+import { isClassificationStepComplete } from '../../app/role-step'
+import { useAppSelector } from '../../app/store-hooks'
 import { formatInteger } from '../../app/utils'
 import { formatDay, getLocale, numberLocale, t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
 import { CardArt } from '../CardArt'
+import { getRecommendedStep, type DeckWorkflowStepKey } from '../deck-mode/deck-workflow-navigation'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
@@ -22,9 +26,9 @@ import { SiteCredit, SOURCE_URL } from '../ui/SocialLinks'
 import { supportText, textLink } from '../ui/typography'
 
 /**
- * «Inicio» (`#inicio`): la portada de la app, un paso más con el menú y las barras de siempre. Llega acá la visita nueva en `/` (`shouldShowLanding`) y se vuelve desde el menú.
- * De arriba abajo: la promesa con una sola acción principal y la calculadora al lado, el destacado del duelo por enlace, lo más jugado del meta, las tres últimas Novedades y el
- * pie (reportar, código y privacidad). Lo que hay en la app no se repite: lo dice el menú.
+ * «Inicio» (`#inicio`): la portada de la app, un paso más con el menú y las barras de siempre. Llega acá la primera carga de cada sesión en `/` (`shouldShowLanding`) y se vuelve
+ * desde el menú. De arriba abajo: «Seguir con tu deck» (sólo con un deck con cartas), la promesa con una sola acción principal y la calculadora al lado, el destacado del duelo
+ * por enlace, lo más jugado del meta, las tres últimas Novedades y el pie (reportar, código y privacidad). Lo que hay en la app no se repite: lo dice el menú.
  */
 
 /** Las cifras de «Lo más jugado del meta», si el build las armó (`scripts/write-build-id.mjs`); sin el archivo (en dev), el bloque no sale. */
@@ -41,6 +45,7 @@ const go = (hash: string) => () => {
 export function InicioScreen({ stats = STATS }: { stats?: LandingStats | null } = {}) {
   return (
     <div className="stagger mx-auto grid w-full min-w-0 max-w-content content-start gap-10 px-gutter pb-8 pt-4 min-[1101px]:gap-12 min-[1101px]:px-6 min-[1101px]:pt-6">
+      <ResumeDeck />
       <section aria-labelledby="inicio-title" className="grid gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_26rem] min-[1101px]:gap-6">
         {/* La promesa y una sola acción principal, grande y abajo (Fitts); la calculadora al lado (escritorio) o debajo (celular): el número grande es la prueba. */}
         <Card as="div" level="hero" padding="lg" className="grid content-center gap-6 min-[1101px]:px-10">
@@ -87,6 +92,54 @@ export function InicioScreen({ stats = STATS }: { stats?: LandingStats | null } 
         </div>
       </footer>
     </div>
+  )
+}
+
+/** El deck guardado, del store (ya cargado: «Inicio» es un paso de la app). Sin cartas en el Main, no sale. */
+function ResumeDeck() {
+  const deck = useAppSelector((state) => state.deckBuilder)
+  const classified = useMemo(() => isClassificationStepComplete(deriveMainDeckCardsFromZone(deck.main)), [deck.main])
+
+  if (deck.main.length === 0) return null
+
+  return <ResumeDeckCard name={deck.deckName} main={deck.main.length} extra={deck.extra.length} side={deck.side.length} step={getRecommendedStep(deck.main.length, classified)} />
+}
+
+interface ResumeDeckCardProps {
+  name: string
+  main: number
+  extra: number
+  side: number
+  /** Adónde lleva el botón: el paso recomendado (`getRecommendedStep`). */
+  step: DeckWorkflowStepKey
+}
+
+/**
+ * «Seguir con tu deck»: lo primero de «Inicio» para quien vuelve con un deck. El nombre arriba y, abajo, el número que decide (Main + Extra + Side y cuánto falta) a la
+ * izquierda con el botón a la derecha (G.4). La tarjeta teñida de lo tuyo es lo único que se distingue en esa franja.
+ */
+export function ResumeDeckCard({ name, main, extra, side, step }: ResumeDeckCardProps) {
+  const missing = Math.max(0, 40 - main)
+  const titleId = useId()
+
+  return (
+    <Card as="section" tone="brand" aria-labelledby={titleId} className="grid gap-3">
+      <Heading level="section" as="p" id={titleId} className="truncate">
+        {name.trim() || t('deck.export.preview.unnamed')}
+      </Heading>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <p className="m-0 grid">
+          <span aria-hidden="true" className="text-lead font-semibold tabular-nums">
+            {t('landing.resume.count', { main: formatInteger(main), extra: formatInteger(extra), side: formatInteger(side) })}
+          </span>
+          <span className="sr-only">{t('landing.resume.countLabel', { main: formatInteger(main), extra: formatInteger(extra), side: formatInteger(side) })}</span>
+          {missing > 0 ? <span className="text-micro text-muted">{t('landing.resume.missing', { count: missing, n: formatInteger(missing) })}</span> : null}
+        </p>
+        <Button variant="primary" icon="cards" onClick={go(`#${step}`)}>
+          {t('landing.resume.continue')}
+        </Button>
+      </div>
+    </Card>
   )
 }
 

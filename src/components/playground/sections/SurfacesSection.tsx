@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { ResumeDeckCard } from '../../landing/InicioScreen'
 import { Button } from '../../ui/Button'
 import { Callout } from '../../ui/Callout'
 import { Card } from '../../ui/Card'
@@ -57,6 +58,12 @@ export function SurfacesSection() {
           </Callout>
         </Specimen>
       </SpecimenGrid>
+
+      <Specimen title="Seguir con tu deck" layout="column" note={<>Lo primero de «Inicio» para quien vuelve con un deck con cartas; sin cartas en el Main no aparece y «Inicio» queda igual. El nombre arriba y, abajo, Main + Extra + Side (y cuánto falta) con el botón al paso recomendado: armar, clasificar o el Lab, nunca Exportar. La tarjeta teñida es lo único que se distingue en esa franja. Archivo: <Tag>landing/InicioScreen.tsx</Tag> (<Tag>ResumeDeckCard</Tag>)</>}>
+        <ResumeDeckCard name="BLITZCLIQUE" main={40} extra={3} side={15} step="probability-lab" />
+        <ResumeDeckCard name="Snake-Eye Fire King con un nombre bien largo para ver cómo se corta" main={32} extra={0} side={0} step="deck-builder" />
+        <ResumeDeckCard name="" main={1} extra={0} side={0} step="deck-builder" />
+      </Specimen>
 
       <SpecimenGrid min="22rem">
         <Specimen title="EmptyState" note={<>Lista o pantalla vacía. Archivo: <Tag>ui/EmptyState.tsx</Tag></>}>

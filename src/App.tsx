@@ -16,7 +16,7 @@ function isPlaygroundPath(): boolean {
 }
 
 /**
- * Antes de montar la app: la visita nueva en `/` (`shouldShowLanding`) y `?landing=1` llegan a «Inicio» (`#inicio`), un paso más de la app. El hash se reemplaza sin sumar una
+ * Antes de montar la app: la primera carga de la sesión en `/` (`shouldShowLanding`) y `?landing=1` llegan a «Inicio» (`#inicio`), un paso más de la app. El hash se reemplaza sin sumar una
  * entrada al historial, y la marca de la sesión queda puesta: en esta pestaña, `/` sin hash vuelve al paso de siempre.
  */
 function routeToHome(): void {

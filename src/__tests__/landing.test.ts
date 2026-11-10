@@ -5,36 +5,40 @@ import { landingStats } from '../../scripts/write-build-id.mjs'
 import banlistsJson from '../data/banlists.json'
 import { activeBanlist } from '../app/banlists'
 import { fetchExpansions } from '../app/card-prices'
-import { LANDING_ENTERED_KEY, SAVED_DECK_KEY, openingOdds, shouldShowLanding, type LandingInput } from '../app/landing'
+import { LANDING_ENTERED_KEY, openingOdds, shouldShowLanding, type LandingInput } from '../app/landing'
 import { META_DECKS, filterMetaDecks } from '../app/meta'
-import { STORAGE_KEY } from '../app/model'
 import { atLeastProbability } from '../app/quick-odds'
+import { getRecommendedStep } from '../components/deck-mode/deck-workflow-navigation'
 
-const base: LandingInput = { hash: '', search: '', savedDeck: null, standalone: false, entered: false }
-const deck = (main: unknown[]) => JSON.stringify({ version: 16, deckBuilder: { deckName: 'x', main, extra: [], side: [] } })
+const base: LandingInput = { hash: '', search: '', entered: false }
 
 describe('shouldShowLanding', () => {
+  // Ni el deck guardado ni la app instalada cambian nada: la primera carga de la sesión en `/` va a «Inicio» para todos.
   it.each<[string, Partial<LandingInput>, boolean]>([
-    ['sin hash ni deck: la ve', {}, true],
+    ['la primera carga de la sesión sin hash: la ve', {}, true],
     ['con «#» solo: la ve', { hash: '#' }, true],
-    ['con un deck guardado sin cartas en el Main: la ve', { savedDeck: deck([]) }, true],
-    ['con un deck con cartas: no', { savedDeck: deck([{ name: 'Ash Blossom' }]) }, false],
-    ['con algo guardado que no se entiende: no (vuelve, no llega)', { savedDeck: '{roto' }, false],
-    ['si el almacenamiento falla: no', { savedDeck: undefined }, false],
     ['un enlace a una pantalla: no', { hash: '#deck-builder' }, false],
     ['un duelo compartido: no', { hash: '#duel?room=ABC' }, false],
     ['un combo compartido: no', { hash: '#combo=xyz' }, false],
     ['un replay compartido: no', { hash: '#replay=xyz' }, false],
-    ['la app instalada: no', { standalone: true }, false],
-    ['ya entró en esta sesión: no', { entered: true }, false],
-    ['?landing=1 la fuerza aunque haya deck y hash', { search: '?landing=1', hash: '#duel', savedDeck: deck([{}]), entered: true, standalone: true }, true],
+    ['ya entró en esta sesión (recargar, volver a /): no', { entered: true }, false],
+    ['?landing=1 la fuerza aunque haya hash y ya haya entrado', { search: '?landing=1', hash: '#duel', entered: true }, true],
   ])('%s', (_, input, expected) => {
     expect(shouldShowLanding({ ...base, ...input })).toBe(expected)
   })
 
-  it('lee la misma clave del deck que la app y una marca propia', () => {
-    expect(SAVED_DECK_KEY).toBe(STORAGE_KEY)
+  it('la marca de sesión es propia', () => {
     expect(LANDING_ENTERED_KEY).toMatch(/^ygo-lab:/)
+  })
+})
+
+describe('el paso recomendado (el de «Seguir con tu deck» y el de `/` sin hash)', () => {
+  it('arma hasta 40, clasifica y, con todo hecho, el Lab: nunca Exportar', () => {
+    expect(getRecommendedStep(0, false)).toBe('deck-builder')
+    expect(getRecommendedStep(39, true)).toBe('deck-builder')
+    expect(getRecommendedStep(40, false)).toBe('categorization')
+    expect(getRecommendedStep(40, true)).toBe('probability-lab')
+    expect(getRecommendedStep(60, true)).toBe('probability-lab')
   })
 })
 

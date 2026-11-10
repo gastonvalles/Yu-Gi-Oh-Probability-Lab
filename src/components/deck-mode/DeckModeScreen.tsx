@@ -37,6 +37,7 @@ import {
   buildAppNavGroups,
   buildDeckWorkflowNavigationItems,
   type DeckWorkflowStepKey,
+  getRecommendedStep,
   isDeckWorkflowStepKey,
 } from './deck-workflow-navigation'
 import {
@@ -93,26 +94,6 @@ function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
   return isDeckWorkflowStepKey(step) ? step : null
 }
 
-function getRecommendedStep(
-  mainDeckCount: number,
-  hasCompletedRoleStep: boolean,
-  patternCount: number,
-): DeckWorkflowStepKey {
-  if (mainDeckCount < 40) {
-    return 'deck-builder'
-  }
-
-  if (!hasCompletedRoleStep) {
-    return 'categorization'
-  }
-
-  if (patternCount === 0) {
-    return 'probability-lab'
-  }
-
-  return 'export'
-}
-
 export function DeckModeScreen() {
   const controller = useDeckModeController()
   const isDesktopDeckBuilder = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -125,8 +106,8 @@ export function DeckModeScreen() {
   const [mascotsOpen, setMascotsOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const recommendedStep = useMemo(
-    () => getRecommendedStep(mainDeckCount, hasCompletedRoleStep, patternCount),
-    [hasCompletedRoleStep, mainDeckCount, patternCount],
+    () => getRecommendedStep(mainDeckCount, hasCompletedRoleStep),
+    [hasCompletedRoleStep, mainDeckCount],
   )
   const [activeStep, setActiveStep] = useState<DeckWorkflowStepKey>(() => {
     if (typeof window === 'undefined') {

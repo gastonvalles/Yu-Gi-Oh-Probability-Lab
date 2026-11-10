@@ -2,6 +2,10 @@ import type { landing as es } from '../es/landing'
 import type { Translated } from '../types'
 
 export const landing: Translated<typeof es> = {
+  'landing.resume.count': '{main} + {extra} + {side}',
+  'landing.resume.countLabel': 'Main {main}, Extra {extra} and Side {side}',
+  'landing.resume.missing': { one: '{n} card missing from the Main', other: '{n} cards missing from the Main' },
+  'landing.resume.continue': 'Continue with your deck',
   'landing.title': 'How often do you open your card?',
   'landing.subtitle': 'Pick the copies and see the odds. With your whole deck, the Lab runs them with your rules.',
   'landing.calc.label': 'Calculator: copies and turn',

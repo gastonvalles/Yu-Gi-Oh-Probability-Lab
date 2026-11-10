@@ -73,7 +73,7 @@ test('la portada carga sin errores de consola ni respuestas >= 400 propias', asy
   })
   await page.goto('/')
   await expect(page).toHaveTitle(/YGOUltraLab/)
-  // Qué pantalla abre la portada depende del deck guardado (con todo clasificado, el Lab): se afirma el armazón, no una pantalla.
+  // La primera carga de la sesión abre «Inicio», con «Seguir con tu deck» arriba: se afirma el armazón, no una pantalla.
   await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toBeVisible()
   await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
   expect(errors, 'errores de consola o de página propios').toEqual([])
@@ -224,7 +224,7 @@ test('«Inicio» desde el menú vuelve, y ?landing=1 lleva ahí aunque haya deck
   await expect(heading(page, LANDING_TITLE)).toBeVisible()
 })
 
-test('«Inicio» no sale solo con un hash ni con un deck guardado', async ({ page, browser, baseURL }, testInfo) => {
+test('«Inicio» no sale solo con un hash ni al volver a `/` en la misma pestaña', async ({ page, browser, baseURL }, testInfo) => {
   // Visita nueva pero con una pantalla por hash: abre la pantalla, no «Inicio».
   const context = await freshVisitor(browser, baseURL!, testInfo.project)
   const visitor = await context.newPage()
@@ -235,7 +235,8 @@ test('«Inicio» no sale solo con un hash ni con un deck guardado', async ({ pag
   await expect(heading(visitor, LANDING_TITLE)).toHaveCount(0)
   await context.close()
 
-  // Con el deck sembrado (el `page` de siempre), `/` abre el paso de siempre, no «Inicio».
+  // Ya adentro en esta pestaña (la marca de sesión), `/` abre el paso de siempre, no «Inicio».
+  await page.goto('/#meta')
   await page.goto('/')
   await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toBeVisible()
   await expect(heading(page, LANDING_TITLE)).toHaveCount(0)
