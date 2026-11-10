@@ -4,6 +4,16 @@ import type { Translated } from '../types'
 export const duel: Translated<typeof es> = {
   'duel.unavailable': "Dueling a friend isn't available in this version of the app yet.",
 
+  'duel.offline.title': 'Online needs signal',
+  'duel.offline.lobby': 'Rooms come back when you have a connection. Meanwhile, manual Solo works offline.',
+  'duel.offline.toSolo': 'Play solo',
+  'duel.offline.back': 'Back to Online',
+  'duel.offline.backSolo': 'Back to Solo',
+  'duel.offline.autoFailed': "The automatic duel couldn't open",
+  'duel.offline.solo': 'Automatic mode and the bots need signal to download the rules engine: meanwhile, Passive and Handtraps play manually.',
+  'duel.offline.autoHint': 'Needs signal to download the rules engine.',
+  'duel.offline.bot': 'Needs signal',
+
   'duel.table.label': 'Duel table',
   'duel.table.theirs': "Opponent's field",
   'duel.table.mine': 'Your field',

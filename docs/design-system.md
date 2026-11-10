@@ -1,6 +1,6 @@
 # Sistema de diseño
 
-Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y probalo en el catálogo (sección 7). Los valores de los tokens están en `src/index.css` y cada componente cuenta sus props, variantes y estados en su comentario de cabecera; acá van las reglas que no se ven en el código.
+Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y probalo en el catálogo (sección 7). Los valores de los tokens están en `src/index.css` y cada componente se explica en su comentario; acá van las reglas que no se ven en el código.
 
 ## 1. Idea general
 
@@ -79,6 +79,7 @@ El armazón vive en `components/shell/`.
 
 - **Un solo menú, armado una vez** (menú lateral, barra de abajo y cajón): un destino nuevo se suma en `buildAppNavGroups` (`deck-mode/deck-workflow-navigation.ts`). La barra de abajo: Tu deck · Descubrir · Jugar (círculo central, `PLAY_GROUP_KEY`) · Cartas · Buscar; lo que asoma lo cuenta `TAB_BAR_PX`.
 - **Jugar** es Solo · Online (con relay) · Calculadora (Exportar va en Tu deck); en su hoja del celular, Solo y Online van en dos tarjetas (`sheetCards`). En Solo la acción principal va en una barra pegada sobre la de navegación (el patrón de Exportar), con lo elegido a la izquierda.
+- **Sin red, `OfflineNotice`** (`role="status"`) va bajo la barra, arriba de la pantalla; en la mesa, no.
 - **No hay barra de pasos arriba de las pantallas del deck ni pie en ninguna pantalla** (lo legal va al final del menú, `SidebarLegal`, y del cajón).
 - **El scroll del menú** (`scroll-yt`): `scrollbar-width` y `scrollbar-color` van en `auto`, porque si no Chrome y Safari ignoran el `::-webkit-scrollbar`.
 - **Ningún diseño depende del ancho de un texto** (el inglés cambia el largo de los rótulos).
@@ -100,7 +101,7 @@ El armazón vive en `components/shell/`.
 
 ## 7. El catálogo `/playground`
 
-**Todo cambio de diseño se prueba primero en `/playground` y después se lleva a las pantallas:** cada muestra es el componente real, así que lo que cambia ahí cambia en toda la app. Se entra por `localhost:5173/playground`; no está linkeado, lleva `noindex`, `robots.txt` lo excluye y se carga aparte (`React.lazy` en `App.tsx`).
+**Todo cambio de diseño se prueba primero en `/playground` y después se lleva a las pantallas:** cada muestra es el componente real, así que lo que cambia ahí cambia en toda la app. Se entra por `localhost:5173/playground`; no está linkeado, lleva `noindex`, `robots.txt` lo excluye y se carga aparte (`App.tsx`).
 
 - **Sumar una muestra:** un `<Specimen title note>` en su sección de `src/components/playground/sections/`, o una sección nueva en `SECTIONS` (`Playground.tsx`). Los íconos, los archivos de `public/` y las variables de `index.css` aparecen solos; las sombras se anotan a mano en `SurfacesSection.tsx` (Tailwind no deja leerlas).
 - **Lo vigila** `playground.test.tsx`. `i18n-literals.test.ts`, `button-rules.test.ts` y `link-rules.test.ts` saltan la carpeta: es una herramienta de desarrollo, en español y sin traducir.

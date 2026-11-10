@@ -14,6 +14,7 @@ import { MobileTabBar } from './MobileTabBar'
 import { MobileTopBar, TopBarToolsContext } from './MobileTopBar'
 import type { NavGroup } from './nav-model'
 import { NavDrawer } from './NavDrawer'
+import { OfflineNotice } from './OfflineNotice'
 import { ShellMenuContext, type ShellMenu } from './ShellMenu'
 
 interface AppShellProps {
@@ -141,6 +142,8 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
       {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && (tabBar ? 'max-[1101px]:h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))]' : 'max-[1101px]:h-dvh'), ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
         {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} onHome={homeKey ? () => onSelect(homeKey) : undefined} toolsRef={setTopBarTools} className="min-[1101px]:hidden" />}
+        {/* Sin red, el aviso va arriba de la pantalla; en la mesa no (la mesa no se mueve mientras se juega y el duelo dice solo si se cortó). */}
+        {navbar ? <OfflineNotice className="shrink-0" /> : null}
         <div
           ref={contentScrollRef}
           className={cx(

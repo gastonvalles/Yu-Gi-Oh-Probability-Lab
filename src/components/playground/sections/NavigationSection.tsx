@@ -23,6 +23,7 @@ import { GroupSheet } from '../../shell/GroupSheet'
 import { MobileTabBar } from '../../shell/MobileTabBar'
 import { MobileTopBar } from '../../shell/MobileTopBar'
 import { DrawerPanel, NavDrawer } from '../../shell/NavDrawer'
+import { OfflineCallout } from '../../shell/OfflineNotice'
 import { SidebarLegal } from '../../shell/SidebarLegal'
 import { Button } from '../../ui/Button'
 import { Card } from '../../ui/Card'
@@ -521,6 +522,13 @@ export function NavigationSection() {
           </div>
         </Specimen>
       </SpecimenGrid>
+
+      <Specimen title="Sin conexión" layout="column" note={<>Sin red, el armazón lo pone arriba de la pantalla y debajo de la barra (no en la mesa); se va solo al volver la señal y no se descarta. Es un <Tag>Callout warning</Tag> dentro de un <Tag>role=&quot;status&quot;</Tag> siempre montado. A 390 px y a todo el ancho. Archivos: <Tag>shell/OfflineNotice.tsx</Tag> <Tag>app/use-online.ts</Tag></>}>
+        <div className="w-full max-w-[24.375rem]">
+          <OfflineCallout />
+        </div>
+        <OfflineCallout />
+      </Specimen>
 
       <Specimen title="Controles del replay" layout="free" note={<>Como los de YGOPocket: volver al principio, anterior, reproducir, siguiente, la línea de tiempo (se toca, se arrastra o se maneja con el teclado), la lista de pasos y la velocidad. Cada paso lleva el color de lo que hace (el de su destello en la mesa: dorado activar y la Invocación Normal, celeste la Especial y lo que va a la mano, rojo atacar o marcar un objetivo, violeta declarar y el cementerio, blanco la Sincronía, índigo Xyz, verde agua el Enlace, ámbar el destierro; sin color, gris), vivo lo ya visto y apagado lo que falta. La mano inicial es verde y el paso actual, ámbar y más alto, como el botón de reproducir. Una rayita naranja marca los cambios de fase y una línea, los turnos. Archivo: <Tag>probability/ReplayBar.tsx</Tag></>}>
         <div className="grid gap-4">
