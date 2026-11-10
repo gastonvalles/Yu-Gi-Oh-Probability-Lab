@@ -175,6 +175,37 @@ describe('Codec: la escala de Péndulo', () => {
   })
 })
 
+describe('Codec: reglas apagadas', () => {
+  const regla = (id: string, extra: Partial<HandPattern> = {}): HandPattern => ({
+    id,
+    name: id,
+    kind: 'opening',
+    turnContext: 'either',
+    logic: 'all',
+    minimumConditionMatches: 1,
+    reusePolicy: 'forbid',
+    needsReview: false,
+    conditions: [{ id: `${id}-c`, matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include', distinct: false }],
+    ...extra,
+  })
+
+  it('una propia apagada vuelve apagada, la prendida sin el campo, y las del sistema apagadas siguen en su lista', () => {
+    const state = { ...estadoConUnaCarta(CARTA_SIN_ESCALA), patterns: [regla('apagada', { enabled: false }), regla('prendida', { enabled: true })], disabledGenericRuleIds: ['starter_opening'] }
+    const portable = toPortableConfig(state)
+    const restored = guardarYLeer(state)
+
+    expect(portable.patterns.map((pattern) => pattern.enabled)).toEqual([false, undefined])
+    expect(restored.patterns.map((pattern) => pattern.enabled)).toEqual([false, undefined])
+    expect(restored.disabledGenericRuleIds).toEqual(['starter_opening'])
+  })
+
+  it('un guardado de antes (sin el campo) carga con todo prendido', () => {
+    const viejo = JSON.parse(JSON.stringify(toPortableConfig({ ...estadoConUnaCarta(CARTA_SIN_ESCALA), patterns: [regla('vieja')] })))
+
+    expect(fromPortableConfig(viejo).patterns[0]).not.toHaveProperty('enabled')
+  })
+})
+
 /** El estado de la app sobrevive a pasar por la configuración portable (exportar e importar). */
 describe('Codec: toPortableConfig → fromPortableConfig', () => {
   it('conserva el formato, la mano, el nombre del deck, las reglas y las cartas de cualquier estado válido', () => {

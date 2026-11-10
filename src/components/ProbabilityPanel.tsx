@@ -97,6 +97,26 @@ export function ProbabilityPanel({
     [activeTurnView, shownResult, results, lab.unavailablePatterns, labelCards, disabledGenericRuleIds, lab.availablePresets, lab.customPatterns],
   )
 
+  // Sin resultado (todas las reglas apagadas, o ninguna para un turno) la lista sigue a la vista: es donde se vuelve a prender una.
+  const rulesCard = (className?: string) => (
+    <LabRules
+      className={className}
+      groups={ruleGroups}
+      patterns={patterns}
+      customPatterns={lab.customPatterns}
+      presets={lab.availablePresets}
+      cards={derivedMainCards}
+      labelCards={labelCards}
+      disabledGenericRuleIds={disabledGenericRuleIds}
+      handSize={handSize}
+      results={results}
+      patternActions={patternActions}
+      patternEditorDefaults={patternEditorDefaults}
+      onToggleGenericRule={onSetGenericRuleEnabled}
+      onRenameSystemRule={onRenameSystemRule}
+    />
+  )
+
   return (
     <StepPage as="article">
       <StepHero
@@ -132,12 +152,15 @@ export function ProbabilityPanel({
           onEditingChange={setIsClassifyingPending}
         />
       ) : lab.computation?.status === 'blocked' ? (
-        <div className="grid gap-2">
-          {lab.computation.issues.map((issue) => (
-            <Callout key={issue.message} tone="danger">
-              {issue.message}
-            </Callout>
-          ))}
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            {lab.computation.issues.map((issue) => (
+              <Callout key={issue.message} tone="danger">
+                {issue.message}
+              </Callout>
+            ))}
+          </div>
+          {rulesCard('')}
         </div>
       ) : results ? (
         /*
@@ -155,29 +178,17 @@ export function ProbabilityPanel({
             onOpenDisclaimer={disclaimer.open}
           />
           <LabRoleDistribution className="md:col-span-6" distributions={lab.roleDistributions[activeTurnView]} onOpenRole={setKpiModal} />
-          <LabRules
-            className="md:col-span-12"
-            groups={ruleGroups}
-            patterns={patterns}
-            customPatterns={lab.customPatterns}
-            presets={lab.availablePresets}
-            cards={derivedMainCards}
-            labelCards={labelCards}
-            disabledGenericRuleIds={disabledGenericRuleIds}
-            handSize={handSize}
-            results={results}
-            patternActions={patternActions}
-            patternEditorDefaults={patternEditorDefaults}
-            onToggleGenericRule={onSetGenericRuleEnabled}
-            onRenameSystemRule={onRenameSystemRule}
-          />
+          {rulesCard('md:col-span-12')}
         </div>
       ) : lab.canCalculate ? (
         <LabSkeleton />
       ) : (
-        <EmptyState icon="flask" title={t('lab.panel.noData.title')}>
-          {t('lab.panel.noData.body')}
-        </EmptyState>
+        <div className="grid gap-4">
+          <EmptyState icon="flask" title={t('lab.panel.noData.title')}>
+            {t('lab.panel.noData.body')}
+          </EmptyState>
+          {rulesCard('')}
+        </div>
       )}
 
       <LabDisclaimerDialog isOpen={disclaimer.isOpen} onClose={disclaimer.close} />

@@ -4,7 +4,7 @@ import type { Translated } from '../types'
 export const builder: Translated<typeof es> = {
   // The Lab's rule list
   'builder.list.description': 'What counts as a good hand. The number: in how many out of 100 hands it holds.',
-  'builder.list.lockNote': 'Universal: works for any deck, it can only be renamed. The rest can be turned off or edited with a tap.',
+  'builder.list.toggleNote': 'Every rule has a switch to turn it on or off. Universal rules work for any deck and can only be renamed.',
   'builder.list.openings': 'Openings',
   'builder.list.openingsHint': 'what gets a hand going',
   'builder.list.problems': 'Problems',
@@ -13,7 +13,6 @@ export const builder: Translated<typeof es> = {
   'builder.list.createOpening': 'Create an opening',
   'builder.list.createProblem': 'Create a problem',
   'builder.list.own': 'Yours',
-  'builder.list.locked': 'Universal: always on',
   'builder.list.onlyFirst': '1st only',
   'builder.list.onlySecond': '2nd only',
   'builder.list.more': 'More actions for {name}',

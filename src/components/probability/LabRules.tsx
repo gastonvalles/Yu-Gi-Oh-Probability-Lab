@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPattern } from '../../app/pattern-factory'
 import { buildActiveRuleSet, type PatternPreset } from '../../app/pattern-presets'
 import type { LabResults } from '../../app/probability-lab'
-import { buildRuleExample, duplicateRule, findDuplicateRule, removeRule, restoreGenericRule, restoreRemovedRule, type RemovedRule, type RuleCandidate, type RuleExampleId } from '../../app/rule-edits'
+import { buildRuleExample, duplicateRule, findDuplicateRule, removeRule, restoreGenericRule, restoreRemovedRule, setRuleEnabled, type RemovedRule, type RuleCandidate, type RuleExampleId } from '../../app/rule-edits'
 import { useShellInsets } from '../../app/shell-layout'
 import { useToastMessage } from '../../app/use-toast-message'
 import type { PatternEditorDefaults } from '../../app/use-pattern-editor-actions'
@@ -103,8 +103,8 @@ export function LabRules({
     const overridden = new Set(customPatterns.flatMap((pattern) => (pattern.systemRuleId ? [pattern.systemRuleId] : [])))
 
     return [
-      ...presets.filter((preset) => (preset.tier === 'universal' || !disabled.has(preset.id)) && !overridden.has(preset.id)).map((preset) => ({ id: preset.id, name: preset.title, pattern: preset.pattern })),
-      ...customPatterns.filter((pattern) => !(pattern.systemRuleId && disabled.has(pattern.systemRuleId))).map((pattern) => ({ id: pattern.id, name: pattern.name, pattern })),
+      ...presets.filter((preset) => !disabled.has(preset.id) && !overridden.has(preset.id)).map((preset) => ({ id: preset.id, name: preset.title, pattern: preset.pattern })),
+      ...customPatterns.filter((pattern) => pattern.enabled !== false && !(pattern.systemRuleId && disabled.has(pattern.systemRuleId))).map((pattern) => ({ id: pattern.id, name: pattern.name, pattern })),
     ]
   }, [customPatterns, disabledGenericRuleIds, presets])
 
@@ -291,6 +291,7 @@ export function LabRules({
         className={className}
         onEditRule={openEdit}
         onToggleGenericRule={onToggleGenericRule}
+        onToggleOwnRule={(patternId, enabled) => patternActions.replacePatterns(setRuleEnabled(patterns, patternId, enabled))}
         onEditGenericRule={openEditGeneric}
         onRenameSystemRule={onRenameSystemRule}
         onCreate={openCreate}

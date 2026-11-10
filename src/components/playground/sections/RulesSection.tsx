@@ -60,6 +60,9 @@ const GROUPS: RuleEntryGroups = {
   ],
   custom: [
     entry({ patternId: 'c1', name: '2+ Handtraps yendo 2º', turnContext: 'second', probability: 0.99 }),
+    // Mirada «Yendo 2º»: una «Sólo 1º» no cuenta, pero no está apagada (todo su contraste y la línea que lo dice).
+    entry({ patternId: 'c3', name: '2+ Ash Blossom & Joyous Spring', kind: 'problem', turnContext: 'first', appliesToView: false, probability: null }),
+    entry({ patternId: 'c4', name: '2+ Effect Veiler', kind: 'problem', enabled: false, probability: null }),
     entry({ patternId: 'c2', name: 'Hornet + Engage', kind: 'problem', missingCards: true, probability: null }),
   ],
 }
@@ -105,8 +108,9 @@ export function RulesSection() {
         layout="column"
         note={
           <>
-            <Tag>probability/LabRuleList.tsx</Tag> Salidas | Problemas, una fila de 60 px por regla: el anillo y, a la derecha, el candado (universal), el interruptor (genérica) o el ⋯
-            (Editar · Duplicar · Borrar) de las tuyas, con la etiqueta «Tuya». «Crear regla» arriba (abajo en el celular) y «Crear una salida / un problema» al pie de cada columna.
+            <Tag>probability/LabRuleList.tsx</Tag> Salidas | Problemas, una fila de 60 px por regla: el anillo y, al borde derecho, el interruptor de todas (una sola columna); las
+            tuyas suman su ⋯ (Editar · Duplicar · Borrar) a la izquierda del interruptor y la etiqueta «Tuya». Gris sólo es apagada («Salida con interacción», «2+ Effect Veiler»); la que no cuenta yendo 2º («2+ Ash
+            Blossom…») conserva el contraste y lo dice debajo del nombre. «Crear regla» arriba (abajo en el celular) y «Crear una salida / un problema» al pie de cada columna.
           </>
         }
       >
@@ -115,6 +119,7 @@ export function RulesSection() {
           className=""
           onEditRule={noop}
           onToggleGenericRule={noop}
+          onToggleOwnRule={noop}
           onEditGenericRule={noop}
           onRenameSystemRule={noop}
           onCreate={noop}

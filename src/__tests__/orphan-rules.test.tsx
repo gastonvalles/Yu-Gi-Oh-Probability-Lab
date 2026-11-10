@@ -30,7 +30,7 @@ function entry(overrides: Partial<RuleEntry>): RuleEntry {
 
 const noop = () => {}
 const list = (custom: RuleEntry[], onEditRule = noop) => (
-  <LabRuleList groups={{ universal: [], generic: [], custom }} onEditRule={onEditRule} onToggleGenericRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreate={noop} onDuplicateRule={noop} onDeleteRule={noop} />
+  <LabRuleList groups={{ universal: [], generic: [], custom }} onEditRule={onEditRule} onToggleGenericRule={noop} onToggleOwnRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreate={noop} onDuplicateRule={noop} onDeleteRule={noop} />
 )
 
 describe('las reglas con cartas que ya no están en el deck', () => {
