@@ -1,6 +1,57 @@
 {
   "entries": [
     {
+      "id": "2026-11-10-2-app-instalada",
+      "date": "2026-11-10",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "La app abre en «Inicio», con tu deck a un toque, y se instala mejor",
+        "novedades": [
+          "Al abrir la página (en el navegador o ya instalada) caés en «Inicio». Si tenés un deck guardado, arriba aparece «Seguir con tu deck»: su nombre, cuántas cartas lleva y un botón que te lleva al paso que sigue.",
+          "Un deck terminado ya no te lleva a Exportar: «Seguir con tu deck» lo abre en el Lab, con sus números.",
+          "En el celular, «Inicio» te muestra cómo instalar la app: un botón si Chrome lo permite o, si no, los pasos (el menú de tres puntos de Chrome en Android, Compartir en iPhone). «Ahora no» la esconde 30 días.",
+          "Con la app instalada, mantené apretado el ícono para ir directo a Mi deck, Laboratorio, Jugar solo o la Calculadora de LP."
+        ],
+        "comoSeUsa": [
+          "Abrí YGOUltraLab: caés en «Inicio».",
+          "Tocá «Seguir con tu deck» para retomar donde dejaste.",
+          "Para instalarla, seguí los pasos de la tarjeta «Instalá YGOUltraLab»."
+        ],
+        "arreglos": [
+          "Los enlaces con destino (una invitación de duelo, un paso) siguen abriendo lo suyo: «Inicio» aparece sólo cuando abrís la página sin destino, una vez por sesión.",
+          "La ventana de instalación de Chrome ahora muestra capturas de la app."
+        ],
+        "ojo": [
+          "En los celulares que ya la tienen instalada, los accesos directos y las capturas llegan solos en uno o dos días (Chrome actualiza la app con el celular enchufado y con WiFi).",
+          "Si Chrome no ofrece el botón de instalar, la tarjeta muestra los pasos a mano."
+        ]
+      },
+      "en": {
+        "title": "The app opens on \"Home\", with your deck one tap away, and installs better",
+        "novedades": [
+          "When you open the site (in the browser or already installed) you land on \"Home\". If you have a saved deck, \"Pick up your deck\" shows at the top: its name, how many cards it has and a button that takes you to the next step.",
+          "A finished deck no longer takes you to Export: \"Pick up your deck\" opens it in the Lab, with its numbers.",
+          "On a phone, \"Home\" shows you how to install the app: a button if Chrome allows it or, if not, the steps (Chrome's three-dot menu on Android, Share on iPhone). \"Not now\" hides it for 30 days.",
+          "With the app installed, press and hold the icon to jump straight to My deck, Laboratory, Play solo or the LP Calculator."
+        ],
+        "comoSeUsa": [
+          "Open YGOUltraLab: you land on \"Home\".",
+          "Tap \"Pick up your deck\" to continue where you left off.",
+          "To install it, follow the steps on the \"Install YGOUltraLab\" card."
+        ],
+        "arreglos": [
+          "Links with a destination (a duel invitation, a step) still open theirs: \"Home\" only shows when you open the site with no destination, once per session.",
+          "Chrome's install dialog now shows screenshots of the app."
+        ],
+        "ojo": [
+          "On phones that already have it installed, the shortcuts and screenshots arrive on their own in a day or two (Chrome updates the app while the phone is plugged in and on WiFi).",
+          "If Chrome does not offer the install button, the card shows the steps to follow by hand."
+        ]
+      }
+    },
+    {
       "id": "2026-11-10-1-cartas-ajenas",
       "date": "2026-11-10",
       "tags": [
