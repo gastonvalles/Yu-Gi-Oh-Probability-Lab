@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { ResumeDeckCard } from '../../landing/InicioScreen'
+import { InstallAppCard, ResumeDeckCard } from '../../landing/InicioScreen'
 import { Button } from '../../ui/Button'
 import { Callout } from '../../ui/Callout'
 import { Card } from '../../ui/Card'
@@ -63,6 +63,15 @@ export function SurfacesSection() {
         <ResumeDeckCard name="BLITZCLIQUE" main={40} extra={3} side={15} step="probability-lab" />
         <ResumeDeckCard name="Snake-Eye Fire King con un nombre bien largo para ver cómo se corta" main={32} extra={0} side={0} step="deck-builder" />
         <ResumeDeckCard name="" main={1} extra={0} side={0} step="deck-builder" />
+      </Specimen>
+
+      <Specimen title="Instalá YGOUltraLab" layout="column" note={<>Debajo de «Seguir con tu deck», con contorno y un botón secundario. Sólo en un navegador de celular o tableta: no en escritorio ni en la app instalada. Con el aviso de Chrome (<Tag>prompt</Tag>), «Instalar la app»; sin él, los pasos de Android o de iOS. La X («Ahora no») la esconde 30 días; escondida, no sale nada (la cuarta, vacía). Archivos: <Tag>landing/InicioScreen.tsx</Tag> (<Tag>InstallAppCard</Tag>) y <Tag>app/use-install-prompt.ts</Tag></>}>
+        {(['prompt', 'android', 'ios', 'hidden'] as const).map((kind) => (
+          <div key={kind} className="grid gap-1">
+            <Tag>{kind}</Tag>
+            <InstallAppCard kind={kind} onInstall={() => {}} onHide={() => {}} />
+          </div>
+        ))}
       </Specimen>
 
       <SpecimenGrid min="22rem">

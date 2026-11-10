@@ -1,4 +1,6 @@
 import { atLeastProbability } from './quick-odds'
+// Desde el arranque: el aviso de instalar de Chrome llega antes de que baje «Inicio», y sin escucharlo se pierde.
+import './use-install-prompt'
 
 /**
  * «Inicio» (`#inicio`), el paso de la app al que llega la primera carga de cada sesión en `/`: quién llega ahí y la cuenta de su calculadora. Lo lee el arranque (`App.tsx`) antes

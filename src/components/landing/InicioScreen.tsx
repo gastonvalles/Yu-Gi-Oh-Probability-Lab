@@ -6,6 +6,7 @@ import { LANDING_COPIES, handSizeFor, openingOdds, type LandingCopies, type Land
 import { NOVEDADES_LISTS, sortEntries, type NovedadesEntry } from '../../app/novedades'
 import { isClassificationStepComplete } from '../../app/role-step'
 import { useAppSelector } from '../../app/store-hooks'
+import { useInstallPrompt, type InstallCase } from '../../app/use-install-prompt'
 import { formatInteger } from '../../app/utils'
 import { formatDay, getLocale, numberLocale, t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
@@ -17,6 +18,7 @@ import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { CloseButton } from '../ui/IconButton'
 import { ProgressRing } from '../ui/ProgressRing'
 import { formatPer100 } from '../ui/ring-shared'
 import { Segmented } from '../ui/Segmented'
@@ -27,7 +29,7 @@ import { supportText, textLink } from '../ui/typography'
 
 /**
  * «Inicio» (`#inicio`): la portada de la app, un paso más con el menú y las barras de siempre. Llega acá la primera carga de cada sesión en `/` (`shouldShowLanding`) y se vuelve
- * desde el menú. De arriba abajo: «Seguir con tu deck» (sólo con un deck con cartas), la promesa con una sola acción principal y la calculadora al lado, el destacado del duelo
+ * desde el menú. De arriba abajo: «Seguir con tu deck» (sólo con un deck con cartas) e «Instalá YGOUltraLab» (sólo en un navegador de celular), la promesa con una sola acción principal y la calculadora al lado, el destacado del duelo
  * por enlace, lo más jugado del meta, las tres últimas Novedades y el pie (reportar, código y privacidad). Lo que hay en la app no se repite: lo dice el menú.
  */
 
@@ -45,7 +47,11 @@ const go = (hash: string) => () => {
 export function InicioScreen({ stats = STATS }: { stats?: LandingStats | null } = {}) {
   return (
     <div className="stagger mx-auto grid w-full min-w-0 max-w-content content-start gap-10 px-gutter pb-8 pt-4 min-[1101px]:gap-12 min-[1101px]:px-6 min-[1101px]:pt-6">
-      <ResumeDeck />
+      {/* Lo de quien vuelve: retomar el deck y, debajo y más quieta, instalar la app. Sin ninguna de las dos, la caja no ocupa lugar. */}
+      <div className="grid gap-4 empty:hidden">
+        <ResumeDeck />
+        <InstallApp />
+      </div>
       <section aria-labelledby="inicio-title" className="grid gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_26rem] min-[1101px]:gap-6">
         {/* La promesa y una sola acción principal, grande y abajo (Fitts); la calculadora al lado (escritorio) o debajo (celular): el número grande es la prueba. */}
         <Card as="div" level="hero" padding="lg" className="grid content-center gap-6 min-[1101px]:px-10">
@@ -139,6 +145,46 @@ export function ResumeDeckCard({ name, main, extra, side, step }: ResumeDeckCard
           {t('landing.resume.continue')}
         </Button>
       </div>
+    </Card>
+  )
+}
+
+function InstallApp() {
+  const { kind, install, hide } = useInstallPrompt()
+
+  return <InstallAppCard kind={kind} onInstall={install} onHide={hide} />
+}
+
+interface InstallAppCardProps {
+  kind: InstallCase | 'hidden'
+  onInstall: () => void
+  onHide: () => void
+}
+
+/**
+ * «Instalá YGOUltraLab»: sólo en un navegador de celular o tableta (`useInstallPrompt`). Con el aviso de Chrome, «Instalar la app»; sin él, los pasos de Android o de iOS. Va
+ * con contorno y un botón secundario: lo que se distingue en «Inicio» es «Seguir con tu deck». La X la esconde 30 días.
+ */
+export function InstallAppCard({ kind, onInstall, onHide }: InstallAppCardProps) {
+  const titleId = useId()
+
+  if (kind !== 'prompt' && kind !== 'android' && kind !== 'ios') return null
+
+  return (
+    <Card as="section" aria-labelledby={titleId} className="flex items-start gap-3">
+      <Icon name="download" size={20} className="mt-0.5 shrink-0 text-muted" />
+      <div className="grid min-w-0 flex-1 gap-1">
+        <Heading level="card" as="p" id={titleId}>{t('landing.install.title')}</Heading>
+        <p className={supportText}>{t('landing.install.text')}</p>
+        {kind === 'prompt' ? (
+          <Button variant="secondary" icon="download" className="mt-2 w-fit" onClick={onInstall}>
+            {t('landing.install.button')}
+          </Button>
+        ) : (
+          <p className="m-0 text-body text-foreground">{t(kind === 'ios' ? 'landing.install.ios' : 'landing.install.android')}</p>
+        )}
+      </div>
+      <CloseButton aria-label={t('landing.install.later')} title={t('landing.install.later')} className="-mr-2 -mt-2" onClick={onHide} />
     </Card>
   )
 }
