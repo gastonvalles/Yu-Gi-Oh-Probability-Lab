@@ -1,8 +1,8 @@
 [
 ["LOB-EN000","Secret Rare","Unlimited",3.86,486041,39111158,"Tri-Horned Dragon"],
-["LOB-EN001","Ultra Rare","Unlimited",40.14,486054,89631139,"Blue-Eyes White Dragon"],
+["LOB-EN001","Ultra Rare","Unlimited",39.93,486054,89631139,"Blue-Eyes White Dragon"],
 ["LOB-EN002","Common","Unlimited",0.2,486042,76184692,"Hitotsu-Me Giant"],
-["LOB-EN003","Super Rare","Unlimited",9.03,486043,45231177,"Flame Swordsman"],
+["LOB-EN003","Super Rare","Unlimited",9.1,486043,45231177,"Flame Swordsman"],
 ["LOB-EN004","Common","Unlimited",0.5,486044,32274490,"Skull Servant"],
 ["LOB-EN005","Ultra Rare","Unlimited",26.67,486055,46986414,"Dark Magician"],
 ["LOB-EN006","Ultra Rare","Unlimited",14.53,486045,6368038,"Gaia The Fierce Knight"],
@@ -18,7 +18,7 @@
 ["LOB-EN016","Common","Unlimited",0.29,486062,34460851,"Flame Manipulator"],
 ["LOB-EN017","Common","Unlimited",0.15,486063,36121917,"Monster Egg"],
 ["LOB-EN018","Common","Unlimited",0.17,486064,53293545,"Firegrass"],
-["LOB-EN019","Rare","Unlimited",4.34,486065,17881964,"Darkfire Dragon"],
+["LOB-EN019","Rare","Unlimited",4.44,486065,17881964,"Darkfire Dragon"],
 ["LOB-EN020","Common","Unlimited",0.13,486066,53375573,"Dark King of the Abyss"],
 ["LOB-EN021","Common","Unlimited",0.12,486067,2863439,"Fiend Reflection #2"],
 ["LOB-EN022","Rare","Unlimited",0.38,486068,1641882,"Fusionist"],
@@ -28,7 +28,7 @@
 ["LOB-EN026","Common","Unlimited",0.15,486072,96851799,"Hinotama Soul"],
 ["LOB-EN027","Rare","Unlimited",0.29,486040,85639257,"Aqua Madoor"],
 ["LOB-EN028","Common","Unlimited",0.19,486073,15401633,"Kagemusha of the Blue Flame"],
-["LOB-EN029","Rare","Unlimited",0.83,486074,58528964,"Flame Ghost"],
+["LOB-EN029","Rare","Unlimited",0.82,486074,58528964,"Flame Ghost"],
 ["LOB-EN030","Common","Unlimited",0.1,486075,57305373,"Two-Mouth Darkruler"],
 ["LOB-EN031","Common","Unlimited",0.16,486076,40826495,"Dissolverock"],
 ["LOB-EN032","Common","Unlimited",0.12,486077,39004808,"Root Water"],
@@ -66,7 +66,7 @@
 ["LOB-EN064","Common","Unlimited",0.12,486136,32452818,"Beaver Warrior"],
 ["LOB-EN065","Rare","Unlimited",0.22,486137,82542267,"Gravedigger Ghoul"],
 ["LOB-EN066","Super Rare","Unlimited",2.97,486139,28279543,"Curse of Dragon"],
-["LOB-EN067","Rare","Unlimited",0.46,486140,54541900,"Karbonala Warrior"],
+["LOB-EN067","Rare","Unlimited",0.45,486140,54541900,"Karbonala Warrior"],
 ["LOB-EN068","Rare","Unlimited",0.35,486141,13039848,"Giant Soldier of Stone"],
 ["LOB-EN069","Common","Unlimited",0.2,486143,1784619,"Uraby"],
 ["LOB-EN070","Ultra Rare","Unlimited",34.73,486144,74677422,"Red-Eyes Black Dragon"],
@@ -85,7 +85,7 @@
 ["LOB-EN083","Common","Unlimited",0.18,486159,76211194,"Meda Bat"],
 ["LOB-EN084","Common","Unlimited",0.22,486160,75376965,"Enchanting Mermaid"],
 ["LOB-EN085","Common","Unlimited",0.13,486161,71407486,"Fireyarou"],
-["LOB-EN086","Rare","Unlimited",0.96,486162,70681994,"Dragoness the Wicked Knight"],
+["LOB-EN086","Rare","Unlimited",1.02,486162,70681994,"Dragoness the Wicked Knight"],
 ["LOB-EN087","Common","Unlimited",0.14,486163,33064647,"One-Eyed Shield Dragon"],
 ["LOB-EN088","Common","Unlimited",0.17,486164,4614116,"Dark Energy"],
 ["LOB-EN089","Common","Unlimited",0.15,486165,77007920,"Laser Cannon Armor"],
@@ -124,5 +124,5 @@
 ["LOB-EN122","Ultra Rare","Unlimited",22.59,486200,70903634,"Right Arm of the Forbidden One"],
 ["LOB-EN123","Ultra Rare","Unlimited",19.67,486201,7902349,"Left Arm of the Forbidden One"],
 ["LOB-EN124","Ultra Rare","Unlimited",18.29,486202,33396948,"Exodia the Forbidden One"],
-["LOB-EN125","Secret Rare","Unlimited",3.76,486203,66889139,"Gaia the Dragon Champion"]
+["LOB-EN125","Secret Rare","Unlimited",4.02,486203,66889139,"Gaia the Dragon Champion"]
 ]

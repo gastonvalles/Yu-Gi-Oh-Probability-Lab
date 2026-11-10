@@ -1,6 +1,6 @@
 [
 ["LODT-EN000","Secret Rare","Unlimited",4.85,562176,71799173,"Guardian of Order"],
-["LODT-EN001","Ghost Rare","Unlimited",95.03,562178,37742478,"Honest"],
+["LODT-EN001","Ghost Rare","Unlimited",94.96,562178,37742478,"Honest"],
 ["LODT-EN001","Secret Rare","Unlimited",21.44,562177,37742478,"Honest"],
 ["LODT-EN002","Common","Unlimited",0.18,562179,73146473,"Cross Porter"],
 ["LODT-EN003","Common","Unlimited",0.11,562180,131182,"Miracle Flipper"],
@@ -32,7 +32,7 @@
 ["LODT-EN026","Secret Rare","Unlimited",48.58,562206,57774843,"Judgment Dragon"],
 ["LODT-EN027","Rare","Unlimited",0.36,562207,83269557,"Dark Valkyria"],
 ["LODT-EN028","Rare","Unlimited",5.04,562208,20663556,"Substitoad"],
-["LODT-EN029","Common","Unlimited",0.64,562209,56052205,"Unifrog"],
+["LODT-EN029","Common","Unlimited",0.66,562209,56052205,"Unifrog"],
 ["LODT-EN030","Common","Unlimited",0.11,562210,83446909,"Batteryman Charger"],
 ["LODT-EN031","Rare","Unlimited",0.69,562211,19441018,"Batteryman Industrial Strength"],
 ["LODT-EN032","Common","Unlimited",0.13,562212,56839613,"Batteryman Micro-Cell"],
@@ -53,7 +53,7 @@
 ["LODT-EN044","Super Rare","Unlimited",3.18,562227,48156348,"Gladiator Beast Gyzarus"],
 ["LODT-EN045","Common","Unlimited",0.21,562228,75141056,"Hero Mask"],
 ["LODT-EN046","Common","Unlimited",0.18,562229,1539051,"Space Gift"],
-["LODT-EN047","Common","Unlimited",0.37,562230,48934760,"Demise of the Land"],
+["LODT-EN047","Common","Unlimited",0.43,562230,48934760,"Demise of the Land"],
 ["LODT-EN048","Common","Unlimited",0.19,562231,74329404,"D - Formation"],
 ["LODT-EN049","Common","Unlimited",0.09,562232,313513,"Spell Gear"],
 ["LODT-EN050","Common","Unlimited",0.31,562233,37812118,"Cup of Ace"],
@@ -61,7 +61,7 @@
 ["LODT-EN052","Ultimate Rare","Unlimited",37.55,562236,691925,"Solar Recharge"],
 ["LODT-EN052","Ultra Rare","Unlimited",6.1,562235,691925,"Solar Recharge"],
 ["LODT-EN053","Common","Unlimited",0.12,562237,36099620,"Realm of Light"],
-["LODT-EN054","Common","Unlimited",0.21,562238,2084239,"Wetlands"],
+["LODT-EN054","Common","Unlimited",0.2,562238,2084239,"Wetlands"],
 ["LODT-EN055","Common","Unlimited",0.07,562239,49479374,"Quick Charger"],
 ["LODT-EN056","Common","Unlimited",0.13,562240,75967082,"Short Circuit"],
 ["LODT-EN057","Super Rare","Unlimited",0.15,562241,2362787,"Light of Redemption"],
@@ -109,5 +109,5 @@
 ["LODT-EN097","Ultimate Rare","Unlimited",1.17,562284,30707994,"Maximum Six"],
 ["LODT-EN097","Ultra Rare","Unlimited",0.73,562283,30707994,"Maximum Six"],
 ["LODT-EN098","Secret Rare","Unlimited",3.31,562285,6614221,"Fog King"],
-["LODT-EN099","Secret Rare","Unlimited",16.76,562286,42009836,"Fossil Dyna Pachycephalo"]
+["LODT-EN099","Secret Rare","Unlimited",16.72,562286,42009836,"Fossil Dyna Pachycephalo"]
 ]

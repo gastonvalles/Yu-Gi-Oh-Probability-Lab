@@ -1,4 +1,4 @@
-{"updated":"2026-11-09","shards":256,"groups":[
+{"updated":"2026-11-10","shards":256,"groups":[
 [126,"2003 Collectors Tin","2003-09-01",6,"BPT"],
 [127,"2004 Collectors Tin","2004-09-01",6,"CT1"],
 [128,"2005 Collectors Tin","2005-09-01",6,"CT2"],
@@ -131,14 +131,14 @@
 [287,"Stairway to the Destined Duel","2003-04-15",6,"SDD"],
 [288,"Stardust Accelerator Promos","2009-05-19",3,"WC09"],
 [289,"Stardust Overdrive","2009-11-17",225,"SOVR"],
-[290,"Starstrike Blast","2010-11-16",158,"STBL"],
+[290,"Starstrike Blast","2010-11-16",157,"STBL"],
 [291,"Starter Deck 2006","2006-03-23",81,"YSD"],
 [292,"Starter Deck: Jaden Yuki","2007-07-25",82,"YSDJ"],
 [293,"Starter Deck: Joey","2003-03-30",100,"SDJ"],
 [294,"Starter Deck: Kaiba","2002-03-29",100,"SDK"],
 [295,"Starter Deck: Kaiba Evolution","2004-03-01",100,"SKE"],
 [296,"Starter Deck: Pegasus","2003-03-30",100,"SDP"],
-[297,"Starter Deck: Syrus Truesdale","2007-07-05",78,"YSDS"],
+[297,"Starter Deck: Syrus Truesdale","2007-07-05",77,"YSDS"],
 [298,"Starter Deck: Yugi","2002-03-29",100,"SDY"],
 [299,"Starter Deck: Yugi Evolution","2004-03-01",100,"SYE"],
 [300,"Starter Deck: Dawn of the Xyz","2011-07-12",43,"YS11"],
@@ -509,7 +509,7 @@
 [22883,"Pharaoh's Servant (Worldwide English)","2002-10-20",100,"PSV"],
 [22884,"Labyrinth of Nightmare (Worldwide English)","2003-03-01",104,"LON"],
 [22885,"Legacy of Darkness (Worldwide English)","2004-12-01",95,"LOD"],
-[22886,"Dark Crisis (Worldwide English)","2007-12-12",86,"DCR"],
+[22886,"Dark Crisis (Worldwide English)","2007-12-12",85,"DCR"],
 [22887,"Invasion of Chaos (Worldwide English)","2007-06-25",111,"IOC"],
 [22895,"Legendary Collection: 25th Anniversary Edition","2023-04-21",4,"LC01"],
 [22896,"Cyberstorm Access","2023-05-05",105,"CYAC"],
@@ -596,8 +596,8 @@
 [24703,"Limited Pack World Championship 2026","2026-08-29",87,"26LP"],
 [24704,"Ultimate Tournament Pack 1","2026-07-08",49,"UP01"],
 [24707,"Magnificent Monsters","2026-09-04",219,"MAMO"],
-[24789,"Winner's Pack 2026-2027","2026-07-15",92,"WI26"],
+[24789,"Winner's Pack 2026-2027","2026-07-15",94,"WI26"],
 [24806,"Ultimate Tournament Pack 2","2026-11-04",49,"UP02"],
-[24808,"Magnificent Maestros","2026-11-13",248,"MAMS"],
+[24808,"Magnificent Maestros","2026-11-13",249,"MAMS"],
 [24815,"Beyond the Brave","2026-10-09",130,"BETB"]
 ]}
