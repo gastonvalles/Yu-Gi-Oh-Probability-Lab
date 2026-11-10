@@ -24,6 +24,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.BASE_URL || 'https://yu-gi-oh-probability-lab.vercel.app',
     browserName: 'chromium',
+    // El service worker (modo sin conexión) no entra en el smoke: `sin-conexion.spec.ts` es el único que lo deja entrar. Los contextos armados a mano con newContext no heredan esto: cada uno lo repite.
+    serviceWorkers: 'block',
     locale: 'es-AR',
     actionTimeout: 15_000,
     trace: 'retain-on-failure',

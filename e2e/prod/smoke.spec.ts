@@ -178,7 +178,7 @@ test('/playground responde', async ({ page }) => {
 // Hereda del proyecto el User-Agent con el sufijo de QA, el viewport y el toque.
 async function freshVisitor(browser: Browser, baseURL: string, project: { use: Record<string, unknown> }) {
   const { userAgent, viewport, deviceScaleFactor, isMobile, hasTouch } = project.use as Pick<BrowserContextOptions, 'userAgent' | 'viewport' | 'deviceScaleFactor' | 'isMobile' | 'hasTouch'>
-  const context = await browser.newContext({ baseURL, locale: 'es-AR', userAgent, viewport, deviceScaleFactor, isMobile, hasTouch })
+  const context = await browser.newContext({ baseURL, locale: 'es-AR', userAgent, viewport, deviceScaleFactor, isMobile, hasTouch, serviceWorkers: 'block' })
   await context.route('https://db.ygoprodeck.com/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"data":[]}' }))
   return context
 }

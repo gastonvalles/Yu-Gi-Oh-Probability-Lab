@@ -45,7 +45,7 @@ test('@noche una sala privada queda esperando con su código, fuera de la lista 
   test.skip(testInfo.project.name !== 'mobile', 'una sola sala por corrida: sólo en el celular')
 
   const { userAgent, viewport, deviceScaleFactor, isMobile, hasTouch } = testInfo.project.use
-  const context = await browser.newContext({ baseURL, locale: 'es-AR', userAgent, viewport, deviceScaleFactor, isMobile, hasTouch })
+  const context = await browser.newContext({ baseURL, locale: 'es-AR', userAgent, viewport, deviceScaleFactor, isMobile, hasTouch, serviceWorkers: 'block' })
   await context.route('https://db.ygoprodeck.com/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"data":[]}' }))
   await context.addInitScript(
     ({ deck }) => {
