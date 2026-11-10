@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "node scripts/write-build-id.mjs && node scripts/build-auto-data.mjs && tsc -p src/tsconfig.json && vite build",
+    "capturas:pwa": "node scripts/pwa-capturas.mjs",
     "gate": "node scripts/ti/gate.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
