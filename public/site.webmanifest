@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "YGOUltraLab",
   "short_name": "YGOUltraLab",
   "description": "Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!",
@@ -8,8 +9,23 @@
   "display": "standalone",
   "background_color": "#18181c",
   "theme_color": "#18181c",
+  "categories": ["games", "utilities"],
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Mi deck", "url": "/#deck-builder" },
+    { "name": "Laboratorio", "url": "/#probability-lab" },
+    { "name": "Jugar solo", "url": "/#solo" },
+    { "name": "Calculadora de LP", "url": "/#life" }
+  ],
+  "screenshots": [
+    { "src": "/pwa/inicio.jpg", "sizes": "1080x1920", "type": "image/jpeg", "form_factor": "narrow", "label": "Cuántas veces abrís tu carta, de cada 100" },
+    { "src": "/pwa/laboratorio.jpg", "sizes": "1080x1920", "type": "image/jpeg", "form_factor": "narrow", "label": "El Lab mide cuántas manos de tu deck son buenas" },
+    { "src": "/pwa/jugar-solo.jpg", "sizes": "1080x1920", "type": "image/jpeg", "form_factor": "narrow", "label": "Probá tu combo contra handtraps o un bot" },
+    { "src": "/pwa/calculadora-lp.jpg", "sizes": "1080x1920", "type": "image/jpeg", "form_factor": "narrow", "label": "La calculadora de LP para tus duelos" }
   ]
 }
