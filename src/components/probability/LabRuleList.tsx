@@ -32,7 +32,10 @@ interface LabRuleListProps {
   groups: RuleEntryGroups
   /** Abre el editor de una regla propia (también las que perdieron su carta). */
   onEditRule: (patternId: string) => void
+  /** Prende o apaga una regla del sistema (universal o genérica, también la versión editada de una genérica), por su id del catálogo. */
   onToggleGenericRule: (presetId: string, enabled: boolean) => void
+  /** Prende o apaga una regla propia. */
+  onToggleOwnRule: (patternId: string, enabled: boolean) => void
   /** Abre el editor de una regla genérica (cantidades de copias, cartas, etc.). */
   onEditGenericRule: (entry: RuleEntry) => void
   /** Cambia el nombre de una regla universal (vacío = el original). */
@@ -45,11 +48,11 @@ interface LabRuleListProps {
 }
 
 /**
- * La tarjeta de reglas del Lab: dos columnas, **Salidas | Problemas**, con una fila de 60 px por regla (su anillo y, a la derecha, el candado de las universales,
- * el interruptor de las genéricas o el ⋯ de las tuyas) y «Crear una salida / un problema» al pie de cada una. El tipo de regla se dice con esos controles y la
- * etiqueta «Tuya»; la letra chica (de dónde sale cada regla) queda en la línea del candado.
+ * La tarjeta de reglas del Lab: dos columnas, **Salidas | Problemas**, con una fila de 60 px por regla (su anillo y, a la derecha, el interruptor; las tuyas suman
+ * su ⋯) y «Crear una salida / un problema» al pie de cada una. Tocar la fila edita la regla (una universal sólo se renombra). Gris sólo quiere decir apagada: una
+ * regla que no cuenta en el turno que se mira conserva su contraste y lo dice debajo del nombre.
  */
-export function LabRuleList({ groups, onEditRule, onToggleGenericRule, onEditGenericRule, onRenameSystemRule, onCreate, onDuplicateRule, onDeleteRule, className = 'order-5 min-[1101px]:col-span-full' }: LabRuleListProps) {
+export function LabRuleList({ groups, onEditRule, onToggleGenericRule, onToggleOwnRule, onEditGenericRule, onRenameSystemRule, onCreate, onDuplicateRule, onDeleteRule, className = 'order-5 min-[1101px]:col-span-full' }: LabRuleListProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const renaming = groups.universal.find((entry) => entry.patternId === renamingId) ?? null
   // Las reglas con cartas que ya no están en el deck no cuentan: van aparte, plegadas, para arreglarlas o borrarlas.
@@ -60,36 +63,39 @@ export function LabRuleList({ groups, onEditRule, onToggleGenericRule, onEditGen
   const openings = ofKind('opening').length
   const problems = ofKind('problem').length
 
+  // Todas las reglas se prenden y se apagan igual: las del sistema por su id del catálogo, las tuyas por la suya.
+  const toggle = (entry: RuleEntry) => (
+    <Switch
+      size="lg"
+      checked={entry.enabled}
+      label={t(entry.enabled ? 'lab.rules.toggle.off' : 'lab.rules.toggle.on', { name: entry.name })}
+      onChange={(enabled) => (entry.presetId ? onToggleGenericRule(entry.presetId, enabled) : onToggleOwnRule(entry.patternId, enabled))}
+    />
+  )
+
   const renderRow = (entry: RuleEntry) =>
     entry.tier === 'universal' ? (
-      <RuleRow entry={entry} action="rename" onOpen={() => setRenamingId(entry.patternId)} control={<LockMark />} />
+      <RuleRow entry={entry} action="rename" onOpen={() => setRenamingId(entry.patternId)} control={toggle(entry)} />
     ) : entry.tier === 'generic' ? (
-      <RuleRow
-        entry={entry}
-        onOpen={() => onEditGenericRule(entry)}
-        control={
-          <Switch
-            size="lg"
-            checked={entry.enabled}
-            label={entry.enabled ? t('lab.rules.toggle.off', { name: entry.name }) : t('lab.rules.toggle.on', { name: entry.name })}
-            onChange={(enabled) => entry.presetId && onToggleGenericRule(entry.presetId, enabled)}
-          />
-        }
-      />
+      <RuleRow entry={entry} onOpen={() => onEditGenericRule(entry)} control={toggle(entry)} />
     ) : (
       <RuleRow
         entry={entry}
         own
         onOpen={() => onEditRule(entry.patternId)}
         control={
-          <OverflowMenu
-            label={t('builder.list.more', { name: entry.name })}
-            items={[
-              { label: t('builder.list.edit'), icon: 'pencil', onSelect: () => onEditRule(entry.patternId) },
-              { label: t('builder.list.duplicate'), icon: 'cards', onSelect: () => onDuplicateRule(entry.patternId) },
-              { label: t('builder.list.delete'), icon: 'trash', tone: 'danger', onSelect: () => onDeleteRule(entry.patternId) },
-            ]}
-          />
+          // El interruptor siempre al borde derecho (una sola columna en todas las filas); el ⋯ de las tuyas, a su izquierda.
+          <>
+            <OverflowMenu
+              label={t('builder.list.more', { name: entry.name })}
+              items={[
+                { label: t('builder.list.edit'), icon: 'pencil', onSelect: () => onEditRule(entry.patternId) },
+                { label: t('builder.list.duplicate'), icon: 'cards', onSelect: () => onDuplicateRule(entry.patternId) },
+                { label: t('builder.list.delete'), icon: 'trash', tone: 'danger', onSelect: () => onDeleteRule(entry.patternId) },
+              ]}
+            />
+            {toggle(entry)}
+          </>
         }
       />
     )
@@ -112,10 +118,7 @@ export function LabRuleList({ groups, onEditRule, onToggleGenericRule, onEditGen
     >
       <div className="grid gap-4">
         <p className="-mt-3.5 pl-8 text-body text-muted">{t('builder.list.description')}</p>
-        <p className="m-0 flex items-start gap-2 text-body text-muted">
-          <Icon name="lock" size={16} className="mt-0.5 shrink-0 text-foreground" />
-          {t('builder.list.lockNote')}
-        </p>
+        <p className="m-0 text-body text-muted">{t('builder.list.toggleNote')}</p>
 
         <div className="grid gap-6 md:grid-cols-2 md:gap-8">
           {(['opening', 'problem'] as const).map((kind) => {
@@ -194,18 +197,10 @@ export function LabRuleList({ groups, onEditRule, onToggleGenericRule, onEditGen
   )
 }
 
-function LockMark() {
-  return (
-    <span className="grid size-11 place-items-center text-soft" title={t('builder.list.locked')}>
-      <Icon name="lock" size={18} />
-      <span className="sr-only">{t('builder.list.locked')}</span>
-    </span>
-  )
-}
-
 /**
- * Una regla en una fila de 60 px: el anillo (cuántas de cada 100 manos), el nombre con sus etiquetas (turno, «Tuya») y el control a la derecha. El cuerpo es el botón
- * que la abre; el control va al lado (un interruptor o un menú no pueden ir dentro de un botón).
+ * Una regla en una fila de 60 px: el anillo (cuántas de cada 100 manos), el nombre con sus etiquetas (turno, «Tuya») y los controles a la derecha. El cuerpo es el
+ * botón que la abre; los controles van al lado (un interruptor o un menú no pueden ir dentro de un botón). Atenuada sólo si está apagada (o le falta la carta);
+ * si no cuenta en el turno que se mira, el anillo es «—» y una línea lo dice, con todo su contraste.
  */
 function RuleRow({
   entry,
@@ -220,7 +215,8 @@ function RuleRow({
   action?: 'edit' | 'rename'
   onOpen: () => void
 }) {
-  const isActive = entry.enabled && entry.appliesToView && !entry.missingCards
+  const isOff = !entry.enabled || entry.missingCards
+  const isActive = !isOff && entry.appliesToView
   const value = formatRuleValue(entry)
   const label = entry.turnLean
     ? t(ROW_LABEL_KEY[action].lean, { name: entry.name, value, turn: turnWord(entry.turnLean.favored) })
@@ -233,7 +229,7 @@ function RuleRow({
         aria-label={label}
         className={cx(
           'grid min-h-15 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-control py-1 text-left transition-[opacity,background-color] duration-150 hover:bg-tint/6 focus-visible:outline-none focus-visible:shadow-focus',
-          !isActive && 'opacity-55',
+          isOff && 'opacity-55',
         )}
         onClick={onOpen}
       >
@@ -252,10 +248,11 @@ function RuleRow({
             {entry.turnLean ? <Tag title={leanTitle(entry.kind, entry.turnLean)}>{t('lab.rules.lean.badge', { turn: turnWord(entry.turnLean.favored) })}</Tag> : null}
             {own ? <Tag>{t('builder.list.own')}</Tag> : null}
           </span>
+          {!isOff && !entry.appliesToView ? <span className="text-micro text-muted">{notInViewText(entry)}</span> : null}
           {entry.description && entry.tier === 'custom' ? <span className="text-micro text-muted">{entry.description}</span> : null}
         </span>
       </button>
-      {control ? <span className="flex min-w-11 justify-center">{control}</span> : null}
+      {control ? <span className="flex min-w-11 items-center justify-center gap-1">{control}</span> : null}
     </div>
   )
 }
@@ -292,8 +289,13 @@ function formatRuleValue(entry: RuleEntry): string {
   }
 
   if (!entry.appliesToView) {
-    return t('lab.rules.value.notApplicable')
+    return notInViewText(entry)
   }
 
   return entry.probability === null ? '—' : formatShortPercent(entry.probability)
+}
+
+/** «No cuenta yendo 2º»: una regla «Sólo 1º» mirada yendo 2º (y al revés). */
+function notInViewText(entry: RuleEntry): string {
+  return t('lab.rules.value.notApplicable', { turn: turnWord(entry.turnContext === 'first' ? 'second' : 'first') })
 }

@@ -67,16 +67,30 @@ export function buildRuleExample(id: RuleExampleId, title: string): RuleExample 
   }
 }
 
-/** Una copia nueva de la regla, como regla propia (sin el vínculo a la genérica): ids nuevos para ella y sus condiciones. */
+/** Una copia nueva de la regla, como regla propia (sin el vínculo a la genérica) y prendida: ids nuevos para ella y sus condiciones. */
 export function duplicateRule(pattern: HandPattern, name: string): HandPattern {
+  const { enabled: _enabled, ...source } = pattern
+
   return {
-    ...pattern,
+    ...source,
     id: createId('pattern'),
     name: normalizeRuleName(name),
     systemRuleId: null,
     needsReview: false,
     conditions: pattern.conditions.map((entry) => ({ ...entry, id: createId('req') })),
   }
+}
+
+/** Prende o apaga una regla propia: apagada sigue en la lista (editable y duplicable), pero no cuenta (`buildActiveRuleSet`). */
+export function setRuleEnabled(patterns: readonly HandPattern[], patternId: string, enabled: boolean): HandPattern[] {
+  return patterns.map((pattern) => {
+    if (pattern.id !== patternId) {
+      return pattern
+    }
+
+    const { enabled: _enabled, ...rest } = pattern
+    return enabled ? rest : { ...rest, enabled: false }
+  })
 }
 
 /** «Restaurar la original» de una genérica: se va su versión editada y vuelve a contar la del catálogo. */

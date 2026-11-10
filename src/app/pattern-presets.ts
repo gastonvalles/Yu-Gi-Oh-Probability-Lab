@@ -259,7 +259,10 @@ export function getSystemRuleId(presetId: string): string {
   return `system-${presetId}`
 }
 
-/** Reglas que entran al cálculo: universales + genéricas activas + propias (sin duplicar). */
+/**
+ * Reglas que entran al cálculo: las del sistema y las propias prendidas (sin duplicar). Es la única fuente de verdad: el Lab, «Probar el cambio», Comparar, la
+ * práctica y el resumen del deck miden con esto, así que una regla apagada (del sistema por id; propia con `enabled: false`) no cuenta en ningún lado.
+ */
 export function buildActiveRuleSet(
   cards: CardEntry[],
   customPatterns: HandPattern[],
@@ -269,12 +272,12 @@ export function buildActiveRuleSet(
   const disabled = new Set(disabledGenericRuleIds)
   const overriddenIds = new Set(customPatterns.flatMap((pattern) => (pattern.systemRuleId ? [pattern.systemRuleId] : [])))
   const systemPatterns = buildPatternPresets(cards, ruleNames)
-    .filter((preset) => (preset.tier === 'universal' || !disabled.has(preset.id)) && !overriddenIds.has(preset.id))
+    .filter((preset) => !disabled.has(preset.id) && !overriddenIds.has(preset.id))
     .map((preset) => preset.pattern)
   const seenKeys = new Set(systemPatterns.map(getPatternDefinitionKey))
   const calculableCustom = customPatterns.filter((pattern) => {
-    // La versión editada de una genérica apagada no cuenta.
-    if (pattern.systemRuleId && disabled.has(pattern.systemRuleId)) {
+    // Una propia apagada, o la versión editada de una genérica apagada, no cuenta.
+    if (pattern.enabled === false || (pattern.systemRuleId && disabled.has(pattern.systemRuleId))) {
       return false
     }
 

@@ -34,7 +34,7 @@ export interface AppState {
   patternsSeeded: boolean
   patternsSeedVersion: number
   patterns: HandPattern[]
-  /** Reglas genéricas que el usuario apagó (ids del catálogo). */
+  /** Reglas del sistema (universales y genéricas) que el usuario apagó, por id del catálogo. El nombre es el de antes: así se guarda. */
   disabledGenericRuleIds: string[]
   /** Nombres que el usuario le puso a las reglas universales (id del catálogo → nombre). */
   systemRuleNames: Record<string, string>
@@ -55,6 +55,8 @@ interface PortablePattern {
   systemRuleId?: string
   ignoresDraw?: boolean
   rescuesCards?: boolean
+  /** Sólo se guarda apagada (`false`); sin el campo, prendida: lo guardado antes carga igual. */
+  enabled?: false
   logic: HandPattern['logic']
   minimumConditionMatches: number
   reusePolicy: HandPattern['reusePolicy']

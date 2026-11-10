@@ -78,6 +78,7 @@ export function toPortableConfig(state: AppState): PortableConfig {
       ...(pattern.systemRuleId ? { systemRuleId: pattern.systemRuleId } : {}),
       ...(pattern.ignoresDraw ? { ignoresDraw: true } : {}),
       ...(pattern.rescuesCards ? { rescuesCards: true } : {}),
+      ...(pattern.enabled === false ? { enabled: false as const } : {}),
       conditions: pattern.conditions.map<PortableCondition>((condition) => ({
         matcher: condition.matcher,
         quantity: condition.quantity,
@@ -166,6 +167,7 @@ export function fromPortableConfig(value: unknown): AppState {
       ...(rawPattern.ignoresDraw === true ? { ignoresDraw: true } : {}),
       ...(rawPattern.rescuesCards === true ? { rescuesCards: true } : {}),
       ...(typeof rawPattern.systemRuleId === 'string' && rawPattern.systemRuleId ? { systemRuleId: rawPattern.systemRuleId } : {}),
+      ...(rawPattern.enabled === false ? { enabled: false } : {}),
       conditions,
     }
   })
