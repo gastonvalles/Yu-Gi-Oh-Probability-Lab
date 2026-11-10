@@ -1,6 +1,39 @@
 {
   "entries": [
     {
+      "id": "2026-11-10-1-cartas-ajenas",
+      "date": "2026-11-10",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Las cartas que te da el rival, con su imagen",
+        "novedades": [
+          "En un duelo, las cartas del otro deck que quedan de tu lado (las que el rival te da) ahora se ven con su imagen desde el primer momento, y no sólo con sus iniciales."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Si la página no logra traer los datos de esa carta (la conexión, una extensión que bloquea el pedido), vuelve a intentarlo sola hasta tres veces."
+        ],
+        "ojo": [
+          "Si una imagen sigue sin verse, puede ser la conexión: recargá la página y, si vuelve a pasar, avisá con «Reportar un problema»."
+        ]
+      },
+      "en": {
+        "title": "Cards the opponent gives you, with their image",
+        "novedades": [
+          "In a duel, cards from the other deck that end up on your side (the ones your opponent gives you) now show their image from the start, not just their initials."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "If the page cannot fetch that card's data (the connection, an extension blocking the request), it now retries on its own up to three times."
+        ],
+        "ojo": [
+          "If an image still does not show, it may be the connection: reload the page and, if it happens again, report it with \"Report a problem\"."
+        ]
+      }
+    },
+    {
       "id": "2026-11-09-4-sin-sugerencias",
       "date": "2026-11-09",
       "tags": [

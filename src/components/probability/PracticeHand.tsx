@@ -82,6 +82,8 @@ export interface HandCardData {
   id: string
   name: string
   apiCard: ApiCardReference | null
+  /** Imagen propia, para una carta que no es del deck y todavía no llegó entera (la que el rival te dio): sale del número que lleva su id. */
+  art?: string
 }
 
 interface PracticeHandProps {
@@ -579,7 +581,7 @@ const HandCard = memo(function HandCard({
     >
       <CardArt
         tilt
-        remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
+        remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? card.art ?? null}
         name={card.name}
         className={cx('block h-full w-full bg-input object-cover', link?.voided && VOIDED_ART)}
         limitCard={card.apiCard}
