@@ -1,6 +1,55 @@
 {
   "entries": [
     {
+      "id": "2026-11-10-3-reglas-lab",
+      "date": "2026-11-10",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "Reglas del Lab: un interruptor en cada una, y «gris» sólo quiere decir apagada",
+        "novedades": [
+          "Todas las reglas del Lab tienen su interruptor: también las universales (antes con candado) y las que armaste vos. Apagar una regla la saca de la cuenta del Lab, de «Lo que más te frena», de «Probar el cambio» y de Comparar.",
+          "Una regla que no cuenta en el turno que estás mirando (por ejemplo una «Sólo 1º» con el Lab en «Yendo 2º») ya no se ve apagada: mantiene su color y dice «No cuenta yendo 2º».",
+          "Lo apagado se guarda con tu deck: al recargar sigue apagado."
+        ],
+        "comoSeUsa": [
+          "Abrí el Lab y bajá hasta «Reglas del análisis».",
+          "Tocá el interruptor de la regla que querés apagar o prender.",
+          "Mirá cómo cambia el número grande de «de cada 100»."
+        ],
+        "arreglos": [
+          "Las reglas universales, que antes no se podían tocar, ahora se apagan (siguen sin poder editarse: tocá la fila para renombrarlas).",
+          "Si apagás todas las reglas, la lista sigue a la vista para volver a prender una."
+        ],
+        "ojo": [
+          "Gris significa apagada: si una regla no cuenta en la vista actual, lo dice debajo del nombre.",
+          "Apagar una regla puede no cambiar el número si otras reglas cubren las mismas manos."
+        ]
+      },
+      "en": {
+        "title": "Lab rules: a switch on every one, and “gray” only means off",
+        "novedades": [
+          "Every Lab rule has its own switch: the universal ones too (they used to have a lock) and the ones you built yourself. Turning a rule off removes it from the Lab count, from \"What holds you back most\", from \"Try the change\" and from Compare.",
+          "A rule that does not count in the turn you are looking at (for example a \"1st only\" rule with the Lab on \"Going 2nd\") no longer looks turned off: it keeps its color and says \"Doesn't count going 2nd\".",
+          "What you turn off is saved with your deck: it stays off after a reload."
+        ],
+        "comoSeUsa": [
+          "Open the Lab and scroll down to \"Analysis rules\".",
+          "Tap the switch of the rule you want to turn off or on.",
+          "Watch how the big \"out of 100\" number changes."
+        ],
+        "arreglos": [
+          "Universal rules, which could not be touched before, can now be turned off (they still cannot be edited: tap the row to rename them).",
+          "If you turn off every rule, the list stays in view so you can turn one back on."
+        ],
+        "ojo": [
+          "Gray means off: if a rule does not count in the current view, it says so under its name.",
+          "Turning a rule off may not change the number if other rules cover the same hands."
+        ]
+      }
+    },
+    {
       "id": "2026-11-10-2-app-instalada",
       "date": "2026-11-10",
       "tags": [

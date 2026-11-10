@@ -5,7 +5,7 @@
 export const builder = {
   // La lista de reglas del Lab
   'builder.list.description': 'Qué cuenta como mano buena. El número: en cuántas de cada 100 manos se cumple.',
-  'builder.list.lockNote': 'Universal: vale para cualquier deck, sólo se renombra. Las demás se apagan o se editan con un toque.',
+  'builder.list.toggleNote': 'Cada regla se prende y se apaga con su interruptor. Las universales valen para cualquier deck y sólo se renombran.',
   'builder.list.openings': 'Salidas',
   'builder.list.openingsHint': 'lo que arranca una mano',
   'builder.list.problems': 'Problemas',
@@ -14,7 +14,6 @@ export const builder = {
   'builder.list.createOpening': 'Crear una salida',
   'builder.list.createProblem': 'Crear un problema',
   'builder.list.own': 'Tuya',
-  'builder.list.locked': 'Universal: siempre activa',
   'builder.list.onlyFirst': 'Sólo 1º',
   'builder.list.onlySecond': 'Sólo 2º',
   'builder.list.more': 'Más acciones de {name}',

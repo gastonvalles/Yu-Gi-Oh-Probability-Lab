@@ -114,6 +114,8 @@ interface Pattern {
   ignoresDraw?: boolean
   /** Salida que "rescata" las cartas que usa: dejan de contar en los problemas (p. ej. un Garnet que sirve en este combo). */
   rescuesCards?: boolean
+  /** Sólo `false` apaga una regla propia: no entra en ninguna cuenta (las del sistema se apagan por id, en `disabledGenericRuleIds`). Ausente = prendida. */
+  enabled?: boolean
   conditions: PatternCondition[]
 }
 

@@ -122,7 +122,7 @@ export function buildRuleEntryGroups({
       summary: preset.technicalSubtitle,
       description: preset.description,
       turnContext: preset.pattern.turnContext,
-      enabled: preset.tier === 'universal' || !disabled.has(preset.id),
+      enabled: !disabled.has(preset.id),
       isComplete: true,
     }),
   )
@@ -144,7 +144,8 @@ export function buildRuleEntryGroups({
       description: duplicateOf ? t('lab.entry.duplicate', { name: duplicateOf }) : null,
       turnContext: pattern.turnContext,
       ignoresDraw: pattern.ignoresDraw === true,
-      enabled: !pattern.systemRuleId || !disabled.has(pattern.systemRuleId),
+      // La versión editada de una genérica se prende y se apaga como la del catálogo (por id); la propia, con su bandera.
+      enabled: pattern.systemRuleId ? !disabled.has(pattern.systemRuleId) : pattern.enabled !== false,
       isComplete,
     })
   })

@@ -116,15 +116,16 @@ describe('el Lab en inglés', () => {
     }
 
     mockMedia(false)
-    render(<LabRuleList groups={groups} onEditRule={noop} onToggleGenericRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreate={noop} onDuplicateRule={noop} onDeleteRule={noop} />)
+    render(<LabRuleList groups={groups} onEditRule={noop} onToggleGenericRule={noop} onToggleOwnRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreate={noop} onDuplicateRule={noop} onDeleteRule={noop} />)
 
     expect(screen.getByRole('region', { name: 'Openings' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Problems' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Rename rule Basic opening: 50.0%, more often going first' })).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Enable No answer' })).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Turn on rule No answer' })).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Turn off rule Basic opening' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit rule No answer: Off' })).toBeInTheDocument()
     expect(within(screen.getByRole('group', { name: 'Rules without a card' })).getByRole('button', { name: 'Edit rule Missing card rule: Card missing' })).toBeInTheDocument()
-    expect(screen.getByText('Universal: always on')).toBeInTheDocument()
+    expect(screen.getByText(/Universal rules work for any deck/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create an opening' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create a problem' })).toBeInTheDocument()
   })

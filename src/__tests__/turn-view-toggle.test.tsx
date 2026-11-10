@@ -187,6 +187,7 @@ describe('LabRuleList', () => {
   const handlers = () => ({
     onEditRule: vi.fn(),
     onToggleGenericRule: vi.fn(),
+    onToggleOwnRule: vi.fn(),
     onEditGenericRule: vi.fn(),
     onRenameSystemRule: vi.fn(),
     onCreate: vi.fn(),
@@ -203,11 +204,40 @@ describe('LabRuleList', () => {
 
     // Las reglas universales y genéricas se ven siempre: no hay nada que desplegar.
     expect(screen.getByText('Salida básica')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('switch', { name: 'Desactivar Sin respuesta' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Apagar la regla Sin respuesta' }))
     expect(on.onToggleGenericRule).toHaveBeenCalledWith('no_answer_second_problem', false)
 
     expect(screen.queryByRole('button', { name: /Editar regla Salida básica/ })).not.toBeInTheDocument()
-    expect(screen.getByText('Universal: siempre activa')).toBeInTheDocument()
+  })
+
+  it('todas las filas tienen interruptor (sin candados): la universal se apaga por su id y la tuya por la suya, que conserva su ⋯', () => {
+    const on = handlers()
+    render(<LabRuleList groups={groups} {...on} />)
+
+    expect(screen.getAllByRole('switch')).toHaveLength(3)
+    fireEvent.click(screen.getByRole('switch', { name: 'Apagar la regla Salida básica' }))
+    expect(on.onToggleGenericRule).toHaveBeenCalledWith('starter_opening', false)
+    fireEvent.click(screen.getByRole('switch', { name: 'Apagar la regla Mi combo' }))
+    expect(on.onToggleOwnRule).toHaveBeenCalledWith('c', false)
+    expect(screen.getByRole('button', { name: 'Más acciones de Mi combo' })).toBeInTheDocument()
+  })
+
+  it('gris sólo es apagada: la que no cuenta en el turno mirado conserva el contraste y lo dice; la apagada se atenúa', () => {
+    const shown = {
+      universal: [],
+      generic: [entry({ patternId: 'g', tier: 'generic', presetId: 'x', name: 'Apagada', enabled: false, probability: null })],
+      custom: [entry({ patternId: 'c', name: '2+ Mulcharmy', turnContext: 'first', appliesToView: false, probability: null })],
+    }
+    render(<LabRuleList groups={shown} {...handlers()} />)
+
+    const notInView = screen.getByRole('button', { name: 'Editar regla 2+ Mulcharmy: No cuenta yendo 2º' })
+    expect(notInView).not.toHaveClass('opacity-55')
+    expect(notInView).toHaveTextContent('No cuenta yendo 2º')
+    expect(screen.getByRole('switch', { name: 'Apagar la regla 2+ Mulcharmy' })).toHaveAttribute('aria-checked', 'true')
+
+    const off = screen.getByRole('button', { name: 'Editar regla Apagada: Apagada' })
+    expect(off).toHaveClass('opacity-55')
+    expect(screen.getByRole('switch', { name: 'Prender la regla Apagada' })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('las universales sólo permiten cambiar el nombre', () => {
