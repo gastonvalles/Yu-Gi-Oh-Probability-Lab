@@ -239,13 +239,11 @@ interface VerdictActionProps {
   layout: 'card' | 'bar'
   /** «Cargar B en el builder»; `emphasis` = B abre mejor (si no, pesa menos). `null`: B ya es tu deck. */
   adopt: { onClick: () => void; emphasis: boolean } | null
-  /** «Guardar B» (sólo si B es el borrador del Lab). */
-  onSaveDraft?: () => void
   className?: string
 }
 
 /** El número que decide y la acción que le sigue, en la misma fila (lenguaje de tarjetas, movimiento 4): «▲6 manos buenas más de cada 100 con B · Cargar B en el builder». */
-export function VerdictAction({ points, loading = false, layout, adopt, onSaveDraft, className }: VerdictActionProps) {
+export function VerdictAction({ points, loading = false, layout, adopt, className }: VerdictActionProps) {
   const bar = layout === 'bar'
   const winner = points ? (points > 0 ? 'B' : 'A') : null
   const number = loading ? (
@@ -268,18 +266,11 @@ export function VerdictAction({ points, loading = false, layout, adopt, onSaveDr
   return (
     <div className={cx('flex min-w-0 items-center', bar ? 'flex-1 gap-2' : 'flex-wrap justify-between gap-3', className)}>
       {number}
-      {adopt || onSaveDraft ? (
+      {adopt ? (
         <span className={cx('flex min-w-0 items-center gap-2', bar && 'flex-1 justify-end')}>
-          {onSaveDraft ? (
-            <Button variant="secondary" icon="save" onClick={onSaveDraft}>
-              {t('meta.compare.saveDraft')}
-            </Button>
-          ) : null}
-          {adopt ? (
-            <Button variant={adopt.emphasis ? 'primary' : 'secondary'} icon="cards" className={cx(bar && 'min-w-0 flex-1 sm:flex-none')} onClick={adopt.onClick}>
-              {t('meta.compare.adopt')}
-            </Button>
-          ) : null}
+          <Button variant={adopt.emphasis ? 'primary' : 'secondary'} icon="cards" className={cx(bar && 'min-w-0 flex-1 sm:flex-none')} onClick={adopt.onClick}>
+            {t('meta.compare.adopt')}
+          </Button>
         </span>
       ) : null}
     </div>

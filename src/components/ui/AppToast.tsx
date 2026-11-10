@@ -60,7 +60,7 @@ export function AppToast({ id, visible, message, tone, rival, action }: AppToast
   // En el lateral del duelo el aviso ocupa el ancho de la columna (no pasa de ahí).
   const inRail = useToastBox() !== null
 
-  // Si el foco se perdió con lo que se tocó (el botón que hizo el cambio se fue, como «Aplicar al deck»), pasa a la acción: el teclado no queda en el aire.
+  // Si el foco se perdió con lo que se tocó (el botón que hizo el cambio se fue), pasa a la acción: el teclado no queda en el aire.
   useEffect(() => {
     if (action && (document.activeElement === null || document.activeElement === document.body)) {
       boxRef.current?.querySelector('button')?.focus()

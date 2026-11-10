@@ -48,15 +48,6 @@ export const rules: Translated<typeof es> = {
   'rules.compute.tooSlow': 'The calculation took too long and was canceled. Try fewer conditions or a smaller card pool.',
   'rules.compute.failed': "Couldn't calculate the probabilities. Try again.",
 
-  // Suggestions: what holds the deck back the most and what to change
-  'rules.suggestion.noOpening': 'Hands with no opening',
-  'rules.suggestion.fillerCard': 'filler card',
-  'rules.suggestion.missingRole': {
-    one: 'Your deck has no cards with the {roles} role: adding one is what lowers it the most.',
-    other: 'Your deck has no cards with the {roles} roles: adding one is what lowers it the most.',
-  },
-  'rules.suggestion.maxed': 'The cards that prevent it ({names}) are already at the maximum copies your format allows: to lower it, add different cards with those roles.',
-
   // Name given to an own rule that was saved without one
   'rules.curation.unnamedOpening': 'Unnamed opening',
   'rules.curation.unnamedProblem': 'Unnamed problem',

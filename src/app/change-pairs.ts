@@ -1,4 +1,4 @@
-import { roleGroupOf, type RoleGroup } from './lab-suggestion'
+import type { CardRole } from '../types'
 import type { DeckCardInstance, DeckZone } from './model'
 import type { BuildZones } from './saved-builds'
 
@@ -63,6 +63,23 @@ export interface DeckChanges {
   /** Los cambios del Main, emparejados (primero los que tienen pareja, después los sueltos). */
   main: MainChange[]
   zones: Record<DeckZone, ZoneChanges>
+}
+
+/** Familias con las que un jugador razona el deck («sacó un starter y metió una handtrap»): ordenan y emparejan los cambios. */
+type RoleGroup = 'starter' | 'interaction' | 'brick' | 'filler'
+
+const STARTER_ROLES: readonly CardRole[] = ['starter', 'extender']
+const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption', 'boardbreaker', 'floodgate']
+/** Roles que ninguna regla del Lab cuenta: una carta que sólo tiene estos es de relleno. */
+const FILLER_ROLES: readonly CardRole[] = ['enabler', 'searcher', 'draw', 'payoff', 'recovery']
+
+/** A qué familia pertenece una carta (la primera que corresponda: starter > handtrap > brick > relleno). */
+function roleGroupOf(card: Pick<DeckCardInstance, 'roles'>): RoleGroup | null {
+  if (card.roles.some((role) => STARTER_ROLES.includes(role))) return 'starter'
+  if (card.roles.some((role) => INTERACTION_ROLES.includes(role))) return 'interaction'
+  if (card.roles.some((role) => role === 'brick' || role === 'garnet')) return 'brick'
+  if (card.roles.every((role) => FILLER_ROLES.includes(role))) return 'filler'
+  return null
 }
 
 const GROUP_RANK: Record<RoleGroup, number> = { starter: 0, interaction: 1, brick: 2, filler: 3 }

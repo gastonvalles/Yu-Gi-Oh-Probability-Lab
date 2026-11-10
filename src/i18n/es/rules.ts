@@ -48,16 +48,6 @@ export const rules = {
   'rules.compute.tooSlow': 'El cálculo tardó demasiado y se canceló. Probá con menos condiciones o un pool de cartas más chico.',
   'rules.compute.failed': 'No pude calcular las probabilidades. Probá de nuevo.',
 
-  // Sugerencias: qué es lo que más frena al deck y qué cambiar
-  'rules.suggestion.noOpening': 'Manos sin ninguna salida',
-  'rules.suggestion.fillerCard': 'carta de relleno',
-  // Los roles faltantes van separados por coma: en español "rol" queda en singular.
-  'rules.suggestion.missingRole': {
-    one: 'Tu deck no tiene cartas con rol {roles}: sumar alguna es lo que más lo baja.',
-    other: 'Tu deck no tiene cartas con rol {roles}: sumar alguna es lo que más lo baja.',
-  },
-  'rules.suggestion.maxed': 'Las cartas que lo evitan ({names}) ya están al máximo de copias que permite tu formato: para bajarlo, sumá cartas distintas con esos roles.',
-
   // Nombre que se le pone a una regla propia que se guardó sin nombre
   'rules.curation.unnamedOpening': 'Salida sin nombre',
   'rules.curation.unnamedProblem': 'Problema sin nombre',

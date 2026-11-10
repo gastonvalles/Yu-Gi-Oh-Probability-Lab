@@ -3,7 +3,6 @@ import { cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { compareBuilds } from '../app/build-comparison'
-import { swapInDeck } from '../app/build-draft'
 import { deriveMainDeckCardsFromZone } from '../app/calculator-state'
 import {
   MAX_MEASURED_CHANGES,
@@ -30,11 +29,15 @@ afterEach(cleanup)
 const RULES = { patterns: [], disabledGenericRuleIds: [], handSize: 5 }
 const A: BuildZones = { main: fortyCardMain(), extra: [], side: [] }
 
+/** El deck con 1 copia menos de `out` (la última del Main) y 1 más de `inn` (junto a las suyas). */
 function swapped(deck: BuildZones, out: number, inn: number): BuildZones {
-  const result = swapInDeck(deck, { kind: 'swap', out, in: inn }, 'unlimited')
+  const outIndex = deck.main.findLastIndex((card) => card.apiCard.ygoprodeckId === out)
+  const main = deck.main.filter((_, index) => index !== outIndex)
+  const last = main.findLastIndex((card) => card.apiCard.ygoprodeckId === inn)
 
-  if (!result.ok) throw new Error('el cambio tenía que poder hacerse')
-  return result.zones
+  if (outIndex < 0 || last < 0) throw new Error('las dos cartas tienen que estar en el Main')
+  main.splice(last + 1, 0, { ...main[last]!, instanceId: `swap-${inn}` })
+  return { ...deck, main }
 }
 
 /** El efecto de un cambio calculado en el hilo de la prueba (lo mismo que hace el hook en los workers). */

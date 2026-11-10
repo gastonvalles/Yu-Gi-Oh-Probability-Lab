@@ -1,14 +1,6 @@
-import { useMemo, type ReactNode } from 'react'
-
-import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
-import type { Outcome } from '../../app/lab-suggestion'
 import type { LabViewResult } from '../../app/probability-lab'
-import { useAppSelector } from '../../app/store-hooks'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
-import type { TurnView } from '../../types'
-import { LabSuggestion } from '../probability/LabSuggestion'
-import { useProbabilityLab } from '../probability/use-probability-lab'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { EmptyState } from '../ui/EmptyState'
@@ -20,8 +12,8 @@ import { Skeleton } from '../ui/Skeleton'
 import { RING_ARC } from '../ui/tone'
 import { per100Exact } from './comparison-rows'
 
-/** Todavía no hay B (primera vez): en el lugar del veredicto, las dos puertas para tener una. */
-export function FirstTimeCard({ onTryLab, onImport, labPrimary = true }: { onTryLab: () => void; onImport: () => void; labPrimary?: boolean }) {
+/** Todavía no hay B (primera vez): en el lugar del veredicto, las dos puertas para tener una (cambiar cartas en el builder o traer otra lista). */
+export function FirstTimeCard({ onGoToBuilder, onImport }: { onGoToBuilder: () => void; onImport: () => void }) {
   return (
     <Card level="hero">
       <EmptyState
@@ -29,12 +21,11 @@ export function FirstTimeCard({ onTryLab, onImport, labPrimary = true }: { onTry
         title={t('meta.compare.empty.title')}
         actions={
           <>
-            {/* `max-w-full`: en 320–360 px «Probar un cambio en el Lab» no entra en un renglón y se salía de la tarjeta; así baja de renglón adentro del botón. */}
             <Button variant="secondary" icon="upload" className="max-w-full" onClick={onImport}>
               {t('meta.compare.import')}
             </Button>
-            <Button variant={labPrimary ? 'primary' : 'secondary'} icon="flask" className="max-w-full" onClick={onTryLab}>
-              {t('meta.compare.empty.lab')}
+            <Button variant="primary" icon="cards" className="max-w-full" onClick={onGoToBuilder}>
+              {t('meta.compare.goToBuilder')}
             </Button>
           </>
         }
@@ -51,13 +42,10 @@ interface SameDeckCardProps {
   computing: boolean
   cards: number
   onGoToBuilder: () => void
-  onTryLab: () => void
-  /** Falso cuando la sugerencia del Lab ya está abajo: su «Probar el cambio» es el único violeta de la pantalla. */
-  labPrimary?: boolean
 }
 
-/** A y B tienen las mismas cartas en las tres zonas: un solo anillo (el de las dos) y lo que sigue, cambiar cartas o probar un cambio del Lab. */
-export function SameDeckCard({ result, computing, cards, onGoToBuilder, onTryLab, labPrimary = true }: SameDeckCardProps) {
+/** A y B tienen las mismas cartas en las tres zonas: un solo anillo (el de las dos) y lo que sigue, cambiar cartas en el builder. */
+export function SameDeckCard({ result, computing, cards, onGoToBuilder }: SameDeckCardProps) {
   return (
     <Card level="hero" className="@container grid content-start gap-4" aria-busy={computing}>
       <header className="flex items-center gap-2.5">
@@ -90,37 +78,10 @@ export function SameDeckCard({ result, computing, cards, onGoToBuilder, onTryLab
       </div>
       <div className="grid gap-3 border-t border-border-subtle pt-4">
         <p className="m-0 text-body text-muted">{t('meta.compare.same.next')}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" icon="cards" className="max-w-full" onClick={onGoToBuilder}>
-            {t('meta.compare.goToBuilder')}
-          </Button>
-          <Button variant={labPrimary ? 'primary' : 'secondary'} icon="flask" className="max-w-full" onClick={onTryLab}>
-            {t('meta.compare.empty.lab')}
-          </Button>
-        </div>
+        <Button variant="primary" icon="cards" className="max-w-full justify-self-start" onClick={onGoToBuilder}>
+          {t('meta.compare.goToBuilder')}
+        </Button>
       </div>
     </Card>
-  )
-}
-
-/**
- * La sugerencia del Lab en los vacíos de Comparar (sin B, o B igual a A): «Lo que más te frena» de tu deck, la misma tarjeta y la misma cuenta que en el Lab (el
- * caché es por contenido: si venís del Lab sale al instante). «Probar el cambio» lo pone a prueba y lleva al Lab, donde se compara o se aplica. La tarjeta de arriba
- * (`children`) sabe si ella lleva el violeta: sólo mientras la sugerencia no está, porque con ella abajo el único botón principal es el suyo.
- */
-export function WithLabSuggestion({ view, onTry, children }: { view: TurnView; onTry: (outcome: Outcome) => void; children: (labPrimary: boolean) => ReactNode }) {
-  const deck = useAppSelector((state) => state.deckBuilder)
-  const { patterns, disabledGenericRuleIds, systemRuleNames } = useAppSelector((state) => state.patterns)
-  const handSize = useAppSelector((state) => state.settings.handSize)
-  const deckFormat = useAppSelector((state) => state.settings.deckFormat)
-  const cards = useMemo(() => deriveMainDeckCardsFromZone(deck.main), [deck.main])
-  const lab = useProbabilityLab(cards, patterns, disabledGenericRuleIds, handSize, false, systemRuleNames)
-  const results = lab.computation?.status === 'ok' ? lab.computation.results : null
-
-  return (
-    <>
-      {children(!results)}
-      {results ? <LabSuggestion deckFormat={deckFormat} deck={deck} cards={cards} checks={lab.allChecks} handSize={handSize} view={view} result={results[view]} first={results.first} second={results.second} onTry={onTry} /> : null}
-    </>
   )
 }

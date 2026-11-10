@@ -42,8 +42,7 @@ interface SetDeckCardOriginPayload {
 }
 
 /**
- * Cómo cuenta para «Tu deck de antes» (`deck-before.ts`) un cambio de cartas hecho desde otra pantalla: como una edición del builder
- * («Aplicar al deck» del Lab), como un reemplazo del deck (cargar una build: igual que importar) o como un Deshacer, que no se cuenta.
+ * Cómo cuenta para «Tu deck de antes» (`deck-before.ts`) un cambio de cartas: como una edición del builder, como un reemplazo del deck (cargar una build: igual que importar) o como un Deshacer, que no se cuenta.
  */
 export type DeckCardsChange = 'edit' | 'replace' | 'restore'
 
@@ -94,7 +93,7 @@ const deckBuilderSlice = createSlice({
     replaceDeckBuilder(_state, action: PayloadAction<DeckBuilderState>) {
       return action.payload
     },
-    /** Las cartas del deck desde el Lab o Comparar (ver `deck-change-actions.ts`); el resto del estado queda igual. */
+    /** Las cartas del deck desde Comparar (ver `deck-change-actions.ts`); el resto del estado queda igual. */
     setDeckCards(state, action: PayloadAction<SetDeckCardsPayload>) {
       state.main = action.payload.zones.main
       state.extra = action.payload.zones.extra

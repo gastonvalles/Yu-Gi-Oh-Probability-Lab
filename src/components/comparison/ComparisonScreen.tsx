@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { buildComparisonInputs, compareBuilds, isCardPendingClassification } from '../../app/build-comparison'
-import { draftFromChanges, type BuildDraft } from '../../app/build-draft'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { whatMovesMeasure, type MeasureKey } from '../../app/change-effects'
 import { pairChanges, type MainChange } from '../../app/change-pairs'
 import { CURRENT_SOURCE, type BuildSource } from '../../app/comparison-selection'
 import { adoptBuild, undoDeckChange, type DeckChangeToken } from '../../app/deck-change-actions'
-import type { Outcome } from '../../app/lab-suggestion'
 import type { DeckBuilderState, DeckCardInstance } from '../../app/model'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { useChangeEffects } from '../../app/use-change-effects'
 import { useComparisonSelection } from '../../app/use-comparison-selection'
 import { useDeckBefore } from '../../app/use-deck-before'
-import { useLabDraft } from '../../app/use-lab-draft'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
@@ -34,7 +31,7 @@ import { BuildBCardEditor } from './BuildBCardEditor'
 import { BuildPair, SourceSheet } from './BuildPicker'
 import { joinList, sourceOptions, type SourceOption } from './build-sources'
 import { ChangeList } from './ChangeList'
-import { FirstTimeCard, SameDeckCard, WithLabSuggestion } from './CompareEmpty'
+import { FirstTimeCard, SameDeckCard } from './CompareEmpty'
 import { deltaPoints, mirrorGroups, type Side } from './comparison-rows'
 import { MirrorRowsCard, type MoversInfo } from './MirrorRow'
 import { TwoLists } from './TwoLists'
@@ -46,7 +43,7 @@ const NO_CHANGES: readonly MainChange[] = []
 const NAMED_PENDING = 3
 
 /** A otra pantalla del recorrido (el armazón escucha la dirección). */
-const goTo = (step: 'probability-lab' | 'deck-builder' | 'categorization') => {
+const goTo = (step: 'deck-builder' | 'categorization') => {
   window.location.hash = `#${step}`
 }
 
@@ -66,7 +63,6 @@ export function ComparisonScreen() {
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const savedBuilds = useSavedBuilds()
   const deckBefore = useDeckBefore()
-  const draft = useLabDraft()
   const { showToast } = useToastMessage()
   const [view, setView] = useState<TurnView>('average')
   const [picker, setPicker] = useState<Side | null>(null)
@@ -80,8 +76,8 @@ export function ComparisonScreen() {
   const [announcement, setAnnouncement] = useState('')
 
   const sources = useMemo(
-    () => ({ current: deckBuilder, deckBefore, draft: draft.zones, savedBuilds: savedBuilds.builds }),
-    [deckBuilder, deckBefore, draft.zones, savedBuilds.builds],
+    () => ({ current: deckBuilder, deckBefore, savedBuilds: savedBuilds.builds }),
+    [deckBuilder, deckBefore, savedBuilds.builds],
   )
   const { selection, setA, setB, swap } = useComparisonSelection(sources)
   const options = useMemo(() => sourceOptions(sources, deckBuilder.deckName.trim()), [sources, deckBuilder.deckName])
@@ -148,14 +144,8 @@ export function ComparisonScreen() {
     }
   }
 
-  const undo = (token: DeckChangeToken, fromDraft: BuildDraft | null) => {
+  const undo = (token: DeckChangeToken) => {
     const undone = dispatch(undoDeckChange(token))
-
-    // Si B era el borrador del Lab, vuelve a serlo: Deshacer deja todo como estaba.
-    if (undone && fromDraft) {
-      draft.start(fromDraft)
-    }
-
     const message = t(undone ? 'meta.compare.undone' : 'meta.compare.undoBlocked')
     setAnnouncement(message)
     showToast(message, undone ? 'info' : 'warning')
@@ -166,13 +156,8 @@ export function ComparisonScreen() {
       return
     }
 
-    const fromDraft = optionB.kind === 'draft' ? draft.draft : null
-    // El deck se llama como la build (o como la copia de antes); el borrador es tu deck con un cambio: conserva su nombre.
-    const token = dispatch(adoptBuild({ zones: optionB.zones, name: optionB.kind === 'draft' ? undefined : optionB.deckName || undefined }))
-
-    if (fromDraft) {
-      draft.discard()
-    }
+    // El deck se llama como la build (o como la copia de antes).
+    const token = dispatch(adoptBuild({ zones: optionB.zones, name: optionB.deckName || undefined }))
 
     // A pasa a ser tu deck nuevo y B, solo, el que dejaste («Tu deck de antes» es más nuevo que lo elegido).
     if (selection.a !== CURRENT_SOURCE) {
@@ -182,15 +167,7 @@ export function ComparisonScreen() {
     setListsOpen(false)
     const message = t('meta.compare.adopted', { name: optionB.kind === 'deck-before' && optionB.deckName ? optionB.deckName : optionB.name })
     setAnnouncement(message)
-    showToast(message, 'success', { action: { label: t('meta.compare.undo'), onAction: () => undo(token, fromDraft) } })
-  }
-
-  // «Probar el cambio» de la sugerencia del Lab (en los vacíos): queda a prueba y se sigue en el Lab, como si se hubiera tocado allá.
-  const tryInLab = (outcome: Outcome) => {
-    const next = draftFromChanges(outcome.changes)
-
-    if (next) draft.start(next)
-    goTo('probability-lab')
+    showToast(message, 'success', { action: { label: t('meta.compare.undo'), onAction: () => undo(token) } })
   }
 
   const saveCurrent = () => {
@@ -203,15 +180,6 @@ export function ComparisonScreen() {
 
     const build = savedBuilds.save(deckBuilder.deckName, deckBuilder, 'deck')
     showToast(t('meta.compare.toastSaved', { name: build.name }), 'success')
-  }
-
-  const saveDraft = () => {
-    const build = draft.saveAsBuild()
-
-    if (build) {
-      setB(build.id)
-      showToast(t('meta.compare.toastSaved', { name: build.name }), 'success')
-    }
   }
 
   const handleImport = (deck: DeckBuilderState) => {
@@ -253,7 +221,7 @@ export function ComparisonScreen() {
     }
   }
 
-  // Si la B desaparece (se borró la build, se descartó el borrador) con las listas abiertas, se cierran.
+  // Si la B desaparece (se borró la build) con las listas abiertas, se cierran.
   useEffect(() => {
     if (!optionB) setListsOpen(false)
   }, [optionB])
@@ -272,15 +240,9 @@ export function ComparisonScreen() {
       {isDesktop ? null : pair}
 
       {!optionB || !changes || !comparison ? (
-        <WithLabSuggestion view={view} onTry={tryInLab}>
-          {(labPrimary) => <FirstTimeCard onTryLab={() => goTo('probability-lab')} onImport={openImport} labPrimary={labPrimary} />}
-        </WithLabSuggestion>
+        <FirstTimeCard onGoToBuilder={() => goTo('deck-builder')} onImport={openImport} />
       ) : changes.identical ? (
-        <WithLabSuggestion view={view} onTry={tryInLab}>
-          {(labPrimary) => (
-            <SameDeckCard result={comparison.a.results?.average ?? null} computing={computing} cards={zonesA.main.length + zonesA.extra.length + zonesA.side.length} onGoToBuilder={() => goTo('deck-builder')} onTryLab={() => goTo('probability-lab')} labPrimary={labPrimary} />
-          )}
-        </WithLabSuggestion>
+        <SameDeckCard result={comparison.a.results?.average ?? null} computing={computing} cards={zonesA.main.length + zonesA.extra.length + zonesA.side.length} onGoToBuilder={() => goTo('deck-builder')} />
       ) : (
         // Dos columnas en escritorio: el veredicto y sus filas a la izquierda, «Qué cambiaste» a la derecha, pegado arriba mientras se leen las filas (por eso `items-start`).
         <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1101px]:items-start min-[1101px]:gap-5">
@@ -302,12 +264,8 @@ export function ComparisonScreen() {
               footer={
                 pending ? null : isDesktop ? (
                   <div className="border-t border-border-subtle pt-4">
-                    <VerdictAction layout="card" points={points} loading={computing} adopt={adopt} onSaveDraft={optionB.kind === 'draft' ? saveDraft : undefined} />
+                    <VerdictAction layout="card" points={points} loading={computing} adopt={adopt} />
                   </div>
-                ) : optionB.kind === 'draft' ? (
-                  <Button variant="secondary" icon="save" className="justify-self-start" onClick={saveDraft}>
-                    {t('meta.compare.saveDraft')}
-                  </Button>
                 ) : null
               }
             />

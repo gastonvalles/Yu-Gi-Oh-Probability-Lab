@@ -74,7 +74,7 @@ export function BuildPair({ a, b, layout, onPick, onSwap }: BuildPairProps) {
   )
 }
 
-const KIND_ICON: Record<SourceKind, IconName> = { current: 'cards', 'deck-before': 'timer', draft: 'flask', saved: 'save' }
+const KIND_ICON: Record<SourceKind, IconName> = { current: 'cards', 'deck-before': 'timer', saved: 'save' }
 
 interface SourceSheetProps {
   /** Qué build se está eligiendo (`null`: cerrado). */
@@ -90,7 +90,7 @@ interface SourceSheetProps {
 }
 
 /**
- * «Mis builds»: de dónde puede salir A o B (tu deck, «Tu deck de antes», el borrador del Lab y las builds guardadas, con su origen, su fecha y sus cartas),
+ * «Mis builds»: de dónde puede salir A o B (tu deck, «Tu deck de antes» y las builds guardadas, con su origen, su fecha y sus cartas),
  * una por fila; la elegida con el aro lima y la del otro lado apagada. Elegir es un toque. Las builds guardadas se renombran y se borran desde sus tres puntos.
  * Es una hoja de abajo en el celular y un diálogo chico en escritorio (`Modal keypad`).
  */
