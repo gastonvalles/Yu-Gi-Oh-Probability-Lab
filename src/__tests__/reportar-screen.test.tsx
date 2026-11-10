@@ -72,7 +72,8 @@ describe('Reportar un problema', () => {
 
     expect(await screen.findByText('Gracias, tu reporte llegó')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ver el reporte #42' })).toHaveAttribute('href', 'https://github.com/o/r/issues/42')
-    expect(localStorage.getItem(REPORT_DRAFT_KEY)).toBeNull()
+    // El borrador se borra en un efecto, que con la máquina cargada llega un instante después del cartel.
+    await waitFor(() => expect(localStorage.getItem(REPORT_DRAFT_KEY)).toBeNull())
     const body = JSON.parse(String(calls()[0]![1]!.body))
     expect(body).toMatchObject({ area: 'Lab', hp: '', entorno: { build: 'e920a30' } })
 
