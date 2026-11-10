@@ -31,9 +31,11 @@ de revertir, revisión de seguridad) se le propone a Gastón con la razón en un
 - **Candados de archivos:** cada card declara qué toca; dos cards con rutas que se pisan no corren a la vez (la segunda queda
   «Bloqueada: espera TI-0xx»). Puntos calientes: `src/index.css`, `DeckModeScreen.tsx`, `vercel.json` y las áreas de `src/i18n`.
 - **Cola del gate:** uno a la vez; la PC es el cuello de botella. Para no instalar 260 MB por worktree, todos enlazan (junction)
-  `node_modules` a una carpeta **fuera de cualquier worktree** (`npm ci` ahí). En Windows, un borrado recursivo sigue el
-  junction y vacía el destino: antes de quitar un worktree se suelta el enlace (`cmd /c rmdir <wt>\node_modules`), y
-  `gh pr merge --delete-branch` se corre desde el worktree de la propia rama (desde otro, borra el de la rama).
+  `node_modules` a una carpeta **fuera de cualquier worktree** (`npm ci` ahí). En Windows, `git worktree remove` (sobre todo
+  con `--force`) sigue el junction y vacía el destino compartido: **antes** se suelta el enlace desde PowerShell
+  (`[IO.Directory]::Delete('<wt>\node_modules', $false)`; `cmd //c rmdir` desde Git Bash falla en silencio), se comprueba con
+  `Test-Path` que ya no está y sólo entonces se quita el worktree. `gh pr merge --delete-branch` se corre desde el worktree
+  de la propia rama (desde otro, borra el de la rama).
 - **Novedades:** `src/data/novedades.json` (es y en) lleva una entrada por cada cambio visible, escrita por quien lo mergea
   con las mismas notas del parche; `novedades.test.ts` valida paridad, ids y fechas.
 

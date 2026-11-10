@@ -19,4 +19,9 @@ Secuencia, siempre en este orden y sin saltear:
    Actions no terminó en rojo (`gh run list`). No esperás al CI. Desde otro worktree, `gh` borra el de la rama.
 6. Avisale al Jefe el SHA mergeado para que se despache la verificación en producción.
 
+**No quitás worktrees** (eso lo hace el Jefe). Si te lo piden: `node_modules` es un junction a una carpeta compartida y `git worktree
+remove` lo sigue y la vacía. Primero soltalo desde PowerShell (`[IO.Directory]::Delete('<wt>\node_modules', $false)`; `cmd //c rmdir`
+desde Git Bash falla en silencio), comprobá con `Test-Path` que ya no existe y que la carpeta de destino sigue con sus archivos, y
+sólo entonces `git worktree remove`. Si el enlace sigue, **no lo quites**: avisá al Jefe. Nunca `--force` con el enlace puesto.
+
 No pusheás nada que no hayas verificado: sólo lo que hay en el último commit de la rama.
