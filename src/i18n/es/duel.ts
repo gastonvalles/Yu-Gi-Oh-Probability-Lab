@@ -2,6 +2,17 @@
 export const duel = {
   'duel.unavailable': 'El duelo con un amigo todavía no está disponible en esta versión de la app.',
 
+  // Sin red: Online y el modo automático la necesitan (el núcleo se baja al usarlo).
+  'duel.offline.title': 'Online necesita señal',
+  'duel.offline.lobby': 'Las salas vuelven cuando haya conexión. Mientras, Solo en manual anda sin red.',
+  'duel.offline.toSolo': 'Jugar solo',
+  'duel.offline.back': 'Volver a Online',
+  'duel.offline.backSolo': 'Volver a Solo',
+  'duel.offline.autoFailed': 'No se pudo abrir el duelo automático',
+  'duel.offline.solo': 'El modo automático y los bots necesitan señal para bajar el motor de reglas: mientras, Pasivo y Handtraps van en manual.',
+  'duel.offline.autoHint': 'Necesita señal para bajar el motor de reglas.',
+  'duel.offline.bot': 'Necesita señal',
+
   // La mesa con los dos campos.
   'duel.table.label': 'Mesa del duelo',
   'duel.table.theirs': 'Campo del rival',

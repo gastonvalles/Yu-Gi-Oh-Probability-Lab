@@ -6,6 +6,7 @@ import { cardSmallImageUrl } from '../../app/card-prices'
 import { BOT_DECK_MENU, botDeckMain, hasHandtrapConfig, isBotModified, poolCount, readHandtrapConfig, rivalKindOf, withBotFlex, withRival, writeHandtrapConfig, type BotDeckInfo, type HandtrapConfig, type HandtrapPick, type RivalKind } from '../../app/handtraps'
 import { STARTING_LP } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { useOnline } from '../../app/use-online'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { StepHero } from '../StepHero'
@@ -136,7 +137,10 @@ function SettingRow({ label, hint, below, children }: { label: string; hint?: st
 export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay, decks = BOT_DECK_MENU }: SoloScreenProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const prefs = useAutoPrefs()
-  const canAuto = canRunAuto()
+  const engine = canRunAuto()
+  const online = useOnline()
+  // Sin red el núcleo no se puede bajar: como sin núcleo, los bots se apagan y lo demás va en manual (con señal, vuelve lo elegido).
+  const canAuto = engine && online
   // La primera vez (nada guardado) queda elegido Handtraps; se guarda al tocar algo o al jugar. `DEFAULT_HANDTRAP_CONFIG` (la mesa de `#practice`) sigue apagado.
   const [config, setConfig] = useState<HandtrapConfig>(() => (hasHandtrapConfig() ? readHandtrapConfig() : { ...readHandtrapConfig(), enabled: true }))
   // El último que jugaste: el bot guardado al entrar (lo que se toca después no le mueve el chip).
@@ -272,7 +276,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
           </SettingRow>
         ) : null}
         {pick.deck ? null : (
-          <SettingRow label={t('auto.mode.auto')} hint={canAuto ? t(prefs.duel ? 'auto.mode.soloHint' : 'auto.mode.soloManualHint') : t('auto.entry.unsupported')}>
+          <SettingRow label={t('auto.mode.auto')} hint={canAuto ? t(prefs.duel ? 'auto.mode.soloHint' : 'auto.mode.soloManualHint') : t(engine ? 'duel.offline.autoHint' : 'auto.entry.unsupported')}>
             <Switch checked={auto} disabled={!canAuto} onChange={(on) => setAutoPref('duel', on)} label={t('auto.mode.auto')} />
           </SettingRow>
         )}
@@ -297,8 +301,8 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
     <StepPage>
       <StepHero title={t('shell.solo.title')} icon="user" subtitle={t('solo.subtitle')} />
       {canAuto ? null : (
-        <Callout tone="warning" icon="info">
-          {t('solo.noAuto')}
+        <Callout tone="warning" icon={engine ? 'link-off' : 'info'}>
+          {t(engine ? 'duel.offline.solo' : 'solo.noAuto')}
         </Callout>
       )}
       {deckReady ? null : (
@@ -346,7 +350,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
                     key={deck.id}
                     choice
                     title={botName(deck)}
-                    subtitle={canAuto ? t(deck.line) : t('solo.botNeedsAuto')}
+                    subtitle={canAuto ? t(deck.line) : t(engine ? 'duel.offline.bot' : 'solo.botNeedsAuto')}
                     media={<DeckArt deck={deck} />}
                     selected={pick.deck?.id === deck.id}
                     disabled={!canAuto}

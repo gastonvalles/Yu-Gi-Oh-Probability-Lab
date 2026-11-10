@@ -15,6 +15,7 @@ import { DEFAULT_RIVAL_EXTRA, HANDTRAP_CATALOG, type ExtraPick, type HandtrapCon
 import type { PickStat } from '../../../app/auto/ask-ui'
 import type { ChainBadgeData } from '../../../app/card-glow'
 import { ArenaPanel } from '../../duel/ArenaPanel'
+import { DuelOffline } from '../../duel/DuelOffline'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
@@ -105,6 +106,7 @@ export function DuelSection() {
       <HandtrapSamples />
 
       <LobbyArenaSamples />
+      <LobbyOfflineSample />
 
       <LogTickerSpecimen />
       <TurnDialSamples />
@@ -714,6 +716,15 @@ function LobbyArenaSamples() {
         <ArenaPanel rooms={NO_ANSWER} busy={false} deckReady onJoin={() => undefined} />
         <ArenaPanel rooms={EMPTY_ARENA} busy={false} deckReady onJoin={() => undefined} />
       </div>
+    </Specimen>
+  )
+}
+
+/** Online sin red: el lobby entero cambia por esto (no hay salas que listar ni que abrir) y vuelve solo con la señal. */
+function LobbyOfflineSample() {
+  return (
+    <Specimen title="Online sin conexión" note={<>Lo que muestra Online sin red, en vez de la arena vacía (<Tag>EmptyState</Tag> con la puerta a Solo). Sin red, el modo automático de Solo y sus bots se apagan con su porqué y, si la pantalla del duelo automático no baja, la sala lo dice en vez de romper la app. Archivo: <Tag>duel/DuelOffline.tsx</Tag></>}>
+      <DuelOffline />
     </Specimen>
   )
 }

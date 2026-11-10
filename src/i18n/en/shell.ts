@@ -217,6 +217,9 @@ export const shell: Translated<typeof es> = {
   'shell.error.title': 'Something went wrong',
   'shell.error.description': "The screen couldn't be drawn. Your deck and rules are still saved in this browser.",
   'shell.error.retry': 'Try again',
+  'shell.offline.title': 'No connection',
+  'shell.offline.text': "Your deck, the Lab and the calculator keep working. Online, prices and the live meta come back when there's signal.",
+  'shell.offline.later': "No connection: this comes back when there's signal.",
   'shell.stepError.description': 'Your deck and rules are still saved in this browser.',
 
   'shell.stepper.less': 'One less',

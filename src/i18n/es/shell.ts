@@ -217,6 +217,10 @@ export const shell = {
   'shell.error.retry': 'Reintentar',
   'shell.stepError.description': 'Tu deck y tus reglas siguen guardados en este navegador.',
 
+  'shell.offline.title': 'Sin conexión',
+  'shell.offline.text': 'Tu deck, el Lab y la calculadora siguen andando. Online, los precios y el meta en vivo vuelven cuando haya señal.',
+  'shell.offline.later': 'Sin conexión: esto vuelve cuando haya señal.',
+
   'shell.stepper.less': 'Uno menos',
   'shell.stepper.more': 'Uno más',
   'shell.stepper.lessBy': 'Restar {step}',
