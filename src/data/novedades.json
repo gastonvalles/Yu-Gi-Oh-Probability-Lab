@@ -1,6 +1,45 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-4-sin-sugerencias",
+      "date": "2026-11-09",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El Lab ya no sugiere cambios",
+        "novedades": [
+          "Se fue «Lo que más te frena», la tarjeta que proponía cambiar una carta: casi siempre terminaba en sumar otra copia de lo mismo y no daba opciones reales para valorar.",
+          "Con ella se fueron «Probar el cambio», «Comparar con mi deck» y el «Borrador del Lab» de Comparar, que dependían de la sugerencia.",
+          "El Lab queda más simple: el veredicto y lo que robás de cada rol arriba, y las reglas del análisis abajo, a todo el ancho."
+        ],
+        "comoSeUsa": [
+          "Para probar un cambio de verdad, cambiá cartas en el builder.",
+          "Abrí Comparar: la versión de antes aparece como B y ves qué mueve la cuenta."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Lo que ya tenías guardado sigue igual; las builds que se guardaron desde el Lab siguen marcadas «del Lab»."
+        ]
+      },
+      "en": {
+        "title": "The Lab no longer suggests changes",
+        "novedades": [
+          "\"What holds you back most\" is gone: the card that proposed changing a card almost always ended up adding another copy of the same one, with no real options to weigh.",
+          "\"Try the change\", \"Compare with my deck\" and the Lab draft in Compare went with it, since they depended on the suggestion.",
+          "The Lab is simpler: the verdict and what you draw from each role on top, and the analysis rules below, full width."
+        ],
+        "comoSeUsa": [
+          "To try a real change, change cards in the builder.",
+          "Open Compare: the previous version shows up as B and you see what moves the count."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "What you had saved stays the same; builds saved from the Lab are still marked \"from the Lab\"."
+        ]
+      }
+    },
+    {
       "id": "2026-11-09-3-reportar",
       "date": "2026-11-09",
       "tags": [
