@@ -24,6 +24,11 @@ describe('caché y headers del hosting (vercel.json)', () => {
     expect(rules.filter((rule) => rule.source.startsWith('/prices'))).toEqual([])
   })
 
+  it('el service worker se revalida en cada visita (así entra una versión nueva o el modo apagado) y su alcance es la raíz, sin ampliarlo', () => {
+    expect(cacheControl('/sw.js')).toBe('no-cache')
+    expect(rules.flatMap((rule) => rule.headers).filter((header) => header.key.toLowerCase() === 'service-worker-allowed')).toEqual([])
+  })
+
   it('la mascota y los cosméticos se reemplazan en el lugar: un día de caché y nunca immutable', () => {
     for (const source of ['/mascot/(.*)', '/cosmetics/(.*)']) {
       expect(cacheControl(source), source).toMatch(/^public, max-age=86400, stale-while-revalidate=\d+$/)

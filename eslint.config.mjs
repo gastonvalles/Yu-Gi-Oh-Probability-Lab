@@ -20,4 +20,6 @@ export default defineConfig(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
     },
   },
+  // La plantilla del service worker (`src/sw.js`) corre en su propio contexto: `self`, `caches`, `clients`.
+  { files: ['src/sw.js'], languageOptions: { globals: globals.serviceworker } },
 )

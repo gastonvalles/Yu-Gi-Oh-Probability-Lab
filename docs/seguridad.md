@@ -15,18 +15,19 @@ Un sitio sin cuentas ni base de datos: lo del usuario vive en su navegador y el 
   con forma conocida o `null`; un id de carta sólo vale con las formas que de verdad viajan (un `constructor` o `__proto__`
   como clave devolvería algo heredado). Nombres y chat, sin controles ni marcas que esconden el texto (`stripHidden`); los
   ajustes los fija el anfitrión; las jugadas del rival guardadas para deshacer tienen tope (`MAX_MIRROR_ACTS`: una ráfaga no
-  congela a nadie), y una carta secreta nunca viaja: ids opacos y sólo lo que el rival puede ver (`mat-public.ts`). En el duelo automático por enlace sólo el deck del invitado (`autoDeck`, con tope de frecuencia)
-  hace bajar datos al anfitrión, y en pleno duelo no baja nada.
+  congela a nadie), y una carta secreta nunca viaja: ids opacos y sólo lo que el rival ve (`mat-public.ts`). En el duelo
+  automático por enlace sólo el deck del invitado (`autoDeck`, con tope de frecuencia) hace bajar datos al anfitrión, y en
+  pleno duelo, nada.
 - **Un combo o un replay compartido también es de otro** (`combo-share.ts`, `duel-replay-share.ts`): viaja en el hash
   (`#combo=`, `#replay=`; nunca al servidor) en un sobre versionado; se topa el largo antes de decodificar y la descompresión
   (una bomba se corta), y se copian sólo los campos conocidos, con tipos, rangos e ids con su patrón. El replay no lleva la
-  clave del duelo, las respuestas del núcleo ni el chat, y lo propio oculto sólo va con «Incluir mi mano». Lo que no entra en
-  un enlace va como video; no se lee ningún archivo de combo ni de duelo. Las notas de los pasos (v3, sólo si hay alguna: sin
-  ellas el enlace sigue en v2) también son de otra persona: la clave es una jugada que existe y el texto, una línea normalizada
-  de hasta 140; otra forma es un enlace roto. Se muestran como texto, sin interpretar.
+  clave del duelo, las respuestas del núcleo ni el chat, y lo propio oculto sólo va con «Incluir mi mano». No se lee ningún
+  archivo de combo ni de duelo. Las notas de los pasos (v3) también son de otra persona: la clave es una jugada que existe y el
+  texto, una línea normalizada de hasta 140; otra forma es un enlace roto. Se muestran como texto.
+- **El service worker** (`src/sw.js`): sólo GET propios; no guarda un 404, `/api` ni `/build.json`, sólo toca `ygoul-sw-*`.
+  Se retira con `OFF`, nunca borrándolo: un 404 lo deja registrado.
 - **El proxy de imágenes** (`api/card-image.ts`): sólo rutas con la forma de una imagen de YGOPRODeck, host fijo, sin seguir
-  redirecciones, sólo `path` y `w`, sólo JPEG, PNG o WebP con tope de bytes y de píxeles, y `same-origin` (nadie lo usa como
-  su CDN).
+  redirecciones, sólo `path` y `w`, sólo JPEG, PNG o WebP con tope de bytes y de píxeles, y `same-origin`.
 - **Las transmisiones en vivo** (`api/live.ts`): sólo los canales de `LIVE_CHANNELS`, ningún parámetro del pedido llega a
   YouTube, tope de tiempo y de tamaño, y la app valida lo que vuelve (`parseLiveResponse`).
 - **Los datos del duelo automático** (`api/auto-data.ts`): sólo lee lo que armó el build; un script se pide por nombre, que es
@@ -36,9 +37,9 @@ Un sitio sin cuentas ni base de datos: lo del usuario vive en su navegador y el 
   mandan nada; no registra mensajes, códigos ni direcciones. Los números, en `docs/duelo-relay.md`.
 - **El reporte de errores** (`api/bug.ts`, `bug-report.ts`): un issue **público** con lo escrito y el entorno marcado, sin
   cuenta ni contacto. Sólo POST del propio sitio, listas cerradas, topes, honeypot, repetidos, 3 cada 10 min / 10 por día por
-  IP (IPv6 por /48) y 20 issues por hora en total (en memoria y por instancia: se resetea al reciclarse; la IP no se escribe). El
+  IP (IPv6 por /48) y 20 issues por hora en total (en memoria, por instancia; la IP no se escribe). El
   texto va en un bloque de código con una valla más larga que sus backticks (ni menciones, ni `#123`, ni HTML). Sin
-  `GITHUB_BUG_TOKEN`, 503; vencido o revocado, 502 `upstream`. No es para vulnerabilidades.
+  `GITHUB_BUG_TOKEN`, 503; vencido o revocado, 502 `upstream`.
 - **La cadena de suministro:** las acciones de GitHub, fijadas por commit, con `persist-credentials: false` y el token sólo en
   el paso del `git push`; `.npmrc` con `ignore-scripts=true` y Dependabot semanal para npm y Actions.
 

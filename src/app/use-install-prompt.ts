@@ -1,10 +1,10 @@
 import { useCallback, useState, useSyncExternalStore } from 'react'
 
 /**
- * «Instalá YGOUltraLab», la tarjeta de «Inicio»: qué caso le toca a este navegador. Hay dos caminos porque desde Chrome 108 en el celular la página se instala desde el menú sin
- * service worker, pero el aviso propio (`beforeinstallprompt`) sigue pidiendo uno con `fetch`, y hoy no hay ninguno (fuentes: el blog de Chrome sobre los criterios de
- * instalación y la guía de MDN para hacer instalable una PWA). Con el evento, un botón que abre el aviso; sin él, los pasos a mano. En iOS (Safari, Chrome y Edge desde
- * iOS 16.4) el evento no existe: siempre los pasos. Si se suma un service worker, el botón aparece solo en Chrome.
+ * «Instalá YGOUltraLab», la tarjeta de «Inicio»: qué caso le toca a este navegador. Hay dos caminos porque Chrome no siempre manda el aviso propio
+ * (`beforeinstallprompt`): pide el manifest, que la página no esté instalada, que la persona haya interactuado y unos 30 s en la página; ya no pide service worker
+ * (web.dev, «install criteria», y la fuente de Chromium). El service worker (`src/sw.js`) está por el modo sin conexión, no por esto. Con el evento, un botón que abre el
+ * aviso; sin él, los pasos a mano. En iOS (Safari, Chrome y Edge desde iOS 16.4) el evento no existe: siempre los pasos.
  *
  * El evento llega temprano, antes de que baje «Inicio»: lo escucha este módulo desde el arranque (`app/landing.ts` lo importa) y el hook lo lee después.
  */
