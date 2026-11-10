@@ -1,15 +1,13 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
   COMPARISON_SELECTION_KEY,
   CURRENT_SOURCE,
   DECK_BEFORE_SOURCE,
-  DRAFT_SOURCE,
   defaultComparisonB,
   readComparisonSelection,
   resolveComparisonSelection,
-  selectDraftForComparison,
   writeComparisonSelection,
   type ComparisonSources,
 } from '../app/comparison-selection'
@@ -26,7 +24,6 @@ const sameAsCurrent = createSavedBuild('Igual', current, [], new Date('2026-10-2
 const sources = (overrides: Partial<ComparisonSources> = {}): ComparisonSources => ({
   current,
   deckBefore: null,
-  draft: null,
   savedBuilds: [older, newer, sameAsCurrent],
   ...overrides,
 })
@@ -68,10 +65,9 @@ describe('la selección recordada', () => {
     expect(resolveComparisonSelection(stored, sources({ deckBefore: before('2026-10-22T07:00:00.000Z') })).b).toBe(older.id)
   })
 
-  it('el borrador del Lab vale como B mientras exista', () => {
-    const stored = { a: CURRENT_SOURCE, b: DRAFT_SOURCE, pickedAt: '2026-10-22T08:00:00.000Z' }
+  it('una B guardada como el borrador del Lab (que ya no existe) pasa a la de entrada', () => {
+    const stored = { a: CURRENT_SOURCE, b: 'draft', pickedAt: '2026-10-22T08:00:00.000Z' }
 
-    expect(resolveComparisonSelection(stored, sources({ draft: changed })).b).toBe(DRAFT_SOURCE)
     expect(resolveComparisonSelection(stored, sources()).b).toBe(newer.id)
   })
 
@@ -84,13 +80,5 @@ describe('la selección recordada', () => {
 
     writeComparisonSelection({ a: CURRENT_SOURCE, b: newer.id, pickedAt: '2026-10-22T00:00:00.000Z' })
     expect(JSON.parse(localStorage.getItem(COMPARISON_SELECTION_KEY)!)).toEqual({ a: 'current', b: newer.id, pickedAt: '2026-10-22T00:00:00.000Z' })
-  })
-
-  beforeEach(() => localStorage.clear())
-
-  it('«Comparar con mi deck» desde el Lab deja A = tu deck y B = el borrador', () => {
-    selectDraftForComparison(new Date('2026-10-22T10:00:00.000Z'))
-
-    expect(readComparisonSelection()).toEqual({ a: CURRENT_SOURCE, b: DRAFT_SOURCE, pickedAt: '2026-10-22T10:00:00.000Z' })
   })
 })

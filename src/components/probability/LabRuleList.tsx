@@ -1,10 +1,9 @@
-import { useId, useMemo, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
-import { per100Delta } from '../../app/lab-change'
 import { Presence } from '../../app/use-presence'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import { t } from '../../i18n'
-import type { PatternKind, PatternProbability } from '../../types'
+import type { PatternKind } from '../../types'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -13,7 +12,6 @@ import { OverflowMenu } from '../ui/OverflowMenu'
 import { ProgressRing } from '../ui/ProgressRing'
 import { Switch } from '../ui/Switch'
 import { judgeTone } from '../ui/tone'
-import { LabDelta } from './LabDelta'
 import { LabSection } from './LabSection'
 import { formatCardCount, turnWord } from './lab-copy'
 import { RuleRenameDialog } from './RuleRenameDialog'
@@ -32,8 +30,6 @@ const COLUMN = {
 
 interface LabRuleListProps {
   groups: RuleEntryGroups
-  /** Con un cambio a prueba: lo que daba cada regla con tu deck de verdad. Cada fila suma su ▲ / ▼ (`LabDelta`), como los roles y el veredicto. */
-  before?: PatternProbability[]
   /** Abre el editor de una regla propia (también las que perdieron su carta). */
   onEditRule: (patternId: string) => void
   onToggleGenericRule: (presetId: string, enabled: boolean) => void
@@ -53,9 +49,8 @@ interface LabRuleListProps {
  * el interruptor de las genéricas o el ⋯ de las tuyas) y «Crear una salida / un problema» al pie de cada una. El tipo de regla se dice con esos controles y la
  * etiqueta «Tuya»; la letra chica (de dónde sale cada regla) queda en la línea del candado.
  */
-export function LabRuleList({ groups, before, onEditRule, onToggleGenericRule, onEditGenericRule, onRenameSystemRule, onCreate, onDuplicateRule, onDeleteRule, className = 'order-5 min-[1101px]:col-span-full' }: LabRuleListProps) {
+export function LabRuleList({ groups, onEditRule, onToggleGenericRule, onEditGenericRule, onRenameSystemRule, onCreate, onDuplicateRule, onDeleteRule, className = 'order-5 min-[1101px]:col-span-full' }: LabRuleListProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null)
-  const beforeById = useMemo(() => new Map(before?.map((result) => [result.patternId, result.probability])), [before])
   const renaming = groups.universal.find((entry) => entry.patternId === renamingId) ?? null
   // Las reglas con cartas que ya no están en el deck no cuentan: van aparte, plegadas, para arreglarlas o borrarlas.
   const liveCustom = groups.custom.filter((entry) => !entry.missingCards)
@@ -67,11 +62,10 @@ export function LabRuleList({ groups, before, onEditRule, onToggleGenericRule, o
 
   const renderRow = (entry: RuleEntry) =>
     entry.tier === 'universal' ? (
-      <RuleRow entry={entry} previous={beforeById.get(entry.patternId)} action="rename" onOpen={() => setRenamingId(entry.patternId)} control={<LockMark />} />
+      <RuleRow entry={entry} action="rename" onOpen={() => setRenamingId(entry.patternId)} control={<LockMark />} />
     ) : entry.tier === 'generic' ? (
       <RuleRow
         entry={entry}
-        previous={beforeById.get(entry.patternId)}
         onOpen={() => onEditGenericRule(entry)}
         control={
           <Switch
@@ -85,7 +79,6 @@ export function LabRuleList({ groups, before, onEditRule, onToggleGenericRule, o
     ) : (
       <RuleRow
         entry={entry}
-        previous={beforeById.get(entry.patternId)}
         own
         onOpen={() => onEditRule(entry.patternId)}
         control={
@@ -216,24 +209,18 @@ function LockMark() {
  */
 function RuleRow({
   entry,
-  previous,
   control,
   own = false,
   action = 'edit',
   onOpen,
 }: {
   entry: RuleEntry
-  /** Lo que daba con tu deck de verdad (sólo con un cambio a prueba). */
-  previous?: number
   control: ReactNode
   own?: boolean
   action?: 'edit' | 'rename'
   onOpen: () => void
 }) {
-  const deltaId = useId()
   const isActive = entry.enabled && entry.appliesToView && !entry.missingCards
-  // Una salida que sube le conviene a quien lee; un problema que sube, no.
-  const diff = isActive && entry.probability !== null && previous !== undefined ? per100Delta(previous, entry.probability) : 0
   const value = formatRuleValue(entry)
   const label = entry.turnLean
     ? t(ROW_LABEL_KEY[action].lean, { name: entry.name, value, turn: turnWord(entry.turnLean.favored) })
@@ -244,8 +231,6 @@ function RuleRow({
       <button
         type="button"
         aria-label={label}
-        // El nombre es el de siempre: el ▲ / ▼ del cambio («4 más») llega como su descripción, como en los roles.
-        aria-describedby={diff !== 0 ? deltaId : undefined}
         className={cx(
           'grid min-h-15 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-control py-1 text-left transition-[opacity,background-color] duration-150 hover:bg-tint/6 focus-visible:outline-none focus-visible:shadow-focus',
           !isActive && 'opacity-55',
@@ -266,8 +251,6 @@ function RuleRow({
             {entry.ignoresDraw && entry.turnContext !== 'first' ? <Tag title={t('lab.rules.badge.ignoresDraw')}>{formatCardCount(5)}</Tag> : null}
             {entry.turnLean ? <Tag title={leanTitle(entry.kind, entry.turnLean)}>{t('lab.rules.lean.badge', { turn: turnWord(entry.turnLean.favored) })}</Tag> : null}
             {own ? <Tag>{t('builder.list.own')}</Tag> : null}
-            {/* Al final del renglón de las etiquetas (no en uno propio): casi siempre entra sin agrandar la fila, así poco se corre al entrar o salir del cambio. */}
-            {diff !== 0 ? <LabDelta id={deltaId} diff={diff} higherIsBetter={entry.kind === 'opening'} className="text-micro" /> : null}
           </span>
           {entry.description && entry.tier === 'custom' ? <span className="text-micro text-muted">{entry.description}</span> : null}
         </span>

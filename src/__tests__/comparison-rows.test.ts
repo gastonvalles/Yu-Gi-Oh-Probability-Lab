@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { compareBuilds } from '../app/build-comparison'
 import { pairChanges } from '../app/change-pairs'
-import { CURRENT_SOURCE, DECK_BEFORE_SOURCE, DRAFT_SOURCE } from '../app/comparison-selection'
+import { CURRENT_SOURCE, DECK_BEFORE_SOURCE } from '../app/comparison-selection'
 import type { DeckBefore } from '../app/deck-before'
 import type { SavedBuild } from '../app/saved-builds'
 import { describeChange, describeZones, sourceOptions, whenText, zoneMarks } from '../components/comparison/build-sources'
@@ -136,28 +136,27 @@ describe('de dónde sale cada build', () => {
     expect(whenText(new Date(2026, 9, 21, 21, 40).toISOString(), NOW)).toBe('yesterday, 21:40')
   })
 
-  it('en el orden de la lista: tu deck, el de antes, el borrador y las builds (de la más nueva), cada una con su origen; con la clasificación de tu deck', () => {
+  it('en el orden de la lista: tu deck, el de antes y las builds (de la más nueva), cada una con su origen; con la clasificación de tu deck', () => {
     const current = { main: fortyCardMain(), extra: [], side: [] }
     // La build trae una copia del Starter Uno sin clasificar: en tu deck está clasificado, así que se mide igual que en tu deck.
     const loose = { ...current.main[0]!, origin: null, roles: [] }
     const build = (id: string, savedAt: string, from?: SavedBuild['from']): SavedBuild => ({ id, name: id, savedAt, ...(from ? { from } : {}), main: [loose, ...current.main.slice(1)], extra: [], side: [] })
     const deckBefore: DeckBefore = { v: 1, deckName: 'Fuego', savedAt: new Date(2026, 9, 21, 21, 40).toISOString(), counts: { main: 40, extra: 0, side: 0 }, ...current }
     const options = sourceOptions(
-      { current, deckBefore, draft: current, savedBuilds: [build('vieja', new Date(2026, 9, 12).toISOString(), 'import'), build('nueva', new Date(2026, 9, 22, 14, 20).toISOString(), 'lab')] },
+      { current, deckBefore, savedBuilds: [build('vieja', new Date(2026, 9, 12).toISOString(), 'import'), build('nueva', new Date(2026, 9, 22, 14, 20).toISOString(), 'lab')] },
       'Mi deck',
       NOW,
     )
 
-    expect(options.map((option) => option.source)).toEqual([CURRENT_SOURCE, DECK_BEFORE_SOURCE, DRAFT_SOURCE, 'nueva', 'vieja'])
+    expect(options.map((option) => option.source)).toEqual([CURRENT_SOURCE, DECK_BEFORE_SOURCE, 'nueva', 'vieja'])
     expect(options.map((option) => [option.name, option.meta])).toEqual([
       ['Tu deck actual', 'el del builder'],
       ['Tu deck de antes', 'se guardó sola · ayer, 21:40'],
-      ['Borrador del Lab', 'sin guardar'],
       ['nueva', 'del Lab · hoy, 14:20'],
       ['vieja', 'importada 12 oct'],
     ])
     expect(options[1]!.deckName).toBe('Fuego')
-    expect(options[3]!.zones.main[0]!.roles).toEqual(current.main[0]!.roles)
+    expect(options[2]!.zones.main[0]!.roles).toEqual(current.main[0]!.roles)
     expect(options.every((option) => option.pending === 0)).toBe(true)
   })
 })

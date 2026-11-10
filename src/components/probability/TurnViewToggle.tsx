@@ -3,7 +3,6 @@ import type { TurnView } from '../../types'
 import { ProgressRing } from '../ui/ProgressRing'
 import { formatPer100 } from '../ui/ring-shared'
 import { Segmented, type SegmentedOption } from '../ui/Segmented'
-import { Skeleton } from '../ui/Skeleton'
 import { judgeTone } from '../ui/tone'
 
 interface TurnViewToggleProps {
@@ -13,8 +12,6 @@ interface TurnViewToggleProps {
   values?: Partial<Record<TurnView, number>>
   /** Cuántas cartas tiene la mano de cada turno («5 y 6 cartas»): lo dice la opción elegida. */
   details?: Partial<Record<TurnView, string>>
-  /** Mientras se mide (el deck con un cambio): en vez de cada anillo, un esqueleto del mismo tamaño (la lente no cambia de alto). */
-  measuring?: boolean
 }
 
 // Las opciones guardan claves de mensajes, no textos: el texto se arma al dibujar, en el idioma de ese momento.
@@ -25,7 +22,7 @@ const OPTIONS = [
 ] as const satisfies ReadonlyArray<{ value: TurnView; label: MessageKey }>
 
 /** La lente del Lab: qué manos se miran (el promedio o cada turno). Cada opción con su anillo; la elegida, enmarcada en lima y con cuántas cartas tiene la mano. */
-export function TurnViewToggle({ activeView, onChange, values, details, measuring = false }: TurnViewToggleProps) {
+export function TurnViewToggle({ activeView, onChange, values, details }: TurnViewToggleProps) {
   const options: SegmentedOption<TurnView>[] = OPTIONS.map((option) => {
     const label = t(option.label)
     const value = values?.[option.value]
@@ -35,14 +32,12 @@ export function TurnViewToggle({ activeView, onChange, values, details, measurin
       return { value: option.value, label, detail: active ? details?.[option.value] : undefined }
     }
 
-    return measuring
-      ? { value: option.value, label, leading: <Skeleton radius="chip" className="size-9" /> }
-      : {
-          value: option.value,
-          label,
-          ariaLabel: t('lab.turnView.option', { label, value: formatPer100(value) }),
-          leading: <ProgressRing value={value} tone={judgeTone(true)} size={36} label={t('lab.turnView.option', { label, value: formatPer100(value) })} />,
-        }
+    return {
+      value: option.value,
+      label,
+      ariaLabel: t('lab.turnView.option', { label, value: formatPer100(value) }),
+      leading: <ProgressRing value={value} tone={judgeTone(true)} size={36} label={t('lab.turnView.option', { label, value: formatPer100(value) })} />,
+    }
   })
 
   return <Segmented label={t('lab.turnView.label')} value={activeView} onChange={onChange} options={options} variant="lens" fullWidth />

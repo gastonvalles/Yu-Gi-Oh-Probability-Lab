@@ -22,7 +22,7 @@ En orden de valor sobre costo.
    es `compact-field.ts` (a 320×568 las pilas miden unos 28 px de ancho y a 360×640, unos 41). Se propone antes de construir.
 2. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
    hojas de 28 px, chips «Salidas» de 32 px, las barras de arriba y abajo comen
-   120 de 360 px con el celular acostado, y `ReplayBar`, `LabChangeCard` y las muestras del duelo de `/playground` a 320 px.
+   120 de 360 px con el celular acostado, y `ReplayBar` y las muestras del duelo de `/playground` a 320 px.
 3. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
 4. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
    sólo pasados 3 minutos, si en el celular pesa.

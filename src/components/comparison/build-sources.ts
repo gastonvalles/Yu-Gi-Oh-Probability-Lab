@@ -1,6 +1,6 @@
 import { isCardPendingClassification } from '../../app/build-comparison'
 import type { CardMove, DeckChanges, MainChange } from '../../app/change-pairs'
-import { CURRENT_SOURCE, DECK_BEFORE_SOURCE, DRAFT_SOURCE, type BuildSource, type ComparisonSources } from '../../app/comparison-selection'
+import { CURRENT_SOURCE, DECK_BEFORE_SOURCE, type BuildSource, type ComparisonSources } from '../../app/comparison-selection'
 import type { DeckBefore } from '../../app/deck-before'
 import { getCardRoleDefinition } from '../../app/deck-groups'
 import type { DeckCardInstance, DeckZone } from '../../app/model'
@@ -10,16 +10,16 @@ import { dateLocale, getLocale, perLocale, t } from '../../i18n'
 import type { CardRole } from '../../types'
 
 /**
- * Lo que la pantalla de Comparar dice de cada fuente (tu deck, «Tu deck de antes», el borrador del Lab, las builds guardadas) y de cada cambio, en
+ * Lo que la pantalla de Comparar dice de cada fuente (tu deck, «Tu deck de antes», las builds guardadas) y de cada cambio, en
  * palabras. Puro: sin DOM ni estado.
  */
 
-export type SourceKind = 'current' | 'deck-before' | 'draft' | 'saved'
+export type SourceKind = 'current' | 'deck-before' | 'saved'
 
 export interface SourceOption {
   source: BuildSource
   kind: SourceKind
-  /** Cómo se llama en Comparar: «Tu deck actual», «Tu deck de antes», «Borrador del Lab» o el nombre de la build. */
+  /** Cómo se llama en Comparar: «Tu deck actual», «Tu deck de antes» o el nombre de la build. */
   name: string
   /** La segunda línea: de dónde sale y cuándo («se guardó sola · ayer, 21:40»). */
   meta: string
@@ -86,10 +86,6 @@ export function sourceOptions(sources: NamedSources, deckName: string, now = new
     const before = sources.deckBefore
 
     options.push(option(DECK_BEFORE_SOURCE, 'deck-before', t('meta.compare.source.before'), t('meta.compare.source.beforeMeta', { when: whenText(before.savedAt, now) }), before, before.deckName))
-  }
-
-  if (sources.draft) {
-    options.push(option(DRAFT_SOURCE, 'draft', t('meta.compare.source.draft'), t('meta.compare.source.draftMeta'), sources.draft, deckName))
   }
 
   for (const build of [...sources.savedBuilds].sort((left, right) => right.savedAt.localeCompare(left.savedAt))) {

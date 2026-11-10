@@ -257,8 +257,6 @@ export const meta: Translated<typeof es> = {
   'meta.compare.source.currentMeta': 'the one in the builder',
   'meta.compare.source.before': 'Your previous deck',
   'meta.compare.source.beforeMeta': 'saved automatically · {when}',
-  'meta.compare.source.draft': 'Lab draft',
-  'meta.compare.source.draftMeta': 'not saved',
   'meta.compare.source.saved': 'saved {when}',
   'meta.compare.source.imported': 'imported {when}',
   'meta.compare.source.lab': 'from the Lab · {when}',
@@ -301,7 +299,6 @@ export const meta: Translated<typeof es> = {
   'meta.compare.number.same': 'the same good hands out of every 100 in both',
   'meta.compare.number.sameShort': 'even',
   'meta.compare.adopt': 'Load B into the builder',
-  'meta.compare.saveDraft': 'Save B',
   'meta.compare.adopted': 'You loaded "{name}" into the builder. Your previous deck was saved.',
   'meta.compare.undo': 'Undo',
   'meta.compare.undone': 'Your deck is back to how it was.',
@@ -377,13 +374,12 @@ export const meta: Translated<typeof es> = {
 
   // Primera vez y decks iguales
   'meta.compare.empty.title': "You don't have anything to compare with yet",
-  'meta.compare.empty.body': 'Try a change in the Lab or bring in another list. When you change cards in the builder, the previous version saves itself and shows up here as B.',
-  'meta.compare.empty.lab': 'Try a change in the Lab',
+  'meta.compare.empty.body': 'Change cards in the builder: the previous version saves itself and shows up here as B. You can also bring in another list.',
   'meta.compare.same.title': "They're the same deck",
   'meta.compare.same.good': 'out of every 100 hands are good, in both',
   'meta.compare.same.body': { one: 'They have the same card in the Main, the Extra and the Side.', other: 'They have the same {n} cards in the Main, the Extra and the Side.' },
   'meta.compare.same.ring': 'Out of every 100 hands, {clean} are good in both',
-  'meta.compare.same.next': 'Change some cards and come back, or try a change in the Lab.',
+  'meta.compare.same.next': 'Change cards in the builder and come back: the previous version shows up here as B.',
   'meta.compare.goToBuilder': 'Go to the builder',
 
   // Veredicto, motivos de bloqueo y reglas sin nombre (los arma build-comparison.ts)

@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { buildDerivedDeckGroupMap } from '../app/deck-groups'
-import { ROLE_GROUP_LABEL, buildMaxedHint, buildMissingRoleHint, findCulprit } from '../app/lab-suggestion'
 import { resolvePattern, type CountOperations } from '../app/pattern-engine'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { curatePatterns } from '../app/pattern-curation'
@@ -116,28 +115,6 @@ describe('rules en inglés', () => {
       ),
     ).toBe('The rule is met if at least 2 of these options happen: you open 1 copy of Archetype: Ash, you open 3 cards of Type: Monster, you don\'t open any card of Type: Trap.')
     expect(labelOf({ ...rule([]), conditions: [] })).toBe('No requirements')
-  })
-
-  it('las sugerencias hablan en inglés: el culpable sin salida, la familia de relleno y los avisos', () => {
-    applyLocale('en')
-    const result = { handSize: 5, cleanProbability: 0, noOpeningProbability: 0.4, withProblemProbability: 0, cleanHands: null, totalHands: null, patternResults: [], segmentRules: { clean: [], withProblem: [], noOpening: [] } }
-    const problem = createMatcherPattern('No answer', 'problem', [
-      { matcher: { type: 'role', value: 'handtrap' }, quantity: 1, kind: 'exclude' },
-      { matcher: { type: 'role', value: 'disruption' }, quantity: 1, kind: 'exclude' },
-    ])
-    const culprit = { kind: 'problem' as const, patternId: problem.id, name: problem.name, probability: 0.3 }
-    const cards = [card('s', 3, ['starter'])]
-
-    expect(findCulprit(result)?.name).toBe('Hands with no opening')
-    expect(ROLE_GROUP_LABEL.filler).toBe('filler card')
-    expect(buildMissingRoleHint(culprit, cards, [problem])).toBe('Your deck has no cards with the Handtrap, Disruption roles: adding one is what lowers it the most.')
-    expect(buildMissingRoleHint(culprit, cards, [{ ...problem, conditions: problem.conditions.slice(0, 1) }])).toBe('Your deck has no cards with the Handtrap role: adding one is what lowers it the most.')
-
-    const maxed = [card('h', 3, ['handtrap']), card('d', 3, ['disruption'])]
-
-    expect(buildMaxedHint(culprit, maxed, [problem])).toBe(
-      'The cards that prevent it (Card h, Card d) are already at the maximum copies your format allows: to lower it, add different cards with those roles.',
-    )
   })
 
   it('una regla propia sin nombre recibe uno en el idioma actual', () => {

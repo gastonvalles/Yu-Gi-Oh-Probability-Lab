@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import { DECK_ZONE_LIMITS, addSearchResultToZone } from '../app/deck-builder'
 import { buildDeckImportPreview } from '../app/deck-import'
-import { buildCandidates, type Culprit } from '../app/lab-suggestion'
 import type { DeckBuilderState } from '../app/model'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { isLegacySystemRule } from '../app/pattern-presets'
@@ -72,25 +71,6 @@ describe('rescatar cartas no puede crear un problema', () => {
     }
 
     expect(run(true)).toBeCloseTo(run(false), 12)
-  })
-})
-
-describe('sugerencia del Lab con cartas a 0 copias', () => {
-  it('sacar la única copia de una carta referenciada por id no invalida el candidato', () => {
-    const cards = [
-      card('brick', 1, ['brick'], 'non_engine'),
-      ...Array.from({ length: 20 }, (_, i) => card(`s${i}`, 1, ['starter'])),
-      ...Array.from({ length: 19 }, (_, i) => card(`f${i}`, 1, ['recovery'], 'non_engine')),
-    ]
-    const problem = createMatcherPattern('Brick', 'problem', [{ matcher: { type: 'card_pool', value: ['brick'] }, quantity: 1, kind: 'include' }])
-    const culprit: Culprit = { kind: 'problem', patternId: problem.id, name: problem.name, probability: 0.2 }
-
-    const candidates = buildCandidates(culprit, cards, [problem])
-    const removesBrick = candidates.find((c) => c.changes.some((ch) => ch.action === 'remove' && ch.card.id === 'brick'))
-
-    expect(removesBrick).toBeDefined()
-    expect(removesBrick!.cards.find((c) => c.id === 'brick')?.copies).toBe(0)
-    expect(computeLabResults(removesBrick!.cards, [problem], 5).status).toBe('ok')
   })
 })
 

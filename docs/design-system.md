@@ -66,7 +66,7 @@ Las reglas 1 a 4 las revisa `button-rules.test.ts` en el código de los componen
 
 ### El Lab y Comparar
 
-- **El Lab:** un veredicto, lo que lo frena y qué cambiar; el detalle, a un toque. «Lo que más te frena» propone el cambio de una sola carta y, si ninguno suma, lo dice en vez de inventar uno; «Aplicar al deck» se deshace.
+- **El Lab:** un veredicto y qué robás de cada rol; el detalle, a un toque. Un cambio se prueba editando el deck en el builder y se mide en Comparar (la versión de antes es B).
 - **Comparar:** la acción de la tarjeta pesa según el veredicto (principal sólo si B abre mejor, secundaria si no, ninguna si B ya es tu deck). Mientras mide, el veredicto y las filas espejo son esqueletos de alto fijo (`aria-busy`); el «—» es sólo para un dato que falta. Hasta 1100 px se apila y no pasa de `max-w-2xl`: con A y B muy separados, las filas no se leen.
 
 ### La mesa: gestos y paneles

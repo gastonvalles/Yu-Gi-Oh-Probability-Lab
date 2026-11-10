@@ -254,8 +254,6 @@ export const meta = {
   'meta.compare.source.currentMeta': 'el del builder',
   'meta.compare.source.before': 'Tu deck de antes',
   'meta.compare.source.beforeMeta': 'se guardó sola · {when}',
-  'meta.compare.source.draft': 'Borrador del Lab',
-  'meta.compare.source.draftMeta': 'sin guardar',
   'meta.compare.source.saved': 'guardada {when}',
   'meta.compare.source.imported': 'importada {when}',
   'meta.compare.source.lab': 'del Lab · {when}',
@@ -298,7 +296,6 @@ export const meta = {
   'meta.compare.number.same': 'las mismas manos buenas de cada 100 en las dos',
   'meta.compare.number.sameShort': 'iguales',
   'meta.compare.adopt': 'Cargar B en el builder',
-  'meta.compare.saveDraft': 'Guardar B',
   'meta.compare.adopted': 'Cargaste "{name}" en el builder. Tu deck de antes quedó guardado.',
   'meta.compare.undo': 'Deshacer',
   'meta.compare.undone': 'Tu deck volvió a como estaba.',
@@ -374,13 +371,12 @@ export const meta = {
 
   // Primera vez y decks iguales
   'meta.compare.empty.title': 'Todavía no tenés con qué comparar',
-  'meta.compare.empty.body': 'Probá un cambio en el Lab o traé otra lista. Cuando cambies cartas en el builder, la versión de antes se guarda sola y aparece acá como B.',
-  'meta.compare.empty.lab': 'Probar un cambio en el Lab',
+  'meta.compare.empty.body': 'Cambiá cartas en el builder: la versión de antes se guarda sola y aparece acá como B. También podés traer otra lista.',
   'meta.compare.same.title': 'Son el mismo deck',
   'meta.compare.same.good': 'de cada 100 manos son buenas, en las dos',
   'meta.compare.same.body': { one: 'Tienen la misma carta en el Main, el Extra y el Side.', other: 'Tienen las mismas {n} cartas en el Main, el Extra y el Side.' },
   'meta.compare.same.ring': 'De cada 100 manos, {clean} son buenas en las dos',
-  'meta.compare.same.next': 'Cambiá cartas y volvé, o probá un cambio en el Lab.',
+  'meta.compare.same.next': 'Cambiá cartas en el builder y volvé: la versión de antes aparece acá como B.',
   'meta.compare.goToBuilder': 'Ir al builder',
 
   // Veredicto, motivos de bloqueo y reglas sin nombre (los arma build-comparison.ts)

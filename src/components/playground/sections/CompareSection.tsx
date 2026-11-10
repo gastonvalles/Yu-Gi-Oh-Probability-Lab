@@ -90,7 +90,7 @@ export function CompareSection() {
     const changes = pairChanges(a, b)
     const build: SavedBuild = { id: 'build-muestra', name: 'fire-king-starters', savedAt: new Date().toISOString(), from: 'deck', ...b }
     const imported: SavedBuild = { id: 'build-importada', name: 'branded-importada', savedAt: new Date(Date.now() - 864e5).toISOString(), from: 'import', ...b, main: [...b.main.slice(0, -1), ...cards(6637331, 'Bystial Druiswurm', 1, [], null)] }
-    const options = sourceOptions({ current: a, deckBefore: null, draft: null, savedBuilds: [build, imported] }, 'fire-king-jurrac')
+    const options = sourceOptions({ current: a, deckBefore: null, savedBuilds: [build, imported] }, 'fire-king-jurrac')
     // Un cambio de cada: medido (▲3), que no mueve nada (=), sin clasificar (?) y midiéndose (el esqueleto).
     const statuses: ChangeEffectResult[] = [done(0.031), done(0.002), { status: 'pending' }, { status: 'loading' }]
     const results = Object.fromEntries(changes.main.map((change, index) => [change.key, statuses[index % statuses.length]!]))
@@ -114,7 +114,7 @@ export function CompareSection() {
         <BuildPair a={sample.options[0]!} b={null} layout="stacked" onPick={setPicker} />
       </Specimen>
 
-      <Specimen title="Mis builds" note={<>De dónde puede salir A o B: tu deck, «Tu deck de antes», el borrador del Lab y las builds guardadas (con su origen y su fecha); la elegida con el aro ámbar, la del otro lado apagada; renombrar y borrar en sus tres puntos. Hoja de abajo en el celular, diálogo chico en escritorio. Archivo: <Tag>comparison/BuildPicker.tsx</Tag></>}>
+      <Specimen title="Mis builds" note={<>De dónde puede salir A o B: tu deck, «Tu deck de antes» y las builds guardadas (con su origen y su fecha); la elegida con el aro ámbar, la del otro lado apagada; renombrar y borrar en sus tres puntos. Hoja de abajo en el celular, diálogo chico en escritorio. Archivo: <Tag>comparison/BuildPicker.tsx</Tag></>}>
         <Button size="sm" onClick={() => setPicker('B')}>
           Abrir «Mis builds»
         </Button>
