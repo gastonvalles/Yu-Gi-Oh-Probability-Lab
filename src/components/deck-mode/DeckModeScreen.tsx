@@ -400,8 +400,10 @@ export function DeckModeScreen() {
             {t('shell.solo.title')}
           </Heading>
           {autoSolo && matDeck.mainIds.length > 0 ? (
-            // Con las reglas del Lab de la práctica: las salidas y problemas de la mano de apertura, también acá.
-            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#solo' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
+            // Con las reglas del Lab de la práctica: las salidas y problemas de la mano de apertura, también acá. Si su pantalla no baja (sin señal), lo dice el borde y no cae la app.
+            <StepErrorBoundary title={t('duel.offline.autoFailed')} backLabel={t('duel.offline.backSolo')} onBack={() => { window.location.hash = '#solo' }}>
+              <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#solo' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
+            </StepErrorBoundary>
           ) : practice ? (
             <LazyPracticeSection {...practice} {...(canAuto ? { onAuto: (state: MatState) => { setResumeFrom(state); setManualHere(false) } } : {})} />
           ) : (

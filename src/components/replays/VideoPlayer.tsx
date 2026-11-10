@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 
 import { embedUrl } from '../../app/replays'
+import { useOnline } from '../../app/use-online'
+import { t } from '../../i18n'
 import { Icon } from '../ui/Icon'
 
 /** El botón-link «Ver en YouTube» del pie de las ventanas de video. */
@@ -24,10 +26,17 @@ interface VideoPlayerProps {
  */
 export function VideoPlayer({ videoId, title, playLabel, thumbnail, badge }: VideoPlayerProps) {
   const [playing, setPlaying] = useState(false)
+  // Sin red, YouTube no carga (ni la miniatura): se dice en el lugar del video, que vuelve solo con la señal.
+  const online = useOnline()
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-card bg-black">
-      {playing ? (
+      {!online ? (
+        <p className="absolute inset-0 m-0 flex items-center justify-center gap-2 p-4 text-center text-body font-semibold text-foreground">
+          <Icon name="link-off" size={18} className="shrink-0 text-warning-soft" />
+          {t('shell.offline.later')}
+        </p>
+      ) : playing ? (
         <iframe
           src={embedUrl(videoId)}
           title={title}

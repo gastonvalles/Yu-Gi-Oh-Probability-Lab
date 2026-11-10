@@ -61,7 +61,7 @@ interface Fresh {
 /** Una sesión nueva: contexto limpio (sin marca de sesión), con o sin el deck guardado. Hereda User-Agent, viewport y toque del proyecto salvo que `context` los pise. */
 async function fresh(browser: Browser, baseURL: string, project: { use: Record<string, unknown> }, { deck, init, context: overrides }: Fresh = {}): Promise<BrowserContext> {
   const { userAgent, viewport, deviceScaleFactor, isMobile, hasTouch } = project.use as Pick<BrowserContextOptions, 'userAgent' | 'viewport' | 'deviceScaleFactor' | 'isMobile' | 'hasTouch'>
-  const context = await browser.newContext({ baseURL, locale: 'es-AR', userAgent, viewport, deviceScaleFactor, isMobile, hasTouch, ...overrides })
+  const context = await browser.newContext({ baseURL, locale: 'es-AR', userAgent, viewport, deviceScaleFactor, isMobile, hasTouch, serviceWorkers: 'block', ...overrides })
   await context.route('https://db.ygoprodeck.com/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"data":[]}' }))
   await context.addInitScript(
     ({ saved }) => {

@@ -39,6 +39,7 @@ import type { MatSession } from '../../app/use-mat-session'
 import { Presence } from '../../app/use-presence'
 import { showToastMessage } from '../../app/use-toast-message'
 import { useWakeLock } from '../../app/use-wake-lock'
+import { useOnline } from '../../app/use-online'
 import { openBuilderFromPlay } from '../../app/play-return'
 import { t } from '../../i18n'
 import type { AutoDuelScreenProps } from '../auto/AutoDuelScreen'
@@ -46,6 +47,7 @@ import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
+import { StepErrorBoundary } from '../ui/StepErrorBoundary'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
@@ -82,6 +84,7 @@ import { RoomDeck } from './RoomDeck'
 import { STAGE_CARD, STAGE_INNER } from './room-stage'
 import { RoomFold, RoomRules, rulesSummary } from './RoomRules'
 import { PlayHome } from './PlayHome'
+import { DuelOffline } from './DuelOffline'
 import { formatName } from './room-chips'
 import { DuelSiding } from './DuelSiding'
 import { SpectatorScreen } from './SpectatorScreen'
@@ -697,9 +700,12 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     return (
       <>
         {AutoDuel ? (
-          <Suspense fallback={renderRoom(AUTO_PENDING)}>
-            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={rematch} code={intent.room} {...(inSiding ? { siding: sidingScreen } : {})} onManual={toManual} {...(intent.role === 'host' && resumeStart.current ? { resume: resumeStart.current } : {})} />
-          </Suspense>
+          // Su pantalla se baja al entrar: si no llega (sin señal, aunque el navegador crea que hay), se dice acá y no se cae toda la app.
+          <StepErrorBoundary title={t('duel.offline.autoFailed')} backLabel={t('duel.offline.back')} onBack={leave}>
+            <Suspense fallback={renderRoom(AUTO_PENDING)}>
+              <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={rematch} code={intent.room} {...(inSiding ? { siding: sidingScreen } : {})} onManual={toManual} {...(intent.role === 'host' && resumeStart.current ? { resume: resumeStart.current } : {})} />
+            </Suspense>
+          </StepErrorBoundary>
         ) : (
           renderRoom(AUTO_PENDING)
         )}
@@ -817,6 +823,7 @@ interface DuelLobbyProps {
 
 function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, deckName, onOpenBuilder, deckReady, deckSize, minDeck, onCreate, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
   const [watching, setWatching] = useState(view === 'watch')
+  const online = useOnline()
 
   // Lo que pide el menú (Nueva sala, Mirar un duelo, Entrar con un enlace) se aplica una vez, también si el lobby ya estaba abierto. Crear y entrar los atiende el inicio de Jugar.
   useEffect(() => {
@@ -828,6 +835,15 @@ function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, on
 
     onViewHandled?.()
   }, [view, onViewHandled])
+
+  // Sin red no hay salas que listar ni que abrir: en vez de «Todavía no hay salas abiertas» (que no es cierto), qué pasa y qué sí anda.
+  if (!online) {
+    return (
+      <Screen>
+        <DuelOffline />
+      </Screen>
+    )
+  }
 
   if (watching) {
     return <WatchRoom onBack={() => setWatching(false)} onWatch={(room) => onJoin(room, true)} />

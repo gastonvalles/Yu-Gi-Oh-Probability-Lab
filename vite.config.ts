@@ -11,6 +11,7 @@ import { configDefaults } from 'vitest/config'
 import { defineConfig, type Plugin } from 'vite'
 import { readTiState } from './tools/ti/state.mjs'
 import { cardsByCodes, manifestCodes, promotedScripts, readLock, scriptDirs } from './scripts/build-auto-data.mjs'
+import { serviceWorkerOff, serviceWorkerSource } from './scripts/sw-source.mjs'
 
 const isMountedWindowsWorkspace = process.cwd().startsWith('/mnt/')
 
@@ -205,6 +206,43 @@ function publicAssetsList(): Plugin {
   }
 }
 
+/** De `/assets`, lo que el service worker no precachea (queda en el caché HTTP, como siempre): el núcleo del duelo automático, la planilla en PDF, el catálogo y el video. */
+const SW_HEAVY = /^assets\/(?:ocgcore\.|core-host\.worker-|kde-decklist|Playground-|video-encode-)/
+/** De `public/`, lo que el service worker precachea: las páginas sueltas, el script de arranque, el manifest, los íconos, el dorso y los foil. */
+const SW_PUBLIC = /^(?:404\.html|privacidad\.html|privacy\.html|recover\.js|site\.webmanifest|favicon\.(?:ico|png)|apple-touch-icon\.png|icon-\d+\.png|card-back[\w-]*\.webp|foil\/[\w-]+\.webp)$/
+
+/** Emite `dist/sw.js` (ver `src/sw.js`) con el `index.html`, los `/assets` livianos y lo precacheable de `public/`. Sólo en el build: `npm run dev` no tiene service worker. */
+function serviceWorker(): Plugin {
+  const templateUrl = new URL('./src/sw.js', import.meta.url)
+  let publicDir = ''
+
+  return {
+    name: 'service-worker',
+    apply: 'build',
+    enforce: 'post',
+    config: () => ({ define: { 'import.meta.env.VITE_SW_OFF': JSON.stringify(serviceWorkerOff(readFileSync(templateUrl, 'utf8'))) } }),
+    configResolved(config) {
+      publicDir = config.publicDir
+    },
+    generateBundle(_options, bundle) {
+      const html = bundle['index.html']
+
+      if (html?.type !== 'asset') return this.error('service-worker: index.html is not in the bundle')
+
+      const assets = Object.keys(bundle)
+        .filter((name) => name.startsWith('assets/') && !SW_HEAVY.test(name))
+        .map((name) => ({ path: `/${name}` }))
+      const statics = (readdirSync(publicDir, { recursive: true }) as string[])
+        .map((path) => path.split('\\').join('/'))
+        .filter((path) => SW_PUBLIC.test(path))
+        .map((path) => ({ path: `/${path}`, content: readFileSync(join(publicDir, path)) }))
+      const template = readFileSync(templateUrl, 'utf8')
+
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source: serviceWorkerSource(template, [{ path: '/index.html', content: html.source }, ...assets, ...statics]) })
+    },
+  }
+}
+
 /** Las pruebas que redefinen `window.location` (ver `projects` abajo). */
 const REDEFINE_LOCATION = ['src/__tests__/asset-recovery.test.ts', 'src/__tests__/error-boundary.test.tsx', 'src/__tests__/i18n.test.tsx']
 /** Las pruebas lentas (el fuzz del núcleo de reglas): fuera de `npm test`; las corre `npm run test:auto`, que es lo único que suma su proyecto. */
@@ -212,7 +250,7 @@ const SLOW = 'src/__tests__/**/*.slow.test.ts'
 const SLOW_RUN = process.env.npm_lifecycle_event === 'test:auto'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), apiDev(), autoDataDev(), tiDev()],
+  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), serviceWorker(), apiDev(), autoDataDev(), tiDev()],
   preview: {
     headers: readVercelHeaders(),
     proxy: CARD_IMAGE_PROXY,
