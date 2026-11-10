@@ -333,6 +333,9 @@ const TOKEN_ART = 'https://images.ygoprodeck.com/images/cards_small/73915052.jpg
 // El nombre se arma al leerlo (no al cargar el módulo): así sale en el idioma activo.
 const TOKEN_CARD: MatCard = { get name() { return t('practice.token.name') }, apiCard: null, art: TOKEN_ART }
 const UNKNOWN_CARD: MatCard = { get name() { return t('practice.card.unknown') }, apiCard: null }
+/** Cuántas veces se pide una carta que no es del deck antes de darla por perdida, y cuánto se espera entre una y otra. */
+const FETCH_ATTEMPTS = 3
+const FETCH_RETRY_MS = 4000
 /** Una carta del rival que todavía no mostró (el objetivo de un ataque a un monstruo boca abajo). */
 const RIVAL_MONSTER: MatCard = { get name() { return t('practice.attack.rivalMonster') }, apiCard: null }
 const EMPTY_IDS: ReadonlySet<string> = new Set()
@@ -695,6 +698,12 @@ function PracticeMatBody({
   }, [cardsById])
   const [fetched, setFetched] = useState<ReadonlyMap<number, MatCard>>(new Map())
   const requestedRef = useRef(new Set<number>())
+  // Si el pedido de las cartas falla (la conexión, una extensión que bloquea la API), se repite unas veces en vez de dejarlas sin nombre toda la partida.
+  const attemptsRef = useRef(new Map<number, number>())
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const [retry, setRetry] = useState(0)
+
+  useEffect(() => () => clearTimeout(retryTimer.current), [])
 
   // Sólo `foreignKnown` del duelo y por lo que dice, no todo `duel` (otro objeto en cada dibujo) ni su referencia (se rearma con cada aviso del rival): así `nameOf` y `artById` duran
   // entre dibujos y las fichas de la lista de pasos no se rehacen todas.
@@ -715,9 +724,10 @@ function PracticeMatBody({
       const ygoId = parseDerivedCardId(cardIdOfDrawId(id))
       const remote = ygoId === null ? undefined : fetched.get(ygoId)
       if (remote) return remote
-      if (!isRivalId(shown)) return { name: session.names[id] ?? UNKNOWN_CARD.name, apiCard: null }
-
+      // Una carta que no es de tu deck (la que el rival te da) y todavía no llegó entera: su imagen sale igual del número que lleva el id, por el proxy, sin esperar el pedido de la carta, que puede fallar.
       const art = artOfDrawId(id)
+      if (!isRivalId(shown)) return { name: session.names[id] ?? UNKNOWN_CARD.name, apiCard: null, ...(art ? { art } : {}) }
+
       return { name: session.names[shown] ?? UNKNOWN_CARD.name, apiCard: null, ...(art ? { art } : {}) }
     },
     [cardsById, byCardId, fetched, session.names, foreignKnown],
@@ -734,11 +744,22 @@ function PracticeMatBody({
 
     if (missing.length === 0) return
 
-    missing.forEach((ygoId) => requestedRef.current.add(ygoId))
+    missing.forEach((ygoId) => {
+      requestedRef.current.add(ygoId)
+      attemptsRef.current.set(ygoId, (attemptsRef.current.get(ygoId) ?? 0) + 1)
+    })
     void fetchCardsByIds(missing)
       .then((cards) => setFetched((current) => new Map([...current, ...cards.map((card) => [card.ygoprodeckId, { name: card.name, apiCard: card }] as const)])))
-      .catch(() => {})
-  }, [state, byCardId, fetched, duel])
+      .catch(() => {
+        const again = missing.filter((ygoId) => (attemptsRef.current.get(ygoId) ?? 0) < FETCH_ATTEMPTS)
+
+        if (again.length === 0) return
+
+        again.forEach((ygoId) => requestedRef.current.delete(ygoId))
+        clearTimeout(retryTimer.current)
+        retryTimer.current = setTimeout(() => setRetry((count) => count + 1), FETCH_RETRY_MS)
+      })
+  }, [state, byCardId, fetched, duel, retry])
 
   // El dorso se pide una vez, al abrir la mesa: así está en la caché cuando se reparte la mano o una carta se da vuelta.
   useEffect(() => {
