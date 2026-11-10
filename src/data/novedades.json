@@ -1,6 +1,57 @@
 {
   "entries": [
     {
+      "id": "2026-11-10-4-sin-conexion",
+      "date": "2026-11-10",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "La app abre sin conexión y avisa cuando no hay señal",
+        "novedades": [
+          "Después de abrir la página una vez con señal, ahora abre aunque no tengas conexión: «Inicio», tu deck en el armador, el Lab y la calculadora de LP funcionan igual.",
+          "Cuando te quedás sin señal aparece el aviso «Sin conexión» arriba del contenido, y se va solo cuando vuelve.",
+          "Lo que necesita red te lo explica en vez de quedar en blanco: Online y el duelo por enlace te ofrecen «Jugar solo», el duelo automático te manda al modo manual y el video de un replay avisa que necesita señal.",
+          "La página se actualiza sola en segundo plano: cuando hay una versión nueva, la próxima vez que la abrís ya la tenés."
+        ],
+        "comoSeUsa": [
+          "Abrí la página con señal una vez (la primera vez, para que guarde lo que necesita).",
+          "Después abrila cuando quieras, también sin conexión: tu deck sigue donde lo dejaste.",
+          "Si ves «Sin conexión», lo que no necesita red (armar, medir, la calculadora) sigue andando."
+        ],
+        "arreglos": [
+          "Sin conexión, Solo automático y Online ya no se caen a «Algo salió mal»: explican qué falta y qué se puede hacer.",
+          "La página guarda sus propios archivos e imágenes en tu dispositivo (unos 5 MB) para poder abrir sin red; se borran junto con los datos del sitio."
+        ],
+        "ojo": [
+          "La primera vez necesita conexión. Los precios, el meta en vivo, Online, el duelo por enlace y el duelo automático siguen necesitando señal.",
+          "Una pantalla que nunca abriste con conexión puede no abrir sin ella."
+        ]
+      },
+      "en": {
+        "title": "The app opens offline and tells you when there is no signal",
+        "novedades": [
+          "After opening the page once with a connection, it now opens even when you are offline: \"Home\", your deck in the builder, the Lab and the LP calculator work the same.",
+          "When you lose your signal, a \"No connection\" notice appears above the content and goes away on its own when it comes back.",
+          "Whatever needs the network now explains itself instead of staying blank: Online and the link duel offer \"Play solo\", the automatic duel sends you to manual mode and a replay video says it needs a connection.",
+          "The page updates itself in the background: when there is a new version, the next time you open it you already have it."
+        ],
+        "comoSeUsa": [
+          "Open the page with a connection once (the first time, so it can save what it needs).",
+          "After that, open it whenever you want, offline too: your deck stays where you left it.",
+          "If you see \"No connection\", whatever does not need the network (building, measuring, the calculator) keeps working."
+        ],
+        "arreglos": [
+          "Offline, automatic Solo and Online no longer fall into \"Something went wrong\": they explain what is missing and what you can do.",
+          "The page saves its own files and images on your device (about 5 MB) so it can open without a network; they are cleared along with the site data."
+        ],
+        "ojo": [
+          "The first visit needs a connection. Prices, the live meta, Online, the link duel and the automatic duel still need a signal.",
+          "A screen you never opened with a connection may not open without one."
+        ]
+      }
+    },
+    {
       "id": "2026-11-10-3-reglas-lab",
       "date": "2026-11-10",
       "tags": [
