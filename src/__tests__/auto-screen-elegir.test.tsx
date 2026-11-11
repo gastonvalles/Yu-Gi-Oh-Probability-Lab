@@ -251,7 +251,7 @@ describe('auto-screen · elegir', () => {
     expect(again).toBe(band)
     expect(within(again).getAllByRole('option')).toEqual(order)
     expect(nibiru).toHaveAttribute('aria-selected', 'true')
-    expect(nibiru.querySelector('[data-fx="frame"]')).not.toBeNull()
+    expect(nibiru.querySelector('[data-pick-chosen]')).not.toBeNull()
     fireEvent.click(within(again).getByRole('button', { name: 'Elegir 1 carta' }))
     expect(fake.answers[1]).toEqual({ type: 'select_unselect_card', index: null })
 

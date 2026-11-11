@@ -1,11 +1,11 @@
-import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { isRivalId, rivalCardOf } from '../../app/handtraps'
 import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
 import { opaqueOfForeign } from '../../app/mat-control'
-import { PLAY_PLACE, SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type MenuPlace } from '../../app/mat-menu-order'
+import { SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type MenuPlace } from '../../app/mat-menu-order'
 import { isOpaqueId } from '../../app/mat-public'
 import { EASE_IN_OUT } from '../../app/motion'
 import {
@@ -52,6 +52,7 @@ import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
+import type { AutoCardSheetProps } from '../auto/AutoPanel'
 import { NO_FIELD_STATS, fieldStatsOf, printedStat } from '../../app/field-stats'
 import { whyNotResume } from '../../app/auto/resume'
 import { playSfx } from '../../app/sfx'
@@ -286,6 +287,11 @@ export interface DuelMatLink {
   limits?: ReactNode
   /** El duelo automático: las jugadas las decide el núcleo de reglas y la mesa sólo contesta sus preguntas (los menús, las casillas y las cartas que ofrece); nada se arrastra, se mantiene ni se despacha. */
   auto?: AutoLink
+  /**
+   * El duelo automático: su ficha de una carta (todas las jugadas, sin submenús) y sus fases (`AutoPanel`), en lugar de `CardSheet`, `CardMenu` y `PhaseRow`, que siguen siendo los de la mesa manual. Los
+   * trae la pantalla del automático: la mesa no importa sus piezas (el modo automático entra por `lazy`, `auto-isolation.test.ts`).
+   */
+  menus?: { Card: ComponentType<AutoCardSheetProps>; Phases: ComponentType<{ items: MenuItem[]; onClose: () => void }> }
 }
 
 interface PracticeMatProps {
@@ -864,6 +870,8 @@ function PracticeMatBody({
   const [screenWidth, screenHeight] = screen.split('x').map(Number) as [number, number]
   const phone = compact && bare ? phoneDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_BAR + (duel?.scoreTall ? 4 : 0), rival: PHONE_RIVAL, bottom: PHONE_BOTTOM }) : null
   const isAuto = Boolean(duel?.auto)
+  // La ficha y las fases del automático (sólo con `duel.auto`): la frontera con los menús de la mesa manual.
+  const autoMenus = isAuto ? duel?.menus : undefined
   // El ATK/DEF de cada monstruo boca arriba (`StatTag`, siempre): el de ahora si hay núcleo (`duel.auto.stats`, que arma la pantalla), el impreso si no.
   const autoStats = duel?.auto?.stats
   const fieldStats = useMemo(() => autoStats ?? (isAuto ? NO_FIELD_STATS : fieldStatsOf(state, (id) => printedStat(cardOf(id).apiCard))), [autoStats, isAuto, state, cardOf])
@@ -1939,12 +1947,11 @@ function PracticeMatBody({
     const fromViewer = menu.kind === 'card' && viewer !== null && state[viewer].includes(menu.id)
     const closing = (item: MenuItem): MenuItem => ({ ...item, onSelect: () => { setMenu(null); if (fromViewer && !item.children) setViewer(null); item.onSelect() }, children: item.children?.map(closing) })
 
-    // Las de una carta van como en la manual: en escritorio, en bloques (sólo el de las jugadas, con la principal abajo); en la hoja del celular, en el orden del núcleo.
+    // Las de una carta, en el orden del núcleo en todos los tamaños: la ficha del automático (`AutoCardSheet`) pone la principal primero.
     if (duel?.auto) {
       if (menu.kind === 'phases') return duel.auto.phaseItems.map(closing)
-      const items = menu.kind === 'card' ? (duel.auto.itemsFor(menu.id, menu.drop) ?? []).map(closing) : []
 
-      return isDesktop ? inMenuBlocks(items.map((entry) => ({ entry, place: PLAY_PLACE }))) : items
+      return menu.kind === 'card' ? (duel.auto.itemsFor(menu.id, menu.drop) ?? []).map(closing) : []
     }
 
     // Las fases: elegir una es pasar a ella (la Draw Phase después de la End Phase es pasar el turno). Sólo lo hace quien tiene el turno (el botón no abre si no es el tuyo).
@@ -3239,7 +3246,24 @@ function PracticeMatBody({
       ) : null}
 
       {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera (y baja: `Presence` la deja montada mientras sale). */}
-      <Presence>{sheeted && menu ? (
+      {/* El duelo automático: la ficha con todas las jugadas que da el núcleo, la misma en el celular y en escritorio (la mesa manual sigue con `CardSheet` y `CardMenu`); en escritorio, una sola jugada sigue siendo su etiqueta (`PlayTag`). */}
+      <Presence>{autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay ? (
+        <autoMenus.Card
+          key={menu.kind === 'card' ? menu.id : menu.kind}
+          name={menuTitle}
+          kicker={menuKicker}
+          art={menuCard ? artOf(menuCard) : null}
+          back={menuCard === null}
+          apiCard={menuCard?.apiCard ?? null}
+          items={menuItems}
+          empty={noPlays}
+          // «Ver carta», salvo con el detalle fijo a la izquierda (desde 1440 px tocar la carta ya la muestra ahí).
+          onInspect={isDesktop ? menuInspect : menu.kind === 'card' && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}</Presence>
+      <Presence>{phasesOpen && autoMenus ? <autoMenus.Phases items={menuItems} onClose={() => setMenu(null)} /> : null}</Presence>
+      <Presence>{sheeted && menu && !autoMenus ? (
         <CardSheet
           name={menuTitle}
           kicker={menuKicker}
@@ -3288,9 +3312,9 @@ function PracticeMatBody({
       ) : null}
 
       {/* Las fases en una línea, con las mismas opciones que armaba el menú (`menuItems`): qué fase se puede elegir lo deciden la mesa manual o el núcleo, no la línea. */}
-      <PhaseRow anchor={phasesOpen ? menu.rect : null} items={phasesOpen ? menuItems : []} onClose={() => setMenu(null)} />
+      <PhaseRow anchor={phasesOpen && !autoMenus ? menu.rect : null} items={phasesOpen && !autoMenus ? menuItems : []} onClose={() => setMenu(null)} />
       <CardMenu
-        anchor={covered || sheeted || lonePlay || phasesOpen ? null : (menu?.rect ?? null)}
+        anchor={covered || sheeted || lonePlay || phasesOpen || autoMenus ? null : (menu?.rect ?? null)}
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}

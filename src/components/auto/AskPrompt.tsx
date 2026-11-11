@@ -3,9 +3,9 @@ import { useId } from 'react'
 import type { AskWhyView } from '../../app/auto/ask-why'
 import { CardArt } from '../CardArt'
 import { AskWhy } from '../duel/AskWhy'
-import { MatPrompt } from '../duel/MatPrompt'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { AutoPanel } from './AutoPanel'
 
 /** Un botón de una pregunta del núcleo: lo que dice (verbo y objeto) y qué contesta. */
 export interface AskChoice {
@@ -33,70 +33,62 @@ interface AskPromptProps {
 }
 
 /**
- * Una pregunta de sí o no del núcleo de reglas (`select_effectyn`, `select_yesno`) en la mesa (`MatPrompt`: la ranura `duel.prompt`, sin velo, minimizable). Lo mínimo para decidir:
- * qué pasó (`kicker`, sin nombres), la carta por su arte con la pestaña de su lugar y «¿Activás el efecto?»; lo que hace la carta está en su detalle. Hay que contestarla: Escape
- * la minimiza y, al aparecer, el foco va a la principal (sin desplazar la página). Una cadena que se puede pasar no va acá: va en `RespondBand`. Los dos botones dicen qué hacen.
+ * Una pregunta de sí o no del núcleo de reglas (`select_effectyn`, `select_yesno`) en el cartel del automático (`AutoPanel`): qué pasó (`kicker`, sin nombres), la carta por su arte con la pestaña de
+ * su lugar y la pregunta; abajo «No activar» sin caja y la principal a la derecha, que nombra la jugada. Hay que contestarla: Escape la minimiza y, al aparecer, el foco va a la principal. Una cadena
+ * que se puede pasar no va acá: va en `RespondBand`.
  */
 export function AskPrompt({ text, card, yes, no, kicker, place, manual, why }: AskPromptProps) {
   const textId = useId()
   const whyId = useId()
-  const art = card ? (
-    <span className="relative block aspect-[421/614] w-11 shrink-0 overflow-hidden bg-input">
-      <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
-    </span>
-  ) : null
 
   return (
-    <MatPrompt
+    <AutoPanel
       kind="ask"
-      // Con el atajo a la manual, más ancho: los tres botones en una fila.
-      row={Boolean(manual)}
       label={text}
-      {...(why ? { labelledBy: `${textId} ${whyId}` } : {})}
+      labelledBy={why ? `${textId} ${whyId}` : textId}
       focus="[data-ask-primary]"
       escape
       head={
-        <>
-          {place ? (
+        <div className="flex min-w-0 items-center gap-2">
+          {card ? (
             <span className="grid shrink-0 justify-items-start gap-1">
-              <Badge size="sm" shape="tag">
-                {place}
-              </Badge>
-              {art}
+              {place ? (
+                <Badge size="sm" shape="tag">
+                  {place}
+                </Badge>
+              ) : null}
+              <span className="relative block aspect-[421/614] w-11 overflow-hidden bg-input">
+                <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
+              </span>
             </span>
-          ) : (
-            art
-          )}
+          ) : null}
           <div className="grid min-w-0 gap-1">
             {kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
             {why ? <AskWhy id={whyId} why={why} /> : null}
-            <p id={textId} className="m-0 font-semibold">
+            <h2 id={textId} className="m-0 text-body font-semibold">
               {text}
-            </p>
+            </h2>
+          </div>
+        </div>
+      }
+      actions={
+        <>
+          {/* El atajo a la mesa manual: sólo en escritorio (en el celular está en «Más opciones»). */}
+          {manual ? (
+            <Button variant="tertiary" size="sm" className="min-w-0 shrink! text-balance max-[1101px]:hidden" onClick={manual.onSelect}>
+              {manual.label}
+            </Button>
+          ) : null}
+          <div className="ml-auto flex shrink-0 justify-end gap-2">
+            <Button variant="tertiary" size="sm" onClick={no.onSelect}>
+              {no.label}
+            </Button>
+            <Button variant="primary" size="sm" data-ask-primary="" onClick={yes.onSelect}>
+              {yes.label}
+            </Button>
           </div>
         </>
       }
-    >
-      {/* Una sola fila, siempre (Gastón: «los 3 botones no están alineados»): sin `flex-wrap`. El atajo se queda con lo que dejan el «no» y la principal (`flex-1 basis-0`) y, si no le alcanza
-          (en inglés, o en español con los paneles de la mesa al máximo: la pregunta mide 496 px), parte su texto en dos líneas en vez de bajar a otro renglón. */}
-      <div className="flex items-center gap-2">
-        {/* En el celular no va en el cartel (tres acciones no entran en una fila y tiene que caber arriba de tus monstruos): queda en «Más opciones». */}
-        {manual ? (
-          <div className="flex min-w-0 flex-1 max-[1101px]:hidden">
-            <Button variant="tertiary" className="text-balance" onClick={manual.onSelect}>
-              {manual.label}
-            </Button>
-          </div>
-        ) : null}
-        <div className="ml-auto flex justify-end gap-2">
-          <Button variant="tertiary" className="shrink-0" onClick={no.onSelect}>
-            {no.label}
-          </Button>
-          <Button variant="primary" data-ask-primary="" onClick={yes.onSelect}>
-            {yes.label}
-          </Button>
-        </div>
-      </div>
-    </MatPrompt>
+    />
   )
 }
