@@ -142,6 +142,9 @@ const keyboardFocus = (element: HTMLElement): boolean => {
 const MENU_ROW =
   'relative w-full rounded-tag border-0 bg-transparent py-1.5 text-body font-medium text-foreground outline-none transition-[background-color,box-shadow] duration-100 hover:bg-tint/12 focus-visible:bg-tint/12 focus-visible:shadow-focus aria-expanded:bg-tint/12'
 
+/** El panel del menú y del submenú: el de siempre, traslúcido al 92 % en alfa plano (sin desenfoque, que repinta). */
+const MENU_PANEL = 'rounded-panel border border-border-subtle bg-card-background/92 shadow-overlay'
+
 /** Lo que se elige con las flechas: las apagadas se enfocan con Tab (se leen), pero las flechas las saltean. */
 const CHOOSABLE = '[role="menuitem"]:not([aria-disabled="true"])'
 
@@ -389,7 +392,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
         tabIndex={-1}
         // Sin nada que elegir, el foco va al panel.
         data-initial-focus={items.length === 0 && !onInspect ? '' : undefined}
-        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto overflow-x-hidden px-1 py-1 outline-none animate-dialog-enter motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
+        className={cx(MENU_PANEL, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto overflow-x-hidden px-1 py-1 outline-none animate-dialog-enter motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
         onClick={(event) => event.stopPropagation()}
         onKeyDown={onPanelKey}
@@ -438,7 +441,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
           ref={subRef}
           role="menu"
           aria-label={sub.label}
-          className={cx(surface.panel, 'absolute left-0 top-0 px-1 py-1 animate-dialog-enter motion-reduce:animate-none', sub.wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-36')}
+          className={cx(MENU_PANEL, 'absolute left-0 top-0 px-1 py-1 animate-dialog-enter motion-reduce:animate-none', sub.wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-36')}
           onClick={(event) => event.stopPropagation()}
           onMouseEnter={cancelIntent}
           onMouseLeave={() => hover(null)}
@@ -905,7 +908,7 @@ export function SaveComboDialog({ isOpen, defaultName, rename = false, onSave, o
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} movable kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} movable square kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
       <form className="grid gap-3" onSubmit={submit}>
         <label className="grid gap-1">
           <span className="text-body text-muted">{t('practice.dialog.name')}</span>
@@ -965,7 +968,7 @@ export function StepNoteDialog({ step, defaultNote, onSave, onClose }: StepNoteD
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} movable title={title} ariaLabel={title}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} movable square title={title} ariaLabel={title}>
       <form className="grid gap-3" onSubmit={submit}>
         <label className="grid gap-1">
           <span className="flex items-baseline justify-between gap-2 text-body text-muted">

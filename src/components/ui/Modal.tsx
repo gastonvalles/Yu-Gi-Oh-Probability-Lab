@@ -107,6 +107,8 @@ interface ModalProps {
    * tocar afuera); el panel despega del fondo con un borde más marcado (`surface.floating`).
    */
   veil?: boolean
+  /** Con esquinas rectas, como la mesa (`mat-square`): los diálogos que abre la mesa (guardar un combo, la nota de un paso). El resto de la app sigue redondeado. */
+  square?: boolean
   children: ReactNode
 }
 
@@ -139,6 +141,7 @@ export function Modal({
   anchor,
   movable,
   veil = true,
+  square = false,
   children,
 }: ModalProps) {
   const id = useId()
@@ -243,7 +246,7 @@ export function Modal({
               <Icon name="chevron-down" />
             </IconButton>
           ) : null}
-          {dismissible ? <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} /> : null}
+          {dismissible ? <CloseButton size="sm" tone={square ? 'ghost' : undefined} aria-label={t('common.close')} onClick={onClose} /> : null}
         </div>
       ) : null}
     </header>
@@ -256,6 +259,7 @@ export function Modal({
       data-anchor={mat ? 'mat' : undefined}
       className={cx(
         'fixed inset-0 overscroll-contain',
+        square && 'mat-square',
         // Desde la mesa, el panel se ubica solo (centrado en la fila Extra); si no, al centro de la pantalla y, `sheet` y `keypad`, desde abajo en el celular.
         !mat && 'grid place-items-center p-2 sm:p-4',
         !mat && sheet && 'max-sm:place-items-end max-sm:p-0',
