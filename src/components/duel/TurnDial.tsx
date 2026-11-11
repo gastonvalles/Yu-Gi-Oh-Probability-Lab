@@ -5,9 +5,6 @@ import type { Duelist } from '../../app/life-calculator'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 
-const RADIUS = 44
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS
-
 /** Un reloj por segundo mientras alguno corre (parado, el número no cambia). */
 function useSecondTick(active: boolean): number {
   const [now, setNow] = useState(() => Date.now())
@@ -38,8 +35,8 @@ interface TurnDialProps {
 }
 
 /**
- * El reloj de turnos, en el centro de la mesa (entre las dos Zonas Extra): un círculo que se va vaciando con el tiempo que le queda a quien tiene el turno, y el tiempo en el medio;
- * debajo, lo que le queda al otro (público: lo ven los dos). **El círculo es lima siempre** (Gastón, 2026-10-19: de quien sea el turno y falte lo que falte). Cuando faltan 30 segundos el número parpadea en rojo y, en cero, el círculo desaparece y queda el 0:00 en rojo.
+ * El reloj de turnos, en el centro de la mesa (entre las dos Zonas Extra): un cuadrado con el tiempo en el medio y una barra que se va vaciando con lo que le queda a quien tiene el turno;
+ * debajo, lo que le queda al otro (público: lo ven los dos). **El borde y la barra son lima siempre** (Gastón, 2026-10-19: de quien sea el turno y falte lo que falte). Cuando faltan 30 segundos el número parpadea en rojo y, en cero, la barra desaparece y queda el 0:00 en rojo.
  */
 export function TurnDial({ clock, owner, me, names }: TurnDialProps) {
   const now = useSecondTick(clock.running !== null)
@@ -54,23 +51,16 @@ export function TurnDial({ clock, owner, me, names }: TurnDialProps) {
 
   return (
     <div role="timer" aria-label={label} data-testid="turn-dial" data-owner={owner} data-urgent={urgent ? 'true' : undefined} className="pointer-events-none relative grid size-full place-items-center">
-      <div className="relative aspect-square h-[62%] max-h-full min-[1101px]:h-[78%]">
-        <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden="true">
-          <circle cx="50" cy="50" r={RADIUS} fill="none" strokeWidth="8" className="stroke-tint/12" />
-          {ended ? null : (
-            <circle
-              cx="50"
-              cy="50"
-              r={RADIUS}
-              fill="none"
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray={CIRCUMFERENCE}
-              strokeDashoffset={CIRCUMFERENCE * (1 - fraction)}
-              className="stroke-info transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
-            />
-          )}
-        </svg>
+      {/* Un cuadrado (Gastón, 2026-11-10: «no me gustan los bordes redondeados») con el borde lima; abajo, la barra del tiempo que queda, que se achica con `scaleX` (sólo `transform`). */}
+      <div className="relative aspect-square h-[62%] max-h-full overflow-hidden border-2 border-info bg-background/82 min-[1101px]:h-[78%]">
+        {ended ? null : (
+          <span
+            aria-hidden="true"
+            data-testid="turn-dial-bar"
+            className="absolute inset-x-0 bottom-0 h-1 origin-left bg-info transition-transform duration-1000 ease-linear motion-reduce:transition-none"
+            style={{ transform: `scaleX(${fraction})` }}
+          />
+        )}
         <span
           data-testid="turn-dial-time"
           className={cx(

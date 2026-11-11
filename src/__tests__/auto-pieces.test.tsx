@@ -691,8 +691,17 @@ describe('AutoBar', () => {
     expect(screen.queryByRole('button', { name: 'Salir del duelo' })).toBeNull()
   })
 
-  it('en el celular en vertical, debajo de los íconos va el marcador plano: tus vidas, el turno una sola vez y las del rival; la fase no va en la barra (la dice el botón del campo)', () => {
+  it('en el celular en vertical la barra es sólo la fila de los íconos: las vidas van en las chapas y el aviso en la línea (los pone la pantalla)', () => {
     window.matchMedia = ((query: string) => ({ matches: query === '(max-width: 639.98px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    render(<AutoBar {...props} lane={{ kind: 'thinking' }} />)
+
+    expect(screen.queryByTestId('auto-score')).toBeNull()
+    expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    expect(document.querySelector('[data-lane]')).toBeNull()
+    expect(screen.getByRole('toolbar', { name: 'Mesa' })).toBeInTheDocument()
+  })
+
+  it('de 640 a 1100 px, debajo de los íconos va el marcador plano: tus vidas, el turno una sola vez y las del rival; la fase no va en la barra (la dice el botón del campo)', () => {
     const { rerender } = render(<AutoBar {...props} />)
     const score = screen.getByTestId('auto-score')
 

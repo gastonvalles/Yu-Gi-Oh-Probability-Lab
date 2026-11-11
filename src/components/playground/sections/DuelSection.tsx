@@ -19,7 +19,10 @@ import { DuelOffline } from '../../duel/DuelOffline'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
-import { DuelLogTicker } from '../../duel/DuelBar'
+import { DuelLine, DuelLogTicker } from '../../duel/DuelBar'
+import { LifeBadge } from '../../duel/LifeScore'
+import { ChainLine, type ChainNoticeRow } from '../../auto/ChainNotice'
+import { IconButton } from '../../ui/IconButton'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
 import type { FeedEntry } from '../../duel/use-duel-feed'
 import { TurnDial } from '../../duel/TurnDial'
@@ -88,6 +91,7 @@ export function DuelSection() {
         <DuelTable mine={duel.mine} theirs={duel.theirs} show={view} turn={view} />
       </Specimen>
 
+      <SeatsAndLineSample duel={duel} />
       <FieldArtSample duel={duel} />
       <ChainBadgeSample duel={duel} />
       <StatTagSample duel={duel} />
@@ -116,6 +120,93 @@ export function DuelSection() {
 
       <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+const SEAT_FEED: readonly FeedEntry[] = [
+  { id: 's1', kind: 'event', side: 'theirs', text: 'Ana activa Infinite Impermanence' },
+  { id: 's2', kind: 'event', side: 'theirs', text: 'Ana niega a Sky Striker Ace - Raye hasta el final del turno' },
+]
+const SEAT_CHAIN: ChainNoticeRow[] = [
+  { number: 1, who: 'Vos', mine: true, name: 'Sky Striker Mobilize - Engage!', art: 'https://images.ygoprodeck.com/images/cards_small/63166095.jpg', state: 'chained' },
+  { number: 2, who: 'Ana', mine: false, name: 'Ash Blossom & Joyous Spring', art: 'https://images.ygoprodeck.com/images/cards_small/14558127.jpg', state: 'chained' },
+]
+
+/**
+ * Las chapas de vidas y la línea del duelo (la mesa del celular y la de escritorio): la del rival arriba a la derecha y la tuya abajo a la izquierda con el turno y la botonera; en escritorio, a los
+ * costados del campo. La línea, de alto fijo entre el campo y tu mano, con una sola cosa por vez: nada (la última jugada), un aviso o la cadena. «Bajar vidas» prueba el cambio.
+ */
+function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
+  const [line, setLine] = useState<'last' | 'notice' | 'chain'>('last')
+  const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
+  const content =
+    line === 'chain' ? (
+      <ChainLine rows={SEAT_CHAIN} focus={1} onPick={() => {}} />
+    ) : (
+      <DuelLine lane={line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : null} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} />
+    )
+  const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} />
+  const mine = (turn?: string) => <LifeBadge name="Vos" label="Vos" life={life.mine} mine turn={turn} />
+  const buttons = (
+    <span className="flex items-center gap-2">
+      <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
+        <Icon name="list" />
+      </IconButton>
+      <IconButton tone="tile" size="sm" aria-label="Chat">
+        <Icon name="chat" />
+      </IconButton>
+    </span>
+  )
+
+  return (
+    <Specimen
+      title="Las chapas y la línea"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          Las vidas salen de la barra: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color) junto a su lado de la mesa; la tuya lleva el turno y, en el celular, la botonera cuadrada. La línea mide siempre lo mismo (96 px a 390 × 844) y muestra una sola cosa: la cadena, un aviso o la última jugada. El cambio de vidas: el número late y el «−N ▼» sube y se funde (rojo tu daño, menta el del rival). A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Segmented
+          label="Qué muestra la línea"
+          variant="track"
+          value={line}
+          onChange={setLine}
+          options={[
+            { value: 'last', label: 'Nada' },
+            { value: 'notice', label: 'Aviso' },
+            { value: 'chain', label: 'Cadena' },
+          ]}
+        />
+        <Button size="sm" variant="secondary" onClick={() => setLife((now) => ({ mine: now.mine - 1100, theirs: now.theirs - 1000 }))}>
+          Bajar vidas
+        </Button>
+      </div>
+      <div className="mat-square relative grid w-[24.375rem] max-w-full gap-2 bg-background p-1 [--cell:3.57rem]">
+        <div className="absolute right-1 top-1 z-20">{rival}</div>
+        <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
+        <div data-duel-line="" className="relative h-24 overflow-hidden">
+          {content}
+        </div>
+        <div className="flex h-15 items-center justify-between">
+          {mine('Tu turno · 3')}
+          {buttons}
+        </div>
+      </div>
+      <div className="max-w-full overflow-x-auto">
+        <div className="mat-square grid w-[90rem] grid-cols-[1fr_auto_1fr] items-end gap-6 bg-background p-4">
+          <div className="justify-self-end">{mine()}</div>
+          <div className="grid w-[40rem] gap-2 [--cell:4.625rem]">
+            <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
+            <div className="relative h-16 overflow-hidden">{content}</div>
+          </div>
+          <div className="self-start">{rival}</div>
+        </div>
+      </div>
+    </Specimen>
   )
 }
 

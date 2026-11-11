@@ -21,7 +21,9 @@ import { randomSeed, type MatState, type RivalHand } from '../../app/practice-ma
 import type { ReplayView } from '../../app/duel-replay'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
-import { LifeScore } from '../duel/LifeScore'
+import { DuelLine } from '../duel/DuelBar'
+import { LifeBadge } from '../duel/LifeScore'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { RivalSheet } from '../duel/RivalRow'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
@@ -367,18 +369,25 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, lane, options],
   )
   // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
-  // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 12 px sobre el borde de la mano (`-mt-3`, como la placa: la fila no crece y el campo no se corre). Con
+  // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 20 px sobre el borde de la mano (`-mt-5`, la chapa: la fila no crece y el campo no se corre). Con
   // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
+  // En el celular, las chapas: la del rival arriba a la derecha, junto a su mano, y la tuya abajo a la izquierda con el turno (la barra queda sólo con los íconos); el aviso va en la línea.
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
+  const seated = docked || phone
+  const turnText = turn > 0 ? (turnMine ? t('auto.bar.turnMine', { turn }) : t('duel.bar.theirTurnN', { name: rivalName, turn })) : undefined
   const myLife = useMemo(
     () =>
-      rails || !docked ? null : (
-        <span className="-mt-3 flex" data-corner="mine">
-          <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine size="lg" />
+      phone ? (
+        <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine turn={turnText} turnMine={turnMine} />
+      ) : rails || !docked ? null : (
+        <span className="-mt-5 flex" data-corner="mine">
+          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
         </span>
       ),
-    [rails, docked, life.mine],
+    [phone, rails, docked, life.mine, turnText, turnMine],
   )
-  const corner = useMemo(() => (docked ? <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} size="lg" /> : undefined), [docked, rivalName, life.theirs])
+  const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} /> : undefined), [seated, rivalName, life.theirs])
+  const line = useMemo(() => (phone ? <DuelLine lane={lane} rivalName={rivalName} /> : undefined), [phone, lane, rivalName])
   const toggleSteps = useCallback(() => setStepsOpen((open) => !open), [])
   const dock = useMemo(() => (docked ? <AutoDock {...options} steps={{ open: stepsOpen, onToggle: toggleSteps }} /> : undefined), [docked, options, stepsOpen, toggleSteps])
   const link: DuelMatLink = {
@@ -386,7 +395,9 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     header,
     tools: null,
     life: myLife,
-    ...(docked ? { corner } : { scoreInHeader: true }),
+    ...(seated ? { corner } : {}),
+    ...(docked ? {} : { scoreInHeader: true }),
+    ...(line ? { line } : {}),
     ...(docked ? { dock } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(asks.notice ? { notice: asks.notice } : {}),

@@ -145,10 +145,13 @@ const REVIEW_HAND: CSSProperties = { transform: 'translateY(4px) scale(0.72)', t
 /** Con el replay partido, el campo y tu mano suben lo que mide la línea de tiempo (44 px, pegada a los botones: sus pastillas ya llevan aire): ella pasó de arriba (debajo del aviso) a abajo, debajo de los botones. También es una transformación. */
 const REVIEW_LIFT = '-translate-y-11'
 
-/** El duelo en el celular (`phoneDuelLayout`): la barra con el marcador y el hueco de la columna (102 + 8 px medidos; 4 más con las vidas de 44 px), el lugar de la mano del rival y el margen de abajo de la columna. */
-const PHONE_BAR = 110
+/**
+ * El duelo en el celular (`phoneDuelLayout`), medido: la barra, sólo la fila de los íconos (50 px) y el hueco de la columna (8); el lugar de la mano del rival (su chapa va a su lado); y abajo tu fila
+ * (tu chapa y la botonera, 60 px) con el margen de la columna (8).
+ */
+const PHONE_BAR = 58
 const PHONE_RIVAL = THEIR_HAND.mobile.room + MOBILE_HAND_GAP
-const PHONE_BOTTOM = 8
+const PHONE_BOTTOM = 68
 const onResize = (listener: () => void) => {
   window.addEventListener('resize', listener)
   return () => window.removeEventListener('resize', listener)
@@ -224,8 +227,10 @@ export interface DuelMatLink {
   links?: ReadonlyMap<string, ChainBadgeData>
   /** Lo que hay que contestar ahora (la pregunta del rival de pasar de fase): va en el medio de la mesa, centrado en su columna y encima del campo, sin fondo que la tape ni empujar nada. */
   prompt?: ReactNode
-  /** El aviso de la cadena (duelo automático: `ChainNotice`): centrado arriba de la columna de la mesa, debajo de la barra y de su aviso; la capa deja pasar los toques. */
+  /** El aviso de la cadena (duelo automático: `ChainNotice`): centrado arriba de la columna de la mesa, debajo de la barra y de su aviso; la capa deja pasar los toques. En el celular, en la línea. */
   chain?: ReactNode
+  /** La línea del celular sin cadena (`DuelLine`): un aviso o un pedido del rival y, si no hay nada, la última jugada. La cadena va antes. */
+  line?: ReactNode
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
   pointed?: { card?: string; pile?: MatPile } | null
   /** Señalar una carta mía a la vista en el campo (se ve en las dos pantallas un rato; no es una jugada). */
@@ -862,7 +867,7 @@ function PracticeMatBody({
   const isDuel = Boolean(duel)
   // El duelo en el celular: geometría fija, sacada sólo del tamaño de la pantalla (`phoneDuelLayout`): el campo y tu mano no se mueven con nada de lo que aparece.
   const [screenWidth, screenHeight] = screen.split('x').map(Number) as [number, number]
-  const phone = compact && bare ? phoneDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_BAR + (duel?.scoreTall ? 4 : 0), rival: PHONE_RIVAL, bottom: PHONE_BOTTOM }) : null
+  const phone = compact && bare ? phoneDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_BAR, rival: PHONE_RIVAL, bottom: PHONE_BOTTOM }) : null
   const isAuto = Boolean(duel?.auto)
   // El ATK/DEF de cada monstruo boca arriba (`StatTag`, siempre): el de ahora si hay núcleo (`duel.auto.stats`, que arma la pantalla), el impreso si no.
   const autoStats = duel?.auto?.stats
@@ -2324,7 +2329,7 @@ function PracticeMatBody({
       >
         {spot === 'field' ? null : <ZoneLines kind={spot === 'st' ? 'spell' : 'monster'} />}
         {pickableZone || pickableTribute ? <PickMarks diamond={pickableZone && !shown} /> : null}
-        {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
+        {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45', gem)} /> : null}
         {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-muted @container min-[1101px]:text-[0.6rem]"><span className="@max-[2rem]:hidden">{t('practice.zone.fieldLabel')}</span></span> : null}
         {shown ? (
           <PlacedCard
@@ -2861,7 +2866,7 @@ function PracticeMatBody({
         <div className={cx('relative col-start-1 row-start-1 px-2 pt-2 max-[419px]:px-1 min-[1101px]:px-4 min-[1101px]:pt-3', MAT_BAR_ROW, Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
           {onExit ? <MatExitButton onExit={onExit} /> : null}
-          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[419px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
+          <span className="whitespace-nowrap bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[419px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
           {rulesPill}
@@ -2902,7 +2907,7 @@ function PracticeMatBody({
         <DuelRailsContext.Provider value={rails}>
           <MatSaveContext.Provider value={saveLink}>
             {/* Sin la fila de abajo (`bare`): «Pasos y combos» va primero en el ⋯ y el aviso de lo que acabás de activar, en la barra antes de Deshacer (las salidas ya se fueron con la primera jugada). */}
-            <MatStepsContext.Provider value={bare ? openSteps : null}>
+            <MatStepsContext.Provider value={bare && !phone ? openSteps : null}>
               <MatRulesContext.Provider value={rulesPill ?? (bare && undoPlay && !choosing ? <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} className="ml-auto" /> : null)}>
                 <MatUndoContext.Provider value={duel?.undoInHeader ? undoButton : null}>
                   <MatReplayContext.Provider value={replayLink}>{duel?.header}</MatReplayContext.Provider>
@@ -2912,8 +2917,8 @@ function PracticeMatBody({
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        {/* En el celular el grupo va pegado abajo y cada pieza mide lo que dice `phoneDuelLayout`: su lugar sale sólo del alto de la pantalla. */}
-        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative flex flex-col', phone ? 'mt-auto' : 'my-auto gap-2', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
+        {/* En el celular el grupo va pegado abajo, sobre tu fila de 60 px (`mb-15`, en `PHONE_BOTTOM`), y cada pieza mide lo que dice `phoneDuelLayout`: su lugar sale sólo del alto de la pantalla. */}
+        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative flex flex-col', phone ? 'mt-auto mb-15' : 'my-auto gap-2', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
         {/* Las vidas del rival en la esquina de arriba a la derecha (sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
         {duel?.corner && !rails && (isDesktop || duel.rivalHand) ? (
           <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room }}>
@@ -2950,9 +2955,9 @@ function PracticeMatBody({
         >
           {/* Tu magia de campo boca arriba: su arte de fondo, sólo en tu mitad (la del rival va en `duel.opponent`). Sale de la mesa, no de la carta que espera en la zona a que se elija cómo sale. */}
           <FieldArt side="mine" src={fieldArtSrc(state.field, artById)} />
-          {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. */}
+          {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. En el celular, corrida 3 rem a la izquierda: a su derecha va su chapa. */}
           {duel?.rivalHand ? (
-            <div className="absolute bottom-full left-1/2 z-10 -translate-x-1/2" style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
+            <div className={cx('absolute bottom-full z-10 -translate-x-1/2', phone && duel.corner ? 'left-[calc(50%-3rem)]' : 'left-1/2')} style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
               {duel.rivalHand}
             </div>
           ) : null}
@@ -3062,7 +3067,7 @@ function PracticeMatBody({
             <span
               key={announcement.key}
               role="status"
-              className="pointer-events-none absolute left-1/2 top-1/2 z-30 w-max max-w-[92%] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-30 w-max max-w-[92%] -translate-x-1/2 -translate-y-1/2 truncate border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]"
               style={fxVars('red')}
             >
               {announcement.caption}
@@ -3075,7 +3080,8 @@ function PracticeMatBody({
         {/* La línea (celular): una ranura de alto fijo entre el campo y tu mano, con el aire que sobre debajo. Acá va la cadena; lo que se apoya encima (la ficha, los carteles) llega hasta su borde de abajo. */}
         {phone ? (
           <div data-duel-line="" className="relative shrink-0 overflow-hidden" style={{ height: phone.lineHeight, marginBottom: phone.air }}>
-            {duel?.chain}
+            {/* Una sola cosa por vez: la cadena y, si no hay, la línea de la pantalla (un aviso sobre la última jugada). Repasando, el aviso dice el paso. */}
+            <MatReplayContext.Provider value={replayLink}>{duel?.chain ?? duel?.line}</MatReplayContext.Provider>
           </div>
         ) : null}
 
@@ -3141,7 +3147,17 @@ function PracticeMatBody({
         {/* Sin fila de abajo («Jugar solo automático» hasta 1100 px: tus vidas van en el marcador de la barra): lo que falta elegir se apoya sobre los 44 px de abajo de tu
             mano sólo mientras está (no ocupa alto ni ataja toques si no); los botones del replay van ahí, debajo de tu mano achicada (`REVIEW_HAND`); el aviso de lo que acabás de activar va en la barra. */}
         {bare ? (
-          <div className="pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55 h-11" data-mat-float="">
+          <div className={cx('pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55', phone && !splitReplay ? 'h-15' : 'h-11')} data-mat-float="">
+            {/* El celular: tu fila de abajo (60 px), tu chapa a la izquierda y la botonera cuadrada a la derecha; lo que falta elegir se apoya encima (`status`). */}
+            {phone && !splitReplay ? (
+              <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto">
+                {duel?.life}
+                <span className="flex items-center gap-2">
+                  {duel?.steps ? stepsButton : null}
+                  {duel?.dock}
+                </span>
+              </div>
+            ) : null}
             {splitReplay ? (
               <div className="pointer-events-auto absolute inset-x-0 bottom-0 grid">
                 <ReplayTransport total={replayMarks.length} cursor={session.cursor} playing={autoplay} playLabel={replayLabel} speed={speed} onTogglePlay={togglePlay} onRestart={restart} onPrevious={previousStep} onNext={nextStep} onSpeed={setSpeed} />
@@ -3632,7 +3648,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
         <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[135ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)}>
           <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
         </span>
-        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white motion-reduce:animate-none">{placed.counters}</span> : null}
+        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white motion-reduce:animate-none">{placed.counters}</span> : null}
         <MaterialCount count={materials} sideways={sideways} />
         {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-primary py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-white">{chosen}</span> : null}
         {framed ? <FxFrame tone="cyan" /> : null}

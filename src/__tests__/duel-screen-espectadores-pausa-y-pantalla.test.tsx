@@ -1037,30 +1037,32 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    // El campo: la casilla sale del ancho (siete columnas, orillas de 4 px y huecos de 3) y la caja, de `phoneDuelLayout` (3D, con el marcador de 44 px del duelo por enlace).
+    // El campo: la casilla sale del ancho (siete columnas, orillas de 4 px y huecos de 3) y la caja, de `phoneDuelLayout` (3D; la barra es sólo la fila de los íconos y abajo va tu fila de 60 px).
     const field = within(host.container).getByLabelText('Campo')
-    const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 114, rival: THEIR_HAND.mobile.room + 14, bottom: 8 })
+    const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 58, rival: THEIR_HAND.mobile.room + 14, bottom: 68 })
     expect(parseFloat(field.style.width)).toBeCloseTo(layout.fieldWidth, 2)
     expect(parseFloat(field.style.height)).toBeCloseTo(layout.fieldHeight, 2)
-    expect(host.container.querySelector('[data-duel-line]')).toHaveStyle({ height: '96px' })
+    const line = host.container.querySelector<HTMLElement>('[data-duel-line]')!
+    expect(line).toHaveStyle({ height: `${layout.lineHeight}px` })
 
-    // La línea de jugadas: sin lugar en el celular (flota), arriba del campo.
-    const floating = () => Array.from(host.container.querySelectorAll<HTMLElement>('[class~="max-sm:-mb-11"]'))
-    expect(floating()).toHaveLength(1)
-    expect(floating()[0]).toHaveClass('max-sm:z-20', 'max-sm:pointer-events-none')
-    expect(floating()[0]).not.toHaveClass('hidden')
+    // Las vidas salen de la barra: la tuya, en tu fila de abajo con el turno y el chat al lado; la del rival, junto a su mano. La línea de jugadas va en la línea, no flota sobre la barra.
+    expect(within(host.container).queryByTestId('duel-score')).toBeNull()
+    expect(host.container.querySelectorAll('[class~="max-sm:-mb-11"]')).toHaveLength(0)
+    const seat = host.container.querySelector<HTMLElement>('[data-mat-seat]')!
+    expect(within(seat).getByRole('button', { name: /^Puntos de vida de Ana/ })).toHaveAttribute('data-life-badge')
+    expect(within(seat).getByRole('button', { name: /^Chat/ })).toBeInTheDocument()
+    expect(host.container.querySelector('[data-corner="theirs"] [data-life-badge]')).not.toBeNull()
+    expect(within(line).getByTestId('duel-line')).toBeInTheDocument()
 
-    // Termina el duelo y se cierra la tarjeta: la tira del resultado ocupa ese mismo lugar (la línea se esconde) y flota igual.
+    // Termina el duelo y se cierra la tarjeta: la tira del resultado flota debajo de la barra (no la agranda) y la línea queda del mismo alto.
     click(guest, 'Rendirme')
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
     flush()
     fireEvent.click(within(within(host.container).getByRole('dialog', { name: '¡Ganaste!' })).getByRole('button', { name: 'Ver la mesa' }))
 
-    const rows = floating()
-    expect(rows).toHaveLength(2)
-    expect(rows.filter((row) => row.classList.contains('hidden'))).toHaveLength(1)
-    const strip = rows.find((row) => within(row).queryByRole('button', { name: 'Revancha' }))
-    expect(strip).toHaveClass('max-sm:relative', 'max-sm:z-20')
+    const strip = within(host.container).getByRole('button', { name: 'Revancha' }).closest('[class~="top-full"]')
+    expect(strip).toHaveClass('absolute', 'z-20')
+    expect(line).toHaveStyle({ height: `${layout.lineHeight}px` })
   })
 
   it('las reacciones (🤔 👍) van en la hoja del chat; las tuyas salen como un globo debajo de tus vidas, en el marcador, y las del rival, en el celular, como un mensaje más en la línea del registro (no en toda la pantalla)', () => {
@@ -1221,14 +1223,14 @@ describe('la pantalla del duelo', () => {
     for (const view of [guest, host]) {
       const { mineLife, theirLife, mineLine, theirLine } = colors(view)
 
-      // El tuyo, violeta: el nombre de tus vidas (el número va blanco) y tu globo, con tu nombre.
-      expect(mineLife.querySelector('span.uppercase')).toHaveClass('text-accent')
+      // El tuyo, violeta: la etiqueta de tu chapa (rellena, con el texto blanco; el número va blanco) y tu globo, con tu nombre.
+      expect(mineLife.querySelector('span.uppercase')).toHaveClass('bg-primary', 'text-white')
       expect(mineLife.querySelector('span.tabular-nums')).toHaveClass('text-foreground')
       expect(mineLine).toHaveClass('bg-accent/20')
       expect(mineLine.querySelector('span')).toHaveClass('text-accent')
 
-      // El del rival, ámbar, también en sus dos lugares.
-      expect(theirLife.querySelector('span.uppercase')).toHaveClass('text-info-soft')
+      // El del rival, lima, también en sus dos lugares (su chapa, rellena con el texto carbón).
+      expect(theirLife.querySelector('span.uppercase')).toHaveClass('bg-info', 'text-background')
       expect(theirLine).toHaveClass('bg-info/20')
       expect(theirLine.querySelector('span')).toHaveClass('text-info-soft')
     }

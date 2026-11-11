@@ -5,6 +5,11 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { TurnClock } from '../app/duel-clock'
+import { LifeBadge } from '../components/duel/LifeScore'
+import { TurnDial } from '../components/duel/TurnDial'
+import { Icon } from '../components/ui/Icon'
+import { IconButton } from '../components/ui/IconButton'
 import { CardMenu, PlayTag, SaveComboDialog } from '../components/probability/MatDialogs'
 import { PhaseRow } from '../components/probability/PhaseRow'
 import { BottomSheet } from '../components/ui/BottomSheet'
@@ -99,8 +104,8 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
     const mesa = screen.getByRole('region', { name: 'Mesa de práctica' })
 
     expect(mesa).toHaveClass('mat-square')
-    // Lo que queda: los círculos del turno y de los tres botones de la barra y los dos rombos de las escalas de péndulo.
-    expect(roundCorners(mesa).sort()).toEqual(['rounded-[3px]', 'rounded-[3px]', ...Array(4).fill('rounded-full')])
+    // Lo que queda: los círculos de los tres botones de la barra (`IconButton` sin caja, de `ui/`). El turno y los rombos de las escalas de péndulo ya son rectos.
+    expect(roundCorners(mesa).sort()).toEqual(Array(3).fill('rounded-full'))
   })
 
   it('la hoja de una carta del celular (`CardSheet`), abierta desde la mesa, también es recta', () => {
@@ -147,7 +152,26 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
 
     expect(portals).toHaveLength(3)
     expect(screen.getByRole('menu', { name: 'Al deck' })).toBeInTheDocument()
-    // Queda el asa de la hoja (la pastilla y su raya).
-    expect(portals.flatMap(roundCorners)).toEqual(['rounded-full', 'rounded-full'])
+    // El asa de la hoja (la pastilla y su raya) también es recta.
+    expect(portals.flatMap(roundCorners)).toEqual([])
+  })
+
+  it('las chapas de vidas, la botonera y el reloj de turnos son rectos: ningún círculo; el reloj no anima `stroke-dashoffset` sino una barra con `scaleX`', () => {
+    render(
+      <div className="mat-square">
+        <LifeBadge name="Vos" label="Vos" life={8000} mine turn="Tu turno · 1" onClick={() => {}} />
+        <LifeBadge name="Rival" label="Rival" life={8000} />
+        <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
+          <Icon name="list" />
+        </IconButton>
+        <TurnDial clock={{ banks: [120_000, 180_000], running: null, at: 0, span: 180_000 } satisfies TurnClock} owner={0} me={0} names={['Vos', 'Ana']} />
+      </div>,
+    )
+    const table = document.querySelector('.mat-square')!
+
+    expect(roundCorners(table)).toEqual([])
+    expect(table.innerHTML).not.toMatch(/rounded-full|stroke-dash|<circle/)
+    expect(screen.getByTestId('turn-dial-bar')).toHaveClass('origin-left', 'motion-reduce:transition-none')
+    expect(screen.getByTestId('turn-dial-bar').style.transform).toMatch(/^scaleX\(0\.\d+\)$/)
   })
 })
