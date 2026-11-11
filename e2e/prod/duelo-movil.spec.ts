@@ -306,6 +306,12 @@ test.describe('duelo automático (sólo contra el sitio publicado)', () => {
     // Sólo en los carteles del automático: la franja «Paso actual» de la mesa lleva su propio «2/2» y no es el contador de elegir.
     await expect(page.locator('[data-auto-panel]').getByText(/^\d+\s*\/\s*\d+$/)).toHaveCount(0)
     if (isMobile) expect(await lineHeight(), 'alto de la línea con la ficha abierta').toBe(before)
+    // Nada tapa las jugadas (TI-161: la tira del visor de una pila quedaba encima): lo que hay arriba en el centro de cada botón es ese botón. Con `poll`: la ficha entra deslizándose.
+    await expect
+      .poll(() => plays.evaluateAll((nodes) => nodes.filter((node) => { const box = node.getBoundingClientRect(); const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2); return !(top && node.contains(top)) }).length), { message: 'jugadas tapadas por otra capa' })
+      .toBe(0)
+    // Cada chapa muestra un solo número (TI-161: «75007500», el número viejo quedaba pegado al nuevo).
+    if (isMobile) expect(await page.locator('[data-life-badge] .text-stat').allTextContents(), 'el número de cada chapa').toEqual([expect.stringMatching(/^\d{1,5}$/), expect.stringMatching(/^\d{1,5}$/)])
     await page.keyboard.press('Escape')
     await expect(sheet).toHaveCount(0)
 

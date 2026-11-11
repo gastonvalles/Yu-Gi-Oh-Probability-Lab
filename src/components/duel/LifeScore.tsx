@@ -217,15 +217,15 @@ export const LifeBadge = memo(function LifeBadge({
         {turn ? <span className={cx('min-w-0 truncate', turnMine === false ? 'text-info-soft' : 'text-accent')}>{turn}</span> : null}
       </span>
       <span className={cx('relative flex items-center', align === 'end' && 'flex-row-reverse')}>
-        {/* El golpe: la clave cambia con cada cambio y vuelve a correr la animación. */}
-        <span key={change?.key ?? 'idle'} aria-hidden="true" className={cx('origin-center', change && 'animate-life-bump motion-reduce:animate-none')}>
+        {/* El golpe: la clave cambia con cada cambio y vuelve a correr la animación. Distinta de la del «−N» (son hermanos): con la misma, React dejaba el número viejo al lado del nuevo («75007500»). */}
+        <span key={`bump-${change?.key ?? 'idle'}`} aria-hidden="true" className={cx('origin-center', change && 'animate-life-bump motion-reduce:animate-none')}>
           <span className={cx('block text-stat font-extrabold leading-none tabular-nums', isCritical(life) || life === 0 ? 'text-danger-soft' : 'text-foreground')}>
             {shown}
           </span>
         </span>
         {change ? (
           // Flota al costado del número (no ensancha la chapa ni corre nada): hacia la mesa, a la derecha la tuya y a la izquierda la del rival.
-          <span key={change.key} aria-hidden="true" data-life-delta={good ? 'good' : 'bad'} className={cx('pointer-events-none absolute z-30 animate-life-delta whitespace-nowrap text-lead font-extrabold tabular-nums motion-reduce:animate-none', align === 'end' ? 'right-full mr-3' : 'left-full ml-3', good ? 'text-success' : 'text-danger-soft')}>
+          <span key={`delta-${change.key}`} aria-hidden="true" data-life-delta={good ? 'good' : 'bad'} className={cx('pointer-events-none absolute z-30 animate-life-delta whitespace-nowrap text-lead font-extrabold tabular-nums motion-reduce:animate-none', align === 'end' ? 'right-full mr-3' : 'left-full ml-3', good ? 'text-success' : 'text-danger-soft')}>
             {deltaText} {change.delta < 0 ? '▼' : '▲'}
           </span>
         ) : null}

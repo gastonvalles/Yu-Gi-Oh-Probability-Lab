@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-11-2-menus-y-vidas",
+      "date": "2026-11-11",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Duelo en el celular: los menús ya no se tapan",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Al abrir una carta del Cementerio (o de cualquier pila), su ficha queda sola abajo y todas sus jugadas se pueden tocar. Al cerrarla, volvés a la pila donde estabas.",
+          "Con una ficha o un cartel abierto abajo, tu mano y tu fila se atenúan para que no compitan con su texto; si lo minimizás, vuelven.",
+          "Las vidas muestran un solo número después de un cambio (ya no «75007500»).",
+          "La chapa del rival ya no tapa su mano."
+        ],
+        "ojo": [
+          "No se probó en un celular real."
+        ]
+      },
+      "en": {
+        "title": "Duel on your phone: menus no longer cover each other",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "When you open a card from the Graveyard (or any pile), its sheet sits alone at the bottom and all its plays can be tapped. Closing it takes you back to the pile you were in.",
+          "With a sheet or a prompt open at the bottom, your hand and your row dim so they do not compete with its text; if you minimize it, they come back.",
+          "Life points show a single number after a change (no more \"75007500\").",
+          "The opponent's plate no longer covers their hand."
+        ],
+        "ojo": [
+          "It was not tested on a real phone."
+        ]
+      }
+    },
+    {
       "id": "2026-11-11-1-duelo-movil",
       "date": "2026-11-11",
       "tags": [

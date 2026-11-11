@@ -98,7 +98,7 @@ import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from './compact-field'
 import { stepTone } from './step-tone'
-import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
@@ -153,6 +153,11 @@ const REVIEW_LIFT = '-translate-y-11'
 const PHONE_BAR = 58
 const PHONE_RIVAL = THEIR_HAND.mobile.room + MOBILE_HAND_GAP
 const PHONE_BOTTOM = 68
+/**
+ * Debajo de un cartel del automático apoyado abajo (la ficha, las fases, una pregunta: `AutoPanel` va en un portal, hijo de `body`), tu mano y tu fila se atenúan mientras está abierto: a través de su fondo al 92 %
+ * se leían «Vos 8000» y los textos de las cartas y competían con sus botones. Sólo `opacity` (nada se corre); minimizado, vuelven.
+ */
+const UNDER_PANEL = 'transition-opacity motion-reduce:transition-none in-[body:has(>[data-auto-panel=docked]:not([data-minimized]))]:opacity-30'
 const onResize = (listener: () => void) => {
   window.addEventListener('resize', listener)
   return () => window.removeEventListener('resize', listener)
@@ -2963,9 +2968,9 @@ function PracticeMatBody({
         >
           {/* Tu magia de campo boca arriba: su arte de fondo, sólo en tu mitad (la del rival va en `duel.opponent`). Sale de la mesa, no de la carta que espera en la zona a que se elija cómo sale. */}
           <FieldArt side="mine" src={fieldArtSrc(state.field, artById)} />
-          {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. En el celular, corrida 3 rem a la izquierda: a su derecha va su chapa. */}
+          {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. En el celular, corrida 4 rem a la izquierda: a su derecha va su chapa, que con cinco cifras (10000) mide 126 px y a 360 px no le tapa la última carta. */}
           {duel?.rivalHand ? (
-            <div className={cx('absolute bottom-full z-10 -translate-x-1/2', phone && duel.corner ? 'left-[calc(50%-3rem)]' : 'left-1/2')} style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
+            <div className={cx('absolute bottom-full z-10 -translate-x-1/2', phone && duel.corner ? 'left-[calc(50%-4rem)]' : 'left-1/2')} style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
               {duel.rivalHand}
             </div>
           ) : null}
@@ -3115,6 +3120,7 @@ function PracticeMatBody({
             sizeSlots={Math.max(session.initial.hand.length, 1)}
             maxCardWidth={phone ? phone.handCard : isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
+            className={duel?.auto ? UNDER_PANEL : undefined}
             glowOf={glowKindOf}
             {...(duel?.links?.size ? { links: duel.links } : {})}
             dimUnlit={dimUnlit}
@@ -3160,7 +3166,7 @@ function PracticeMatBody({
           <div className={cx('pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55', phone && !splitReplay ? 'h-15' : 'h-11')} data-mat-float="">
             {/* El celular: tu fila de abajo (60 px), tu chapa a la izquierda y la botonera cuadrada a la derecha; lo que falta elegir se apoya encima (`status`). */}
             {phone && !splitReplay ? (
-              <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto">
+              <div inert={choosing} data-mat-seat="" className={cx('absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto', duel?.auto && UNDER_PANEL)}>
                 {duel?.life}
                 <span className="flex items-center gap-2">
                   {duel?.steps ? stepsButton : null}
@@ -3362,6 +3368,8 @@ function PracticeMatBody({
         {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
         {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede (o termina, si se puede terminar sin elegir más). */}
         <PileStripContext.Provider value={pileStrip}>
+        {/* En el celular la ficha de una carta y las fases del automático esconden los visores (el tuyo y el del rival) sin cerrarlos: su tira bajada tapaba las jugadas (una sola capa abajo). */}
+        <PileYieldContext.Provider value={!isDesktop && Boolean(autoMenus) && menu !== null && !covered}>
         <PileViewer
           pile={viewerPile}
           hidden={covered || stripHidden}
@@ -3413,6 +3421,7 @@ function PracticeMatBody({
           onClose={duel?.auto?.viewer ? (duel.auto.cardPick?.cancel ?? duel.auto.cardPick?.done?.onSelect ?? (() => {})) : closeViewer}
         />
         {rivalViewer}
+        </PileYieldContext.Provider>
         </PileStripContext.Provider>
       </div>
 

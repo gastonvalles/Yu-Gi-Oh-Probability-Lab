@@ -568,6 +568,9 @@ interface PileViewerProps {
  */
 export const PileStripContext = createContext(false)
 
+/** En el celular, una sola capa abajo: mientras la mesa muestra encima la ficha de una carta o las fases del duelo automático (`PracticeMat`), los visores se esconden sin cerrarse y al cerrarse la ficha vuelven como estaban. */
+export const PileYieldContext = createContext(false)
+
 /**
  * Las cartas de una pila. El deck y el Extra se muestran en el orden de `ids` (el real: tope primero; al cerrar el
  * deck se baraja, como en la mesa real; el deck del duelo automático va por nombre: su orden no se sabe) y con buscador; cementerio y destierro, la más reciente primero.
@@ -599,7 +602,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   const openerRef = useRef<HTMLElement | null>(null)
   const statusId = useId()
   const titleId = useId()
-  const open = pile !== null && !hidden
+  const yielded = useContext(PileYieldContext)
+  const open = pile !== null && !hidden && !yielded
   // Al abrirse, la hoja sale con cada carta en su esqueleto (como la muestra `CardArt` antes de tener la imagen) y las artes llegan en el render siguiente, de menor prioridad
   // (React lo hace de a pedazos): la entrada arranca sin esperar a las ~40 artes. Abierto, no se difiere nada más (pasar a otra pila o buscar dibuja todo de una).
   const arts = useDeferredValue(open)
@@ -870,6 +874,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
         tabIndex={-1}
         label={title}
         over
+        // Las preguntas del automático se esconden mientras está (`AutoPanel`): una sola capa abajo.
+        data-pile-sheet=""
         raiseKey={pile}
         onDismiss={onClose}
         className="outline-none"
