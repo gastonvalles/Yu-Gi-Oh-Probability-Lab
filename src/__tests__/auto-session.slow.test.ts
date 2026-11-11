@@ -183,7 +183,7 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
     expect(tally.undos).toBe(pool.length)
   })
 
-  it('una opción dice qué hace (el texto que nombra su `desc`): Radiant Typhoon Manifestation ofrece «Search 1 "Mystical Space Typhoon"», no «Efecto 1»', async () => {
+  it('una opción dice qué hace (el texto que nombra su `desc`): Radiant Typhoon Manifestation ofrece «Efecto 4» (el texto de la carta sólo viene en inglés)', async () => {
     const MANIFESTATION = 94103142
     const MST = 5318639
     const { filler } = await source.manifest()
