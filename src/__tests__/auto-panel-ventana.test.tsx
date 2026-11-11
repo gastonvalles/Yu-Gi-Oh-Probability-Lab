@@ -1,0 +1,199 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import '@testing-library/jest-dom'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { clampSize, readSize, sizeKey } from '../app/use-draggable-offset'
+import { AskPrompt } from '../components/auto/AskPrompt'
+import { autoWindowKey } from '../components/auto/AutoPanel'
+
+/**
+ * En escritorio los carteles del duelo automático son ventanas (TI-145; Gastón, 2026-11-10: «en desktop los menús son ventanas flotantes con drag and pull»): la barra de título violeta es el asa
+ * (`useDraggableOffset`), se estiran del borde y la esquina, y lugar y tamaño se recuerdan por tipo. jsdom no tiene diseño: la ventana mide lo que dicen sus `width`/`height` (620 × 200 sin estirar) y
+ * su lugar de siempre es el de la mesa, centrada en 1280 px y apoyada abajo (800 px), más su corrimiento (`--drag-x`, `--drag-y`).
+ */
+const VIEW = { width: 1280, height: 800 }
+const sizeOf = (element: HTMLElement) => ({ width: Number.parseFloat(element.style.width) || 620, height: Number.parseFloat(element.style.height) || 200 })
+const drag = (element: HTMLElement) => ({ x: Number.parseFloat(element.style.getPropertyValue('--drag-x')) || 0, y: Number.parseFloat(element.style.getPropertyValue('--drag-y')) || 0 })
+
+let desktop = true
+const original = {
+  matchMedia: window.matchMedia,
+  rect: Element.prototype.getBoundingClientRect,
+  width: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth')!,
+  height: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')!,
+}
+
+beforeEach(() => {
+  desktop = true
+  localStorage.clear()
+  HTMLElement.prototype.setPointerCapture = () => {}
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: VIEW.width })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: VIEW.height })
+  window.matchMedia = ((query: string) => ({ matches: desktop && query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  Element.prototype.getBoundingClientRect = function (this: HTMLElement) {
+    if (!this.matches('[data-prompt]')) return { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect
+    const { width, height } = sizeOf(this)
+    const { x, y } = drag(this)
+    const left = VIEW.width / 2 - width / 2 + x
+    const top = VIEW.height - height + y
+
+    return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) } as DOMRect
+  }
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get(this: HTMLElement) { return this.matches('[data-prompt]') ? sizeOf(this).width : 0 } })
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return this.matches('[data-prompt]') ? sizeOf(this).height : 0 } })
+})
+
+afterEach(() => {
+  cleanup()
+  window.matchMedia = original.matchMedia
+  Element.prototype.getBoundingClientRect = original.rect
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', original.width)
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', original.height)
+})
+
+const ask = () => render(<AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
+const win = () => document.querySelector<HTMLElement>('[data-prompt]')!
+const bar = () => win().querySelector<HTMLElement>('[data-window-bar]')!
+const key = (init: KeyboardEventInit) => fireEvent.keyDown(bar(), init)
+const saved = (storage: string) => JSON.parse(localStorage.getItem(storage) ?? 'null') as unknown
+/** Dónde se ve la esquina de arriba a la izquierda. */
+const corner = () => {
+  const { left, top } = win().getBoundingClientRect()
+  return { left, top }
+}
+const mouse = { pointerId: 1, pointerType: 'mouse', isPrimary: true }
+function pull(element: Element, dx: number, dy: number) {
+  fireEvent.pointerDown(element, { ...mouse, button: 0, buttons: 1, clientX: 500, clientY: 500 })
+  fireEvent.pointerMove(element, { ...mouse, buttons: 1, clientX: 500 + dx, clientY: 500 + dy })
+  fireEvent.pointerUp(element, { ...mouse, button: 0, buttons: 0, clientX: 500 + dx, clientY: 500 + dy })
+}
+/** Las clases de radio que `mat-square` no apaga (no salen de un token). */
+const fixedRadii = (root: Element) => [root, ...root.querySelectorAll('*')].flatMap((element) => [...element.classList].filter((name) => /(^|:)rounded-(full|\[)/.test(name)))
+
+describe('la ventana del escritorio', () => {
+  it('sale en el lugar de siempre (centrada, 620 px, apoyada abajo), con la barra de título violeta, esquinas rectas y 92 % sin desenfoque; es un diálogo nombrado por la pregunta', () => {
+    ask()
+    const dialog = screen.getByRole('dialog', { name: '¿Activás el efecto?' })
+
+    expect(dialog).toBe(win())
+    expect(dialog).toHaveAttribute('data-auto-panel', 'floating')
+    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(38.75rem,var(--mat-w,100vw))]', 'mat-square', 'bg-card-background/92')
+    expect(dialog.className).not.toMatch(/backdrop-|rounded-/)
+    expect(fixedRadii(dialog)).toEqual([])
+    expect(drag(dialog)).toEqual({ x: 0, y: 0 })
+    expect(dialog.style.width).toBe('')
+    // La barra: violeta con texto blanco, el asa (se enfoca), minimizar recto de 44 px.
+    expect(bar()).toHaveClass('bg-primary', 'text-white', 'cursor-grab', 'focus-visible:shadow-focus')
+    expect(bar()).toHaveAttribute('tabindex', '0')
+    expect(within(bar()).getByRole('button', { name: 'Minimizar' })).toHaveClass('size-11', 'rounded-control')
+    // Tab recorre la barra, sus botones y los de abajo; el foco arranca en la principal.
+    expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
+    expect(dialog.querySelectorAll('[data-window-corner]')).toHaveLength(1)
+  })
+
+  it('con la barra enfocada, las flechas la mueven 16 px (Mayús: 64), acotada a la pantalla, y se recuerda por tipo; Alt + flechas la estiran dejando quieta su esquina', () => {
+    ask()
+    bar().focus()
+    key({ key: 'ArrowLeft' })
+    expect(drag(win())).toEqual({ x: -16, y: 0 })
+    key({ key: 'ArrowUp', shiftKey: true })
+    expect(drag(win())).toEqual({ x: -16, y: -64 })
+    expect(saved(autoWindowKey('ask'))).toEqual({ x: -16, y: -64 })
+    // Más abajo no hay lugar: queda apoyada en el borde.
+    key({ key: 'ArrowDown', shiftKey: true })
+    key({ key: 'ArrowDown', shiftKey: true })
+    expect(drag(win()).y).toBe(0)
+    key({ key: 'ArrowUp', shiftKey: true })
+
+    const before = corner()
+    key({ key: 'ArrowRight', altKey: true })
+    key({ key: 'ArrowDown', altKey: true, shiftKey: true })
+    expect(sizeOf(win())).toEqual({ width: 636, height: 264 })
+    expect(corner()).toEqual(before)
+    expect(saved(sizeKey(autoWindowKey('ask')))).toEqual({ width: 636, height: 264 })
+    // Hasta el mínimo, nunca menos.
+    for (let i = 0; i < 20; i += 1) key({ key: 'ArrowLeft', altKey: true, shiftKey: true })
+    expect(sizeOf(win()).width).toBe(360)
+  })
+
+  it('con el mouse: la barra la lleva y la esquina la estira; se guarda al soltar y la próxima pregunta sale ahí, con ese tamaño; doble clic (o Enter) la vuelve a su lugar y su tamaño', () => {
+    const { unmount } = ask()
+
+    pull(bar(), -100, -300)
+    expect(drag(win())).toEqual({ x: -100, y: -300 })
+    const before = corner()
+    pull(win().querySelector('[data-window-corner]')!, 40, 30)
+    expect(sizeOf(win())).toEqual({ width: 660, height: 230 })
+    expect(corner()).toEqual(before)
+    // El borde derecho, sólo el ancho; el de abajo, sólo el alto.
+    pull(win().querySelector('.cursor-ew-resize')!, 20, 99)
+    pull(win().querySelector('.cursor-ns-resize')!, 99, 10)
+    expect(sizeOf(win())).toEqual({ width: 680, height: 240 })
+    expect(saved(sizeKey(autoWindowKey('ask')))).toEqual({ width: 680, height: 240 })
+
+    unmount()
+    ask()
+    expect(sizeOf(win())).toEqual({ width: 680, height: 240 })
+    expect(corner()).toEqual(before)
+
+    fireEvent.doubleClick(bar())
+    expect(win().style.width).toBe('')
+    expect(drag(win())).toEqual({ x: 0, y: 0 })
+    expect(localStorage.getItem(autoWindowKey('ask'))).toBeNull()
+    expect(localStorage.getItem(sizeKey(autoWindowKey('ask')))).toBeNull()
+
+    key({ key: 'ArrowUp' })
+    key({ key: 'Enter' })
+    expect(drag(win())).toEqual({ x: 0, y: 0 })
+  })
+
+  it('lo guardado inválido se ignora; lo guardado más grande que la pantalla se acota', () => {
+    for (const bad of ['{"width":"700","height":300}', '{"width":-5,"height":300}', '{"width":null}', 'nope']) {
+      localStorage.setItem(sizeKey('k'), bad)
+      expect(readSize('k')).toBeNull()
+    }
+    expect(clampSize({ width: 5000, height: 10 }, { width: 360, height: 160 }, { left: 0, top: 0, right: 1280, bottom: 800 })).toEqual({ width: 1280, height: 160 })
+
+    localStorage.setItem(sizeKey(autoWindowKey('ask')), '{"width":5000,"height":5000}')
+    ask()
+    expect(sizeOf(win())).toEqual({ width: VIEW.width, height: VIEW.height })
+  })
+
+  it('Escape la minimiza (no la contesta ni la cierra): queda la tira con la barra, la pregunta y sus botones, en el mismo lugar y con el mismo ancho', () => {
+    localStorage.setItem(autoWindowKey('ask'), '{"x":-40,"y":-200}')
+    localStorage.setItem(sizeKey(autoWindowKey('ask')), '{"width":500,"height":260}')
+    render(<AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
+    act(() => {
+      fireEvent.keyDown(window, { key: 'Escape' })
+    })
+    const strip = screen.getByRole('dialog', { name: '¿Activás el efecto?' })
+
+    expect(strip).toHaveAttribute('data-minimized')
+    expect(strip.querySelector('[data-window-bar]')).toHaveTextContent('¿Activás el efecto?')
+    expect(within(strip).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual(['Mostrar la pregunta', 'No activar', 'Activar efecto'])
+    expect(drag(strip)).toEqual({ x: -40, y: -200 })
+    expect(strip.style.width).toBe('500px')
+    expect(strip).toHaveClass('h-auto!')
+  })
+
+  it('la ficha de una carta y las fases recuerdan su propio lugar: no el de las preguntas', () => {
+    expect(new Set(['ask', 'respond', 'pick', 'card', 'phases'].map(autoWindowKey))).toEqual(new Set([autoWindowKey('ask'), autoWindowKey('card'), autoWindowKey('phases')]))
+    expect(autoWindowKey('ask')).toBe('ygo-lab:auto-window:v1:ask')
+  })
+})
+
+describe('en el celular (menos de 1101 px)', () => {
+  it('sigue acoplado abajo: sin barra de título, sin arrastre ni agarres, y lo guardado del escritorio no se le aplica', () => {
+    desktop = false
+    localStorage.setItem(autoWindowKey('ask'), '{"x":-40,"y":-200}')
+    localStorage.setItem(sizeKey(autoWindowKey('ask')), '{"width":500,"height":260}')
+    ask()
+
+    expect(win()).toHaveAttribute('data-auto-panel', 'docked')
+    expect(win()).toHaveClass('fixed', 'inset-x-0', 'bottom-0')
+    expect(win().querySelector('[data-window-bar], [data-window-corner]')).toBeNull()
+    expect(win().style.width).toBe('')
+    expect(drag(win())).toEqual({ x: 0, y: 0 })
+  })
+})

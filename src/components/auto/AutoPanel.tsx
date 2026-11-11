@@ -1,6 +1,7 @@
 import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useDraggableOffset } from '../../app/use-draggable-offset'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -20,8 +21,19 @@ import { Icon, type IconName } from '../ui/Icon'
 import { CloseButton, IconButton, TileButton } from '../ui/IconButton'
 import { overline } from '../ui/typography'
 
-/** `docked`: apoyado abajo, sobre tu mano (el celular y, por ahora, el escritorio). `floating`: la ventana que se arrastra y se estira del escritorio (la completa TI-145; hoy se ve acoplada). */
+/** `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px). Sin decirlo, según el ancho. */
 type AutoPanelVariant = 'docked' | 'floating'
+
+/**
+ * Dónde recuerda cada ventana su lugar y su tamaño: las preguntas comparten una (la próxima sale donde quedó la anterior); la ficha de una carta y las fases, la suya; las del catálogo (`playground`),
+ * otra, así probarlas no corre las de la mesa.
+ */
+const OWN_PLACE = new Set(['card', 'phases', 'playground'])
+export const autoWindowKey = (kind: string) => `ygo-lab:auto-window:v1:${OWN_PLACE.has(kind) ? kind : 'ask'}`
+/** Lo más chica que se deja estirar una ventana (la de siempre: 620 px de ancho y el alto de su contenido); lo más grande, la pantalla. */
+const WINDOW_MIN = { width: 360, height: 160 }
+const ARROW_KEYS: Record<string, readonly [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }
+const WINDOW_KEYS = 'ArrowUp ArrowDown ArrowLeft ArrowRight Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Enter'
 
 interface AutoPanelProps {
   /** `data-prompt`: qué cartel es (la mesa y las pruebas lo buscan por esto). */
@@ -55,11 +67,13 @@ interface AutoPanelProps {
 /**
  * El cascarón de los carteles del duelo automático (la pregunta, la bandeja, las opciones, la ficha de una carta y las fases): **texto arriba, bandeja si hay, botones abajo**, apoyado sobre tu mano
  * desde abajo y con techo en el borde de abajo de la línea (`data-duel-line`): nunca empuja ni tapa el campo ni la cadena (va en un portal `fixed`; la mesa no se entera). Mide lo de su contenido (sin
- * alto fijo): 8 px entre grupos y la pregunta en `text-body`; fondo al 92 % en alfa plano, sin desenfoque, y esquinas rectas (`mat-square`). En escritorio, el mismo cartel con 620 px de ancho máximo,
- * centrado en la columna de la mesa (`--mat-x`, `--mat-w`). Arrastrar la franja de arriba hacia abajo (o «Minimizar», o Escape con `escape`) lo deja en una tira con la pregunta y sus botones; nunca se
- * cierra solo. Con la hoja de la cadena abierta en el celular (`SheetHost`), va en su pie: una sola hoja. Va dentro de un `Presence` (así sale al contestarse).
+ * alto fijo): 8 px entre grupos y la pregunta en `text-body`; fondo al 92 % en alfa plano, sin desenfoque, y esquinas rectas (`mat-square`). Arrastrar la franja de arriba hacia abajo (o «Minimizar», o
+ * Escape con `escape`) lo deja en una tira con la pregunta y sus botones; nunca se cierra solo.
+ * En escritorio (`floating`) es una ventana: sale en el mismo lugar (620 px de ancho, centrada en la columna de la mesa: `--mat-x`, `--mat-w`, apoyada sobre tu mano), con una barra de título violeta
+ * que es el asa (`useDraggableOffset`: se lleva con el mouse; enfocada, flechas, Alt + flechas la estiran, Enter o doble clic la vuelven a su lugar y su tamaño) y se estira del borde derecho, del de
+ * abajo y de la esquina. Lugar y tamaño se recuerdan por tipo (`autoWindowKey`); nunca cambia la geometría de la mesa. Con la hoja de la cadena abierta en el celular (`SheetHost`), va en su pie: una sola hoja. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AutoPanel({ kind, label, head, top, aside, children, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, variant = 'docked', className }: AutoPanelProps) {
+export function AutoPanel({ kind, label, head, top, aside, children, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, variant, className }: AutoPanelProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const titleId = useId()
   const leaving = useLeaving()
@@ -68,8 +82,12 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
   // En un marco del catálogo (`SheetHost phone`), en su lugar: ni portal ni `fixed`.
   const inline = host?.phone === true && !slot
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
+  // En el pie de la hoja de la cadena (celular) nunca es ventana.
+  const floating = !slot && (variant === 'floating' || (variant === undefined && desktop))
   const turn = useContext(PromptTurnContext)
   const [minimized, setMinimized] = useState(false)
+  // La ventana se lleva de la barra y se estira del borde y la esquina; posición y tamaño, por tipo (`autoWindowKey`). En la mesa se centra con su `translate`: el corrimiento va en `--drag-x/y`.
+  const move = useDraggableOffset(autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, WINDOW_MIN)
   // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; minimizado, el asa hacia arriba lo abre.
   const follow = (dy: number | null) => {
     if (ref.current) ref.current.style.translate = dy === null ? '' : `${desktop && !slot ? '-50%' : '0'} ${dy}px`
@@ -115,7 +133,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
     // Minimizado, su nombre es la pregunta corta de la tira (lo que lo nombraba abierto ya no está).
     ...(minimized ? { 'aria-label': label } : { 'aria-labelledby': named, ...(describedBy ? { 'aria-describedby': describedBy } : {}) }),
     'data-prompt': kind,
-    'data-auto-panel': variant,
+    'data-auto-panel': floating ? 'floating' : 'docked',
     // `data-lowered`: el mismo estado con el nombre de las hojas del celular (lo leen la mesa y sus pruebas).
     ...(minimized ? { 'data-minimized': '', 'data-lowered': '' } : {}),
   }
@@ -130,7 +148,113 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
       )
   const surface = 'mat-square pointer-events-auto bg-card-background/92 text-body text-foreground motion-safe:animate-sheet-in'
 
-  const view = minimized ? (
+  // La ventana del escritorio: apoyada sobre tu mano y centrada en la columna de la mesa como el cartel de siempre (no empuja ni tapa el campo al abrirse); corrida, flota encima de lo que haya.
+  const windowPlace = inline
+    ? 'relative w-[min(38.75rem,100%)] border border-primary'
+    : 'fixed bottom-0 left-[var(--mat-x,50%)] z-[130] w-[min(38.75rem,var(--mat-w,100vw))] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] translate-x-[calc(var(--drag-x,0px)-50%)] translate-y-[var(--drag-y,0px)] border border-primary shadow-overlay'
+  const windowSurface = 'mat-square pointer-events-auto bg-card-background/92 text-body text-foreground motion-safe:animate-dialog-enter'
+  /** Con la barra enfocada: las flechas la mueven 16 px (Mayús: 64), Alt + flechas la estiran y Enter la vuelve a su lugar y su tamaño. */
+  const onBarKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey) return
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      move.reset()
+      return
+    }
+    const arrow = ARROW_KEYS[event.key]
+
+    if (!arrow) return
+    event.preventDefault()
+    const step = event.shiftKey ? 64 : 16
+
+    if (event.altKey) move.resizeBy(arrow[0] * step, arrow[1] * step)
+    else move.moveBy(arrow[0] * step, arrow[1] * step)
+  }
+  // La barra de título (violeta, texto blanco): el asa. Abierta, la fase y el turno; minimizada, la pregunta.
+  const bar = (
+    <div
+      {...move.head}
+      role="toolbar"
+      tabIndex={0}
+      aria-label={t('auto.window.move')}
+      aria-description={t('auto.window.help')}
+      aria-keyshortcuts={WINDOW_KEYS}
+      title={t('auto.window.help')}
+      data-window-bar=""
+      className="flex min-h-11 min-w-0 shrink-0 cursor-grab touch-none select-none items-center bg-primary text-white focus-visible:outline-none focus-visible:shadow-focus active:cursor-grabbing"
+      onKeyDown={onBarKey}
+    >
+      <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center [&_svg]:size-5">
+        <Icon name="grip" />
+      </span>
+      {minimized ? (
+        <p className="m-0 min-w-0 flex-1 truncate font-semibold">{label}</p>
+      ) : (
+        <p data-prompt-turn={turn ? '' : undefined} className="m-0 min-w-0 flex-1 truncate text-micro font-semibold">
+          {turn ? promptTurnText(turn) : null}
+        </p>
+      )}
+      {minimized ? (
+        <IconButton size="lg" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} onClick={() => setMinimized(false)}>
+          <Icon name="chevron-up" />
+        </IconButton>
+      ) : (
+        <IconButton size="lg" data-panel-fold="" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setMinimized(true)}>
+          <Icon name="chevron-down" />
+        </IconButton>
+      )}
+      {onDismiss && !minimized ? <CloseButton size="lg" tone="raised" aria-label={t('common.close')} onClick={onDismiss} /> : null}
+    </div>
+  )
+  // Los agarres para estirar: el borde derecho, el de abajo y la esquina (con su marca). Sólo el mouse o el lápiz; el teclado, Alt + flechas en la barra.
+  const grips = (
+    <>
+      <span aria-hidden="true" title={t('auto.window.resize')} className="absolute inset-y-0 -right-1 w-2 cursor-ew-resize touch-none" {...move.stretch(true, false)} />
+      <span aria-hidden="true" title={t('auto.window.resize')} className="absolute inset-x-0 -bottom-1 h-2 cursor-ns-resize touch-none" {...move.stretch(false, true)} />
+      <span
+        aria-hidden="true"
+        title={t('auto.window.resize')}
+        data-window-corner=""
+        className="absolute -right-1 -bottom-1 size-4 cursor-nwse-resize touch-none after:absolute after:right-1.5 after:bottom-1.5 after:size-2 after:border-r-2 after:border-b-2 after:border-primary"
+        {...move.stretch(true, true)}
+      />
+    </>
+  )
+
+  const view = floating ? (
+    minimized ? (
+      // La tira: la barra con la pregunta y sus botones, en el mismo lugar y con el mismo ancho (el alto, el suyo).
+      <div ref={ref} {...attrs} className={cx(windowSurface, windowPlace, 'flex h-auto! min-w-0 flex-col', className)}>
+        {bar}
+        {actions ? <div className="flex min-w-0 items-center justify-end gap-2 px-2 py-1">{actions}</div> : null}
+      </div>
+    ) : (
+      <div ref={ref} {...attrs} className={cx(windowSurface, windowPlace, 'flex min-h-0 min-w-0 flex-col', className)}>
+        {bar}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-2">
+          <div className="flex min-w-0 shrink-0 items-start gap-2">
+            <div className="grid min-w-0 flex-1 gap-1">
+              {top}
+              {head ?? (
+                <h2 id={titleId} className="m-0 text-body font-semibold break-words">
+                  {label}
+                </h2>
+              )}
+            </div>
+            {aside}
+          </div>
+          {/* Se reacomoda al ancho (la grilla de jugadas, la bandeja que se desliza); estirada más alta que su contenido, el aire queda acá y no entre los botones. */}
+          {children ? (
+            <div data-panel-body="" className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-0.5">
+              {children}
+            </div>
+          ) : null}
+          {actions ? <div className="flex min-w-0 shrink-0 items-center justify-between gap-2">{actions}</div> : null}
+        </div>
+        {grips}
+      </div>
+    )
+  ) : minimized ? (
     // La tira: la pregunta y sus botones, a la vista; tocar la flecha (o arrastrarla para arriba) lo abre entero.
     <div ref={ref} {...attrs} className={cx(surface, place, 'flex min-w-0 items-center gap-2 px-2 py-1', className)}>
       <Swipe dir="up" onFold={() => setMinimized(false)} className="flex min-w-0 flex-1 touch-none items-center gap-1">
@@ -237,6 +361,8 @@ export interface AutoCardSheetProps {
   /** «Ver carta»: el texto entero. */
   onInspect?: () => void
   onClose: () => void
+  /** Sólo el catálogo lo fuerza (la ventana a 1440 px en su marco); en la mesa, según el ancho. */
+  variant?: AutoPanelVariant
 }
 
 /**
@@ -244,7 +370,7 @@ export interface AutoCardSheetProps {
  * jugadas que ofrece el núcleo como botones cuadrados con ícono y rótulo (`menuitem`): la principal primero, violeta y de doble ancho; las demás en una grilla de 5 columnas (8 desde 576 px de cartel: en escritorio). Sin «Más»,
  * sin «⋯» y sin submenús (`flatPlays`). Se cierra con la X, Escape o tocando afuera; el foco vuelve a la carta. Reemplaza a `CardSheet`/`CardMenu` sólo con `duel.auto` (la mesa manual no cambia).
  */
-export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null, items, empty, onInspect, onClose }: AutoCardSheetProps) {
+export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null, items, empty, onInspect, onClose, variant }: AutoCardSheetProps) {
   const nameId = useId()
   const [armed, setArmed] = useState(false)
   const plays = flatPlays(items)
@@ -272,6 +398,7 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
       labelledBy={nameId}
       focus='[role="menuitem"]'
       onDismiss={onClose}
+      variant={variant}
       className={armed ? undefined : 'pointer-events-none'}
       head={
         <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2">
@@ -296,7 +423,7 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
         {plays.length === 0 ? (
           (empty ?? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p>)
         ) : (
-          <div className="grid grid-cols-5 gap-1 @min-[36rem]:grid-cols-8">
+          <div className="grid grid-cols-5 gap-1 @min-[28rem]:grid-cols-6 @min-[36rem]:grid-cols-8">
             {plays.map((item, index) => (
               <Button
                 key={`${index}|${item.label}`}
@@ -327,7 +454,7 @@ const CHOOSABLE = '[role="menuitem"]:not([aria-disabled="true"])'
  * apagadas y punteadas (se distinguen por la forma, no sólo por el color); «Cancelar» abajo. Qué se puede elegir lo da el núcleo (`items`). ← → Inicio y Fin recorren las elegibles; Escape, la X o
  * tocar afuera la cierran.
  */
-export function AutoPhases({ items, onClose }: { items: MenuItem[]; onClose: () => void }) {
+export function AutoPhases({ items, onClose, variant }: { items: MenuItem[]; onClose: () => void; variant?: AutoPanelVariant }) {
   const title = t('auto.phase.title')
   const onKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const rows = [...event.currentTarget.querySelectorAll<HTMLElement>(CHOOSABLE)]
@@ -345,6 +472,7 @@ export function AutoPhases({ items, onClose }: { items: MenuItem[]; onClose: () 
       label={title}
       focus='[aria-current="true"]'
       onDismiss={onClose}
+      variant={variant}
       actions={
         <Button variant="tertiary" size="sm" onClick={onClose}>
           {t('common.cancel')}

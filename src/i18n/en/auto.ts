@@ -272,6 +272,11 @@ export const auto: Translated<typeof es> = {
   'auto.phase.title': 'Select the phase to switch to',
   'auto.phase.now': 'now',
 
+  // The desktop window of the prompts: the title bar is the handle; the edge and the corner resize it.
+  'auto.window.move': 'Move the window',
+  'auto.window.help': 'Drag the bar or use the arrows to move it (Shift: farther) · Alt + arrows: resize it · Double-click or Enter: back to its place and size',
+  'auto.window.resize': 'Resize',
+
   // The chain link badge on a card («CL1»): the short form is shown; the card's name says it in words.
   'auto.link.badge': 'CL{numbers}',
   'auto.link.label': '{name}, chain link {numbers}',

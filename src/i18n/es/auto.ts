@@ -289,6 +289,11 @@ export const auto = {
   'auto.phase.title': 'Elegí la fase a la que pasás',
   'auto.phase.now': 'ahora',
 
+  // La ventana de los carteles en escritorio: la barra de título es el asa; el borde y la esquina, los agarres para estirarla.
+  'auto.window.move': 'Mover la ventana',
+  'auto.window.help': 'Arrastrá la barra o usá las flechas para moverla (Mayús: más lejos) · Alt + flechas: la estiran · Doble clic o Enter: vuelve a su lugar y su tamaño',
+  'auto.window.resize': 'Estirar',
+
   // La insignia del eslabón sobre la carta («CL1»): se ve la sigla; el nombre de la carta lo dice con palabras.
   'auto.link.badge': 'CL{numbers}',
   'auto.link.label': '{name}, eslabón {numbers} de la cadena',
