@@ -55,7 +55,7 @@ describe('auto-screen · las jugadas', () => {
     const effects = within(sheet).getAllByRole('menuitem')
 
     // Cada efecto dice qué hace: su rótulo del `.cdb` (`strN`, el que nombra el `desc`), sin un «Efecto n» que no es el de la carta.
-    expect(effects.map((effect) => effect.textContent)).toEqual(['Summon a Token', 'Destroy a monster'])
+    expect(effects.map((effect) => effect.textContent)).toEqual(['Efecto 2', 'Efecto 3'])
     // Como la lista de efectos de la mesa manual: la carta arriba y un efecto por fila, a la izquierda (aunque los textos sean cortos).
     expect(sheet).toHaveTextContent('Nibiru')
     expect(effects[0]).toHaveClass('text-left')
@@ -147,24 +147,24 @@ describe('auto-screen · las jugadas', () => {
     core(() => fake.ask(CHAIN))
     expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
     expect(lane()).toBeNull()
-    const band = within(screen.getByRole('group', { name: '¿Activás algo ahora?' }))
+    const band = within(screen.getByRole('group', { name: '¿Activás una carta o efecto?' }))
 
     expect(band.getByRole('option', { name: 'Called by the Grave, en tu mano' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('group', { name: '¿Activás algo ahora?' })).not.toHaveTextContent('Tu respuesta')
+    expect(screen.getByRole('group', { name: '¿Activás una carta o efecto?' })).not.toHaveTextContent('Tu respuesta')
     expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'No responder', 'Activar como CL1'])
     fireEvent.click(band.getByRole('button', { name: 'No responder' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
   })
 
-  it('cadena con un eslabón: a qué eslabón y de quién lo dice la pila de la cadena, desplegada arriba; la banda, debajo, sólo «Responder a la cadena» (sin repetir el eslabón ni su carta) y la principal encadena con el número que tomaría', () => {
+  it('cadena con un eslabón: a qué eslabón y de quién lo dice la pila de la cadena, desplegada arriba; la banda, debajo, qué pasó y qué se te pide («Se activó «Maxx C» (CL1). ¿Encadenás otra carta o efecto?», sin su arte ni su dueño) y la principal encadena con el número que tomaría', () => {
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
 
     core(() => fake.set({ overlay: { ...overlay, chain: [{ card: { side: 'mine', id: 'card-200-1' }, code: 200, description: '0', state: 'chained' }] } }))
     core(() => fake.ask(CHAIN))
-    const band = screen.getByRole('group', { name: 'Responder a la cadena' })
+    const band = screen.getByRole('group', { name: 'Se activó «Maxx C» (CL1). ¿Encadenás otra carta o efecto?' })
 
-    expect(band).not.toHaveTextContent(/Maxx C|CL1|Vos/)
+    expect(band).not.toHaveTextContent('Vos')
     expect(within(band).queryByRole('img', { name: 'Maxx C' })).toBeNull()
     fireEvent.click(within(band).getByRole('button', { name: 'Encadenar como CL2' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
@@ -181,7 +181,7 @@ describe('auto-screen · las jugadas', () => {
     core(() => fake.ask(CHAIN))
     const notice = screen.getByTestId('chain-notice')
 
-    expect(notice).toContainElement(screen.getByRole('group', { name: 'Responder a la cadena' }))
+    expect(notice).toContainElement(screen.getByRole('group', { name: 'Se activó «Maxx C» (CL1). ¿Encadenás otra carta o efecto?' }))
     expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
     expect(within(notice).getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).toBeInTheDocument()
     expect(within(notice).getByRole('button', { name: 'Bajar la hoja' })).toHaveAttribute('aria-expanded', 'true')
@@ -196,7 +196,7 @@ describe('auto-screen · las jugadas', () => {
     const lowered = () => document.querySelector('[data-prompt][data-lowered]')
 
     core(() => fake.ask(CHAIN))
-    fireEvent.click(within(screen.getByRole('group', { name: '¿Activás algo ahora?' })).getByRole('button', { name: 'Bajar la hoja' }))
+    fireEvent.click(within(screen.getByRole('group', { name: '¿Activás una carta o efecto?' })).getByRole('button', { name: 'Bajar la hoja' }))
 
     expect(lowered()).not.toBeNull()
     expect(screen.getByRole('option', { name: 'Called by the Grave, en tu mano' }).closest('[inert], [hidden]')).toBeNull()
@@ -215,7 +215,7 @@ describe('auto-screen · las jugadas', () => {
     const select = (description: string) => ({ ...pos(400, L.GRAVE, 0, 5), description, client_mode: 0 })
 
     core(() => fake.ask({ ...CHAIN, selects: [...CHAIN.selects, select(stringId(400, 1)), select(stringId(400, 2))] }))
-    const band = within(screen.getByRole('group', { name: '¿Activás algo ahora?' }))
+    const band = within(screen.getByRole('group', { name: '¿Activás una carta o efecto?' }))
 
     expect(band.getByRole('button', { name: 'Activar como CL1' })).toBeDisabled()
     expect(band.queryByText(/Elegí con qué/)).toBeNull()

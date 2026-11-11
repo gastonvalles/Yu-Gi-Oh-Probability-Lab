@@ -22,14 +22,14 @@ const MIXED: CoreAsk = { type: 'select_card', player: 0, can_cancel: true, min: 
 const MIXED_DECK: CoreAsk = { type: 'select_card', player: 0, can_cancel: true, min: 1, max: 2, selects: [pos(102, L.DECK, 0, 8), pos(101, L.DECK, 1, 8), pos(400, L.GRAVE, 0, 5)] }
 
 describe('auto-screen · las hojas', () => {
-  it('option: una hoja con lo que hace cada opción (sin texto, «Activar efecto», nunca un número inventado) y la carta que pregunta arriba; tocar una contesta con su índice', () => {
+  it('option: una hoja con lo que hace cada opción (un texto de la carta, por su número en español; sin texto, «Activar efecto») y la carta que pregunta arriba; tocar una contesta con su índice', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(OPTION))
     const sheet = screen.getByRole('dialog', { name: 'Elegí una opción' })
     expect(sheet.parentElement!.querySelector('.animate-nav-scrim')).toBeNull()
 
-    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Destroy a monster', 'A la mano', 'Al cementerio', 'Activar efecto'])
+    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Efecto 3', 'A la mano', 'Al cementerio', 'Activar efecto'])
     expect(sheet).toHaveTextContent('Nibiru')
     fireEvent.click(within(sheet).getAllByRole('menuitem')[2]!)
     expect(fake.answers).toEqual([{ type: 'select_option', index: 2 }])
@@ -133,17 +133,16 @@ describe('auto-screen · las hojas', () => {
     expect(fake.answers).toEqual([{ type: 'select_yesno', yes: true }])
     expect(dispatches).toBe(0)
     core(() => fake.ask({ ...YESNO, description: stringId(400, 1) }))
-    expect(document.querySelector<HTMLElement>('[data-prompt]')!).toHaveTextContent('Summon a Token')
+    expect(document.querySelector<HTMLElement>('[data-prompt]')!).toHaveTextContent(/¿Aplicás el efecto 2 de «Nibiru/)
   })
 
-  it('effectyn: la pregunta, sin el nombre de la carta, con su lugar en la pestaña, la carta brilla en su pila y «No activar» contesta que no', () => {
+  it('effectyn: la pregunta, con el nombre de la carta, con su lugar en la pestaña, la carta brilla en su pila y «No activar» contesta que no', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(EFFECTYN))
     const prompt = document.querySelector<HTMLElement>('[data-prompt]')!
 
-    expect(prompt).toHaveTextContent('¿Activás el efecto?')
-    expect(prompt).not.toHaveTextContent('Nibiru')
+    expect(prompt).toHaveTextContent(/¿Activás el efecto de «Nibiru[^»]*»\?/)
     expect(within(prompt).getByText('Cementerio')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GY: 1' })).toHaveAttribute('data-glow-kind', 'can')
     fireEvent.click(within(prompt).getByRole('button', { name: 'No activar' }))
@@ -164,7 +163,7 @@ describe('auto-screen · las hojas', () => {
     expect(line()).toBeNull()
   })
 
-  it('un efecto que se dispara: qué pasó justo antes, sin nombres, y, a la izquierda, «Seguir en modo manual»', () => {
+  it('un efecto que se dispara: qué pasó justo antes, sin el nombre de lo que lo causó, la carta en la pregunta y, a la izquierda, «Seguir en modo manual»', () => {
     const fake = renderAuto()
 
     core(() => {
@@ -174,7 +173,8 @@ describe('auto-screen · las hojas', () => {
     const prompt = document.querySelector<HTMLElement>('[data-prompt]')!
 
     expect(prompt).toHaveTextContent('Tras la Invocación Normal')
-    expect(prompt).not.toHaveTextContent(/Blue-Eyes|Nibiru/)
+    expect(prompt).not.toHaveTextContent('Blue-Eyes')
+    expect(prompt).toHaveTextContent(/¿Activás el efecto de «Nibiru/)
     expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
   })
 
@@ -183,14 +183,14 @@ describe('auto-screen · las hojas', () => {
 
     core(() => fake.ask(MIXED, '503'))
     expect(screen.queryByRole('dialog')).toBeNull()
-    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para desterrar · 0/2' })
+    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para desterrar · 0 de 2' })
     const options = within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
 
     expect(band).toHaveAttribute('data-prompt-row')
     expect(options).toEqual(['Nibiru, en tu Cementerio', 'Zeus, en tu Extra Deck'])
     expect(within(band).getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'Cancelar', 'Listo'])
     fireEvent.click(within(band).getAllByRole('option')[1]!)
-    expect(band).toHaveAccessibleName('Elegí de 1 a 2 cartas para desterrar · 1/2')
+    expect(band).toHaveAccessibleName('Elegí de 1 a 2 cartas para desterrar · 1 de 2')
     expect(within(band).getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true')
     fireEvent.click(within(band).getByRole('button', { name: 'Elegir 1 carta' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
@@ -201,7 +201,7 @@ describe('auto-screen · las hojas', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(MIXED_DECK))
-    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas · 0/2' })
+    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas · 0 de 2' })
     const options = within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
 
     // El núcleo las manda Imperm, Droll, Nibiru: Droll (la segunda) sale primero y su respuesta sigue siendo el índice 1.
