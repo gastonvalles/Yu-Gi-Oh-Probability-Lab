@@ -3,13 +3,14 @@ import { act, cleanup, fireEvent, screen, within, type RenderResult } from '@tes
 import '@testing-library/jest-dom'
 import type { ReactElement } from 'react'
 import { toast } from 'react-hot-toast'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { extractRoomCode } from '../app/duel-link'
 import { readPlayReturn } from '../app/play-return'
 import type { SocketTransport } from '../app/duel-socket'
 import type { DuelConnect } from '../app/use-duel'
 import { DuelScreen } from '../components/duel/DuelScreen'
-import { COMPACT_FIELD_MEDIA_QUERY } from '../components/probability/compact-field'
+import { COMPACT_FIELD_MEDIA_QUERY, phoneDuelLayout } from '../components/probability/compact-field'
+import { THEIR_HAND } from '../components/duel/their-hand'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
 import { createDuelHarness, asDesktop, asSocket, asSpectatorSocket, closeMore, handOf, hasSave, leaveDuel, mainIds, monsters, moreButton, openGames, phaseChip, render, rulesDialog, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
 
@@ -1026,15 +1027,22 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
   })
 
-  it('en un celular en vertical (menos de 640 px) el campo se ajusta al alto de la pantalla y la línea de jugadas flota sobre la mano del rival (no ocupa lugar): al terminar el duelo la tira del resultado ocupa su lugar y tampoco suma alto', () => {
+  it('en un celular en vertical (menos de 640 px) el campo de siete columnas tiene geometría fija (sale del tamaño de la pantalla, con la línea de alto fijo debajo) y la línea de jugadas flota sobre la mano del rival (no ocupa lugar): al terminar el duelo la tira del resultado ocupa su lugar y tampoco suma alto', () => {
     window.matchMedia = ((query: string) => ({ matches: query === COMPACT_FIELD_MEDIA_QUERY, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {} })) as unknown as typeof window.matchMedia
+    const screenSize = { width: window.innerWidth, height: window.innerHeight }
+    Object.assign(window, { innerWidth: 390, innerHeight: 844 })
+    onTestFinished(() => {
+      Object.assign(window, { innerWidth: screenSize.width, innerHeight: screenSize.height })
+    })
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    // El campo: la casilla sale del alto de la pantalla (3D, lo de siempre) y la mano del rival se acomoda con ella.
+    // El campo: la casilla sale del ancho (siete columnas, orillas de 4 px y huecos de 3) y la caja, de `phoneDuelLayout` (3D, con el marcador de 44 px del duelo por enlace).
     const field = within(host.container).getByLabelText('Campo')
-    // Sin la fila de abajo y con el marcador de 44 px: 29,45 rem de lo que no es campo.
-    expect(field.style.getPropertyValue('--cell-m')).toContain('calc((100dvh - 29.45rem) / 5.2)')
+    const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 114, rival: THEIR_HAND.mobile.room + 14, bottom: 8 })
+    expect(parseFloat(field.style.width)).toBeCloseTo(layout.fieldWidth, 2)
+    expect(parseFloat(field.style.height)).toBeCloseTo(layout.fieldHeight, 2)
+    expect(host.container.querySelector('[data-duel-line]')).toHaveStyle({ height: '96px' })
 
     // La línea de jugadas: sin lugar en el celular (flota), arriba del campo.
     const floating = () => Array.from(host.container.querySelectorAll<HTMLElement>('[class~="max-sm:-mb-11"]'))

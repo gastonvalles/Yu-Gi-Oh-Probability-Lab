@@ -52,9 +52,12 @@ export function DuelSection() {
         title="A · Todo junto"
         layout="column"
         className="col-span-full"
-        note={<>La mesa real: el rival arriba y espejado, las Zonas Extra compartidas en el medio, vos abajo. Archivo: <Tag>duel/DuelTable.tsx</Tag></>}
+        note={<>La mesa real: el rival arriba y espejado, las Zonas Extra compartidas en el medio, vos abajo. Siete columnas en todos los anchos: arriba como en escritorio y debajo, a 390 px (la casilla de 57 px de `phoneDuelLayout`). Archivo: <Tag>duel/DuelTable.tsx</Tag></>}
       >
         <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
+        <div className="mx-auto w-full max-w-[24.375rem] [--cell:3.57rem]">
+          <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
+        </div>
       </Specimen>
 
       <Specimen

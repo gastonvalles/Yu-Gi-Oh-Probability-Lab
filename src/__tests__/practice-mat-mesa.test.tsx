@@ -53,15 +53,14 @@ describe('la mesa de práctica', () => {
     expect(document.querySelector('.mat-field-art')).toBeNull()
   })
 
-  it('en un celular en vertical (menos de 640 px) el campo son cinco columnas y una fila de pilas abajo —el Extra Deck y el Deck en los extremos, la Zona de campo en el medio—: las casillas pasan de 55 a 72 px', () => {
+  it('el campo tiene las siete columnas de escritorio en todos los anchos, también en un celular en vertical (las pilas a los costados; huecos de 3 px bajo 640)', () => {
     render(<Harness />)
 
     const field = screen.getByLabelText('Campo')
 
-    expect(field).toHaveClass('max-sm:grid-cols-[repeat(5,minmax(0,1fr))]')
-    expect(field.className).toContain("max-sm:[grid-template-areas:'p1_emz1_p2_emz2_p3'_'m1_m2_m3_m4_m5'_'s1_s2_s3_s4_s5'_'extra_ban_fld_gy_deck']")
-    // En escritorio y en una tableta, las siete columnas de siempre (las pilas a los costados).
     expect(field.className).toContain("[grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck']")
+    expect(field).toHaveClass('grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)]', 'max-sm:gap-0.75')
+    expect(field.className).not.toMatch(/max-sm:(grid-cols|\[grid-template-areas)/)
   })
 
   it('pasar el mouse por una carta de la mano o del campo la eleva un poco y enciende su borde en blanco, tenue; arrastrada o sin movimiento no se mueve', () => {

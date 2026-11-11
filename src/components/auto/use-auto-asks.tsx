@@ -34,7 +34,7 @@ import type { ApiCardReference } from '../../types'
 import { artOfDrawId } from '../duel/duel-art'
 import type { LaneNotice } from '../duel/DuelBar'
 import { DuelCardDock, type CardPeek } from '../duel/DuelCardDock'
-import { DUEL_AREAS, DUEL_AREAS_COMPACT, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
+import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { RivalCardDetail, useRivalCard } from '../duel/RivalCardDetail'
 import { useDockPeek } from '../duel/use-dock-peek'
 import { PILE_TITLES, PileViewer } from '../probability/MatDialogs'
@@ -1196,7 +1196,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     undoPlay,
     ...(announcement ? { announcement } : {}),
     areas: DUEL_AREAS,
-    areasCompact: DUEL_AREAS_COMPACT,
     opponent: opponentCells,
     sharedZone,
     rivalHand: rivalHandNode,

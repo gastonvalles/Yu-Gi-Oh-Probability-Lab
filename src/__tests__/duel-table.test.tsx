@@ -45,19 +45,12 @@ describe('la mesa del duelo', () => {
     expect(zone('Zona de monstruo 1').style.gridArea).toBe('m1')
   })
 
-  it('en un celular en vertical (menos de 640 px) son cinco columnas y una fila de pilas por jugador: el Extra y el Deck en los extremos y la Zona de campo en el medio, y la del rival espejada', () => {
+  it('en un celular en vertical también son las siete columnas de escritorio (Gastón, 2026-11-10): ni otras áreas ni otras columnas bajo 640 px', () => {
     render(<DuelTable mine={side(start)} theirs={side(start)} />)
 
-    const compact = grid().style.getPropertyValue('--areas-compact')
-
-    // La del rival arriba (Deck a la izquierda y Extra a la derecha: espejada) y la mía abajo (Extra a la izquierda y Deck a la derecha).
-    expect(compact).toBe(
-      ["'tdeck tgy tfld tban textra'", "'ts5 ts4 ts3 ts2 ts1'", "'tm5 tm4 tm3 tm2 tm1'", "'p1 emz1 p2 emz2 p3'", "'m1 m2 m3 m4 m5'", "'s1 s2 s3 s4 s5'", "'extra ban fld gy deck'"].join(' '),
-    )
-    // Las cinco columnas del centro, y las áreas de siempre en escritorio (son clases: cada una con su medio).
-    expect(grid()).toHaveClass('max-sm:grid-cols-[repeat(5,minmax(0,1fr))]', 'max-sm:[grid-template-areas:var(--areas-compact)]', '[grid-template-areas:var(--areas)]')
-    // Sólo un campo: la fila del medio y la de pilas de ese lado.
-    expect(zone('Zona de monstruo 1')).toBeInTheDocument()
+    expect(grid().style.getPropertyValue('--areas-compact')).toBe('')
+    expect(grid()).toHaveClass('[grid-template-areas:var(--areas)]', 'grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)]')
+    expect(grid().className).not.toMatch(/max-sm:/)
   })
 
   it('una pila del rival lleva la mira si adentro hay una carta marcada como objetivo, o si el otro la marcó entera, y el aro cuando algo suyo destella ahí', () => {
@@ -249,20 +242,14 @@ describe('la mesa del duelo', () => {
     const { rerender } = render(<DuelTable mine={side(start)} theirs={side(start)} show="mine" />)
 
     const areas = () => grid().style.getPropertyValue('--areas')
-    const compact = () => grid().style.getPropertyValue('--areas-compact')
 
     expect(areas()).not.toContain('tgy')
     expect(areas()).toContain("'. p1 emz1 p2 emz2 p3 ban'")
-    // En un celular en vertical (cinco columnas) también: sin las filas del rival, y la fila del medio sin sus pilas.
-    expect(compact()).not.toContain('tgy')
-    expect(compact()).toBe(["'p1 emz1 p2 emz2 p3'", "'m1 m2 m3 m4 m5'", "'s1 s2 s3 s4 s5'", "'extra ban fld gy deck'"].join(' '))
     expect(screen.queryByRole('group', { name: 'Rival, Zona de monstruo 1' })).toBeNull()
 
     rerender(<DuelTable mine={side(start)} theirs={side(start)} show="theirs" />)
     expect(areas()).not.toContain("'fld")
     expect(areas()).toContain("'tban p1 emz1 p2 emz2 p3 .'")
-    expect(compact()).not.toContain("'fld")
-    expect(compact()).toBe(["'tdeck tgy tfld tban textra'", "'ts5 ts4 ts3 ts2 ts1'", "'tm5 tm4 tm3 tm2 tm1'", "'p1 emz1 p2 emz2 p3'"].join(' '))
     expect(screen.queryByRole('group', { name: 'Zona de monstruo 1' })).toBeNull()
     expect(screen.getByRole('group', { name: 'Rival, Zona de monstruo 1' })).toBeInTheDocument()
   })

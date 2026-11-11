@@ -86,21 +86,11 @@ const middleRow = (theirs: boolean, mine: boolean) => `'${theirs ? 'tban' : '.'}
 export const DUEL_AREAS = [...THEIR_ROWS, middleRow(true, true), ...MINE_ROWS].join(' ')
 
 /**
- * En un celular en vertical (menos de 640 px) los costados no entran: las cinco columnas del centro se agrandan (de 55 a 72 px de casilla en un celular de 390 px) y las pilas de cada uno —Zona de campo, Extra, Deck, Cementerio y Banish—
- * van en una fila aparte: la del rival arriba, espejada, y la tuya abajo, donde llega el pulgar. **El Extra Deck y el Deck, siempre en sus extremos** (Gastón, 2026-10-20: «el deck y el extra deck deben estar en sus respectivos extremos sí o sí»):
- * Extra a la izquierda y Deck a la derecha, como en el tapete, **la Zona de campo en el medio** («el field spell en el medio») y, a los costados del medio, el Banish (a la izquierda) y el Cementerio (a la derecha, pegado al Deck).
- * Mismos nombres de área que arriba: lo único que cambia es dónde cae cada casilla.
+ * Las columnas de los costados miden lo justo de una carta (0,6857 de una del centro): todas las cartas del campo miden lo mismo. `isolate`: el arte de una magia de campo (`FieldArt`, `-z-9`) queda detrás de las casillas y no detrás de la pantalla.
+ * Siete columnas en todos los anchos, también en el celular (Gastón, 2026-11-10: «en mobile tenemos espacio para usar el campo default, el de desktop»): el Deck y el Extra en los extremos, la Zona de campo y el Cementerio a los costados de los monstruos.
  */
-const THEIR_ROWS_COMPACT = ["'tdeck tgy tfld tban textra'", "'ts5 ts4 ts3 ts2 ts1'", "'tm5 tm4 tm3 tm2 tm1'"]
-const MIDDLE_COMPACT = "'p1 emz1 p2 emz2 p3'"
-const MINE_ROWS_COMPACT = ["'m1 m2 m3 m4 m5'", "'s1 s2 s3 s4 s5'", "'extra ban fld gy deck'"]
-
-/** Las áreas del duelo en un celular en vertical (ver arriba). */
-export const DUEL_AREAS_COMPACT = [...THEIR_ROWS_COMPACT, MIDDLE_COMPACT, ...MINE_ROWS_COMPACT].join(' ')
-
-/** Las columnas de los costados miden lo justo de una carta (0,6857 de una del centro): todas las cartas del campo miden lo mismo. `isolate`: el arte de una magia de campo (`FieldArt`, `-z-9`) queda detrás de las casillas y no detrás de la pantalla. */
 const GRID =
-  'relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:var(--areas)] max-sm:grid-cols-[repeat(5,minmax(0,1fr))] max-sm:[grid-template-areas:var(--areas-compact)] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,6.5rem)*0.6857))_repeat(5,minmax(0,var(--cell,6.5rem)))_minmax(0,calc(var(--cell,6.5rem)*0.6857))]'
+  'relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:var(--areas)] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,6.5rem)*0.6857))_repeat(5,minmax(0,var(--cell,6.5rem)))_minmax(0,calc(var(--cell,6.5rem)*0.6857))]'
 
 const ZONE_LABEL: Record<MatSpot, () => string> = {
   mz: () => t('practice.zone.mz'),
@@ -120,14 +110,13 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
   const showMine = show !== 'theirs'
   const showTheirs = show !== 'mine'
   const rows = [...(showTheirs ? THEIR_ROWS : []), middleRow(showTheirs, showMine), ...(showMine ? MINE_ROWS : [])]
-  const compactRows = [...(showTheirs ? THEIR_ROWS_COMPACT : []), MIDDLE_COMPACT, ...(showMine ? MINE_ROWS_COMPACT : [])]
   const phase = (turn === 'mine' ? mine : theirs).state.phase
   const hand = theirs.handCount
 
   return (
     <div className={cx('grid gap-1.5', className)}>
       {showTheirs && hand !== undefined ? <TheirHand count={hand} align="start" /> : null}
-      <div role="group" aria-label={t('duel.table.label')} className={GRID} style={{ '--areas': rows.join(' '), '--areas-compact': compactRows.join(' ') } as CSSProperties}>
+      <div role="group" aria-label={t('duel.table.label')} className={GRID} style={{ '--areas': rows.join(' ') } as CSSProperties}>
         {showTheirs ? <SideCells side={theirs} owner="theirs" /> : null}
         {[0, 1].map((index) => (
           <SharedZone key={index} area={`emz${index + 1}`} index={index} mine={mine} theirs={theirs} />
