@@ -21,6 +21,7 @@ import { randomSeed, type MatState, type RivalHand } from '../../app/practice-ma
 import type { ReplayView } from '../../app/duel-replay'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
+import { ResultHero } from '../duel/DuelBanner'
 import { DuelLine } from '../duel/DuelBar'
 import { LifeBadge } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
@@ -482,11 +483,12 @@ function EndCover({ end, lp, seat, rival, onAgain, onSave, onLog, onManual, onEx
   const won = end.winner === seat
   const [mine, theirs] = [lp[seat], lp[1 - seat]!]
   const title = end.winner === 2 ? t('duel.result.title.draw') : won ? t('duel.result.title.win') : t('duel.result.title.lose')
+  const byLife = end.reason === REASON_LP || (won ? theirs : mine) <= 0
   // Por qué: las vidas (el núcleo dice 0, o alguien quedó en 0), sin robar (con las vidas enteras y una razón del núcleo, no de un script: en un duelo solo sin reloj no hay otra) o el efecto de una carta.
   const reason =
     end.winner === 2
       ? t('duel.result.reason.draw')
-      : end.reason === REASON_LP || (won ? theirs : mine) <= 0
+      : byLife
         ? won
           ? t('duel.result.reason.winLife', { name: rival })
           : t('duel.result.reason.loseLife')
@@ -495,14 +497,9 @@ function EndCover({ end, lp, seat, rival, onAgain, onSave, onLog, onManual, onEx
           : t(won ? 'auto.end.effectWin' : 'auto.end.effectLose')
 
   return (
-    <div role="alertdialog" aria-modal="true" aria-label={title} className="relative grid h-full place-items-center bg-background/85 p-6">
+    <div role="alertdialog" aria-modal="true" aria-label={title} className="relative grid h-full place-items-center bg-background/90 p-6">
       <CloseButton size="md" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-3 top-3" onClick={onExit} />
-      <div className="grid max-w-xs justify-items-center gap-3 text-center">
-        <p className="m-0 text-title font-bold text-foreground">{title}</p>
-        <p className="m-0 text-body text-muted" role="status">
-          {reason}
-        </p>
-        <p className="m-0 text-micro tabular-nums text-soft">{`${t('duel.bar.you')} ${mine} · ${rival} ${theirs}`}</p>
+      <ResultHero tone={end.winner === 2 ? 'draw' : won ? 'win' : 'lose'} icon={end.winner === 2 ? 'swap' : won ? 'trophy' : byLife ? 'heart' : 'flag'} title={title} reason={reason} score={{ mine, theirs, rival }}>
         <Button variant="tertiary" icon="chat" aria-haspopup="dialog" onClick={onLog}>
           {t('auto.bot.log.open')}
         </Button>
@@ -519,7 +516,7 @@ function EndCover({ end, lp, seat, rival, onAgain, onSave, onLog, onManual, onEx
             {t('auto.end.again')}
           </Button>
         </div>
-      </div>
+      </ResultHero>
     </div>
   )
 }

@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { SpectatorEnd } from '../app/duel-spectator'
@@ -12,28 +14,29 @@ afterEach(() => vi.useRealTimers())
 const names = (player: 0 | 1) => (player === 0 ? 'Ana' : 'Beto')
 const end = (patch: Partial<SpectatorEnd> = {}): SpectatorEnd => ({ winner: 0, reason: 'life', loser: 1, match: false, wins: [0, 0], over: true, matchWinner: null, ...patch })
 
-describe('la medalla 3D', () => {
-  it('es una pila de discos con grosor, con la cara de adelante y la de atrás, y su color dice qué pasó', () => {
+describe('la placa', () => {
+  it('es un cuadrado plano con su aro, sin capas 3D, rayos ni grieta, y su color dice qué pasó (carbón sobre lima)', () => {
     const { container } = render(<DuelMedal tone="win" icon="trophy" />)
-    const medal = container.querySelector<HTMLElement>('[data-medal="win"]')!
+    const plate = container.querySelector<HTMLElement>('[data-medal="win"]')!
 
-    // Siete discos de grosor + el frente y el dorso (que ocultan su revés).
-    expect(medal.querySelectorAll('.medal-rim')).toHaveLength(9)
-    expect(medal.querySelectorAll('[class*="backface-visibility"]')).toHaveLength(2)
-    expect(medal.style.getPropertyValue('--medal-rgb')).toBe('var(--info-rgb)')
-    // Ganar lleva rayos; perder, grieta; el turno, un número.
-    expect(medal.querySelector('.medal-rays')).not.toBeNull()
-    expect(render(<DuelMedal tone="lose" icon="flag" />).container.querySelector('[data-medal="lose"] path')).not.toBeNull()
+    expect(plate).toHaveClass('bg-info', 'text-info-foreground', 'outline-4')
+    expect(plate.className).not.toMatch(/rounded|gradient|blur|perspective|preserve-3d/)
+    // Una sola pieza adentro: el ícono (antes, nueve discos, rayos y brillo).
+    expect(plate.children).toHaveLength(1)
+    expect(render(<DuelMedal tone="lose" icon="flag" />).container.querySelector('[data-medal="lose"]')).toHaveClass('bg-danger')
     expect(render(<DuelMedal tone="first" numeral="1" />).container.querySelector('[data-medal="first"]')).toHaveTextContent('1')
     expect(render(<DuelMedal tone="second" numeral="2" />).container.querySelector('[data-medal="second"]')).toHaveTextContent('2')
   })
 
-  it('todo lo que se mueve se apaga con prefers-reduced-motion', () => {
+  it('entra una vez, nada en bucle, y se apaga con prefers-reduced-motion', () => {
     const { container } = render(<DuelMedal tone="win" icon="trophy" />)
 
     for (const animated of container.querySelectorAll('[class*="animate-"]')) {
-      expect(animated.className).toMatch(/motion-reduce:(animate-none|hidden)/)
+      expect(animated.className).toMatch(/motion-reduce:animate-none/)
     }
+    const css = readFileSync(path.resolve(__dirname, '..', 'index.css'), 'utf8')
+    expect(/--animate-plate-in:([^;]+);/.exec(css)![1]).not.toMatch(/infinite/)
+    expect(css).not.toMatch(/medal-|confetti/)
   })
 })
 

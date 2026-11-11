@@ -4,7 +4,7 @@ Cómo se anima sin trabar la app (sobre todo la mesa, en un celular). La regla d
 
 ## Curvas
 
-Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas, no más: `--ease-out` para lo que entra o se queda, `--ease-in-out` para lo que viaja (vuelos, barajado, el ataque) y `--ease-snap` para lo que arranca ya en movimiento (pops, lo que suelta un gesto, la moneda, las medallas). Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out` de CSS). En el JS, `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts` (la Web Animations API no lee `var()`); en un `@keyframes`, el valor literal. Lo vigila `motion-curves.test.ts`.
+Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas, no más: `--ease-out` para lo que entra o se queda, `--ease-in-out` para lo que viaja (vuelos, barajado, el ataque) y `--ease-snap` para lo que arranca ya en movimiento (pops, lo que suelta un gesto, la moneda, las placas del duelo). Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out` de CSS). En el JS, `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts` (la Web Animations API no lee `var()`); en un `@keyframes`, el valor literal. Lo vigila `motion-curves.test.ts`.
 
 ## La mesa: nada en el hilo principal
 

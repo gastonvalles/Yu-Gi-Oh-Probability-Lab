@@ -61,7 +61,7 @@ describe('auto-screen · quién empieza', () => {
     core(() => fake.end(1, 1))
     const cover = screen.getByRole('alertdialog', { name: '¡Ganaste!' })
 
-    expect(cover).toHaveTextContent('Vos 6500 · Rival 0')
+    expect(cover).toHaveTextContent('Vos 6500 a Rival 0')
     expect(cover).not.toHaveTextContent('Te quedaste sin puntos de vida.')
     setAutoPref('first', 'me')
   })
