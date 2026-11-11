@@ -59,9 +59,9 @@ export function Options({ items, stacked }: { items: readonly MenuItem[]; stacke
           key={`${index}|${item.label}`}
           role="menuitem"
           aria-current={item.current ? 'true' : undefined}
-          // Apagada: sin caja y sin atenuar todo el botón (al 40 % no se leía por qué), el texto en `muted` y la razón en `soft`; se enfoca y se lee, pero no se elige.
-          variant={item.current ? 'primary' : item.disabled ? 'tertiary' : 'secondary'}
-          className={cx('relative min-w-0 px-2!', !stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left', item.disabled && 'cursor-default aria-disabled:hover:bg-transparent aria-disabled:active:translate-y-0')}
+          // Apagada: sin caja y sin atenuar todo el botón (al 40 % no se leía por qué), el texto en `muted` y la razón en `soft`; se enfoca y se lee, pero no se elige. La elegida, en lima con texto carbón.
+          variant={item.disabled ? 'tertiary' : 'secondary'}
+          className={cx('relative min-w-0 px-2!', item.current && 'bg-info! text-background!',!stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left', item.disabled && 'cursor-default aria-disabled:hover:bg-transparent aria-disabled:active:translate-y-0')}
           aria-disabled={item.disabled || undefined}
           data-initial-focus={index === 0 ? '' : undefined}
           onClick={item.disabled ? undefined : item.onSelect}
@@ -136,10 +136,10 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
         ref={ref}
         aria-label={name}
         tabIndex={-1}
-        className={cx('mat-square fixed inset-x-0 bottom-0 z-210 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none', !armed && 'pointer-events-none')}
+        className={cx('mat-square fixed inset-x-0 bottom-0 z-210 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background/92 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none', !armed && 'pointer-events-none')}
       >
-        <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-primary-soft/50" />
-        <CloseButton size="sm" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
+        <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 bg-primary-soft/50" />
+        <CloseButton size="sm" tone="ghost" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
 
         <div className={cx('grid items-center gap-3', plain ? 'grid-cols-[minmax(0,1fr)]' : 'grid-cols-[2.75rem_minmax(0,1fr)]')}>
           {plain ? null : <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden rounded-card bg-input">
@@ -152,7 +152,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
                 className="absolute inset-0 grid place-items-end justify-items-end p-0.5 text-white focus-visible:outline-none focus-visible:shadow-focus"
                 onClick={onInspect}
               >
-                <span className="grid size-5 place-items-center rounded-full border border-border-subtle bg-background/85"><Icon name="search" size={12} /></span>
+                <span className="grid size-5 place-items-center border border-border-subtle bg-background/85"><Icon name="search" size={12} /></span>
               </button>
             ) : null}
           </figure>}
@@ -160,7 +160,8 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
             {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
             <h3 className="m-0 line-clamp-2 text-lead font-bold leading-tight text-foreground">{name}</h3>
             {apiCard?.cardType ? <p className="m-0 mt-0.5 text-body font-semibold text-accent">{apiCard.cardType}</p> : null}
-            {traits ? <CardEffectTraits ygoprodeckId={apiCard?.ygoprodeckId} className="mt-1" /> : null}
+            {/* Los rasgos son pastillas (`Badge pill`): en la mesa, rectas como todo lo demás. */}
+            {traits ? <CardEffectTraits ygoprodeckId={apiCard?.ygoprodeckId} className="mt-1 [&_span]:rounded-none" /> : null}
           </div>
         </div>
 

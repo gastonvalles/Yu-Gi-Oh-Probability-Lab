@@ -99,7 +99,7 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
       <PromptHandle ref={ref} role={role} aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} move={move.head} {...move.root} />
     ) : (
       // Entre grupos, 8 px (no 12): en una ventana baja cada píxel es de la carta.
-      <div ref={ref} {...attrs} {...move.root} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
+      <div ref={ref} {...attrs} {...move.root} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2 rounded-card border border-info bg-card-background/92 p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
         <div {...swipe} title={t('duel.prompt.move')} className="flex cursor-grab touch-none select-none items-center gap-2 active:cursor-grabbing">
           {top}
           {aside}

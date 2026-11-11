@@ -5,9 +5,11 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { CardMenu, PlayTag } from '../components/probability/MatDialogs'
+import { CardMenu, PlayTag, SaveComboDialog } from '../components/probability/MatDialogs'
+import { PhaseRow } from '../components/probability/PhaseRow'
 import { BottomSheet } from '../components/ui/BottomSheet'
 import { Button } from '../components/ui/Button'
+import { Modal } from '../components/ui/Modal'
 import { Harness, hand, render, tap } from './support/practice-mat-harness'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
@@ -107,9 +109,27 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
 
     expect(sheet).toHaveClass('mat-square')
-    // La hoja, la caja de la carta y las jugadas, rectas. Quedan el asa, la X y la lupa.
+    // La hoja, la caja de la carta, las jugadas, el asa, la X y la lupa: todo recto.
     expect(within(sheet).getAllByRole('menuitem').length).toBeGreaterThan(0)
-    expect(roundCorners(sheet)).toEqual(['rounded-full', 'rounded-full', 'rounded-full'])
+    expect(roundCorners(sheet)).toEqual([])
+  })
+
+  it('la línea de las fases (`PhaseRow`) y los diálogos de la mesa (guardar un combo) son rectos; un `Modal` del resto de la app, no', () => {
+    render(
+      <>
+        <PhaseRow anchor={new DOMRect(100, 300, 40, 40)} items={[{ label: 'Draw Phase', onSelect: () => {}, current: true }, { label: 'Main Phase 1', onSelect: () => {} }]} onClose={() => {}} />
+        <SaveComboDialog isOpen defaultName="Combo" onSave={() => {}} onClose={() => {}} />
+        <Modal isOpen onClose={() => {}} size="sm" title="Exportar">
+          <Button>Copiar</Button>
+        </Modal>
+      </>,
+    )
+    const row = document.querySelector('[data-phase-row]')!.closest('.mat-square')!
+    const save = screen.getByRole('dialog', { name: 'Guardar combo' }).closest('.mat-square')!
+
+    expect(row.querySelectorAll('[role="menuitem"]')).toHaveLength(2)
+    expect([...roundCorners(row), ...roundCorners(save)]).toEqual([])
+    expect(roundCorners(screen.getByRole('dialog', { name: 'Exportar' }))).not.toEqual([])
   })
 
   it('la hoja de abajo (`BottomSheet`), el menú de escritorio (`CardMenu`, con su submenú) y la etiqueta de una jugada (`PlayTag`) son rectos', () => {
