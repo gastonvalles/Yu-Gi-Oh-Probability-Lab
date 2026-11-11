@@ -320,12 +320,13 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   ]
   const phases: MenuItem[] = PHASES.map((phase, index) => ({ label: phase.name, current: index === 2, disabled: index < 2 || index === 4, onSelect: reply(phase.name) }))
   const card = { ...sampleDeckCard(14558127), cardType: 'Effect Monster', atk: '0', def: '1800', description: 'Texto de muestra del efecto, recortado a tres renglones: «Ver carta» abre el texto entero con sus números, su arte y sus impresiones.' }
-  const frame = (width: string, label: string) => (
+  // A 1440 px, la ventana (TI-145): en su lugar; se arrastra de la barra, se estira del borde y de la esquina (la ficha pasa de 8 a 6 columnas) y el doble clic la vuelve. Acotada a su marco.
+  const frame = (width: string, label: string, variant?: 'floating') => (
     <div className={cx('grid content-start gap-2', width)}>
       <p className="m-0 text-micro text-muted">{label}</p>
-      <div className="grid gap-3 border border-border-subtle bg-background py-3">
-        <AutoCardSheet name={ASH.name} kicker={t('auto.picker.place.mine.hand')} art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} />
-        <AutoPhases items={phases} onClose={reply(t('common.cancel'))} />
+      <div className={cx('grid gap-3 border border-border-subtle bg-background py-3', variant && 'min-h-[36rem] justify-items-center overflow-hidden')}>
+        <AutoCardSheet name={ASH.name} kicker={t('auto.picker.place.mine.hand')} art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} variant={variant} />
+        <AutoPhases items={phases} onClose={reply(t('common.cancel'))} variant={variant} />
       </div>
     </div>
   )
@@ -335,12 +336,12 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       title="La familia del automático · la ficha y las fases"
       layout="column"
       className="col-span-full"
-      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo; apoyado sobre la mano con techo en la línea; 92 % en alfa plano, esquinas rectas. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
+      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo; apoyado sobre la mano con techo en la línea; 92 % en alfa plano, esquinas rectas. En escritorio es una ventana: barra de título violeta (el asa: flechas la mueven, Alt + flechas la estiran, Enter o doble clic la vuelven), se estira del borde derecho, del de abajo y de la esquina, y recuerda lugar y tamaño por tipo. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
     >
       <SheetHost phone>
         <div className="flex flex-wrap items-start gap-4">
           {frame('w-full max-w-[24.375rem]', '390 px')}
-          {frame('min-w-0 flex-1 basis-[38.75rem]', '1440 px (620 px de ancho máximo)')}
+          {frame('min-w-0 flex-1 basis-[38.75rem]', '1440 px: la ventana (arrastrala de la barra violeta, estirala del borde o la esquina; doble clic, a su lugar)', 'floating')}
         </div>
       </SheetHost>
     </Specimen>

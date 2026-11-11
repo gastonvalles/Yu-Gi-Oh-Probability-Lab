@@ -76,6 +76,42 @@ function writeOffset(key: string, offset: FabPosition) {
   }
 }
 
+export interface Size {
+  width: number
+  height: number
+}
+
+/** Dónde se guarda el tamaño de un cartel que se estira: al lado de su posición. */
+export const sizeKey = (key: string) => `${key}:size`
+
+/** El tamaño guardado (sólo números finitos y positivos; lo demás, ninguno: sale con el de siempre). */
+export function readSize(key: string): Size | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(sizeKey(key)) ?? 'null') as Partial<Size> | null
+    const ok = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0
+
+    return ok(parsed?.width) && ok(parsed?.height) ? { width: parsed.width, height: parsed.height } : null
+  } catch {
+    return null
+  }
+}
+
+function writeSize(key: string, size: Size | null) {
+  try {
+    if (size) localStorage.setItem(sizeKey(key), JSON.stringify(size))
+    else localStorage.removeItem(sizeKey(key))
+  } catch {
+    // Si no se puede guardar, la próxima vez sale con el tamaño de siempre.
+  }
+}
+
+/** Entre el mínimo y lo que deja `area` (si el área es más chica que el mínimo, el mínimo). */
+export function clampSize(size: Size, min: Size, area: Area): Size {
+  const axis = (value: number, low: number, high: number) => Math.round(Math.max(low, Math.min(value, high)))
+
+  return { width: axis(size.width, min.width, area.right - area.left), height: axis(size.height, min.height, area.bottom - area.top) }
+}
+
 const px = (value: number) => (value ? `${Math.round(value)}px` : '0')
 
 type PointerHandler = (event: ReactPointerEvent<HTMLElement>) => void
@@ -92,12 +128,28 @@ interface Drag {
   moved: boolean
 }
 
+interface Stretch {
+  id: number
+  start: FabPosition
+  from: Size
+  /** La esquina de arriba a la izquierda, que queda quieta mientras se estira. */
+  at: FabPosition
+  area: Area
+  /** El tamaño que lleva (sin mover todavía, ninguno: un clic no estira). */
+  size?: Size
+}
+
 /**
  * `ref`: el cartel entero (lo que se corre). Sin `enabled` (el celular, la hoja de abajo) no hace nada. `vars`: el que ya se centra con un `translate` de Tailwind (el `Modal` de la mesa) no se
  * pisa: se escriben `--drag-x` y `--drag-y`, que sus clases le suman (`translate-x-[calc(var(--drag-x,0px)-50%)]`).
+ * `minSize`: además se estira (las ventanas del duelo automático, `AutoPanel`): `stretch` da los agarres del borde y la esquina, `resizeBy` el teclado; el tamaño se guarda al lado de la posición
+ * (`sizeKey`), acotado al mínimo y a la pantalla, se escribe en `width`/`height` del cartel (sin redibujar React) y la esquina de arriba a la izquierda no se mueve al estirarlo. Doble clic, a su lugar y
+ * a su tamaño de siempre.
  */
-export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean, vars = false) {
+export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean, vars = false, minSize?: Size) {
   const stored = useRef<FabPosition | null>(null)
+  const sized = useRef<Size | null>(null)
+  const stretching = useRef<Stretch | null>(null)
   // Lo que tiene puesto el cartel ahora (y en cuál: al minimizarse, el asa es otro elemento).
   const applied = useRef<{ element: HTMLElement | null; offset: FabPosition }>({ element: null, offset: ZERO })
   const drag = useRef<Drag | null>(null)
@@ -105,7 +157,10 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
   const observer = useRef<ResizeObserver | null>(null)
   const seen = useRef<HTMLElement | null>(null)
 
-  stored.current ??= readOffset(storageKey)
+  if (stored.current === null) {
+    stored.current = readOffset(storageKey)
+    sized.current = minSize ? readSize(storageKey) : null
+  }
 
   const current = () => (applied.current.element === ref.current ? applied.current.offset : ZERO)
   /** Dónde está el cartel sin correr. Su tamaño de verdad (`offset*`): al aparecer se agranda desde el 96 % (`animate-dialog-enter`, desde el centro) y el rectángulo lo daría más chico. */
@@ -138,30 +193,93 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
     write(offset)
     ref.current?.dispatchEvent(new Event('cardmove', { bubbles: true }))
   }
+  /** El tamaño puesto (o el de siempre, `null`): con alto propio, sin el tope de alto de sus clases. */
+  const paint = (element: HTMLElement, size: Size | null) => {
+    element.style.width = size ? `${size.width}px` : ''
+    element.style.height = size ? `${size.height}px` : ''
+    element.style.maxHeight = size ? 'none' : ''
+  }
+  /** Estira a `size` dejando quieta la esquina de arriba a la izquierda (`at`): el corrimiento compensa lo que el lugar de siempre se corre con el tamaño (centrado, apoyado abajo). */
+  const stretchTo = (element: HTMLElement, size: Size, at: FabPosition, area: Area) => {
+    paint(element, size)
+    const box = natural(element)
+
+    write(clampOffset({ x: at.x - box.left, y: at.y - box.top }, box, area))
+  }
+  /** Dónde arranca un estirón: el tamaño de ahora, la esquina quieta y hasta dónde puede crecer (de esa esquina al borde del área). */
+  const stretchFrom = (element: HTMLElement) => {
+    const box = natural(element)
+    const { x, y } = current()
+    // Un `DOMRect` no se copia con `...` (sus medidas son del prototipo).
+    const { right, bottom } = visibleArea(element)
+    const at = { x: box.left + x, y: box.top + y }
+
+    return { from: { width: box.width, height: box.height }, at, area: { left: at.x, top: at.y, right, bottom } }
+  }
+  const keepSize = (size: Size) => {
+    sized.current = size
+    writeSize(storageKey, size)
+    settle(current())
+  }
   const reclamp = () => {
     const element = ref.current
 
-    if (!element || drag.current) return
-    // Pasó al celular con el cartel abierto (el mismo elemento): sin lo corrido y sin `data-moved`.
+    if (!element || drag.current || stretching.current) return
+    // Pasó al celular con el cartel abierto (el mismo elemento): sin lo corrido, sin su tamaño y sin `data-moved`.
     if (!enabled) {
       if (applied.current.element !== element) return
       applied.current = { element: null, offset: ZERO }
       element.style.translate = ''
       element.style.removeProperty('--drag-x')
       element.style.removeProperty('--drag-y')
+      if (minSize) paint(element, null)
       delete element.dataset.moved
       return
     }
     const { x, y } = stored.current!
 
+    if (minSize) paint(element, sized.current ? clampSize(sized.current, minSize, visibleArea(element)) : null)
     // En su lugar no hay nada que acotar (ni que medir: sin una lectura de más por cada vez que se dibuja).
     write(x || y ? clampOffset(stored.current!, natural(element), visibleArea(element)) : ZERO)
+  }
+  /** Lo corre (el teclado de la cabeza): acotado a la pantalla y guardado. */
+  const moveBy = (dx: number, dy: number) => {
+    const element = ref.current
+
+    if (!enabled || !element) return
+    const { x, y } = current()
+
+    settle(clampOffset({ x: x + dx, y: y + dy }, natural(element), visibleArea(element)))
+  }
+  /** Lo estira (Alt + flechas): entre el mínimo y la pantalla, guardado. */
+  const resizeBy = (dw: number, dh: number) => {
+    const element = ref.current
+
+    if (!enabled || !minSize || !element) return
+    const { from, at, area } = stretchFrom(element)
+    const size = clampSize({ width: from.width + dw, height: from.height + dh }, minSize, area)
+
+    stretchTo(element, size, at, area)
+    keepSize(size)
+  }
+  /** A su lugar y a su tamaño de siempre (doble clic en la cabeza). */
+  const reset = () => {
+    if (!enabled) return
+    if (minSize) {
+      sized.current = null
+      writeSize(storageKey, null)
+      if (ref.current) paint(ref.current, null)
+    }
+    settle(ZERO)
   }
 
   // Cada vez que se dibuja (otra pregunta, minimizado/abierto): el cartel en su lugar recordado, acotado; y su tamaño, vigilado.
   useLayoutEffect(() => {
-    // Al aparecer, lo último guardado de su lugar.
-    if (ref.current && !seen.current) stored.current = readOffset(storageKey)
+    // Al aparecer, lo último guardado de su lugar (y de su tamaño).
+    if (ref.current && !seen.current) {
+      stored.current = readOffset(storageKey)
+      sized.current = minSize ? readSize(storageKey) : null
+    }
     seen.current = ref.current
     reclamp()
     const element = enabled ? ref.current : null
@@ -220,10 +338,47 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
           onPointerUp,
           onPointerCancel: onPointerUp,
           onDoubleClick: (event: MouseEvent<HTMLElement>) => {
-            if (!(event.target as Element).closest('button, a, input, select, textarea')) settle(ZERO)
+            if (!(event.target as Element).closest('button, a, input, select, textarea')) reset()
           },
         }
       : {}
+  /** Un agarre para estirar: el borde derecho (`x`), el de abajo (`y`) o la esquina (los dos). Con el mouse o el lápiz; se escribe en vivo y se guarda al soltar. */
+  const stretch = (x: boolean, y: boolean): Handlers => {
+    if (!enabled || !minSize) return {}
+    const end: PointerHandler = (event) => {
+      const now = stretching.current
+
+      if (!now || now.id !== event.pointerId) return
+      stretching.current = null
+      if (now.size) keepSize(now.size)
+    }
+
+    return {
+      onPointerDown: (event) => {
+        const element = ref.current
+
+        if (!element || event.pointerType === 'touch' || event.button !== 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        stretching.current = { id: event.pointerId, start: { x: event.clientX, y: event.clientY }, ...stretchFrom(element) }
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+      },
+      onPointerMove: (event) => {
+        const now = stretching.current
+        const element = ref.current
+
+        if (!now || now.id !== event.pointerId || !element) return
+        const dx = x ? event.clientX - now.start.x : 0
+        const dy = y ? event.clientY - now.start.y : 0
+
+        if (!now.size && !dx && !dy) return
+        now.size = clampSize({ width: now.from.width + dx, height: now.from.height + dy }, minSize, now.area)
+        stretchTo(element, now.size, now.at, now.area)
+      },
+      onPointerUp: end,
+      onPointerCancel: end,
+    }
+  }
   const root: MoveRoot = enabled
       ? {
           'aria-keyshortcuts': MOVE_SHORTCUTS,
@@ -236,14 +391,16 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
             if (!event.altKey || event.ctrlKey || event.metaKey || !arrow || !element) return
             // Alt + ← es «Atrás» en el navegador: acá mueve el cartel.
             event.preventDefault()
-            const { x, y } = current()
-
-            settle(clampOffset({ x: x + arrow.x * KEY_STEP, y: y + arrow.y * KEY_STEP }, natural(element), visibleArea(element)))
+            moveBy(arrow.x * KEY_STEP, arrow.y * KEY_STEP)
           },
         }
       : {}
 
   return {
+    stretch,
+    moveBy,
+    resizeBy,
+    reset,
     /** La cabeza: se agarra por acá (con `cursor-grab`). */
     head,
     /** El cartel: Alt + flechas lo corren con el foco adentro. */

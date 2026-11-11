@@ -216,11 +216,13 @@ describe('MatPrompt: la fase y el turno arriba de la pregunta', () => {
   describe('en escritorio', () => {
     onDesktop()
 
-    it('con la fase que da la mesa, una línea chica y apagada arriba de la cabeza; sin ella (catálogo, práctica manual), nada', () => {
+    it('con la fase que da la mesa, una línea chica en la barra de título de la ventana, arriba de la pregunta; sin ella (catálogo, práctica manual), nada', () => {
       const { unmount } = render(<PromptTurnContext value={{ phase: 'draw', mine: false }}>{respond}</PromptTurnContext>)
 
       expect(turnLine()).toHaveTextContent(/^Draw Phase · Turno del rival$/)
-      expect(turnLine()).toHaveClass('text-micro', 'text-muted')
+      // En escritorio es el título corto de la ventana (TI-145): blanco sobre la barra violeta.
+      expect(turnLine()).toHaveClass('text-micro')
+      expect(turnLine()!.closest('[data-window-bar]')).toHaveClass('bg-primary', 'text-white')
       expect(turnLine()!.compareDocumentPosition(screen.getByText('¿Activás algo ahora?')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       unmount()
 
@@ -352,7 +354,8 @@ describe('PickBand', () => {
     band({ onCancel })
     const group = screen.getByRole('group', { name: 'Elegí 2 cartas para desterrar · 0/2' })
 
-    expect(group).toHaveAttribute('data-auto-panel', 'docked')
+    // En escritorio, la ventana (TI-145).
+    expect(group).toHaveAttribute('data-auto-panel', 'floating')
     expect(group).toHaveTextContent('Cementerio · 3')
     // La bandeja: una sola fila de cartas de 1/6 del ancho (con pocas no se agrandan); con más de seis, se desliza.
     expect(within(group).getByRole('listbox')).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]', 'overflow-x-auto')
@@ -420,7 +423,7 @@ describe('RespondBand', () => {
     respond({ onPass })
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
-    expect(group).toHaveAttribute('data-auto-panel', 'docked')
+    expect(group).toHaveAttribute('data-auto-panel', 'floating')
     expect(group).not.toHaveTextContent(/Ash Blossom|Tu respuesta|CL2|Rival/)
     expect(group.querySelector('img')).toBeNull()
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelectorAll('.text-soft')).toHaveLength(0)
@@ -454,14 +457,15 @@ describe('RespondBand', () => {
     expect(onChain).toHaveBeenCalledTimes(1)
     const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
 
-    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila de arriba: a su derecha (y de la fase), antes de minimizar, sin un renglón propio (el alto es de las cartas).
+    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila del título: a su derecha, sin un renglón propio (el alto es de las cartas). Minimizar va en la barra de la
+    // ventana, arriba (TI-145).
     const title = within(group).getByText('Responder a la cadena')
     const minimize = within(group).getByRole('button', { name: 'Minimizar' })
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
-    expect(modes.parentElement?.parentElement).toBe(minimize.parentElement)
-    expect(minimize.parentElement).toContainElement(title)
+    expect(modes.parentElement?.parentElement).toBe(title.parentElement?.parentElement)
+    expect(minimize.closest('[data-window-bar]')).not.toBeNull()
     expect(title.compareDocumentPosition(modes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(modes.compareDocumentPosition(minimize) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(minimize.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // Texto arriba, bandeja, botones abajo (el mismo orden que en el celular); las columnas, las de 6.
     const listbox = within(group).getByRole('listbox')
     expect(listbox).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]')
@@ -481,15 +485,16 @@ describe('RespondBand', () => {
   })
 })
 
-describe('AutoPanel en escritorio: el mismo cartel, más ancho', () => {
+describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
   onDesktop()
 
-  it('entre grupos, 8 px (la escala de la guía: 4 · 8 · 16 · 24), centrado en la columna de la mesa y con 620 px de ancho máximo', () => {
+  it('entre grupos, 8 px (la escala de la guía: 4 · 8 · 16 · 24); la ventana sale centrada en la columna de la mesa, con 620 px de ancho máximo y apoyada abajo (TI-145)', () => {
     render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
-    expect(group).toHaveClass('gap-2', 'min-[1101px]:left-[var(--mat-x,50%)]', 'min-[1101px]:w-[min(38.75rem,var(--mat-w,100vw))]')
-    expect(group).not.toHaveClass('gap-3')
+    expect(group).toHaveClass('fixed', 'bottom-0', 'left-[var(--mat-x,50%)]', 'w-[min(38.75rem,var(--mat-w,100vw))]')
+    expect(group.querySelector('[data-panel-body]')!.parentElement).toHaveClass('gap-2', 'p-2')
+    expect(group.querySelector('.gap-3')).toBeNull()
   })
 })
 
