@@ -60,7 +60,8 @@ import { MatScene } from '../probability/MatArena'
 import { CardMenu, PILE_TITLES, PileViewer, type PileMany } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelCalculator } from './DuelCalculator'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from './DuelBar'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLine, DuelLogTicker, RivalLife, type LaneNotice } from './DuelBar'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { ResumeAutoSetting, useResumeLane, type ResumeAuto } from './ResumeAuto'
 import { useManualReplay } from './ManualReplay'
 import { DuelCardDock, type CardPeek } from './DuelCardDock'
@@ -1742,6 +1743,7 @@ function useMarkNotice(snapshot: DuelSnapshot) {
 function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deckName, onRematch, onLeave, onAbandon, resume }: { duel: Duel; snapshot: DuelSnapshot; /** La sala: el registro se guarda con ella (recargar no lo borra). */ room: string; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onRematch: () => void; onLeave: () => void; onAbandon: () => void; /** Una sala con reglas automáticas que pasó a manual: pedir seguir en automático (`ResumeAuto`). */ resume?: ResumeAuto }) {
   const { mine, initial, actions, theirs } = snapshot
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   // Tocar una carta o una pila del rival (o su mano) abre un menú con una sola jugada: marcarla (o quitarle la marca) como objetivo, y él lo ve en lo suyo.
   const [markMenu, setMarkMenu] = useState<{ target: MarkTarget; rect: DOMRect; place: string } | null>(null)
@@ -1897,6 +1899,9 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
   const link = useMemo<DuelMatLink>(
     () => {
       const rivalHand = <TheirHand count={opponent.handCount ?? 0} marked={snapshot.marks.theirs.piles.includes('hand')} pointed={pointed.theirs?.pile === 'hand'} onMark={(rect) => openMark({ pile: 'hand' }, rect, PILE_TITLES.hand)} />
+      const chatToggle = <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} tile={phone} />
+      const logTicker = <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />
+      const turnNumber = duelTurnNumber(mine, theirs!.state)
 
       return {
       areas: DUEL_AREAS,
@@ -1938,13 +1943,18 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       // En escritorio el chat está siempre abierto a la derecha (con las reacciones); hasta 1100 px, un panel que se abre desde su botón de la barra, y las reacciones van en él.
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
       // Sin barra de abajo (Gastón, 2026-10-27): hasta 1100 px las vidas van en el marcador de la barra (`scoreInHeader`, con las vidas de 44 px); en escritorio, planas y cada una en su esquina
-      // (opción D2): la del rival arriba a la derecha del campo, junto a su mano, y la tuya abajo a la izquierda, subida 12 px sobre el borde de tu mano (`-mt-3`: la fila no crece). Las dos abren la calculadora.
-      life: docked ? (
-        <span className="-mt-3 flex" data-corner="mine">
-          <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} size="lg" />
+      // (opción D2): la del rival arriba a la derecha del campo, junto a su mano, y la tuya abajo a la izquierda, subida 20 px sobre el borde de tu mano (`-mt-5`, la chapa: la fila no crece). Las dos abren la calculadora.
+      // En el celular, las chapas (la tuya abajo a la izquierda con el turno y, a su lado, la botonera con el chat; la del rival junto a su mano) y la línea con la última jugada y los avisos.
+      life: phone ? (
+        <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} badge turn={turn === 'mine' ? t('duel.bar.yourTurnN', { turn: turnNumber }) : t('duel.bar.theirTurnN', { name: rivalName, turn: turnNumber })} turnMine={turn === 'mine'} />
+      ) : docked ? (
+        <span className="-mt-5 flex" data-corner="mine">
+          <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} badge />
         </span>
       ) : null,
-      ...(docked ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} size="lg" /> } : { scoreInHeader: true, scoreTall: true }),
+      ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} badge /> } : {}),
+      ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
+      ...(phone ? { line: <DuelLine lane={lane} rivalName={rivalName} log={logTicker} />, dock: chatToggle } : {}),
       // Deshacer va en la barra de arriba (`MatUndoContext`).
       undoInHeader: true,
       cover: paused ? (
@@ -1952,10 +1962,10 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} {...(onSaveReplay ? { onSaveReplay } : {})} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} extraSettings={replaySetting || resume ? (close: () => void) => <>{replaySetting?.(close)}{resume ? <ResumeAutoSetting resume={resume} rivalName={rivalName} /> : null}</> : undefined} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : chatToggle} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : logTicker} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} extraSettings={replaySetting || resume ? (close: () => void) => <>{replaySetting?.(close)}{resume ? <ResumeAutoSetting resume={resume} rivalName={rivalName} /> : null}</> : undefined} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, replaySetting],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, phone, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, replaySetting],
   )
 
   const markTarget = markMenu?.target

@@ -7,6 +7,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { t, type MessageKey } from '../../i18n'
 import { LaneBanner, RAIL_LANE_STYLE, Setting, type LaneNotice } from '../duel/DuelBar'
 import { LifeScore } from '../duel/LifeScore'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext } from '../probability/MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -241,6 +242,7 @@ export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: b
 export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, onExit, onUndo, canUndo, onNewHand, lane = null, log, ...options }: AutoBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const rails = useDuelRails()
   // Repasando un combo en el celular: el paso va en el segundo renglón del aviso (la mesa lo da; los botones y la línea de tiempo quedan abajo).
   const replay = useContext(MatReplayContext)
@@ -320,19 +322,24 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
         {/* Los íconos, a la derecha, como en la práctica (el engranaje, al final, donde ella tiene «Guardar combo» y los pasos). */}
         {actions('ml-auto')}
       </div>
-      {/* El marcador, plano (Gastón, 2026-10-27, opción A; de 640 a 1100 px también): «VOS 8000 · Tu turno · 1 · RIVAL 8000». La fase, en el botón del campo. */}
-      <div data-testid="auto-score" className="flex min-h-10 min-w-0 items-center gap-2 px-1">
-        <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
-        {turnLine('flex-1 text-center')}
-        <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} />
-      </div>
-      {/* La línea del registro, con el aviso encima (la misma fila); sin registro, su lugar igual queda (el primer aviso no corre nada). */}
-      <div className="relative max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11">
-        <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
-          {log ?? <div aria-hidden="true" className="min-h-11" />}
-        </div>
-        {lane ? <LaneBanner lane={lane} rivalName={rivalName} detail={replay?.step} /> : null}
-      </div>
+      {/* En el celular la barra es sólo esta fila: las vidas van en las chapas junto a cada lado de la mesa y los avisos, en la línea (las pone la pantalla). */}
+      {phone ? null : (
+        <>
+          {/* El marcador, plano (Gastón, 2026-10-27, opción A; de 640 a 1100 px): «VOS 8000 · Tu turno · 1 · RIVAL 8000». La fase, en el botón del campo. */}
+          <div data-testid="auto-score" className="flex min-h-10 min-w-0 items-center gap-2 px-1">
+            <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
+            {turnLine('flex-1 text-center')}
+            <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} />
+          </div>
+          {/* La línea del registro, con el aviso encima (la misma fila); sin registro, su lugar igual queda (el primer aviso no corre nada). */}
+          <div className="relative max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11">
+            <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
+              {log ?? <div aria-hidden="true" className="min-h-11" />}
+            </div>
+            {lane ? <LaneBanner lane={lane} rivalName={rivalName} detail={replay?.step} /> : null}
+          </div>
+        </>
+      )}
       {dialogs}
     </div>
   )

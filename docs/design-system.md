@@ -8,7 +8,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 - **Carbón con matiz frío:** superficies de carbón y velos violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre una foto, el negro sí).
 - **Dos niveles de caja, no tres:** lienzo → tarjeta (`Card`) y nada más; adentro, espacio y líneas finas (`border-t border-border-subtle`). Un aviso dentro de una tarjeta es un fondo teñido sin borde.
 - **Cada dato se dice una sola vez,** también entre pestaña, encabezado y contenido: el resumen de una sección sólo se ve plegada.
-- **Los porcentajes son anillos** (`ProgressRing` un valor, `SegmentedRing` un reparto); no hay barras de progreso. Las vidas son el número plano de `LifeScore`; la placa `LifeTile` sólo queda en el catálogo.
+- **Los porcentajes son anillos** (`ProgressRing` un valor, `SegmentedRing` un reparto); no hay barras de progreso. Las vidas: la chapa `LifeBadge` (de 640 a 1100 px, `LifeScore` plano); `LifeTile`, sólo catálogo.
 - **Cifras con `tabular-nums`.**
 
 ## 2. Tonos (color con significado)

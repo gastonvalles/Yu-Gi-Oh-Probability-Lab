@@ -23,7 +23,8 @@ import { showToastMessage } from '../../app/use-toast-message'
 import { getLocale, t } from '../../i18n'
 import { TurnOrderBanner } from '../duel/DuelBanner'
 import { TurnDial } from '../duel/TurnDial'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from '../duel/DuelBar'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLine, DuelLogTicker, RivalLife, type LaneNotice } from '../duel/DuelBar'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { DuelChatPanel } from '../duel/DuelChat'
 import { DuelPause } from '../duel/DuelPause'
 import { ResultCard } from '../duel/DuelResult'
@@ -569,6 +570,13 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
       ) : null}
     </>
   )
+  // El celular: las chapas, la línea (el registro con el aviso encima) y el chat en la botonera de abajo, no en la barra.
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
+  const chatToggle = <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} tile={phone} />
+  const logTicker = <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />
+  // Un duelo que sigue a uno manual arranca en el turno 1 del núcleo: se le suma lo que llevaban las mesas de arranque (en uno de cero, nada).
+  const turnNumber = Math.max(1, snap.overlay.turn) + duelTurnNumber(snap.initial.mine, snap.initial.theirs) - 1
+  const turnText = asks.turnMine ? t('duel.bar.yourTurnN', { turn: turnNumber }) : t('duel.bar.theirTurnN', { name: rivalName, turn: turnNumber })
   // Lo del pase a manual en la línea: la espera (con «Cancelar pedido») y el corte. Lo que hay que contestar del núcleo va antes.
   const manualLane: LaneNotice | null = switching
     ? { kind: 'thinking', text: t('auto.online.manualSwitching') }
@@ -595,31 +603,35 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         myName={myName}
         mySignal={signals.mine}
         mySignalKey={signals.mineKey}
-        chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />}
+        chat={docked ? undefined : chatToggle}
         onToggleClock={duel.toggleClock}
         onRematch={onRematch}
         onLeave={onLeave}
         onAbandon={onAbandon}
         onConcede={duel.concede}
         onReconnect={duel.reconnect}
-        log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />}
+        log={docked ? undefined : logTicker}
         resultOpen={resultOpen}
         rivalSignal={rivalSignal}
         rivalSignalKey={signals.theirsKey}
         lane={lane}
-        // Un duelo que sigue a uno manual arranca en el turno 1 del núcleo: se le suma lo que llevaban las mesas de arranque (en uno de cero, nada).
-        turnNumber={Math.max(1, snap.overlay.turn) + duelTurnNumber(snap.initial.mine, snap.initial.theirs) - 1}
+        turnNumber={turnNumber}
         extraSettings={settings}
         {...(reason ? { resultReason: reason } : {})}
       />
     ),
-    // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): hasta 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, planas y cada una en su esquina (D2).
-    life: docked ? (
-      <span className="-mt-3 flex" data-corner="mine">
-        <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} size="lg" />
+    // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): en el celular, las chapas (la tuya abajo con el turno y la botonera, la del rival junto a su mano) y la línea; de 640
+    // a 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, cada chapa en su esquina (D2).
+    life: phone ? (
+      <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge turn={turnText} turnMine={asks.turnMine} />
+    ) : docked ? (
+      <span className="-mt-5 flex" data-corner="mine">
+        <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge />
       </span>
     ) : null,
-    ...(docked ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} size="lg" /> } : { scoreInHeader: true, scoreTall: true }),
+    ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge /> } : {}),
+    ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
+    ...(phone ? { line: <DuelLine lane={lane} rivalName={rivalName} log={logTicker} />, dock: chatToggle } : {}),
     tools: null,
     // El chat: en escritorio, fijo a la derecha (con las reacciones); hasta 1100 px, en su panel (lo abre su botón de la barra), con las reacciones.
     aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,

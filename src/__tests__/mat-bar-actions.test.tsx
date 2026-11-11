@@ -219,16 +219,32 @@ describe('la barra de la mesa es una sola', () => {
     expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ })).toHaveTextContent(/^(DP|SP|M1|BP|M2|EP)$/)
   })
 
-  it.each([
-    ['en el celular en vertical', true],
-    ['de 640 a 1100 px', false],
-  ])('%s (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo, «Pasos y combos» es lo primero del ⋯, el botón de la fase sólo con su sigla y los avisos van arriba', (_, phone) => {
+  it('en el celular en vertical las vidas salen de la barra: las chapas van junto a cada lado (la tuya abajo con el turno y «Pasos y combos» en la botonera, la del rival junto a su mano) y el ⋯ no repite «Pasos y combos»', () => {
     const original = window.matchMedia
 
     onTestFinished(() => {
       window.matchMedia = original
     })
-    window.matchMedia = ((query: string) => ({ matches: phone && query === '(max-width: 639.98px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query === '(max-width: 639.98px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    renderAuto()
+
+    expect(screen.queryByTestId('auto-score')).toBeNull()
+    const seat = document.querySelector<HTMLElement>('[data-mat-seat]')!
+    const mine = within(seat).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })
+
+    expect(mine).toHaveAttribute('data-life-badge')
+    expect(within(seat).getByRole('button', { name: 'Pasos y combos' })).toBeInTheDocument()
+    expect(document.querySelector('[data-corner="theirs"] [data-life-badge]')).toHaveAccessibleName('Puntos de vida de Rival: 8000')
+    expect(menuRows().map((row) => row.text)).not.toContain('Pasos y combos')
+  })
+
+  it('de 640 a 1100 px (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo, «Pasos y combos» es lo primero del ⋯, el botón de la fase sólo con su sigla y los avisos van arriba', () => {
+    const original = window.matchMedia
+
+    onTestFinished(() => {
+      window.matchMedia = original
+    })
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
     renderAuto()
     const score = screen.getByTestId('auto-score')
 

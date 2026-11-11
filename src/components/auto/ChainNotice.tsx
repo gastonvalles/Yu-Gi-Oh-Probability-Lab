@@ -1,6 +1,8 @@
 import { useId, useRef } from 'react'
 
 import { matCardPositionKey, useDraggableOffset } from '../../app/use-draggable-offset'
+import { useMediaQuery } from '../../app/use-media-query'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -29,6 +31,32 @@ interface ChainNoticeProps {
 }
 
 /**
+ * La cadena en la línea del celular (`data-duel-line`, de alto fijo): arriba cuántos eslabones y qué le pasa al del que se habla, debajo las filas de la pila en el orden en que se resuelven (se
+ * desplazan; cada una se toca para leerla) y, a la derecha, el ⓘ de «Cómo se resuelve». Llena el alto de la línea, traslúcida al 88 % en alfa plano. La usa `ChainNotice` en el celular y el catálogo.
+ */
+export function ChainLine({ rows, focus, onPick }: Pick<ChainNoticeProps, 'rows' | 'focus' | 'onPick'>) {
+  const listId = useId()
+  const row = rows[focus] ?? rows[rows.length - 1]
+
+  if (!row) return null
+  return (
+    <div data-testid="chain-notice" data-chain-line="" className="grid h-full grid-cols-[minmax(0,1fr)_auto] border border-border-subtle bg-card-background/88">
+      <div className="flex min-h-0 flex-col">
+        <p role="status" className="m-0 flex min-w-0 items-center gap-1.5 px-2 pt-1 text-micro font-semibold leading-tight">
+          <Icon name="link" size={14} className="shrink-0 text-info" aria-hidden="true" />
+          <span className="shrink-0">{t('auto.chain.count', { count: rows.length })}</span>
+          <span className="truncate text-info">{stateLabel(row)}</span>
+        </p>
+        <ol id={listId} data-chain-list="" aria-label={t('auto.chain.list')} className="m-0 grid min-h-0 flex-1 snap-y snap-mandatory list-none content-start gap-1 overflow-y-auto overscroll-contain p-1.5 pr-0">
+          <ChainListRows rows={rows} onPick={onPick} />
+        </ol>
+      </div>
+      <ChainLesson />
+    </div>
+  )
+}
+
+/**
  * La pila de la cadena (duelo automático: «Jugar solo» y el duelo por enlace). La pone la mesa en `duel.chain`, centrada arriba de su columna, debajo de la barra.
  * - **Desplegada** (así abre cada cadena; sólo la pliega la persona): un solo cartel, con el título («Cadena · 2») arriba y, tras una línea fina, la pila en el orden en que se resuelve (el último eslabón
  *   arriba): número, carta, de quién y su estado (en espera, resolviendo, resuelta, negada o sin efecto, con quién lo negó si se sabe: «Sin efecto · por CL2»). Tiene tope de alto
@@ -52,12 +80,20 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
   const cardRef = useRef<HTMLDivElement | null>(null)
   // En escritorio se lleva a otro lado agarrándola por su fila de arriba (`useDraggableOffset`, como la pregunta): una posición para todas las cadenas.
   const move = useDraggableOffset(matCardPositionKey('chain'), cardRef, !compact)
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const row = rows[focus] ?? rows[rows.length - 1]
   // Leer «Cómo se resuelve» la retiene (no se va sola al terminar la cadena) hasta cerrar la hoja: es lo único que la retiene; tocar un eslabón sólo le da otro rato.
   const reading = (on: boolean) => onReading?.(on)
 
   if (!row) return null
-  // El celular: la hoja de abajo (`ChainSheet`); la pila desplegada y su píldora, desde 1101 px.
+  // El celular en vertical (`phoneDuelLayout`): la pila va adentro de la línea, de alto fijo (no en una hoja aparte).
+  if (compact && phone)
+    return (
+      <ChainLessonReading value={reading}>
+        <ChainLine rows={rows} focus={focus} onPick={onPick} />
+      </ChainLessonReading>
+    )
+  // De 640 a 1100 px: la hoja de abajo (`ChainSheet`); la pila desplegada y su píldora, desde 1101 px.
   if (compact)
     return (
       <ChainLessonReading value={reading}>

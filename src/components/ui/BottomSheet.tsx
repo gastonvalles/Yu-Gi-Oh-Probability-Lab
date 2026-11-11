@@ -80,6 +80,7 @@ interface BottomSheetProps extends Omit<HTMLAttributes<HTMLDivElement>, 'childre
  * - **Dos alturas:** subida, todo; bajada, la fila `peek` (o la tira del asa, 44 px, con el título). `footer` va debajo en las dos. Arranca subida y `raiseKey` la vuelve a subir.
  * - **Sin huecos:** de borde a borde y apoyada abajo, abraza lo que lleva (hasta 55 dvh o, `tall`, 70) y el borde del sistema (`safe-area`) va adentro, en su pie. Lo que baja se recorta en el borde del pie.
  * - **Una sola a la vez** (`SheetHost`): el pie de la cadena recibe las preguntas; cediendo (`grip`) queda su asa sobre la línea de estado y sin pie (un toque o arrastrarla la muestra igual); escondida (`hide`), no está.
+ * - **Recta y traslúcida** (Gastón, 2026-11-10): todas sus hojas son de la mesa, así que va siempre con `mat-square` y el fondo al 92 % en alfa plano (sin desenfoque), y el asa también es recta.
  * - Sólo `transform`/`translate`: entra con `animate-sheet-up` y sale al revés (dentro de un `Presence`). Bajada, lo tapado es inerte y el foco pasa al asa.
  */
 export function BottomSheet({ label, head, peek, status, footer, hostsFooter = false, children, raiseKey, startLowered = false, escape = false, tall = false, over = false, yields = false, onDismiss, ref, className, ...props }: BottomSheetProps) {
@@ -131,7 +132,7 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
     >
       {/* Lo que la hoja deja abajo al bajar se recorta en el borde de arriba del pie. `overflow-clip` y no `hidden`: una caja `hidden` se deja desplazar (un `scrollIntoView` de adentro la subía). */}
       <div className="flex min-h-0 flex-1 items-end overflow-clip">
-        <div ref={panelRef} style={tab ? { ...drag.style, translate: `0 calc(100% - ${TAB_PX}px)` } : drag.style} className="pointer-events-auto flex max-h-full w-full flex-col rounded-t-panel border border-b-0 border-border bg-card-background shadow-overlay">
+        <div ref={panelRef} style={tab ? { ...drag.style, translate: `0 calc(100% - ${TAB_PX}px)` } : drag.style} className="pointer-events-auto flex max-h-full w-full flex-col rounded-t-panel border border-b-0 border-border bg-card-background/92 shadow-overlay">
           <div
             {...(tab ? swipe : drag.handlers)}
             className="flex-none touch-none select-none"
@@ -149,7 +150,7 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
               className={cx('group flex w-full items-center justify-center px-4 outline-none', asTab ? 'h-11' : 'h-7')}
             >
               {/* El aro del foco va en la pastilla de adentro: el de todo el botón lo cortaría el borde de la hoja. Como un botón de ícono, se enciende en lima al apuntarla. */}
-              <span className={cx('flex min-w-0 items-center gap-1.5 rounded-full px-3 text-foreground group-hover:text-info group-focus-visible:shadow-focus', asTab ? 'h-8' : 'h-5')}>
+              <span className={cx('flex min-w-0 items-center gap-1.5 px-3 text-foreground group-hover:text-info group-focus-visible:shadow-focus', asTab ? 'h-8' : 'h-5')}>
                 {asTab ? (
                   <>
                     <Icon name="chevron-up" size={14} strokeWidth={2} className="shrink-0" />
@@ -158,7 +159,7 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
                     </span>
                   </>
                 ) : (
-                  <span aria-hidden="true" className="block h-1 w-10 rounded-full bg-primary-soft/50 group-hover:bg-info" />
+                  <span aria-hidden="true" className="block h-1 w-10 bg-primary-soft/50 group-hover:bg-info" />
                 )}
               </span>
             </button>
@@ -179,7 +180,7 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
         </div>
       </div>
       {/* El pie: lo que se decide y el borde del sistema. Sigue a la hoja sin borde de arriba ni radio: es la misma superficie. */}
-      <div ref={hostsFooter ? host?.setSlot : undefined} hidden={tab} inert={tab} className="pointer-events-auto flex-none border-x border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)]">
+      <div ref={hostsFooter ? host?.setSlot : undefined} hidden={tab} inert={tab} className="pointer-events-auto flex-none border-x border-border bg-card-background/92 pb-[env(safe-area-inset-bottom,0px)]">
         {footer}
       </div>
     </div>
