@@ -310,7 +310,8 @@ describe('lo que hizo un eslabón resuelto (`outcome`): un solo chip, en lugar d
     expect(first!.querySelector('svg')!.innerHTML).toBe(second!.querySelector('svg')!.innerHTML)
   })
 
-  it('en escritorio: el chip de la fila y el resumen de la píldora lo dicen', () => {
+  it('en escritorio: el eslabón y el resumen de la píldora lo dicen (con movimiento reducido el eslabón resuelto se queda a la vista)', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {} }))
     const { status, rerender } = pill([added], { open: true, compact: false })
 
     expect(screen.getByRole('button', { name: 'Eslabón 1: Ponix, tuyo. Añade 1 carta' })).toHaveTextContent(/Añade 1 carta$/)
@@ -335,13 +336,15 @@ describe('ChainNotice desplegada en escritorio (como abre cada cadena)', () => {
     expect(screen.getByRole('button', { name: 'Ocultar la cadena' })).toHaveAttribute('aria-expanded', 'true')
   })
 
-  it('un solo cartel: el título y la pila van en la misma tarjeta (un borde, una sombra), separados por una línea fina', () => {
+  it('un solo cartel recto: el título y los eslabones van en la misma tarjeta (un borde, una sombra), separados por una línea fina; nada redondeado', () => {
     const { status } = pill([PONIX, ASH], { open: true, compact: false })
     const list = screen.getByRole('list', { name: /Eslabones de la cadena/ })
     const boxes = [...screen.getByTestId('chain-notice').querySelectorAll('[class*="shadow-overlay"]')]
 
     expect(boxes).toHaveLength(1)
-    expect(boxes[0]).toHaveClass('border', 'rounded-card')
+    expect(boxes[0]).toHaveClass('border')
+    // Esquinas rectas (Gastón, 2026-11-10: «no me gustan los bordes redondeados»): ni la tarjeta ni sus eslabones (los botones de la cabeza los cuadra la mesa, `mat-square`).
+    expect([boxes[0]!, list, ...list.querySelectorAll('*')].filter((element) => /\brounded(?!-none)/.test(element.getAttribute('class') ?? ''))).toEqual([])
     expect(boxes[0]).toContainElement(status)
     expect(boxes[0]).toContainElement(list)
     expect(list).toHaveClass('border-t')

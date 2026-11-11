@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { ChainOutcome, ChainRowState } from '../../../app/auto/chain-feed'
+import { play, resolveSchedule, type LinkFate } from '../../../app/chain-motion'
 import { t } from '../../../i18n'
+import { CardArt } from '../../CardArt'
 import { ChainLessonBody } from '../../auto/ChainLesson'
-import { CHIP_ICON, ChainListRows, outcomeChip, STATE_TONE, stateLabel, type ChainNoticeRow } from '../../auto/chain-parts'
+import { ChainLine } from '../../auto/ChainNotice'
+import { CHIP_ICON, outcomeChip, STATE_TONE, stateLabel, type ChainNoticeRow } from '../../auto/chain-parts'
+import { ChainBadge, ChainTrace } from '../../probability/MatFx'
 import { Badge } from '../../ui/Badge'
 import { Button } from '../../ui/Button'
-import { Icon } from '../../ui/Icon'
+import { cx } from '../../ui/cx'
 import { Segmented } from '../../ui/Segmented'
 import type { Tone } from '../../ui/tone'
 import { Specimen, Tag } from '../Specimen'
 
-/** La cadena: la pila real animada paso a paso (`ChainListRows`), sus chips (estado y, resuelta, lo que hizo) y la hoja «Cómo se resuelve» (`ChainLesson`). */
+/** La cadena: los eslabones y el trazo animados (`ChainLinks`, `ChainTrace`), sus chips (estado y, resuelta, lo que hizo) y la hoja «Cómo se resuelve» (`ChainLesson`). */
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
 
@@ -34,93 +38,141 @@ const CARDS: Record<'negated' | 'disabled', Array<{ name: string; art: string; m
 }
 type Variant = keyof typeof CARDS
 
-/** El guion: cómo queda cada eslabón después de cada paso (lo que arma `chainFeed`); `X` es negado o sin efecto, según la variante. */
-const SCRIPT: Array<{ states: Array<ChainRowState | 'X'>; caption: string }> = [
-  { states: ['chained'], caption: 'CL1 entra' },
-  { states: ['chained', 'chained'], caption: 'CL2 entra' },
-  { states: ['chained', 'chained', 'chained'], caption: 'CL3 entra' },
-  { states: ['chained', 'chained', 'solving'], caption: 'CL3 resuelve' },
-  { states: ['chained', 'X', 'solving'], caption: 'CL3 para a CL2' },
-  { states: ['chained', 'X', 'solved'], caption: 'CL3 resuelta' },
-  { states: ['solving', 'X', 'solved'], caption: 'CL1 resuelve' },
-  { states: ['solved', 'X', 'solved'], caption: 'CL1 resuelta' },
-]
-
-const rowsOf = (step: number, variant: Variant): ChainNoticeRow[] =>
-  SCRIPT[step]!.states.map((raw, index) => {
-    const card = CARDS[variant][index]!
-    const state = raw === 'X' ? variant : raw
-
-    return { number: index + 1, who: card.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: card.mine, name: card.name, art: card.art, state, ...(raw === 'X' ? { by: 3 } : {}), ...(state === 'solved' && card.outcome ? { outcome: outcomeChip(card.outcome) } : {}) }
-  })
-
 const voidedState = (state: ChainRowState) => state === 'negated' || state === 'disabled'
 
-// El ritmo de la mesa (`CHAIN_LINK_MS` y `CHAIN_SOLVE_MS` de `app/auto/chain-feed.ts`): el catálogo no importa valores de `src/app/auto/` (`auto-isolation.test.ts`).
-const LINK_MS = 700
-const SOLVE_MS = 1200
+/** El cuarto eslabón posible (el prototipo llega a cuatro): Infinite Impermanence del rival. */
+const FOURTH: { name: string; art: string; mine: boolean; outcome?: ChainOutcome } = { name: 'Infinite Impermanence', art: art(10045474), mine: false }
+/** Dónde está cada carta de la cadena en el campo de muestra (casilla de 0 a 34, siete por fila, el rival arriba): tu Mágica, el Cementerio del rival, otra Mágica tuya y una Trampa del rival. */
+const SPOTS = [31, 0, 30, 4]
+type Ending = Variant | 'solved'
 
-/** La pila real con el guion: «Paso» de a uno o «Repetir» con el ritmo de la mesa (`LINK_MS` al sumarse, `SOLVE_MS` al resolverse). */
+/**
+ * La cadena animada con el trazo en la mesa: «Encadenar» suma un eslabón (hasta cuatro), «Resolver» la resuelve de atrás para adelante con el guion de `resolveSchedule` (750 ms por eslabón y 200
+ * de cierre: 2,45 s con tres) y «Repetir» la arma y la resuelve de nuevo. La línea es la del celular (`ChainLine`, 96 px de alto) y el campo, un tapete de siete por cinco de arriba o en 3D.
+ */
 function ChainMotionSample() {
-  const [step, setStep] = useState(0)
-  const [playing, setPlaying] = useState(false)
-  const [variant, setVariant] = useState<Variant>('negated')
+  const [rows, setRows] = useState<ChainNoticeRow[]>([])
+  const [done, setDone] = useState(false)
+  const [focus, setFocus] = useState(0)
+  const [ending, setEnding] = useState<Ending>('negated')
   const [still, setStill] = useState(false)
-  const rows = rowsOf(step, variant)
-  const last = SCRIPT.length - 1
+  const [tilted, setTilted] = useState(false)
+  const [slot, setSlot] = useState<HTMLSpanElement | null>(null)
+  const run = useRef<{ cancel: () => void } | null>(null)
+  const busy = rows.some((row) => row.state !== 'chained')
+  const cardOf = (index: number) => (index < 3 ? CARDS[ending === 'solved' ? 'disabled' : ending][index]! : FOURTH)
 
-  useEffect(() => {
-    if (!playing) return
-    if (step >= last) {
-      setPlaying(false)
-      return
-    }
-    const timer = window.setTimeout(() => setStep((value) => value + 1), step < 2 ? LINK_MS : SOLVE_MS)
+  const rowOf = (index: number, state: ChainRowState, count: number): ChainNoticeRow => {
+    const card = cardOf(index)
+    const by = voidedState(state) && count > index + 1 ? { by: index + 2 } : {}
 
-    return () => window.clearTimeout(timer)
-  }, [playing, step, last])
+    return { number: index + 1, who: card.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: card.mine, name: card.name, art: card.art, state, ...by, ...(state === 'solved' && card.outcome ? { outcome: outcomeChip(card.outcome) } : {}) }
+  }
+  const reset = () => {
+    run.current?.cancel()
+    setRows([])
+    setDone(false)
+  }
+  const chain = () => {
+    setFocus(rows.length)
+    setRows([...rows, rowOf(rows.length, 'chained', rows.length + 1)])
+  }
+  const resolve = (count: number) => {
+    const fates: LinkFate[] = Array.from({ length: count }, (_, index) => (index === 1 && count > 2 && ending !== 'solved' ? ending : 'solved'))
+
+    run.current = play(resolveSchedule(fates).steps, (step) => {
+      if ('done' in step) return setDone(true)
+      setFocus(step.link - 1)
+      setRows((now) => now.map((row) => (row.number === step.link ? rowOf(step.link - 1, step.state, now.length) : row)))
+    })
+  }
+  const replay = () => {
+    reset()
+    // Se arma de a un eslabón y, armada, se resuelve («Reiniciar» corta lo que falte).
+    const steps = [...[0, 1, 2].map((index) => ({ at: index * 500 + 50, index })), { at: 1800, index: -1 }]
+
+    run.current = play(steps, ({ index }) => {
+      if (index < 0) return resolve(3)
+      setFocus(index)
+      setRows((now) => [...now, rowOf(index, 'chained', 3)])
+    })
+  }
+
+  useEffect(() => () => run.current?.cancel(), [])
 
   return (
     <Specimen
-      title="ChainListRows · la cadena animada"
+      title="ChainLinks y ChainTrace · la cadena animada"
       layout="column"
       className="col-span-full"
       note={
         <>
-          La pila real de la cadena (la de <Tag>ChainNotice</Tag> y <Tag>ChainSheet</Tag>) con un guion: CL1, CL2 y CL3 entran; CL3 resuelve y para a CL2; CL3 queda resuelta; CL1 resuelve y queda resuelta. El eslabón que se suma entra arriba y empuja la pila; el que resuelve hace un pop, se le enciende el aro ámbar y la marca de la izquierda baja desde el que resolvió antes (se lee que se resuelve de arriba hacia abajo); el resuelto recibe un tilde que entra girando y su arte se apaga, y su chip dice lo que hizo si el núcleo lo sabe sin duda (CL3: «Invoca 2 monstruos» o «Destierra 1 carta»; Branded Fusion manda materiales e Invoca a la vez: «Resuelta»); el negado o sin efecto, una cruz como un sello, una sacudida corta y el arte gris latiendo (como en la mesa); sólo el negado tacha su nombre. Todo entre 200 y 320 ms, sólo <Tag>opacity</Tag> y <Tag>transform</Tag>, y sólo cuando un eslabón cambia: una pila que se abre ya armada no anima. «Sin movimiento» muestra los cambios secos, como los ve quien pidió reducir el movimiento (el latido del gris lo apaga esa preferencia del sistema). Archivo: <Tag>auto/chain-parts.tsx</Tag>
+          Cada efecto es un eslabón hexagonal recto (<Tag>clip-path</Tag> fijo) entrelazado con el siguiente, de izquierda a derecha CL1, CL2…; en la mesa, las cartas de la cadena unidas por un
+          trazo recto naranja numerado, un <Tag>span</Tag> rotado que crece con <Tag>scaleX</Tag> y se mide con <Tag>offsetLeft</Tag>/<Tag>offsetTop</Tag> en el plano del campo (en 3D se inclina con
+          él). Armar: el eslabón encaja (entra de 40 px, se pasa 3 y se traba, 300 ms), la carta se levanta y el trazo crece. Resolver, de atrás para adelante, 750 ms por eslabón: se ilumina en lima y
+          sube 4 px, la cadena se tensa hacia él (7 px), la carta ejecuta y cambia el estado (320 ms), y se suelta (480 ms): se parte en dos mitades que se separan y se funden; lo negado, en rojo tras
+          su tajo; «sin efecto», apagado y deslizándose abajo; su trazo se apaga. Al final lo que queda se disuelve (200 ms): 2,45 s con tres. Sólo <Tag>transform</Tag> y <Tag>opacity</Tag>; «Sin
+          movimiento» (como con la preferencia del sistema): nada se mueve ni se va, cambian el color y el texto, y lo dice la línea. Archivos: <Tag>auto/chain-parts.tsx</Tag>,{' '}
+          <Tag>probability/MatFx.tsx</Tag> y <Tag>app/chain-motion.ts</Tag>
         </>
       }
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" icon="play" disabled={step >= last || playing} onClick={() => setStep((value) => Math.min(last, value + 1))}>
-          Paso
+        <Button variant="secondary" size="sm" icon="link" disabled={busy || done || rows.length >= 4} onClick={chain}>
+          Encadenar
         </Button>
-        <Button variant="tertiary" size="sm" icon="refresh" onClick={() => (setStep(0), setPlaying(true))}>
+        <Button variant="secondary" size="sm" icon="play" disabled={busy || done || rows.length === 0} onClick={() => resolve(rows.length)}>
+          Resolver
+        </Button>
+        <Button variant="tertiary" size="sm" icon="refresh" onClick={replay}>
           Repetir
         </Button>
-        <Button variant="tertiary" size="sm" aria-pressed={still} onClick={() => setStill((value) => !value)}>
+        <Button variant="tertiary" size="sm" onClick={reset}>
+          Reiniciar
+        </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={still} onClick={() => (reset(), setStill((value) => !value))}>
           Sin movimiento
         </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={tilted} onClick={() => setTilted((value) => !value)}>
+          3D
+        </Button>
         <Segmented
-          label="Cómo para CL3 a CL2"
-          value={variant}
-          onChange={(value) => (setVariant(value), setStep(0), setPlaying(false))}
+          label="Qué pasa con CL2"
+          value={ending}
+          onChange={(value) => (reset(), setEnding(value))}
           options={[
             { value: 'negated', label: 'Negada' },
             { value: 'disabled', label: 'Sin efecto' },
+            { value: 'solved', label: 'Todo resuelve' },
           ]}
         />
-        <Tag>{`Paso ${step + 1} de ${SCRIPT.length} · ${SCRIPT[step]!.caption}`}</Tag>
       </div>
-      <div className="w-full max-w-96 rounded-card border border-border-subtle bg-card-background">
-        <p className="m-0 flex h-11 items-center gap-2 px-3 text-body font-semibold">
-          <Icon name="link" size={18} className="shrink-0 text-info" aria-hidden="true" />
-          {t('auto.chain.count', { count: rows.length })}
-        </p>
-        {/* Sin movimiento, cada paso monta una pila nueva: lo que se monta ya armado no anima (el mismo cambio seco que con la preferencia del sistema). */}
-        <ol key={still ? `${variant}-${step}` : variant} aria-label={t('auto.chain.list')} className="m-0 grid list-none content-start gap-1 border-t border-border-subtle p-1.5">
-          <ChainListRows rows={rows} onPick={() => {}} />
-        </ol>
+      <div className="grid gap-3 min-[1101px]:grid-cols-[minmax(0,1fr)_24rem] min-[1101px]:items-start">
+        <div className="mx-auto w-full max-w-xl">
+          <div className={cx('relative isolate grid aspect-[7/5] grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] grid-rows-5 gap-1 [transform-origin:50%_100%]', tilted && '[transform:perspective(60rem)_rotateX(26deg)]')}>
+            {Array.from({ length: 35 }, (_, cell) => {
+              const index = SPOTS.indexOf(cell)
+              const row = index >= 0 ? rows[index] : undefined
+              const card = row ? cardOf(index) : null
+
+              return (
+                <div key={cell} className={cx('relative min-h-0 border', cell < 14 ? 'border-info/40' : 'border-accent/40')}>
+                  {row && card ? (
+                    <>
+                      <span className="absolute inset-[8%] overflow-hidden bg-input">
+                        <CardArt remoteUrl={card.art} name={card.name} className={cx('block h-full w-full object-cover', !card.mine && 'rotate-180')} />
+                      </span>
+                      <ChainBadge link={{ numbers: [row.number], mine: row.mine, fromHand: false, ...(voidedState(row.state) ? { voided: { state: row.state as 'negated' | 'disabled' } } : {}) }} className="left-0 top-0" />
+                    </>
+                  ) : null}
+                </div>
+              )
+            })}
+            <span ref={setSlot} aria-hidden="true" className="pointer-events-none absolute inset-0 z-12" />
+          </div>
+          <ChainTrace rows={rows} done={done} slot={slot} still={still} />
+        </div>
+        <div className="h-24">{rows.length > 0 ? <ChainLine key={`${ending}-${still}`} rows={rows} focus={focus} done={done} still={still} onPick={() => {}} /> : <p className="m-0 grid h-full place-items-center border border-border-subtle text-micro text-muted">Sin cadena: tocá «Encadenar» o «Repetir».</p>}</div>
       </div>
     </Specimen>
   )

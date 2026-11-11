@@ -1112,6 +1112,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     () =>
       chainShown && feed ? (
         <ChainNotice
+          // Una cadena nueva es otra (sus números vuelven a empezar): los eslabones de la anterior no se animan contra ella.
+          key={feed.key}
+          done={feed.done}
           rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}), ...(row.outcome ? { outcome: outcomeChip(row.outcome) } : {}) }))}
           focus={feed.focus}
           resolving={feed.resolving}

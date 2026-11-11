@@ -3081,6 +3081,8 @@ function PracticeMatBody({
             </span>
           ) : null}
           {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
+          {/* El lugar del trazo de la cadena (`ChainTrace`, por portal): adentro del campo, así en 3D se inclina con él. */}
+          {duel?.auto ? <span data-chain-trace="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-12" /> : null}
         </div>
         </div>
 
