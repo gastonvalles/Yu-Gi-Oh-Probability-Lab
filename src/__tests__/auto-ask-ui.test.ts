@@ -1,6 +1,6 @@
 import { applyLocale, loadLocale, t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, type AskCard, type CardPick, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
+import { askView, effectAskText, effectText, itemsInto, listOrder, namesList, openAsk, optionsTitle, pickStatsOf, pickTitle, placeLabel, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type CardPick, type AskContext, type AskGesture, type AskOptionsView, type AskQueries, type AskState, type AskView } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
@@ -224,10 +224,10 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     // Brilla lo que se invoca de forma especial (también por Péndulo) y lo que se activa (la Mágica, la Trampa colocada, los efectos del cementerio, la escala); lo que sólo se invoca de forma
     // normal, se coloca o cambia de posición, no.
     expect(view.respond).toEqual(['card-500-1', 'card-960-1', 'card-900-1', 'card-950-1', 'card-400-1', 'card-300-1'].map(mine))
-    // La frase de cada efecto la pone la pantalla (la costura); nunca queda vacía.
+    // La frase de cada efecto la pone la pantalla (la costura); nunca queda vacía. En español, el `strN` (sólo en inglés) va por su número.
     const named = askView(open(ASKS[1]!, ctx(MESA, { effectLabel: (code, description) => (description === stringId(400, 1) ? `${code}:1` : '') })))
 
-    expect(named.items.get('card-400-1')![0]!.children!.map((child) => child.label)).toEqual(['400:1', t('practice.menu.activateEffect')])
+    expect(named.items.get('card-400-1')![0]!.children!.map((child) => child.label)).toEqual(['Efecto 2', t('practice.menu.activateEffect')])
     // Sin texto, la escala de un Péndulo dice «Activar como escala» también entre otros efectos.
     const pendulum = { ...(ASKS[1] as Extract<CoreAsk, { type: 'select_idlecmd' }>), activates: [act(300, L.HAND, 2, stringId(300, 0)), act(300, L.HAND, 2, '1160')] }
 
@@ -426,7 +426,7 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
       count: 1,
       options: [
         { value: 0, description: stringId(400, 0) },
-        { value: 1, description: stringId(400, 1), label: 'Destroy a monster' },
+        { value: 1, description: stringId(400, 1), label: 'Efecto 2' },
         { value: 2, description: '573', label: t('practice.menu.toHand') },
       ],
       chosen: [],
@@ -756,31 +756,99 @@ describe('ask-ui: el título de una elección de cartas dice para qué', () => {
 
   afterEach(() => applyLocale('es'))
 
-  it('con un código de pista comprobado, para qué; con la cuenta de lo elegido si se eligen varias; sin código (o uno sin comprobar), el genérico', () => {
-    expect(pickTitle(pick(), '503')).toBe('Elegí 2 cartas para desterrar · 1/2')
+  it('con un código de la tabla, para qué; la cuenta («1 de 2») sólo si el total es mayor que 1; sin código (o uno sin mapear), el genérico', () => {
+    expect(pickTitle(pick(), '503')).toBe('Elegí 2 cartas para desterrar · 1 de 2')
     expect(pickTitle(pick({ min: 1, max: 1, count: { now: 0, need: 1 } }), '509')).toBe('Elegí 1 carta para Invocar de forma Especial')
-    expect(pickTitle(pick({ min: 1, max: 3, count: { now: 0, need: 3 } }), '504')).toBe('Elegí de 1 a 3 cartas para enviar al Cementerio · 0/3')
-    expect(pickTitle(pick({ type: 'select_unselect_card' }), '533')).toBe('Elegí 2 cartas como Material de Enlace · 1/2')
-    // 575 (negar) y 514 (boca arriba) no se comprobaron; un texto de carta (`aux.Stringid`) tampoco.
-    expect(pickTitle(pick(), '575')).toBe('Elegí 2 cartas · 1/2')
-    expect(pickTitle(pick(), '514')).toBe('Elegí 2 cartas · 1/2')
-    expect(pickTitle(pick(), String((12345n << 20n) | 1n))).toBe('Elegí 2 cartas · 1/2')
-    expect(pickTitle(pick())).toBe('Elegí 2 cartas · 1/2')
+    expect(pickTitle(pick({ min: 1, max: 3, count: { now: 0, need: 3 } }), '504')).toBe('Elegí de 1 a 3 cartas para enviar al Cementerio · 0 de 3')
+    expect(pickTitle(pick({ type: 'select_unselect_card' }), '533')).toBe('Elegí 2 cartas como Material de Enlace · 1 de 2')
+    // La tabla propia (`HINTMSG_*` de `constant.lua`): los materiales Xyz, los filtros y el resto de lo común.
+    expect(pickTitle(pick(), '513')).toBe('Elegí 2 cartas como Material Xyz · 1 de 2')
+    expect(pickTitle(pick(), '514')).toBe('Elegí 2 cartas boca arriba · 1 de 2')
+    expect(pickTitle(pick(), '575')).toBe('Elegí 2 cartas para negar · 1 de 2')
+    expect(pickTitle(pick({ min: 1, max: 1, count: { now: 0, need: 1 } }), '530')).toBe('Elegí 1 carta del rival')
+    // 560 («Select») y un texto de carta (`aux.Stringid`) no están en la tabla.
+    expect(pickTitle(pick(), '560')).toBe('Elegí 2 cartas · 1 de 2')
+    expect(pickTitle(pick(), String((12345n << 20n) | 1n))).toBe('Elegí 2 cartas · 1 de 2')
+    expect(pickTitle(pick())).toBe('Elegí 2 cartas · 1 de 2')
   })
 
-  it('a qué atacar, los Sacrificios y las sumas siguen con su título', () => {
+  it('atacar nombra al que ataca; los Sacrificios y las sumas, en imperativo y con la cuenta sólo si falta más de 1', () => {
     expect(pickTitle(pick({ min: 1, max: 1 }), '549')).toBe('Elegí a qué monstruo atacar')
-    expect(pickTitle(pick({ type: 'select_tribute', count: { now: 1, need: 2 } }), '500')).toBe('Sacrificios: 1 de 2')
-    expect(pickTitle(pick({ type: 'select_sum', count: { now: 3, need: 8 } }), '500')).toBe('Niveles: 3 de 8')
+    expect(pickTitle(pick({ min: 1, max: 1 }), '549', 'Raye')).toBe('Elegí a qué monstruo ataca «Raye»')
+    expect(pickTitle(pick({ type: 'select_tribute', count: { now: 1, need: 2 } }), '500')).toBe('Elegí los monstruos para Sacrificar · 1 de 2')
+    expect(pickTitle(pick({ type: 'select_tribute', count: { now: 0, need: 1 } }), '500')).toBe('Elegí el monstruo para Sacrificar')
+    expect(pickTitle(pick({ type: 'select_sum', count: { now: 3, need: 8 } }), '500')).toBe('Elegí cartas que sumen 8 Niveles · 3 de 8')
+    expect(pickTitle(pick({ type: 'select_sum', count: { now: 3, need: 8 }, atLeast: true }), '500')).toBe('Elegí cartas que sumen al menos 8 Niveles · 3 de 8')
   })
 
   it('en inglés', async () => {
     await loadLocale('en')
     applyLocale('en')
-    expect(pickTitle(pick(), '503')).toBe('Choose 2 cards to banish · 1/2')
+    expect(pickTitle(pick(), '503')).toBe('Choose 2 cards to banish · 1 of 2')
     expect(pickTitle(pick({ min: 1, max: 1 }), '506')).toBe('Choose 1 card to add to your hand')
-    expect(pickTitle(pick(), '511')).toBe('Choose 2 cards as Fusion Material · 1/2')
-    expect(pickTitle(pick(), '575')).toBe('Choose 2 cards · 1/2')
+    expect(pickTitle(pick(), '511')).toBe('Choose 2 cards as Fusion Material · 1 of 2')
+    expect(pickTitle(pick(), '575')).toBe('Choose 2 cards to negate · 1 of 2')
+    expect(pickTitle(pick(), '560')).toBe('Choose 2 cards · 1 of 2')
+  })
+})
+
+describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qué se te pide, cuánto falta)', () => {
+  const link = (code: number) => ({ card: mine(`card-${code}-1`), code, description: '0', state: 'chained' as const })
+  const offer = (links: number) => ({ to: links ? { link: link(1), number: links } : null, link: links + 1, candidates: [] })
+  const zone = (over: Partial<NonNullable<AskView['zonePick']>> = {}, type: AskView['type'] = 'select_place') => ({
+    type,
+    zonePick: { count: 1, targets: [{ side: 'mine' as const, zone: 'mz' as const, index: 0 }, { side: 'mine' as const, zone: 'mz' as const, index: 1 }], chosen: [], ...over },
+  })
+  const options = (of: AskOptionsView['of'], extra: Partial<AskOptionsView> = {}): AskOptionsView => ({ of, count: 1, options: [], chosen: [], ...extra })
+
+  afterEach(() => applyLocale('es'))
+
+  it('responder a la cadena: el eslabón con su carta y su número; sin cadena, sólo la pregunta', () => {
+    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('Se activó «Ash Blossom & Joyous Spring» (CL2). ¿Encadenás otra carta o efecto?')
+    expect(respondTitle(offer(0), '')).toBe('¿Activás una carta o efecto?')
+  })
+
+  it('el efecto que se dispara nombra la carta; sin nombre, la pregunta de siempre', () => {
+    const prompt = { card: { ref: mine('card-1-1'), code: 1, place: 'field' as const }, at: 'mz' as const, trigger: true, description: '221', yes: { type: 'select_effectyn' as const, yes: true }, no: { type: 'select_effectyn' as const, yes: false } }
+
+    expect(effectAskText(prompt, null, 'Kagari').text).toBe('¿Activás el efecto de «Kagari»?')
+    expect(effectAskText(prompt, null).text).toBe(t('auto.ask.effect'))
+  })
+
+  it('el sí o no de una carta: en español, por su número (el `strN` es inglés); sin texto, «¿Lo hacés?»', () => {
+    expect(yesNoText('Tribute 1 monster?', stringId(400, 2), 'Kagari')).toBe('¿Aplicás el efecto 3 de «Kagari»?')
+    expect(yesNoText(null, '31', null)).toBe(t('auto.ask.fallback'))
+    expect(effectText('Destroy a monster', stringId(400, 0))).toBe('Efecto 1')
+    expect(effectText(null, stringId(400, 0))).toBeNull()
+  })
+
+  it('la casilla nombra la carta (el núcleo la manda como título) si se la conoce; si no, la genérica; con varias, cuántas', () => {
+    expect(zoneTitle(zone(), 'Kagari')).toBe('Elegí una casilla para «Kagari»')
+    expect(zoneTitle(zone(), null)).toBe('Elegí 1 casilla')
+    expect(zoneTitle(zone({ count: 2 }), 'Kagari')).toBe('Elegí 2 casillas')
+    expect(zoneTitle(zone({ targets: [{ side: 'theirs', zone: 'mz', index: 0 }] }), 'Kagari')).toBe('Elegí una casilla del rival')
+    expect(zoneTitle(zone({}, 'select_disfield'), null)).toBe('Elegí 1 casilla que no se va a poder usar')
+  })
+
+  it('las opciones: la posición nombra la carta; un efecto, por su pista (550/566 activar, 556 aplicar); sin pista, la genérica', () => {
+    expect(optionsTitle(options('position'), undefined, 'Raye')).toBe('Elegí la posición de «Raye»')
+    expect(optionsTitle(options('position'), undefined, null)).toBe(t('auto.options.position'))
+    expect(optionsTitle(options('option'), '550', null)).toBe('Elegí qué efecto activar')
+    expect(optionsTitle(options('option'), '556', null)).toBe('Elegí qué efecto aplicar')
+    expect(optionsTitle(options('option'), '560', null)).toBe(t('auto.options.option'))
+  })
+
+  it('la posición trae su carta en la vista', () => {
+    expect(askView(open({ type: 'select_position', player: 0, code: 100, positions: 5 }, ctx(MESA))).options).toMatchObject({ of: 'position', card: 100 })
+  })
+
+  it('en inglés: el texto de la carta tal cual y las frases de Master Duel', async () => {
+    await loadLocale('en')
+    applyLocale('en')
+    expect(effectText('Destroy a monster', stringId(400, 0))).toBe('Destroy a monster')
+    expect(yesNoText('Tribute 1 monster?', stringId(400, 2), 'Kagari')).toBe('Tribute 1 monster?')
+    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('"Ash Blossom & Joyous Spring" was activated (CL2). Chain another card or effect?')
+    expect(zoneTitle(zone(), 'Kagari')).toBe('Choose a zone for "Kagari"')
   })
 })
 

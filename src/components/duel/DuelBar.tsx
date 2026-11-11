@@ -13,7 +13,8 @@ import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useSwipeAway } from '../../app/use-swipe-away'
 import { sacudir } from '../probability/AttackFx'
-import { MatMoreMenu, MatUndoContext } from '../probability/MatBarActions'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
+import { MatMoreMenu, MatReplayContext, MatUndoContext } from '../probability/MatBarActions'
 import { DELTA_MS, LifeHold, useHeldValue, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -31,7 +32,7 @@ import { DuelChat, useChatUnread } from './DuelChat'
 import type { FeedEntry } from './use-duel-feed'
 import { respondersText } from './PassPrompt'
 import { ResultStrip } from './DuelResult'
-import { LifeScore, SIGNAL_MS } from './LifeScore'
+import { LifeBadge, LifeScore, SIGNAL_MS } from './LifeScore'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
 import { isEmojiSignal } from '../../app/duel-signals'
 
@@ -238,7 +239,7 @@ export function LaneBanner({ lane, rivalName, rail = false, detail }: { lane: La
 
   if (lane.kind === 'looking') {
     return (
-      <div role="status" data-lane="looking" className={cx(place, 'flex items-center gap-2 rounded-card border border-border-subtle bg-card-background px-3 text-micro font-semibold leading-tight text-muted')}>
+      <div role="status" data-lane="looking" className={cx(place, 'flex items-center gap-2 rounded-card border border-border-subtle bg-card-background/88 px-3 text-micro font-semibold leading-tight text-muted')}>
         <Icon name="eye" size={16} className="shrink-0 text-info-soft" />
         <span className={text}>{t(LOOK_TEXT[lane.what], { name: rivalName })}</span>
       </div>
@@ -249,8 +250,8 @@ export function LaneBanner({ lane, rivalName, rail = false, detail }: { lane: La
   const asked = lane.kind === 'undoAsked' || (lane.kind === 'ask' && lane.actions.length > 0)
 
   return (
-    <div role="status" data-lane={lane.kind} className={cx(place, 'flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
-      {lane.kind === 'thinking' ? <i aria-hidden="true" className="size-2 shrink-0 rounded-full bg-info motion-safe:animate-pulse" /> : null}
+    <div role="status" data-lane={lane.kind} className={cx(place, 'flex items-center gap-2 rounded-card border bg-card-background/88 px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
+      {lane.kind === 'thinking' ? <i aria-hidden="true" className="size-2 shrink-0 bg-info motion-safe:animate-pulse" /> : null}
       {detail ? (
         <span className="grid min-w-0 flex-1 gap-0.5">
           <span className="truncate font-bold">{laneText(lane, rivalName)}</span>
@@ -306,6 +307,8 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
 
   useHostToasts(toastHost, rails)
   const [moreOpen, setMoreOpen] = useState(false)
+  // El celular (`phoneDuelLayout`): la barra es sólo la fila de los íconos; las vidas van en las chapas junto a cada lado de la mesa y el registro y los avisos, en la línea (las pone la pantalla).
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   // Con un aviso puesto sobre la línea del registro, esa línea no se ve (la misma fila: el campo no se mueve).
   const laneOpen = lane !== null
   const { life, me, peerPresent } = snapshot
@@ -390,13 +393,13 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   const chips = (pad = 'py-1') => (
     <>
       {snapshot.watchers > 0 ? (
-        <span className={cx('inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-tint/8 px-2.5 text-micro font-semibold tabular-nums text-muted', pad)} title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
+        <span className={cx('inline-flex shrink-0 items-center gap-1 whitespace-nowrap bg-tint/8 px-2.5 text-micro font-semibold tabular-nums text-muted', pad)} title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
           <Icon name="eye" size={14} />
           {snapshot.watchers}
         </span>
       ) : null}
       {snapshot.series.match ? (
-        <span className={cx('shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 text-micro font-semibold tabular-nums text-muted', pad)} data-testid="duel-series">
+        <span className={cx('shrink-0 whitespace-nowrap bg-tint/8 px-2.5 text-micro font-semibold tabular-nums text-muted', pad)} data-testid="duel-series">
           {t('duel.series.chip', { game: snapshot.series.game, mine: snapshot.series.wins[me], theirs: snapshot.series.wins[me === 0 ? 1 : 0] })}
         </span>
       ) : null}
@@ -486,11 +489,20 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
         <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
         {clockButton}
         <span className="-mr-2 ml-auto flex shrink-0 items-center">
-          {chat}
+          {phone ? null : chat}
           {undo}
           {actions}
         </span>
       </div>
+      {phone ? (
+        // El resultado flota debajo de la barra, sobre la mano del rival: la barra no crece y el campo no se mueve.
+        result && !resultOpen ? (
+          <div className="absolute inset-x-0.5 top-full z-20 mt-1">
+            <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} reason={resultReason} />
+          </div>
+        ) : null
+      ) : (
+        <>
       {/* El marcador, plano (Gastón, 2026-10-27, como en «Jugar solo automático»): «VOS 8000 · Turno de Ana · 3 · ANA 8000». Las vidas son botones de 44 px en el manual (la calculadora); los chips de
           quién mira y del Match, debajo del turno, sin agrandarlo. */}
       <div data-testid="duel-score" className="flex min-h-11 min-w-0 items-center gap-2 px-1">
@@ -518,9 +530,28 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
           <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} reason={resultReason} />
         </div>
       ) : null}
+        </>
+      )}
 
       {alert}
       {dialogs}
+    </div>
+  )
+}
+
+/**
+ * La línea del celular (`data-duel-line`, de alto fijo entre el campo y tu mano): una sola cosa por vez. Un aviso (el pedido de volver atrás, el del rival de pasar de fase, lo que está haciendo, el
+ * núcleo que resuelve) se apoya encima de la última jugada (`log`) en el mismo lugar y del mismo alto; la cadena la pone la mesa antes que esto. Repasando un combo, el aviso dice el paso que se mira.
+ */
+export function DuelLine({ lane, rivalName, log = null }: { lane: LaneNotice | null; rivalName: string; log?: ReactNode }) {
+  const replay = useContext(MatReplayContext)
+
+  return (
+    <div data-testid="duel-line" className="relative h-full">
+      <div inert={lane !== null} className={cx('h-full', lane && 'invisible')}>
+        {log}
+      </div>
+      {lane ? <LaneBanner lane={lane} rivalName={rivalName} detail={replay?.step} /> : null}
     </div>
   )
 }
@@ -538,18 +569,18 @@ interface DuelChatToggleProps {
 }
 
 /** El botón del chat del celular, con un contador de lo que no leíste, y el panel que se abre por la derecha (con el registro de jugadas). */
-export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpen, onClose }: DuelChatToggleProps) {
+export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpen, onClose, tile = false }: DuelChatToggleProps & { /** La caja de la mesa (la botonera cuadrada del celular), no el ícono suelto de la barra. */ tile?: boolean }) {
   const unread = useChatUnread(snapshot, open)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
 
   return (
     <>
       <span className="relative">
-        <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} aria-expanded={open} className="hover:text-info! active:text-info! aria-expanded:text-info!" onClick={onOpen}>
+        <IconButton tone={tile ? 'tile' : 'flat'} size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} aria-expanded={open} className="hover:text-info! active:text-info! aria-expanded:text-info!" onClick={onOpen}>
           <Icon name="chat" />
         </IconButton>
         {unread > 0 ? (
-          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.625rem] font-extrabold leading-4 text-white">
+          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center bg-primary px-1 text-[0.625rem] font-extrabold leading-4 text-white">
             {unread}
           </span>
         ) : null}
@@ -589,7 +620,8 @@ export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
       aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`}
       aria-keyshortcuts="Delete"
       title={t('duel.log.dismiss')}
-      className="flex min-h-11 w-full min-w-0 cursor-pointer touch-pan-y items-center gap-2 rounded-control px-1 text-left transition-[transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none max-sm:pointer-events-auto max-sm:bg-background/85"
+      // En el celular llena la línea (alto fijo), traslúcida al 88 % en alfa plano y con su borde.
+      className="flex h-full min-h-11 w-full min-w-0 cursor-pointer touch-pan-y items-center gap-2 rounded-control px-1 text-left transition-[transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none max-sm:pointer-events-auto max-sm:border max-sm:border-border-subtle max-sm:bg-card-background/88 max-sm:px-3"
       style={swipe.style}
       {...swipe.props}
       onClick={onOpen}
@@ -597,7 +629,7 @@ export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
       <span className="grid min-w-0 flex-1 gap-0.5">
         {lines.map((line) => (
           <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">
-            <i aria-hidden="true" className={cx('size-1.5 shrink-0 rounded-full', line.side === 'mine' ? 'bg-accent' : 'bg-info')} />
+            <i aria-hidden="true" className={cx('size-1.5 shrink-0', line.side === 'mine' ? 'bg-accent' : 'bg-info')} />
             <span className="min-w-0 truncate">{line.text}</span>
           </span>
         ))}
@@ -608,13 +640,19 @@ export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
 }
 
 /** Tus puntos de vida, planos (`LifeScore`): en el marcador de la barra hasta 1100 px y en tu esquina (o tu lateral) en escritorio. Se tocan para abrir la calculadora (sincronizada con el duelo, sin salir de él). */
-export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey, size = 'sm' }: { snapshot: DuelSnapshot; myName: string; /** Sin esto no se tocan (el duelo automático: las lleva el núcleo). */ onOpen?: (() => void) | undefined; /** Lo que acabás de avisar (pensando, todo bien): un globo junto a tus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg' }) {
-  return <LifeScore name={myName || t('duel.bar.you')} label={t('duel.bar.you')} life={snapshot.life.lp[snapshot.me]} mine size={size} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
+export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey, size = 'sm', badge = false, turn, turnMine }: { snapshot: DuelSnapshot; myName: string; /** Sin esto no se tocan (el duelo automático: las lleva el núcleo). */ onOpen?: (() => void) | undefined; /** Lo que acabás de avisar (pensando, todo bien): un globo junto a tus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; /** La chapa (`LifeBadge`): en el celular, abajo a la izquierda, y en la esquina del campo en escritorio. */ badge?: boolean; /** Con `badge`, el turno junto a la etiqueta y de quién es. */ turn?: string; turnMine?: boolean }) {
+  const name = myName || t('duel.bar.you')
+  const life = snapshot.life.lp[snapshot.me]
+
+  return badge ? <LifeBadge name={name} label={t('duel.bar.you')} life={life} mine turn={turn} turnMine={turnMine} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} label={t('duel.bar.you')} life={life} mine size={size} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
 }
 
-/** Los puntos de vida del rival, planos: en el marcador (a la derecha), en la esquina de arriba a la derecha del campo (escritorio) o en el lateral izquierdo. Se tocan igual que los tuyos. */
-export function RivalLife({ snapshot, onOpen, signal = null, signalKey, size = 'sm', align = 'end' }: { snapshot: DuelSnapshot; onOpen?: (() => void) | undefined; /** Su señal (pensando, continuá): un globo debajo de sus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; align?: 'start' | 'end' }) {
-  return <LifeScore name={snapshot.peerName ?? t('duel.bar.rival')} life={snapshot.life.lp[snapshot.me === 0 ? 1 : 0]} size={size} align={align} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
+/** Los puntos de vida del rival, planos: en el marcador (a la derecha), en la esquina de arriba a la derecha del campo (escritorio) o en el lateral izquierdo. Se tocan igual que los tuyos. Con `badge`, su chapa. */
+export function RivalLife({ snapshot, onOpen, signal = null, signalKey, size = 'sm', align = 'end', badge = false }: { snapshot: DuelSnapshot; onOpen?: (() => void) | undefined; /** Su señal (pensando, continuá): un globo debajo de sus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; align?: 'start' | 'end'; badge?: boolean }) {
+  const name = snapshot.peerName ?? t('duel.bar.rival')
+  const life = snapshot.life.lp[snapshot.me === 0 ? 1 : 0]
+
+  return badge ? <LifeBadge name={name} label={t('duel.bar.rivalTag')} life={life} align={align} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} life={life} size={size} align={align} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
 }
 
 /**
@@ -669,7 +707,7 @@ export function LifeTile({ name, label, life: real, mine = false, color, bubble 
       <span className={cx('grid min-w-0 flex-1 content-center gap-0.5', tall && 'min-[1101px]:gap-1')}>
         <span className="flex min-w-0 items-center justify-between gap-1.5">
           {/* La chapa no ensancha la placa: el rival por defecto lleva su forma corta («Opp.») y en `compact` del celular un nombre largo se corta con «…» (la placa del rival no tapa su mano). */}
-          <span className={cx('min-w-0 truncate rounded-full px-2 text-micro font-bold uppercase leading-4 tracking-wider shadow-card max-[379px]:px-1.5', tall && 'min-[1101px]:leading-5', compact && 'max-[1101px]:max-w-15', tone.fill)}>{label ?? (name === t('duel.bar.rival') ? t('duel.bar.rivalTag') : name)}</span>
+          <span className={cx('min-w-0 truncate px-2 text-micro font-bold uppercase leading-4 tracking-wider shadow-card max-[379px]:px-1.5', tall && 'min-[1101px]:leading-5', compact && 'max-[1101px]:max-w-15', tone.fill)}>{label ?? (name === t('duel.bar.rival') ? t('duel.bar.rivalTag') : name)}</span>
           {hand === undefined ? null : (
             <span aria-hidden="true" className={cx('inline-flex shrink-0 items-center gap-0.5 text-micro font-semibold leading-none tabular-nums text-muted', handOnDesktop && 'max-[1101px]:hidden')}>
               <Icon name="card" size={14} strokeWidth={1.8} />
@@ -688,8 +726,8 @@ export function LifeTile({ name, label, life: real, mine = false, color, bubble 
           ) : null}
         </span>
         {/* La barra de 8000 (con más, llena): la excepción a los anillos, sólo para las vidas. La lee el lector de pantalla como un medidor; el número ya lo dice la placa. */}
-        <span role="meter" aria-label={lifeOf} aria-valuemin={0} aria-valuemax={STARTING_LP} aria-valuenow={Math.min(life, STARTING_LP)} aria-valuetext={String(life)} className={cx('block h-1 overflow-hidden rounded-full bg-tint/16', tall && 'min-[1101px]:h-1.5')}>
-          <span className={cx('block h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none', health === 'danger' ? 'bg-danger-soft' : tone.bar)} style={{ width: `${ratio * 100}%` }} />
+        <span role="meter" aria-label={lifeOf} aria-valuemin={0} aria-valuemax={STARTING_LP} aria-valuenow={Math.min(life, STARTING_LP)} aria-valuetext={String(life)} className={cx('block h-1 overflow-hidden bg-tint/16', tall && 'min-[1101px]:h-1.5')}>
+          <span className={cx('block h-full transition-[width] duration-300 motion-reduce:transition-none', health === 'danger' ? 'bg-danger-soft' : tone.bar)} style={{ width: `${ratio * 100}%` }} />
         </span>
       </span>
       {bubble ? (

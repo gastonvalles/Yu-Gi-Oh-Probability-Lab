@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
 import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
-import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, respondOffer, step, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainStep } from '../../app/auto/chain-feed'
 import { rivalAttackInCourse } from '../../app/attack-trail'
@@ -34,7 +34,7 @@ import type { ApiCardReference } from '../../types'
 import { artOfDrawId } from '../duel/duel-art'
 import type { LaneNotice } from '../duel/DuelBar'
 import { DuelCardDock, type CardPeek } from '../duel/DuelCardDock'
-import { DUEL_AREAS, DUEL_AREAS_COMPACT, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
+import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { RivalCardDetail, useRivalCard } from '../duel/RivalCardDetail'
 import { useDockPeek } from '../duel/use-dock-peek'
 import { PILE_TITLES, PileViewer } from '../probability/MatDialogs'
@@ -45,6 +45,7 @@ import { FLIGHT_MS } from '../../app/use-card-flights'
 import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
+import { AutoCardSheet, AutoPhases } from './AutoPanel'
 import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard, type PickFrom } from './CardPicker'
 import { outcomeChip } from './chain-parts'
 import { ChainNotice } from './ChainNotice'
@@ -722,7 +723,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── Lo que la mesa recibe de la pregunta (`duel.auto`). ──
   const pick = shown?.cardPick ?? null
   // Cuántas, para qué (el código de pista del núcleo, si está comprobado) y cuántas van: el mismo título en la mesa, en la banda y en la hoja.
-  const pickLabel = pick ? pickTitle(pick, shown?.title) : ''
+  const pickLabel = pick ? pickTitle(pick, shown?.title, attacker ? nameOf({ side: 'mine', id: attacker }) : undefined) : ''
+  // La carta que una pregunta nombra por su código (la que va a la casilla, la de la posición), sólo si se la conoce: si no, el título genérico.
+  const knownName = (code: number | undefined) => (code ? (byCode.get(code)?.name ?? snap.names[code] ?? cards?.get(code)?.name ?? null) : null)
+  const zoneLabel = shown?.zonePick ? zoneTitle(shown, knownName(Number(shown.title))) : ''
   // Una lista aparte (de varios lugares, por código, lo del rival): hasta `BAND_MAX` cartas, una banda en el medio de la mesa (`PickBand`); con más, la hoja (`CardPicker`).
   const list = pick && decision.listed ? pick : null
   // De qué carta es lo que se pregunta y si es su costo, su activación o su efecto (`ask-why.ts`: sólo lo que se sabe), para la línea `AskWhy` de cada cartel. Por valor: la mesa no se vuelve a dibujar por él.
@@ -799,10 +803,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       // Si todas son del rival (dar el control: Shien's Spy, Creature Swap), el texto lo dice: si no, parece trabado a quien no mira su campo.
       zonePick: shown?.zonePick
         ? {
-            label: t(
-              shown.type === 'select_disfield' ? 'auto.pick.disfield' : zoneTargets.length && zoneTargets.every((target) => target.side === 'theirs') ? 'auto.pick.zoneRival' : 'auto.pick.zone',
-              { count: shown.zonePick.count },
-            ),
+            label: zoneLabel,
             targets: [...ownZones, ...rivalEmz.map(({ index }) => ({ zone: 'emz' as const, index: 1 - index }))],
             onPick: (zone, index) => gesture(zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === index) ? { kind: 'zone', side: 'theirs', zone, index: 1 - index } : { kind: 'zone', side: 'mine', zone, index }),
           }
@@ -841,7 +842,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           },
       manual: onManual ?? null,
     }
-  }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, vanilla, codeOf, placeBack, session])
+  }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, vanilla, codeOf, placeBack, session, zoneLabel])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
@@ -1111,6 +1112,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     () =>
       chainShown && feed ? (
         <ChainNotice
+          // Una cadena nueva es otra (sus números vuelven a empezar): los eslabones de la anterior no se animan contra ella.
+          key={feed.key}
+          done={feed.done}
           rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}), ...(row.outcome ? { outcome: outcomeChip(row.outcome) } : {}) }))}
           focus={feed.focus}
           resolving={feed.resolving}
@@ -1144,14 +1148,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── Lo que se muestra fuera del campo. ──
   const prompt = shown?.prompt
   const promptCard = prompt?.card
-  const effectAsk = prompt && promptCard ? effectAskText(prompt, snap.overlay.cause) : null
+  const effectAsk = prompt && promptCard ? effectAskText(prompt, snap.overlay.cause, nameOf(promptCard.ref, promptCard.code)) : null
   const options = shown?.options
   // Una opción sin texto no inventa un número (el orden de la pregunta no es el de la carta): dice «Activar efecto». La carta que pregunta (la que nombran sus opciones, si
   // se la conoce) va arriba del título.
   const optionLabel = (option: { value: number; label?: string }) =>
     option.label ?? (options?.of === 'race' ? (RACES[option.value] ?? String(option.value)) : options?.of === 'attribute' ? (ATTRIBUTES[option.value] ?? String(option.value)) : t('practice.menu.activateEffect'))
   const askingCode = options?.options.map((option) => (option.description ? splitDesc(option.description).code : 0)).find((code) => Boolean(snap.names[code] ?? cards?.get(code)?.name))
-  const optionsTitle = options ? (options.of === 'position' ? t('auto.options.position') : options.of === 'number' ? t('auto.options.number') : options.of === 'race' ? t('auto.options.race', { count: options.count }) : options.of === 'attribute' ? t('auto.options.attribute', { count: options.count }) : options.of === 'rps' ? t('duel.games.rps.title') : t('auto.options.option')) : ''
+  const optionsTitle = options ? optionsTitleOf(options, shown?.title, knownName(options.card)) : ''
   // Todas las de la pregunta, en su orden (las que ahora no valen van apagadas: `eligible`; las elegidas, con su aro), salvo las del deck, que van por nombre (`listOrder`).
   // Cada carta, por quién es (no por su índice: un `select_unselect_card` vuelve a preguntar con la elegida al final de la lista) y, en ese caso, siempre en el mismo orden (por
   // lugar y nombre): mientras dura la decisión, ninguna se corre de lugar.
@@ -1196,7 +1200,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     undoPlay,
     ...(announcement ? { announcement } : {}),
     areas: DUEL_AREAS,
-    areasCompact: DUEL_AREAS_COMPACT,
     opponent: opponentCells,
     sharedZone,
     rivalHand: rivalHandNode,
@@ -1218,7 +1221,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       <AskPrompt
         key={askId ?? 0}
         // Un sí o no a secas dice su pregunta (el texto de su `desc`) cuando la tiene; el de un efecto, «¿Activás el efecto?» con qué pasó y su lugar (`effectAsk`): la carta, por su arte.
-        text={effectAsk?.text ?? effectLabel(0, prompt.description) ?? t('auto.ask.fallback')}
+        text={effectAsk?.text ?? yesNoText(effectLabel(0, prompt.description), prompt.description, knownName(splitDesc(prompt.description).code))}
         {...(promptCard ? { card: { name: nameOf(promptCard.ref, promptCard.code), art: artOf(promptCard.ref, promptCard.code) } } : {})}
         {...(effectAsk?.kicker ? { kicker: effectAsk.kicker } : {})}
         {...(effectAsk?.place ? { place: effectAsk.place } : {})}
@@ -1231,7 +1234,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       <RespondBand
         key={askId ?? 0}
         // A qué eslabón respondés (su número, su dueño, su carta y su estado) ya lo dice la pila de la cadena, arriba y desplegada: la banda dice sólo qué se decide.
-        title={offer.to ? t('auto.respond.title') : t('auto.respond.now')}
+        title={respondTitle(offer, offer.to ? nameOf(offer.to.link.card, offer.to.link.code) : '')}
         link={offer.link}
         cards={respondCards}
         chosen={offered?.key ?? null}
@@ -1290,6 +1293,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     onHighlight: setHighlight,
     auto,
     limits,
+    menus: AUTO_MENUS,
   }
 
   const pieces = (
@@ -1431,6 +1435,8 @@ const NO_RIVAL_CELLS = <SideCells side={NO_RIVAL} owner="theirs" />
 const NO_RIVAL_HAND = <TheirHand count={0} />
 const NO_SHARED_ZONE = () => null
 const NO_TARGETS: DuelMatLink['attackTargets'] = []
+/** La ficha de una carta y las fases del automático (`AutoPanel`): la mesa las dibuja en lugar de las de la manual. */
+const AUTO_MENUS: DuelMatLink['menus'] = { Card: AutoCardSheet, Phases: AutoPhases }
 
 /** La mesa del repaso: el lado del rival vacío y sin sus vuelos (al volver al duelo, sus cartas siguen donde estaban) y la fase del paso que se mira. */
 function reviewMat(mat: AutoAsks['mat'], phase: MatPhase): AutoAsks['mat'] {

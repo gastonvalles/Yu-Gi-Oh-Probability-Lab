@@ -267,6 +267,28 @@ const PATHS = {
   ),
   chart: <path d="M5 20v-8M12 20V5M19 20v-5" />,
   zap: <path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" />,
+  // — Jugadas del duelo automático (la ficha de una carta) —
+  /** Invocar: una carta con una flecha que sube. */
+  summon: (
+    <>
+      <rect data-fill x="6" y="8" width="12" height="13" rx="1" />
+      <path d="M12 3v8M9 6l3-3 3 3" />
+    </>
+  ),
+  /** Colocar: una carta boca abajo, acostada (el dorso con su marca). */
+  set: (
+    <>
+      <rect data-fill x="3" y="6" width="18" height="12" rx="1" />
+      <path d="M9 12h6" />
+    </>
+  ),
+  /** Invocación Especial: una carta con una estrella de cuatro puntas. */
+  special: (
+    <>
+      <rect data-fill x="5" y="3" width="14" height="18" rx="1" />
+      <path data-cut d="M12 7.5c.4 2.6 1.9 4.1 4.5 4.5-2.6.4-4.1 1.9-4.5 4.5-.4-2.6-1.9-4.1-4.5-4.5 2.6-.4 4.1-1.9 4.5-4.5z" />
+    </>
+  ),
 
   // — Acciones —
   x: <path d="M6 6l12 12M18 6 6 18" />,

@@ -4,8 +4,8 @@ import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CHAIN_LINK_MS, type ChainStep } from '../app/auto/chain-feed'
-import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
-import { fakeSession, pos, stringId } from './support/auto-session-fake'
+import type { CoreAsk } from '../app/auto/protocol'
+import { fakeSession, stringId } from './support/auto-session-fake'
 import { core, renderAuto } from './support/auto-screen-harness'
 
 // El lugar fijo de la pregunta del medio (`PracticeMat`, `matSpot`): apoyada sobre la fila de las Zonas Extra, siempre la misma, con la pila de la cadena arriba que se acorta si no entran las dos,
@@ -13,8 +13,6 @@ import { core, renderAuto } from './support/auto-screen-harness'
 // de 390 × 844 (la barra hasta 60, las Zonas Extra de 380 a 452) que respeta el `translate` de la pila y su lista acortada.
 
 const YESNO: CoreAsk = { type: 'select_yesno', player: 0, description: '31' }
-/** Responder con Called by the Grave (900, en la mano): la banda con una carta. */
-const CHAIN: CoreAsk = { type: 'select_chain', player: 0, spe_count: 1, forced: false, hint_timing: 0, hint_timing_other: 0, selects: [{ ...pos(900, L.HAND, 1, 10), description: '0', client_mode: 0 }] }
 const link = (index: number, mine: boolean): ChainStep => ({ kind: 'chain', at: 0, index, link: mine ? { card: { side: 'mine', id: 'card-100-1' }, code: 100, mine, description: stringId(100, 0) } : { card: { side: 'theirs', id: 'c1' }, code: 700, mine, description: stringId(700, 0) } })
 
 const px = (translate: string) => Number(/\s(-?\d+)px/.exec(translate)?.[1] ?? 0)
@@ -124,13 +122,13 @@ describe('la pregunta del medio, en su lugar fijo', () => {
     expect(page().getPropertyValue('--mat-w')).toBe('374px')
   })
 
-  it('no se corre: en el celular la pregunta es la hoja de abajo; bajada, la capa queda en el mismo lugar, y otra pregunta (más alta) abre entera', () => {
+  it('no se corre: en el celular la pregunta es el cartel de abajo (`AutoPanel`); minimizada, la capa queda en el mismo lugar, y otra pregunta (más alta) abre entera', () => {
     const fake = fakeSession()
-    const lowered = () => document.querySelector('[data-prompt][data-lowered]')
+    const lowered = () => document.querySelector('[data-prompt][data-minimized]')
 
     renderAuto(fake)
     core(() => fake.ask(YESNO))
-    fireEvent.click(screen.getByRole('button', { name: 'Bajar la hoja' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
     expect(lowered()).not.toBeNull()
     expect(layer()!.style.bottom).toBe('464px')
 
@@ -179,31 +177,5 @@ describe('la pregunta con la hoja de la cadena (celular)', () => {
     act(() => vi.advanceTimersByTime(20))
     expect(chain()!.dataset.squeezed).toBeUndefined()
     expect(chain()!.style.translate).toBe('')
-  })
-})
-
-describe('en escritorio, las cartas del cartel', () => {
-  beforeEach(() => {
-    const media = window.matchMedia
-
-    window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
-  })
-
-  it('se achican al alto que deja su lugar (`--prompt-art`, en la capa) en vez de cortarse: lo demás del cartel y la carta entran entre la barra y la fila Extra', () => {
-    const fake = fakeSession()
-
-    renderAuto(fake)
-    promptHeight = 330
-    core(() => fake.ask(CHAIN))
-
-    // 320 de lugar (de la barra, 60, a la fila Extra, 380); el cartel mide 330 con una carta de 114: lo demás son 216 y a la carta le quedan 104.
-    expect(document.querySelector('[data-prompt] [data-pick-art]')).toHaveClass('aspect-[421/614]', 'max-w-[calc(var(--prompt-art,100dvh)*421/614)]')
-    expect(layer()!.style.getPropertyValue('--prompt-art')).toBe('104px')
-
-    // Sin lugar ni para eso, lo menos que se sigue viendo (32 px de alto), entera.
-    promptHeight = 500
-    window.dispatchEvent(new Event('resize'))
-    act(() => vi.advanceTimersByTime(20))
-    expect(layer()!.style.getPropertyValue('--prompt-art')).toBe('32px')
   })
 })

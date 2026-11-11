@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { cleanup, render } from '@testing-library/react'
+import { act, cleanup, render } from '@testing-library/react'
+import '@testing-library/jest-dom'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ChainListRows, type ChainNoticeRow } from '../components/auto/chain-parts'
+import { ChainLinks, ChainListRows, type ChainNoticeRow } from '../components/auto/chain-parts'
 
 // La pila de la cadena se anima sólo cuando un eslabón cambia entre un dibujo y el siguiente (comparado por su número): nunca al montarse ya armada ni con movimiento reducido.
 
@@ -89,5 +90,73 @@ describe('ChainListRows · el movimiento de la pila', () => {
     view.rerender(ui([link(1, 'chained'), link(2, 'chained'), link(3, 'solving')]))
     view.rerender(ui([link(1, 'chained'), link(2, 'negated'), link(3, 'solved')]))
     expect(calls).toEqual([])
+  })
+})
+
+describe('los eslabones de la línea (`ChainLinks`): encajan, se tensan, se sueltan y se van', () => {
+  const links = (rows: ChainNoticeRow[], done = false) => (
+    <Provider store={store}>
+      <ChainLinks rows={rows} done={done} onPick={() => {}} />
+    </Provider>
+  )
+  const li = (number: number) => document.querySelector<HTMLElement>(`[data-link="${number}"]`)
+  const reduce = (on: boolean) => vi.stubGlobal('matchMedia', (query: string) => ({ matches: on && query.includes('reduce'), media: query, addEventListener() {}, removeEventListener() {} }))
+
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('uno nuevo encaja; al resolverse sube y los de al lado tiran hacia él; resuelto se parte en dos y a los 270 ms ya no está; al final, lo que queda se disuelve', () => {
+    reduce(false)
+    const view = render(links([link(1, 'chained')]))
+
+    // Montada ya armada: nada entra.
+    expect(li(1)!.className).not.toMatch(/animate-link-in/)
+    view.rerender(links([link(1, 'chained'), link(2, 'chained')]))
+    expect(li(2)).toHaveClass('animate-link-in', 'motion-reduce:animate-none')
+    act(() => void vi.advanceTimersByTime(300))
+    expect(li(2)!.className).not.toMatch(/animate-link-in/)
+
+    view.rerender(links([link(1, 'chained'), link(2, 'solving')]))
+    expect(li(2)!.firstElementChild).toHaveClass('animate-rise')
+    act(() => void vi.advanceTimersByTime(120))
+    expect(li(1)).toHaveClass('animate-pull-l')
+    act(() => void vi.advanceTimersByTime(200))
+    expect(li(1)!.className).not.toMatch(/animate-pull/)
+
+    view.rerender(links([link(1, 'chained'), link(2, 'solved')]))
+    act(() => void vi.advanceTimersByTime(160))
+    expect([...li(2)!.querySelectorAll('[class*="animate-split-"]')].map((half) => half.className.match(/animate-split-[ab]/)?.[0]).filter(Boolean)).toEqual(['animate-split-a', 'animate-split-b'])
+    act(() => void vi.advanceTimersByTime(270))
+    expect(li(2)).toBeNull()
+
+    // Sin efecto: se desliza abajo (y queda apagado mientras).
+    view.rerender(links([link(1, 'disabled', 2), link(2, 'solved')]))
+    act(() => void vi.advanceTimersByTime(160))
+    expect(li(1)).toHaveClass('animate-slide-off', 'opacity-45')
+    view.rerender(links([link(1, 'disabled', 2), link(2, 'solved')], true))
+    expect(document.querySelector('ol')).toHaveClass('animate-fade-out')
+  })
+
+  it('lo negado se tacha en rojo antes de soltarse', () => {
+    reduce(false)
+    const view = render(links([link(1, 'chained'), link(2, 'solving')]))
+
+    view.rerender(links([link(1, 'negated', 2), link(2, 'solving')]))
+    expect(li(1)!.querySelector('[class*="animate-slash-in"]')).toHaveClass('bg-danger-soft')
+    expect(li(1)!.querySelector('.bg-danger')).toHaveClass('animate-glow-in')
+  })
+
+  it('con movimiento reducido nada se va: cambian el color y el texto; con más de cuatro, «+N»', () => {
+    reduce(true)
+    const view = render(links([link(1, 'chained'), link(2, 'solving')]))
+
+    view.rerender(links([link(1, 'chained'), link(2, 'solved')]))
+    act(() => void vi.advanceTimersByTime(2000))
+    expect(li(2)).not.toBeNull()
+    expect(li(2)!.querySelector('.bg-success')).not.toBeNull()
+    expect(li(2)).toHaveTextContent('Resuelta')
+    view.rerender(links([1, 2, 3, 4, 5, 6].map((n) => link(n, 'chained'))))
+    expect(document.querySelectorAll('[data-link]')).toHaveLength(4)
+    expect(document.querySelector('ol')).toHaveTextContent(/\+2$/)
   })
 })

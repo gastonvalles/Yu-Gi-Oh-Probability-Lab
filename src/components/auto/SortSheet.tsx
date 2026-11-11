@@ -1,13 +1,11 @@
 import { useId } from 'react'
 
 import type { AskWhyView } from '../../app/auto/ask-why'
-import { useEscapeKey } from '../../app/use-overlay'
-import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { AskWhy } from '../duel/AskWhy'
 import { Button } from '../ui/Button'
-import { Modal } from '../ui/Modal'
-import { PickGrid, usePicked, type PickCard } from './CardPicker'
+import { AutoPanel } from './AutoPanel'
+import { PickCount, PickGrid, TRAY, usePicked, type PickCard } from './CardPicker'
 
 interface SortSheetProps {
   /** Lo que pide el núcleo, o «Ordená las cartas». */
@@ -26,50 +24,44 @@ interface SortSheetProps {
   onSort: (keys: string[] | null) => void
 }
 
-const SORT_COLUMNS: Record<number, string> = { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' }
-
 /**
- * Ordenar cartas (`sort_card`: el tope del deck; `sort_chain`: los costos de un ataque, que no son eslabones: varios disparos a la vez se piden de a uno con `select_chain`) en una hoja chica (`Modal keypad`): tocarlas en el orden en que van las numera (el marco celeste y el número de `PickGrid`) y tocar una numerada la suelta
- * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: no se cierra con Escape ni tocando afuera (se minimiza
- * sin contestar).
+ * Ordenar cartas (`sort_card`: el tope del deck; `sort_chain`: los costos de un ataque, que no son eslabones: varios disparos a la vez se piden de a uno con `select_chain`) en el cartel del automático (`AutoPanel`, la bandeja en una fila): tocarlas en el orden en que van las numera (el aro lima y el número de `PickGrid`) y tocar una numerada la suelta
+ * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: Escape lo minimiza, sin
+ * contestar.
  * Va dentro de un `Presence` (así sale al contestarse).
  */
 export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hint'), kicker, why, done = t('auto.sort.done'), cards, onSort }: SortSheetProps) {
-  const leaving = useLeaving()
   const whyId = useId()
   const [order, toggle] = usePicked(cards, cards.length)
 
-  useEscapeKey(() => {}, !leaving)
-
   return (
-    <Modal
-      isOpen={!leaving}
-      onClose={() => {}}
-      dismissible={false}
-      size="keypad"
-      lowerable
-      anchor="mat"
-      veil={false}
-      kicker={why ? <AskWhy id={whyId} why={why} /> : kicker}
-      {...(why ? { ariaDescribedBy: whyId } : {})}
-      title={title}
-      subtitle={hint}
-      footer={
+    <AutoPanel
+      kind="sort"
+      label={title}
+      {...(why ? { describedBy: whyId } : {})}
+      focus='[role="option"][tabindex="0"]'
+      escape
+      top={
         <>
-          <p role="status" className="m-0 mr-auto text-body tabular-nums text-muted">
-            {t('auto.picker.status', { chosen: order.length, max: cards.length })}
-          </p>
-          <Button variant="tertiary" size="sm" onClick={() => onSort(null)}>
-            {t('auto.sort.asIs')}
-          </Button>
-          <Button variant="primary" size="sm" disabled={order.length < cards.length} onClick={() => onSort(order)}>
-            {done}
-          </Button>
+          {why ? <AskWhy id={whyId} why={why} /> : kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
+          <p className="m-0 text-micro text-muted">{hint}</p>
+        </>
+      }
+      actions={
+        <>
+          <PickCount chosen={order.length} max={cards.length} />
+          <div className="ml-auto flex justify-end gap-2">
+            <Button variant="tertiary" size="sm" onClick={() => onSort(null)}>
+              {t('auto.sort.asIs')}
+            </Button>
+            <Button variant="primary" size="sm" disabled={order.length < cards.length} onClick={() => onSort(order)}>
+              {done}
+            </Button>
+          </div>
         </>
       }
     >
-      {/* Hasta cuatro, una sola fila con todas (sin una columna vacía al lado de tres); con más, de a tres (de a cuatro desde 640 px). */}
-      <PickGrid label={title} cards={cards} chosen={order} multi onToggle={toggle} className={SORT_COLUMNS[cards.length] ?? 'grid-cols-3 sm:grid-cols-4'} />
-    </Modal>
+      <PickGrid label={title} cards={cards} chosen={order} multi onToggle={toggle} className={TRAY} />
+    </AutoPanel>
   )
 }

@@ -48,7 +48,7 @@ export function LimitsChip({ texts }: { texts: readonly string[] }) {
       {at
         ? createPortal(
             <div className="fixed inset-0 z-210" onClick={() => setAt(null)}>
-              <section aria-label={label} className={cx(surface.panel, 'absolute grid gap-2 px-3 py-2.5')} style={at} onClick={(event) => event.stopPropagation()}>
+              <section aria-label={label} className={cx(surface.panel, 'mat-square absolute grid gap-2 px-3 py-2.5')} style={at} onClick={(event) => event.stopPropagation()}>
                 <p className="m-0 text-micro font-semibold text-muted">{label}</p>
                 {texts.map((text, index) => (
                   <p key={index} className="m-0 text-body text-foreground">

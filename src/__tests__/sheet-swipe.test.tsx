@@ -6,18 +6,13 @@ import type { ReactElement } from 'react'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { CardPicker, type PickCard } from '../components/auto/CardPicker'
 import { MatPrompt } from '../components/duel/MatPrompt'
+import { Modal } from '../components/ui/Modal'
 
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 const render = (ui: ReactElement) => renderBare(ui, { wrapper: ({ children }) => <Provider store={store}>{children}</Provider> })
 
 // Las hojas del duelo y los carteles de la mesa se minimizan arrastrando su franja de arriba hacia abajo y se abren arrastrando su asa hacia arriba, además de la flecha de siempre.
-
-const CARDS: PickCard[] = [
-  { key: 'a', name: 'Fallen of Albaz', art: null, place: 'Mano' },
-  { key: 'b', name: 'Aluber the Jester of Despia', art: null, place: 'Cementerio' },
-]
 
 /** Arrastra en vertical con el dedo (`dy` px, positivo hacia abajo) y suelta a los `elapsed` ms: lento, decide la distancia. */
 function drag(element: Element, dy: number, elapsed = 400) {
@@ -50,7 +45,13 @@ afterEach(() => {
 })
 
 describe('una hoja del duelo (Modal lowerable)', () => {
-  const picker = (onCancel = () => {}) => render(<CardPicker title="Elegí qué agregar a tu mano" kicker="Branded Fusion" cards={CARDS} min={1} max={2} onPick={() => {}} onCancel={onCancel} />)
+  // La hoja de la mesa que se baja para mirar el campo (la usan `PendulumPicker` y `ManualDialog`), montada directo: lo que se prueba es `Modal lowerable`, no quien la usa.
+  const picker = (onCancel = () => {}) =>
+    render(
+      <Modal isOpen onClose={onCancel} size="fit" lowerable anchor="mat" veil={false} kicker="Branded Fusion" title="Elegí qué agregar a tu mano">
+        <p>Fallen of Albaz · Aluber the Jester of Despia</p>
+      </Modal>,
+    )
   const dialog = () => screen.getByRole('dialog', { name: 'Elegí qué agregar a tu mano' })
   const title = () => within(dialog()).getByRole('heading', { name: 'Elegí qué agregar a tu mano' })
 

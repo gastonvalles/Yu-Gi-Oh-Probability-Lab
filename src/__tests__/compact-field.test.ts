@@ -1,89 +1,57 @@
 import { describe, expect, it } from 'vitest'
 
-import { COMPACT_FIELD_MEDIA_QUERY, SHORT_SCREEN_MEDIA_QUERY, compactDuelFieldStyle, mediumDuelFieldStyle } from '../components/probability/compact-field'
+import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from '../components/probability/compact-field'
 import { THEIR_HAND } from '../components/duel/their-hand'
 
-/** Lo que se ve de la mano tuya arriba de la barra de abajo (la barra, 64 px, y la carta entera, 126) y la pantalla de prueba: un celular de 844 px de alto. */
-const BELOW_HAND = 64 + 126
-const SCREEN = 844
+/** Lo que la mesa le pasa hoy (`PracticeMat`): la barra con el marcador y el hueco de la columna, el lugar de la mano del rival (su caja y 14 px) y el margen de abajo. */
+const APP = { bar: 110, rival: THEIR_HAND.mobile.room + 14, bottom: 8 }
+const round = (layout: ReturnType<typeof phoneDuelLayout>) => Object.fromEntries(Object.entries(layout).map(([key, value]) => [key, Math.round(value * 10) / 10]))
 
-/** Lo que hay arriba del campo: la barra con la línea de jugadas flotando (100 px) y los 8 px que deja la columna; abajo, el campo son siete casillas y seis huecos de 4 px, y la mano se corre 6 px (su margen y su bajada). */
-const handTop = (cell: number, rivalRoom: number) => 100 + 8 + rivalRoom + (7 * cell + 24) + 6
-
-describe('el campo del duelo en un celular en vertical', () => {
+describe('el duelo en el celular: geometría fija (`phoneDuelLayout`)', () => {
   it('rige con menos de 640 px de ancho, el corte `sm` de Tailwind', () => {
     expect(COMPACT_FIELD_MEDIA_QUERY).toBe('(max-width: 639.98px)')
   })
 
-  it('en 3D la casilla sale del alto de la pantalla (y nunca pasa del ancho ni baja de 48 px) y la mano del rival se acomoda con ella', () => {
-    const style = compactDuelFieldStyle(true) as Record<string, string | number>
-
-    expect(style['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(3rem, calc((100dvh - 30.9rem) / 5.2)))')
-    // Cinco casillas y los cuatro huecos del campo (1 rem), centrado y nunca más ancho que la pantalla.
-    expect(style.width).toBe('calc(var(--cell-m) * 5 + 1rem)')
-    expect(style.maxWidth).toBe('100%')
-    expect(style.marginInline).toBe('auto')
-    expect(style.marginTop).toBe('max(0px, calc(10.4rem - 1.8 * var(--cell-m)))')
+  it('la casilla sale del ancho, con las siete columnas: 57 px a 390 y 52 a 360 (orillas de 4 px y huecos de 3)', () => {
+    expect(phoneDuelLayout(390, 844, { tilted: false, ...APP }).cell).toBeCloseTo(57.13, 2)
+    expect(phoneDuelLayout(360, 740, { tilted: false, ...APP }).cell).toBeGreaterThanOrEqual(52)
+    // Cinco casillas, los costados (0,6857 cada uno) y seis huecos: el campo entra justo entre las orillas, sin scroll horizontal.
+    for (const width of [360, 390, 430]) expect(phoneDuelLayout(width, 844, { tilted: false, ...APP }).fieldWidth).toBeCloseTo(width - 8, 1)
   })
 
-  it('la fórmula del 3D deja la mano tuya entera arriba de la barra: a 844 px de alto el campo mide 67 px de casilla y la mano empieza a 190 px del borde de abajo', () => {
-    const style = compactDuelFieldStyle(true) as Record<string, string>
-    const [, chrome, divisor] = (/100dvh - ([\d.]+)rem\) \/ ([\d.]+)\)/.exec(style['--cell-m']!) ?? []).map(Number) as [number, number, number]
-    const [, room, shift] = (/calc\(([\d.]+)rem - ([\d.]+) \* var/.exec(style.marginTop!) ?? []).map(Number) as [number, number, number]
-    const cell = (SCREEN - chrome * 16) / divisor
-
-    expect(Math.round(cell)).toBe(67)
-    expect(Math.round(handTop(cell, room * 16 - shift * cell))).toBe(SCREEN - BELOW_HAND)
+  it('a 390 × 844, de arriba: el campo en y = 226, la línea de 96 px pegada a él, el aire que sobra antes de tu mano y tu mano hasta el margen de abajo', () => {
+    expect(round(phoneDuelLayout(390, 844, { tilted: false, ...APP }))).toMatchObject({ fieldTop: 226, fieldBoxTop: 226, fieldHeight: 297.7, lineTop: 523.7, lineHeight: 96, air: 11.9, handTop: 631.6, handHeight: 204.4, handCard: 119.4, bottomTop: 836 })
   })
 
-  it('de arriba (sin inclinación) la mano del rival conserva su lugar más lo que le tapa la línea de jugadas, y la casilla sale de otra cuenta', () => {
-    const style = compactDuelFieldStyle(false) as Record<string, string | number>
+  it('en 3D la perspectiva baja el borde de arriba del campo (23 px a 390): se le quita al lugar de la mano del rival, el campo se ve donde de arriba y la línea gana ese aire; tu mano no se mueve', () => {
+    const flat = phoneDuelLayout(390, 844, { tilted: false, ...APP })
+    const tilted = phoneDuelLayout(390, 844, { tilted: true, ...APP })
 
-    expect(style['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(3rem, calc((100dvh - 28.1rem) / 7)))')
-    expect(style.marginTop).toBe(THEIR_HAND.mobile.room + 20)
-
-    const chrome = Number(/100dvh - ([\d.]+)rem/.exec(style['--cell-m'] as string)![1])
-    const cell = (SCREEN - chrome * 16) / 7
-
-    expect(Math.round(handTop(cell, style.marginTop as number))).toBe(SCREEN - BELOW_HAND)
-  })
-})
-
-describe('el campo de «Jugar solo automático» en el celular, sin la fila de abajo (las vidas en el marcador de la barra)', () => {
-  it('lo que no es campo baja a 29,2 rem (3D) y 27 (de arriba): la mano llega al borde de abajo de la columna, sin scroll (medido de 360 × 740 a 430 × 932)', () => {
-    const tilted = compactDuelFieldStyle(true, { bottomRow: false }) as Record<string, string | number>
-    const flat = compactDuelFieldStyle(false, { bottomRow: false }) as Record<string, string | number>
-
-    expect(tilted['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(3rem, calc((100dvh - 29.2rem) / 5.2)))')
-    expect(tilted.marginTop).toBe('max(0px, calc(10.4rem - 1.8 * var(--cell-m)))')
-    // La vista de arriba tiene siete filas: su casilla baja hasta 44 px.
-    expect(flat['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(2.75rem, calc((100dvh - 27rem) / 7)))')
-    expect(flat.marginTop).toBe(THEIR_HAND.mobile.room + 20)
+    expect(tilted.drop).toBeCloseTo(22.7, 1)
+    expect(tilted.fieldTop).toBe(flat.fieldTop)
+    expect(tilted.fieldBoxTop).toBeCloseTo(flat.fieldTop - tilted.drop, 5)
+    expect(tilted.handTop).toBe(flat.handTop)
+    expect(tilted.air).toBeCloseTo(flat.air + tilted.drop, 5)
   })
 
-  it('en una pantalla baja (menos de 700 px de alto) la casilla baja hasta 36 px (32 de arriba) y la mano del rival, al 72 %, deja 24 px que el campo sube', () => {
-    const tilted = compactDuelFieldStyle(true, { bottomRow: false, short: true }) as Record<string, string | number>
-    const flat = compactDuelFieldStyle(false, { bottomRow: false, short: true }) as Record<string, string | number>
-
-    expect(SHORT_SCREEN_MEDIA_QUERY).toBe('(max-height: 699.98px)')
-    expect(tilted['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(2.25rem, calc((100dvh - 28rem) / 5.2)))')
-    expect(tilted.marginTop).toBe('calc(max(0px, calc(10.4rem - 1.8 * var(--cell-m))) - 1.5rem)')
-    expect(flat['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(2rem, calc((100dvh - 25.8rem) / 7)))')
-    expect(flat.marginTop).toBe(THEIR_HAND.mobile.room + 20 - 24)
+  it('en una pantalla chica la línea no baja de 56 px: tu mano se achica (360 × 740 de arriba) y a 430 × 932 lo que sobra queda entre la línea y tu mano', () => {
+    expect(round(phoneDuelLayout(360, 740, { tilted: false, ...APP }))).toMatchObject({ lineHeight: 56, air: 0, handCard: 99.8, handTop: 556.1 })
+    expect(round(phoneDuelLayout(360, 740, { tilted: true, ...APP }))).toMatchObject({ handCard: 110, air: 0 })
+    expect(round(phoneDuelLayout(430, 932, { tilted: false, ...APP }))).toMatchObject({ lineHeight: 96, handCard: 131.9 })
+    expect(phoneDuelLayout(430, 932, { tilted: false, ...APP }).air).toBeGreaterThan(50)
   })
 
-  it('con el marcador de 44 px (las vidas tocables del duelo por enlace) lo que no es campo suma 4 px: 29,45 rem en 3D; con la fila de abajo no cambia nada', () => {
-    const tall = (tilted: boolean, short = false) => (compactDuelFieldStyle(tilted, { bottomRow: false, short, tallScore: true }) as Record<string, string>)['--cell-m']
+  it('las piezas van una debajo de la otra sin pisarse y la última termina en el margen de abajo, en todos los tamaños y las dos vistas', () => {
+    for (const [width, height] of [[360, 740], [390, 844], [412, 915], [430, 932]] as const) {
+      for (const tilted of [false, true]) {
+        const layout = phoneDuelLayout(width, height, { tilted, ...APP })
 
-    expect(tall(true)).toContain('calc((100dvh - 29.45rem) / 5.2)')
-    expect(tall(false)).toContain('calc((100dvh - 27.25rem) / 7)')
-    expect(tall(true, true)).toContain('calc((100dvh - 28.25rem) / 5.2)')
-    expect(compactDuelFieldStyle(true, { tallScore: true })).toEqual(compactDuelFieldStyle(true))
-  })
-
-  it('con la fila de abajo nada cambia, tampoco en una pantalla baja', () => {
-    expect(compactDuelFieldStyle(true, { short: true })).toEqual(compactDuelFieldStyle(true))
-    expect(compactDuelFieldStyle(false, { bottomRow: true, short: true })).toEqual(compactDuelFieldStyle(false))
+        expect(layout.fieldBoxTop + layout.fieldHeight).toBeCloseTo(layout.lineTop, 5)
+        expect(layout.lineTop + layout.lineHeight + layout.air).toBeCloseTo(layout.handTop, 5)
+        expect(layout.air).toBeGreaterThanOrEqual(0)
+        expect(layout.bottomTop).toBeCloseTo(height - APP.bottom, 5)
+      }
+    }
   })
 })
 

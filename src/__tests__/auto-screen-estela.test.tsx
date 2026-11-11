@@ -99,7 +99,7 @@ describe('auto-screen · el aro del que ataca y la estela', () => {
     // Sin pregunta tuya, no hay ventana: sin estela.
     expect(trail()).toBeNull()
     core(() => fake.ask(CHAIN))
-    expect(screen.getByRole('group', { name: '¿Activás algo ahora?' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: '¿Activás una carta o efecto?' })).toBeInTheDocument()
     // Mientras está su cartel («Rival ataca a Maxx C», por donde pasa la estela), lo dice el cartel; al irse, la estela.
     expect(screen.getByText('Rival ataca a Maxx C')).toBeInTheDocument()
     expect(trail()).toBeNull()

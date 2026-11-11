@@ -29,9 +29,9 @@ describe('auto-screen · elegir', () => {
 
     core(() => fake.ask(CARD))
     expect(handCard('Ash Blossom')).toHaveAttribute('data-glow-kind', 'can')
-    expect(status()).toHaveTextContent('Elegí de 1 a 2 cartas · 0/2')
+    expect(status()).toHaveTextContent('Elegí de 1 a 2 cartas · 0 de 2')
     tap(handCard('Ash Blossom'))
-    expect(status()).toHaveTextContent('· 1/2')
+    expect(status()).toHaveTextContent('· 1 de 2')
     fireEvent.click(within(status()).getByRole('button', { name: 'Listo' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [0] }])
     expect(dispatches).toBe(0)
@@ -92,7 +92,7 @@ describe('auto-screen · elegir', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(TRIBUTE))
-    expect(status()).toHaveTextContent('Sacrificios: 0 de 1')
+    expect(status()).toHaveTextContent('Elegí el monstruo para Sacrificar')
     tap(screen.getByRole('button', { name: 'Maxx C' }))
     expect(fake.answers).toEqual([{ type: 'select_tribute', indices: [0] }])
   })
@@ -101,7 +101,7 @@ describe('auto-screen · elegir', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(SUM))
-    expect(status()).toHaveTextContent('Niveles: 0 de 4')
+    expect(status()).toHaveTextContent('Elegí cartas que sumen 4 Niveles · 0 de 4')
     // 3 + nada no llega a 4 exacto y 3 + 4 se pasa: la de 3 no se ofrece.
     expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow-kind', 'can')
     tap(screen.getByRole('button', { name: 'Maxx C' }))
@@ -193,11 +193,11 @@ describe('auto-screen · elegir', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('position: la hoja ofrece sólo las posiciones permitidas y una contesta', () => {
+  it('position: la hoja nombra la carta y ofrece sólo las posiciones permitidas; una contesta', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(POSITION))
-    const sheet = screen.getByRole('dialog', { name: 'Elegí la posición' })
+    const sheet = screen.getByRole('dialog', { name: 'Elegí la posición de «Ash Blossom»' })
 
     expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
     fireEvent.click(within(sheet).getByRole('menuitem', { name: 'En defensa' }))
@@ -237,21 +237,21 @@ describe('auto-screen · elegir', () => {
     const first: CoreAsk = { type: 'select_unselect_card', player: 0, can_finish: false, can_cancel: true, min: 1, max: 2, select_cards: [pos(100, L.HAND, 0, 10), pos(400, L.GRAVE, 0, 5)], unselect_cards: [] }
 
     core(() => fake.ask(first, '506'))
-    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 0/2' })
+    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 0 de 2' })
     const order = within(band).getAllByRole('option')
     const nibiru = within(band).getByRole('option', { name: /Nibiru/ })
 
     fireEvent.click(nibiru)
     expect(fake.answers).toEqual([{ type: 'select_unselect_card', index: 1 }])
     // Mientras el núcleo vuelve a preguntar, sigue la misma (quieta).
-    expect(screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 0/2' })).toBe(band)
+    expect(screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 0 de 2' })).toBe(band)
     core(() => fake.ask({ ...first, can_finish: true, select_cards: [first.select_cards[0]!], unselect_cards: [first.select_cards[1]!] }, '506'))
-    const again = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 1/2' })
+    const again = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 1 de 2' })
 
     expect(again).toBe(band)
     expect(within(again).getAllByRole('option')).toEqual(order)
     expect(nibiru).toHaveAttribute('aria-selected', 'true')
-    expect(nibiru.querySelector('[data-fx="frame"]')).not.toBeNull()
+    expect(nibiru.querySelector('[data-pick-chosen]')).not.toBeNull()
     fireEvent.click(within(again).getByRole('button', { name: 'Elegir 1 carta' }))
     expect(fake.answers[1]).toEqual({ type: 'select_unselect_card', index: null })
 
@@ -264,11 +264,11 @@ describe('auto-screen · elegir', () => {
     const first: CoreAsk = { type: 'select_unselect_card', player: 0, can_finish: false, can_cancel: true, min: 1, max: 2, select_cards: [pos(101, L.DECK, 1, 10), pos(102, L.DECK, 0, 10), pos(400, L.GRAVE, 0, 5)], unselect_cards: [] }
 
     core(() => fake.ask(first, '506'))
-    const band = screen.getByRole('group', { name: /agregar a tu mano · 0\/2$/ })
+    const band = screen.getByRole('group', { name: /agregar a tu mano · 0 de 2$/ })
 
     fireEvent.click(within(band).getByRole('option', { name: /Droll/ }))
     core(() => fake.ask({ ...first, can_finish: true, select_cards: [first.select_cards[1]!], unselect_cards: [first.select_cards[0]!] }, '506'))
-    expect(screen.getByRole('group', { name: /agregar a tu mano · 1\/2$/ })).toBe(band)
+    expect(screen.getByRole('group', { name: /agregar a tu mano · 1 de 2$/ })).toBe(band)
     expect(screen.queryByRole('dialog', { name: /^Main/ })).toBeNull()
   })
 

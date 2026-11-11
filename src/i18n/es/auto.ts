@@ -132,6 +132,11 @@ export const auto = {
 
   // La pregunta de sí o no del núcleo, en la mesa: corta y sin el nombre de la carta (la dice su arte). Arriba, chico, qué pasó justo antes, sin nombres.
   'auto.ask.effect': '¿Activás el efecto?',
+  // Como Master Duel: la carta, en la frase. Un sí o no del texto de una carta (`strN`, sólo en inglés) la nombra por su número.
+  'auto.ask.effectOf': '¿Activás el efecto de «{name}»?',
+  'auto.ask.effectN': '¿Aplicás el efecto {n} de «{name}»?',
+  // El rótulo de un efecto de la carta: el `strN` viene sólo en inglés, así que en español va su número.
+  'auto.effect.number': 'Efecto {n}',
   'auto.ask.kicker': 'Efecto que se dispara',
   'auto.ask.afterEvent': 'Tras la {event}',
   'auto.ask.inPhase': 'En la {phase}',
@@ -146,6 +151,10 @@ export const auto = {
   // Las opciones del núcleo (una hoja): una opción, la posición, un número, Tipos o Atributos. «Declarar» es la palabra de las cartas.
   'auto.options.option': 'Elegí una opción',
   'auto.options.position': 'Elegí la posición',
+  'auto.options.positionOf': 'Elegí la posición de «{name}»',
+  // El título de la pregunta (`HINT_SELECTMSG` 550/566 y 556) cuando elige entre efectos.
+  'auto.options.effect': 'Elegí qué efecto activar',
+  'auto.options.apply': 'Elegí qué efecto aplicar',
   'auto.options.number': 'Declará un número',
   'auto.options.race': { one: 'Declará {count} Tipo', other: 'Declará {count} Tipos' },
   'auto.options.attribute': { one: 'Declará {count} Atributo', other: 'Declará {count} Atributos' },
@@ -199,19 +208,26 @@ export const auto = {
 
   // Lo que se elige en la mesa (la línea de estado de abajo): casillas y cartas.
   'auto.pick.zone': { one: 'Elegí {count} casilla', other: 'Elegí {count} casillas' },
+  // La carta que va a la casilla: el núcleo la manda como título de `select_place`.
+  'auto.pick.zoneFor': 'Elegí una casilla para «{name}»',
   'auto.pick.zoneRival': { one: 'Elegí una casilla del rival', other: 'Elegí {count} casillas del rival' },
   'auto.pick.disfield': { one: 'Elegí {count} casilla que no se va a poder usar', other: 'Elegí {count} casillas que no se van a poder usar' },
   'auto.pick.cards': { one: 'Elegí {count} carta', other: 'Elegí {count} cartas' },
   'auto.pick.range': 'Elegí de {min} a {max} cartas',
-  'auto.pick.tribute': 'Sacrificios: {chosen} de {total}',
-  'auto.pick.sum': 'Niveles: {chosen} de {total}',
+  // La cuenta va sólo si el total es mayor que 1 (nunca «1 de 1»).
+  'auto.pick.tribute': 'Elegí los monstruos para Sacrificar · {chosen} de {total}',
+  'auto.pick.tributeOne': 'Elegí el monstruo para Sacrificar',
+  'auto.pick.sum': 'Elegí cartas que sumen {total} Niveles · {chosen} de {total}',
+  'auto.pick.sumAtLeast': 'Elegí cartas que sumen al menos {total} Niveles · {chosen} de {total}',
   'auto.pick.counter': 'Contadores: {chosen} de {total}',
   'auto.pick.attackTarget': 'Elegí a qué monstruo atacar',
+  'auto.pick.attackTargetOf': 'Elegí a qué monstruo ataca «{name}»',
   // Declarar una carta (Prohibition, Crossout Designator): «Declarar» es la palabra de las cartas.
   'auto.pick.announce': 'Declará el nombre de una carta',
-  // Para qué se eligen (el pedido del núcleo, `pickTitle`): «Elegí 2 cartas para desterrar · 1/2». La cuenta es de lo elegido contra lo pedido.
+  // Para qué se eligen (el pedido del núcleo, `pickTitle`): «Elegí 2 cartas para desterrar · 1 de 2». La cuenta es de lo elegido contra lo pedido.
+  // La tabla propia de los textos del sistema (`HINTMSG_*` de `constant.lua`; `strings.conf` no viaja): cada uno, con el sentido de su nombre.
   'auto.pick.for': '{what} {why}',
-  'auto.pick.count': '{chosen}/{max}',
+  'auto.pick.count': '{chosen} de {max}',
   'auto.pick.why.tribute': 'para Sacrificar',
   'auto.pick.why.discard': 'para descartar',
   'auto.pick.why.destroy': 'para destruir',
@@ -230,6 +246,30 @@ export const auto = {
   'auto.pick.why.place': 'para poner en el Campo',
   'auto.pick.why.link': 'como Material de Enlace',
   'auto.pick.why.target': 'como objetivo del efecto',
+  'auto.pick.why.xyz': 'como Material Xyz',
+  'auto.pick.why.faceUp': 'boca arriba',
+  'auto.pick.why.faceDown': 'boca abajo',
+  'auto.pick.why.attack': 'en posición de ataque',
+  'auto.pick.why.defense': 'en posición de defensa',
+  'auto.pick.why.equip': 'para equipar',
+  'auto.pick.why.control': 'para tomar el control',
+  'auto.pick.why.replace': 'para destruir en su lugar',
+  'auto.pick.why.faceUpAttack': 'boca arriba en ataque',
+  'auto.pick.why.faceUpDefense': 'boca arriba en defensa',
+  'auto.pick.why.faceDownAttack': 'boca abajo en ataque',
+  'auto.pick.why.faceDownDefense': 'boca abajo en defensa',
+  'auto.pick.why.position': 'para cambiar su posición',
+  'auto.pick.why.yours': 'de las tuyas',
+  'auto.pick.why.rival': 'del rival',
+  'auto.pick.why.tributeSummon': 'para la Invocación por Sacrificio',
+  'auto.pick.why.detachFrom': 'para desacoplarle un material',
+  'auto.pick.why.activate': 'para activar su efecto',
+  'auto.pick.why.counter': 'para ponerle un contador',
+  'auto.pick.why.negate': 'para negar',
+  'auto.pick.why.atkDef': 'para cambiar su ATK o DEF',
+  'auto.pick.why.applyTo': 'para aplicarle el efecto',
+  'auto.pick.why.attach': 'para acoplar como material',
+  'auto.pick.why.returnToGy': 'para devolver al Cementerio',
   // De qué carta es lo que se pregunta y por qué (`ask-why.ts`): sólo lo que el núcleo deja saber.
   'auto.askWhy.cost': 'Costo de {name}',
   'auto.askWhy.activation': 'Al activar {name}',
@@ -245,6 +285,14 @@ export const auto = {
   'auto.pick.statRank': '{name}, rango {rank}, ATK {atk}, DEF {def}, elegible',
   'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, elegible',
   'auto.phase.notYet': 'Todavía no',
+  // El selector de fases del automático (`AutoPhases`): el título y la palabra debajo de la fase de ahora.
+  'auto.phase.title': 'Elegí la fase a la que pasás',
+  'auto.phase.now': 'ahora',
+
+  // La ventana de los carteles en escritorio: la barra de título es el asa; el borde y la esquina, los agarres para estirarla.
+  'auto.window.move': 'Mover la ventana',
+  'auto.window.help': 'Arrastrá la barra o usá las flechas para moverla (Mayús: más lejos) · Alt + flechas: la estiran · Doble clic o Enter: vuelve a su lugar y su tamaño',
+  'auto.window.resize': 'Estirar',
 
   // La insignia del eslabón sobre la carta («CL1»): se ve la sigla; el nombre de la carta lo dice con palabras.
   'auto.link.badge': 'CL{numbers}',
@@ -281,7 +329,9 @@ export const auto = {
   'auto.lane.pass': 'No responder',
   // La banda de responder a una cadena (a qué eslabón lo dice la pila de arriba): con qué cartas y qué número tomaría tu respuesta.
   'auto.respond.title': 'Responder a la cadena',
-  'auto.respond.now': '¿Activás algo ahora?',
+  'auto.respond.now': '¿Activás una carta o efecto?',
+  // Qué pasó y qué se te pide (Master Duel): el eslabón al que respondés, con su carta y su número.
+  'auto.respond.activated': 'Se activó «{name}» (CL{link}). ¿Encadenás otra carta o efecto?',
   'auto.respond.cards': 'Podés responder con',
   'auto.respond.chain': 'Encadenar como CL{link}',
   'auto.respond.start': 'Activar como CL1',
@@ -289,8 +339,8 @@ export const auto = {
   // Sin nombres: lo que hay que activar brilla en la mesa.
   'auto.lane.mustActivate': { one: 'Tenés que activar la carta que brilla: tocala', other: 'Tenés que activar las {count} cartas que brillan: tocá una' },
   // Varias obligatorias a la vez: se elige cuál entra primero en la cadena (la banda del medio).
-  'auto.forced.title': 'Tenés que activar estas {count}. ¿Cuál va primero?',
-  'auto.forced.hint': 'Sin «No responder»: son obligatorias.',
+  'auto.forced.title': 'Elegí cuál de los {count} efectos obligatorios se activa primero',
+  'auto.forced.hint': 'Los demás se activan después.',
   'auto.lane.autoZone': 'La casilla se eligió sola',
   // Los avisos de algo que salió mal, con palabras de la mesa (el detalle técnico va a la consola).
   'auto.lane.unmapped': 'La mesa no pudo mostrar una jugada del núcleo; el duelo sigue igual.',

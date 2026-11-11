@@ -202,46 +202,33 @@ describe('el visor de una pila en el celular se baja con su asa, sin cerrarse', 
 })
 
 describe('las hojas del duelo automático se minimizan sin contestar la pregunta', () => {
-  it('elegir cartas: «Minimizar» la deja en el asa de la mesa (los toques pasan a la mesa, que nunca tuvo velo), nada se contesta ni se cancela, Tab se queda en el asa y al reabrirla sigue lo elegido', () => {
+  it('elegir cartas (el cartel del automático, `AutoPanel`): «Minimizar» la deja en la tira con la pregunta y sus botones, nada se contesta ni se cancela y al reabrirla sigue lo elegido', () => {
     const onPick = vi.fn()
     const onCancel = vi.fn()
 
     render(<CardPicker title="Elegí qué agregar a tu mano" kicker="Branded Fusion" cards={CARDS} min={1} max={2} onPick={onPick} onCancel={onCancel} />)
-    const dialog = screen.getByRole('dialog', { name: 'Elegí qué agregar a tu mano' })
-    const albaz = () => within(dialog).getByRole('option', { name: /Albaz/ })
-    const root = dialog.parentElement!
+    const dialog = () => screen.getByRole('dialog', { name: 'Elegí qué agregar a tu mano' })
+    const albaz = () => within(dialog()).getByRole('option', { name: /Albaz/ })
 
-    // Desde la mesa: al centro de la fila Extra (lo escribe la mesa) en todos los anchos, ya no desde abajo.
-    expect(root).toHaveAttribute('data-anchor', 'mat')
-    expect(dialog).toHaveClass('top-[var(--mat-y,50%)]', 'left-[var(--mat-x,50%)]')
-    expect(dialog).not.toHaveClass('max-sm:animate-sheet-up')
+    // Apoyado abajo, sobre la mano (no al centro de la fila Extra).
+    expect(dialog()).toHaveClass('fixed', 'bottom-0')
     fireEvent.click(albaz())
-    albaz().focus()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Minimizar' }))
-    const show = within(dialog).getByRole('button', { name: 'Mostrar la pregunta' })
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Minimizar' }))
+    const show = within(dialog()).getByRole('button', { name: 'Mostrar la pregunta' })
 
-    expect(dialog).toHaveAttribute('data-minimized')
-    expect(dialog).toHaveClass('top-[var(--mat-extra,calc(100%-1rem))]', 'translate-y-[calc(var(--drag-y,0px)-100%)]')
-    expect(show.parentElement).toHaveTextContent(/^Elegí qué agregar a tu mano$/)
-    expect(show).toHaveFocus()
-    expect(root).toHaveClass('pointer-events-none')
-    expect(root.querySelector('.animate-nav-scrim')).toBeNull()
-    expect(within(dialog).queryByRole('listbox')).toBeNull()
-    expect(dialog.querySelector('[role="listbox"]')!.closest('[inert]')).not.toBeNull()
-    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(dialog()).toHaveAttribute('data-minimized')
+    expect(within(dialog()).queryByRole('listbox')).toBeNull()
+    expect(within(dialog()).getByRole('button', { name: 'Elegir 1 carta' })).toBeEnabled()
     expect(show).toHaveFocus()
     expect(onPick).not.toHaveBeenCalled()
     expect(onCancel).not.toHaveBeenCalled()
 
     fireEvent.click(show)
-    expect(dialog).not.toHaveAttribute('data-minimized')
-    expect(within(dialog).getByRole('button', { name: 'Minimizar' })).toHaveFocus()
-    expect(root).not.toHaveClass('pointer-events-none')
+    expect(dialog()).not.toHaveAttribute('data-minimized')
     expect(albaz()).toHaveAttribute('aria-selected', 'true')
     escape()
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
-
   it('ordenar: se minimiza igual en el escritorio y Escape sigue sin cerrarla', () => {
     const onSort = vi.fn()
 

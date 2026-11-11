@@ -10,23 +10,24 @@ afterEach(cleanup)
 
 const clock = (left: number): TurnClock => ({ ...freshTurnClock(7 * 60_000), banks: [left, left] })
 
-const ring = () => document.querySelector('svg circle:nth-of-type(2)') as SVGElement | null
+/** La barra del tiempo que queda (el reloj es un cuadrado: Gastón, 2026-11-10, «no me gustan los bordes redondeados»). */
+const ring = () => screen.queryByTestId('turn-dial-bar')
 
-describe('el círculo del reloj de turnos', () => {
+describe('la barra del reloj de turnos', () => {
   it('es ámbar siempre: en tu turno, en el del rival y con poco tiempo', () => {
     for (const [me, left] of [[0, 5 * 60_000], [1, 5 * 60_000], [0, TURN_WARNING_MS - 1000], [undefined, 5 * 60_000]] as const) {
       const view = render(<TurnDial clock={clock(left)} owner={0} me={me} names={['Ana', 'Beto']} />)
 
-      expect(ring()).toHaveClass('stroke-info')
-      expect(ring()).not.toHaveClass('stroke-danger', 'stroke-accent')
+      expect(ring()).toHaveClass('bg-info')
+      expect(ring()).not.toHaveClass('bg-danger', 'bg-accent')
       view.unmount()
     }
   })
 
-  it('con poco tiempo el número se pone rojo y parpadea, pero el círculo sigue ámbar', () => {
+  it('con poco tiempo el número se pone rojo y parpadea, pero la barra sigue lima', () => {
     render(<TurnDial clock={clock(TURN_WARNING_MS - 1000)} owner={0} me={0} names={['Ana', 'Beto']} />)
 
     expect(screen.getByTestId('turn-dial-time')).toHaveClass('text-danger-soft')
-    expect(ring()).toHaveClass('stroke-info')
+    expect(ring()).toHaveClass('bg-info')
   })
 })

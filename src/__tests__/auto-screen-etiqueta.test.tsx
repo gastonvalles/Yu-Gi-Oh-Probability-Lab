@@ -8,7 +8,7 @@ import { loc } from './support/auto-session-fake'
 import { core, dispatches, handCard, renderAuto } from './support/auto-screen-harness'
 import { tap } from './support/practice-mat-harness'
 
-// Escritorio con el detalle fijo: una carta con una sola jugada no abre el menú de un renglón sino una etiqueta pegada a la carta; otro toque la hace, Escape la suelta. Con varias, el menú de siempre.
+// Escritorio con el detalle fijo: una carta con una sola jugada no abre el menú de un renglón sino una etiqueta pegada a la carta; otro toque la hace, Escape la suelta. Con varias, la ficha del automático (`AutoCardSheet`).
 
 /** Ash se puede Invocar de forma Normal y nada más. */
 const IDLE: CoreAsk = { type: 'select_idlecmd', player: 0, summons: [loc(100, L.HAND, 0)], special_summons: [], pos_changes: [], monster_sets: [], spell_sets: [], activates: [], to_bp: true, to_ep: true, shuffle: false }
@@ -46,12 +46,13 @@ describe('auto-screen · una sola jugada es una etiqueta pegada a la carta', () 
     expect(fake.answers).toEqual([])
   })
 
-  it('con varias jugadas, el menú en bloques de siempre', () => {
+  it('con varias jugadas, la ficha del automático con todas, la principal primero', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ ...IDLE, monster_sets: [loc(100, L.HAND, 0)] }))
     tap(handCard('Ash Blossom'))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Invocación Normal'])
+    expect(screen.getByRole('region', { name: 'Ash Blossom' })).toHaveAttribute('data-auto-panel')
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
     expect(screen.queryByRole('button', { name: /· Ash Blossom$/ })).toBeNull()
   })
 })

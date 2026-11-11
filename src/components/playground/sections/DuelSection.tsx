@@ -1,13 +1,13 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
-import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
+import { MatScene, PickMarks } from '../../probability/MatArena'
 import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, fxVars } from '../../probability/MatFx'
 import { glowFrame } from '../../probability/practice-styles'
 import { ChevronTrail } from '../../probability/AttackFx'
 import { t } from '../../../i18n'
 import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
-import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
+import { CELL, CELL_MONSTER, CELL_SPELL, PileBadge, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
 import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
 import { RivalExtraDeck } from '../../duel/RivalExtraDeck'
@@ -19,7 +19,10 @@ import { DuelOffline } from '../../duel/DuelOffline'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
-import { DuelLogTicker } from '../../duel/DuelBar'
+import { DuelLine, DuelLogTicker } from '../../duel/DuelBar'
+import { LifeBadge } from '../../duel/LifeScore'
+import { ChainLine, type ChainNoticeRow } from '../../auto/ChainNotice'
+import { IconButton } from '../../ui/IconButton'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
 import type { FeedEntry } from '../../duel/use-duel-feed'
 import { TurnDial } from '../../duel/TurnDial'
@@ -52,9 +55,12 @@ export function DuelSection() {
         title="A · Todo junto"
         layout="column"
         className="col-span-full"
-        note={<>La mesa real: el rival arriba y espejado, las Zonas Extra compartidas en el medio, vos abajo. Archivo: <Tag>duel/DuelTable.tsx</Tag></>}
+        note={<>La mesa real: el rival arriba y espejado, las Zonas Extra compartidas en el medio, vos abajo. Siete columnas en todos los anchos: arriba como en escritorio y debajo, a 390 px (la casilla de 57 px de `phoneDuelLayout`). Archivo: <Tag>duel/DuelTable.tsx</Tag></>}
       >
         <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
+        <div className="mx-auto w-full max-w-[24.375rem] [--cell:3.57rem]">
+          <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
+        </div>
       </Specimen>
 
       <Specimen
@@ -85,6 +91,7 @@ export function DuelSection() {
         <DuelTable mine={duel.mine} theirs={duel.theirs} show={view} turn={view} />
       </Specimen>
 
+      <SeatsAndLineSample duel={duel} />
       <FieldArtSample duel={duel} />
       <ChainBadgeSample duel={duel} />
       <StatTagSample duel={duel} />
@@ -113,6 +120,93 @@ export function DuelSection() {
 
       <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+const SEAT_FEED: readonly FeedEntry[] = [
+  { id: 's1', kind: 'event', side: 'theirs', text: 'Ana activa Infinite Impermanence' },
+  { id: 's2', kind: 'event', side: 'theirs', text: 'Ana niega a Sky Striker Ace - Raye hasta el final del turno' },
+]
+const SEAT_CHAIN: ChainNoticeRow[] = [
+  { number: 1, who: 'Vos', mine: true, name: 'Sky Striker Mobilize - Engage!', art: 'https://images.ygoprodeck.com/images/cards_small/63166095.jpg', state: 'chained' },
+  { number: 2, who: 'Ana', mine: false, name: 'Ash Blossom & Joyous Spring', art: 'https://images.ygoprodeck.com/images/cards_small/14558127.jpg', state: 'chained' },
+]
+
+/**
+ * Las chapas de vidas y la línea del duelo (la mesa del celular y la de escritorio): la del rival arriba a la derecha y la tuya abajo a la izquierda con el turno y la botonera; en escritorio, a los
+ * costados del campo. La línea, de alto fijo entre el campo y tu mano, con una sola cosa por vez: nada (la última jugada), un aviso o la cadena. «Bajar vidas» prueba el cambio.
+ */
+function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
+  const [line, setLine] = useState<'last' | 'notice' | 'chain'>('last')
+  const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
+  const content =
+    line === 'chain' ? (
+      <ChainLine rows={SEAT_CHAIN} focus={1} onPick={() => {}} />
+    ) : (
+      <DuelLine lane={line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : null} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} />
+    )
+  const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} />
+  const mine = (turn?: string) => <LifeBadge name="Vos" label="Vos" life={life.mine} mine turn={turn} />
+  const buttons = (
+    <span className="flex items-center gap-2">
+      <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
+        <Icon name="list" />
+      </IconButton>
+      <IconButton tone="tile" size="sm" aria-label="Chat">
+        <Icon name="chat" />
+      </IconButton>
+    </span>
+  )
+
+  return (
+    <Specimen
+      title="Las chapas y la línea"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          Las vidas salen de la barra: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color) junto a su lado de la mesa; la tuya lleva el turno y, en el celular, la botonera cuadrada. La línea mide siempre lo mismo (96 px a 390 × 844) y muestra una sola cosa: la cadena, un aviso o la última jugada. El cambio de vidas: el número late y el «−N ▼» sube y se funde (rojo tu daño, menta el del rival). A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Segmented
+          label="Qué muestra la línea"
+          variant="track"
+          value={line}
+          onChange={setLine}
+          options={[
+            { value: 'last', label: 'Nada' },
+            { value: 'notice', label: 'Aviso' },
+            { value: 'chain', label: 'Cadena' },
+          ]}
+        />
+        <Button size="sm" variant="secondary" onClick={() => setLife((now) => ({ mine: now.mine - 1100, theirs: now.theirs - 1000 }))}>
+          Bajar vidas
+        </Button>
+      </div>
+      <div className="mat-square relative grid w-[24.375rem] max-w-full gap-2 bg-background p-1 [--cell:3.57rem]">
+        <div className="absolute right-1 top-1 z-20">{rival}</div>
+        <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
+        <div data-duel-line="" className="relative h-24 overflow-hidden">
+          {content}
+        </div>
+        <div className="flex h-15 items-center justify-between">
+          {mine('Tu turno · 3')}
+          {buttons}
+        </div>
+      </div>
+      <div className="max-w-full overflow-x-auto">
+        <div className="mat-square grid w-[90rem] grid-cols-[1fr_auto_1fr] items-end gap-6 bg-background p-4">
+          <div className="justify-self-end">{mine()}</div>
+          <div className="grid w-[40rem] gap-2 [--cell:4.625rem]">
+            <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
+            <div className="relative h-16 overflow-hidden">{content}</div>
+          </div>
+          <div className="self-start">{rival}</div>
+        </div>
+      </div>
+    </Specimen>
   )
 }
 
@@ -738,7 +832,7 @@ const ARENA_CELLS: Array<{ label: string; pick?: boolean; diamond?: boolean; ove
   { label: 'Vacía' },
 ]
 
-/** La arena de la mesa: el fondo con luz y viñeta, la placa del campo con su marco y las casillas hundidas; todo es decoración y no cambia el tamaño de nada. Mismos componentes y estilos que la mesa de verdad. */
+/** La arena de la mesa: el fondo con luz y viñeta y las casillas transparentes con sus líneas blancas; todo es decoración y no cambia el tamaño de nada. Mismos componentes y estilos que la mesa de verdad. */
 function ArenaSamples() {
   return (
     <Specimen
@@ -747,20 +841,34 @@ function ArenaSamples() {
       className="col-span-full"
       note={
         <>
-          El fondo (<Tag>MatScene</Tag>), la placa que va debajo del campo (<Tag>MatPlate</Tag>: sombra con desplazamiento, enrejado, anillos y un marco con esquinas y rombos), las casillas hundidas (<Tag>CELL_MONSTER</Tag>) y las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
+          El fondo (<Tag>MatScene</Tag>) se ve a través de las casillas, transparentes y con las líneas blancas de la carta (<Tag>CELL_MONSTER</Tag>, <Tag>CELL_SPELL</Tag> y <Tag>ZoneLines</Tag>); las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>) y el conteo de una pila con el color de su dueño (<Tag>PileBadge</Tag>: violeta lo tuyo, lima lo del rival, cuya pila lleva <Tag>data-rival-drop</Tag>). La mesa y sus hojas van con esquinas rectas (<Tag>mat-square</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag>, <Tag>probability/PracticeMat.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
         </>
       }
     >
-      <div className="relative isolate grid min-h-[18rem] place-items-center overflow-hidden rounded-card border border-border-subtle px-8 py-10">
+      <div className="mat-square relative isolate grid min-h-[18rem] place-items-center overflow-hidden border border-border-subtle px-4 py-10 min-[1101px]:px-8">
         <MatScene className="absolute inset-0 -z-10" />
         <div className="relative isolate grid w-full max-w-2xl grid-cols-5 gap-2 [transform:perspective(900px)_rotateX(28deg)]">
-          <MatPlate />
           {ARENA_CELLS.map(({ label, pick, diamond, over }, index) => (
             <div key={index} role="group" aria-label={label} data-over={over ? 'true' : 'false'} data-pick={pick ? 'true' : 'false'} data-chosen="false" className={CELL_MONSTER}>
               <ZoneLines kind="monster" />
               {pick ? <PickMarks diamond={Boolean(diamond)} /> : null}
             </div>
           ))}
+          <div role="group" aria-label="Tu cementerio: 7" className={CELL}>
+            <PileBadge label="GY" count={7} />
+          </div>
+          <div role="group" aria-label="Mágica o Trampa" className={CELL_SPELL}>
+            <ZoneLines kind="spell" />
+          </div>
+          <div role="group" aria-label="Mágica o Trampa" className={CELL_SPELL}>
+            <ZoneLines kind="spell" />
+          </div>
+          <div role="group" aria-label="Mágica o Trampa" className={CELL_SPELL}>
+            <ZoneLines kind="spell" />
+          </div>
+          <div role="group" aria-label="Cementerio del rival: 3" data-rival-drop="gy" className={CELL}>
+            <PileBadge label="GY" count={3} />
+          </div>
         </div>
       </div>
       <ul className="m-0 grid list-none grid-cols-5 gap-2 p-0 text-center text-micro text-soft">

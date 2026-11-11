@@ -1,11 +1,14 @@
 import { useId, useRef } from 'react'
 
 import { matCardPositionKey, useDraggableOffset } from '../../app/use-draggable-offset'
+import { useMediaQuery } from '../../app/use-media-query'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
-import { ChainListRows, colorOf, stateLabel, type ChainNoticeRow } from './chain-parts'
+import { ChainTrace } from '../probability/MatFx'
+import { ChainLinks, colorOf, stateLabel, type ChainNoticeRow } from './chain-parts'
 import { ChainLesson, ChainLessonReading } from './ChainLesson'
 import { ChainSheet } from './ChainSheet'
 
@@ -18,6 +21,8 @@ interface ChainNoticeProps {
   focus: number
   /** Ya empezó a resolverse: en el celular, la píldora dice cuál resuelve («Resuelve CL2»). */
   resolving: boolean
+  /** Terminó: lo que queda de la cadena se disuelve (`ChainLinks`, `ChainTrace`). */
+  done?: boolean
   open: boolean
   /** El celular (menos de 1101 px): la hoja de abajo, `ChainSheet`. */
   compact?: boolean
@@ -26,6 +31,31 @@ interface ChainNoticeProps {
   onReading?: (reading: boolean) => void
   /** Se tocó un eslabón (índice en `rows`, y dónde está la fila): quien la usa lo muestra en el detalle o, sin detalle, grande. */
   onPick: (index: number, rect: DOMRect) => void
+}
+
+/**
+ * La cadena en la línea del celular (`data-duel-line`, de alto fijo): arriba cuántos eslabones y qué le pasa al del que se habla («CL2 · Resolviendo»), debajo los eslabones
+ * (`ChainLinks`: cada uno se toca para leerlo) y, a la derecha, el ⓘ de «Cómo se resuelve». Llena el alto de la línea, traslúcida al 88 % en alfa plano. La usa `ChainNotice` en el celular y el catálogo.
+ */
+export function ChainLine({ rows, focus, done = false, still = false, onPick }: Pick<ChainNoticeProps, 'rows' | 'focus' | 'done' | 'onPick'> & { /** Sin movimiento (el catálogo). */ still?: boolean }) {
+  const listId = useId()
+  const row = rows[focus] ?? rows[rows.length - 1]
+
+  if (!row) return null
+  return (
+    <div data-testid="chain-notice" data-chain-line="" className="grid h-full grid-cols-[minmax(0,1fr)_auto] border border-border-subtle bg-card-background/88">
+      <div className="flex min-h-0 flex-col">
+        <p role="status" className="m-0 flex min-w-0 items-center gap-1.5 px-2 pt-1 text-micro font-semibold leading-tight">
+          <Icon name="link" size={14} className="shrink-0 text-info" aria-hidden="true" />
+          <span className="shrink-0">{t('auto.chain.count', { count: rows.length })}</span>
+          {/* Lo anuncia el lector de pantalla al cambiar («CL3 · Destierra 1 carta», «CL2 · Negada · por CL3»): con movimiento reducido es lo que dice qué pasó. */}
+          <span className="truncate text-info">{`${t('auto.link.badge', { numbers: row.number })} · ${stateLabel(row)}`}</span>
+        </p>
+        <ChainLinks id={listId} rows={rows} done={done} still={still} onPick={onPick} className="flex-1" />
+      </div>
+      <ChainLesson />
+    </div>
+  )
 }
 
 /**
@@ -47,20 +77,33 @@ interface ChainNoticeProps {
  * - Hacer: dejar pasar los toques fuera del cartel (la caja de la mesa va con `pointer-events-none`); tocarla no salta la mesa al final (`skipAhead` la saltea).
  *   No hacer: taparla con otra cosa ni ponerle velo. La mueve sólo la persona (escritorio: su fila de arriba con el mouse, `useDraggableOffset`).
  */
-export function ChainNotice({ rows, focus, resolving, open, compact = false, onOpenChange, onReading, onPick }: ChainNoticeProps) {
+export function ChainNotice({ rows, focus, resolving, done = false, open, compact = false, onOpenChange, onReading, onPick }: ChainNoticeProps) {
   const listId = useId()
   const cardRef = useRef<HTMLDivElement | null>(null)
   // En escritorio se lleva a otro lado agarrándola por su fila de arriba (`useDraggableOffset`, como la pregunta): una posición para todas las cadenas.
   const move = useDraggableOffset(matCardPositionKey('chain'), cardRef, !compact)
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const row = rows[focus] ?? rows[rows.length - 1]
   // Leer «Cómo se resuelve» la retiene (no se va sola al terminar la cadena) hasta cerrar la hoja: es lo único que la retiene; tocar un eslabón sólo le da otro rato.
   const reading = (on: boolean) => onReading?.(on)
 
   if (!row) return null
-  // El celular: la hoja de abajo (`ChainSheet`); la pila desplegada y su píldora, desde 1101 px.
+  // El trazo de la cadena en la mesa, en los tres tamaños (va por portal, adentro del campo).
+  const trace = <ChainTrace rows={rows} done={done} />
+
+  // El celular en vertical (`phoneDuelLayout`): la pila va adentro de la línea, de alto fijo (no en una hoja aparte).
+  if (compact && phone)
+    return (
+      <ChainLessonReading value={reading}>
+        {trace}
+        <ChainLine rows={rows} focus={focus} done={done} onPick={onPick} />
+      </ChainLessonReading>
+    )
+  // De 640 a 1100 px: la hoja de abajo (`ChainSheet`); la pila desplegada y su píldora, desde 1101 px.
   if (compact)
     return (
       <ChainLessonReading value={reading}>
+        {trace}
         <ChainSheet rows={rows} focus={focus} resolving={resolving} onPick={onPick} />
       </ChainLessonReading>
     )
@@ -75,8 +118,9 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
 
   return (
     <div data-testid="chain-notice" className="pointer-events-none w-[min(24rem,100%)]">
-      {/* Un solo cartel: desplegada, la píldora pasa a ser la fila de título de la misma tarjeta y la pila va debajo, tras una línea fina. Plegada mide 56 px con el borde. */}
-      <div ref={cardRef} {...move.root} className={cx('pointer-events-auto border border-border-subtle bg-card-background shadow-overlay', open ? 'rounded-card' : 'rounded-full')}>
+      {trace}
+      {/* Un solo cartel, recto: desplegada, la píldora pasa a ser la fila de título de la misma tarjeta y los eslabones van debajo, tras una línea fina. Plegada mide 56 px con el borde. */}
+      <div ref={cardRef} {...move.root} className="pointer-events-auto border border-border-subtle bg-card-background shadow-overlay">
         <div {...move.head} title={t('duel.prompt.move')} className={cx('flex cursor-grab select-none items-center gap-2 py-1 pl-3 pr-1 active:cursor-grabbing', open ? 'min-h-11' : 'min-h-13.5')}>
           <Icon name="link" size={18} className="shrink-0 text-info" aria-hidden="true" />
           {/* Desplegada, la píldora es el título de la lista («Cadena · 2»): lo del eslabón ya está en su fila (el resumen queda para el lector de pantalla, que avisa cuando cambia).
@@ -108,9 +152,7 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
           </IconButton>
         </div>
         {open ? (
-          <ol id={listId} data-chain-list="" aria-label={t('auto.chain.list')} className="m-0 grid max-h-[min(18rem,40dvh)] snap-y snap-mandatory scroll-pt-1 list-none content-start gap-1 overflow-y-auto overscroll-contain border-t border-border-subtle p-1.5 group-data-squeezed/chain:hidden">
-            <ChainListRows rows={rows} onPick={onPick} />
-          </ol>
+          <ChainLinks id={listId} rows={rows} done={done} onPick={onPick} className="h-19 border-t border-border-subtle group-data-squeezed/chain:hidden" />
         ) : null}
       </div>
     </div>

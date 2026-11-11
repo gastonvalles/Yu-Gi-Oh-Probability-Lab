@@ -61,18 +61,18 @@ describe('AskPrompt', () => {
     const yes = vi.fn()
     const no = vi.fn()
     const { container } = render(<AskPrompt text="¿Activás el efecto?" card={{ name: 'Ash Blossom', art: null }} yes={{ label: 'Activar efecto', onSelect: yes }} no={{ label: 'No activar', onSelect: no }} />)
-    const prompt = screen.getByRole('status')
+    const prompt = screen.getByRole('dialog', { name: '¿Activás el efecto?' })
     const buttons = within(prompt).getAllByRole('button')
 
     expect(prompt).toHaveTextContent('¿Activás el efecto?')
-    expect(container.querySelector('[data-card-art]')).not.toBeNull()
+    expect(container.ownerDocument.querySelector('[data-card-art]')).not.toBeNull()
     expect(names(buttons)).toEqual(['Minimizar', 'No activar', 'Activar efecto'])
     expect(buttons[2]).toHaveFocus()
 
     escape()
     expect(yes).not.toHaveBeenCalled()
     expect(no).not.toHaveBeenCalled()
-    expect(screen.getByRole('status')).toHaveAttribute('data-minimized')
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-minimized')
 
     fireEvent.click(screen.getByRole('button', { name: 'Mostrar la pregunta' }))
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
@@ -81,9 +81,9 @@ describe('AskPrompt', () => {
   })
 
   it('sin carta, sólo el texto', () => {
-    const { container } = render(<AskPrompt text="¿Pagás 1000 LP?" yes={{ label: 'Pagar 1000 LP', onSelect: () => {} }} no={{ label: 'No hacerlo', onSelect: () => {} }} />)
+    render(<AskPrompt text="¿Pagás 1000 LP?" yes={{ label: 'Pagar 1000 LP', onSelect: () => {} }} no={{ label: 'No hacerlo', onSelect: () => {} }} />)
 
-    expect(container.querySelector('[data-card-art]')).toBeNull()
+    expect(document.querySelector('[data-card-art]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Pagar 1000 LP' })).toHaveFocus()
   })
 
@@ -100,21 +100,20 @@ describe('AskPrompt', () => {
         no={{ label: 'No activar', onSelect: () => {} }}
       />,
     )
-    const prompt = screen.getByRole('status')
+    const prompt = screen.getByRole('dialog')
     const buttons = within(prompt).getAllByRole('button')
 
-    expect(prompt).toHaveAttribute('data-prompt-row')
     expect(within(prompt).getByText('Campo')).toHaveClass('rounded-tag')
     expect(within(prompt).getByText('Tras la Invocación Normal')).toHaveClass('text-micro')
-    expect(within(prompt).getByText('¿Activás el efecto?')).toHaveClass('font-semibold')
+    // La pregunta, un paso más chica de la escala (`text-body`).
+    expect(within(prompt).getByText('¿Activás el efecto?')).toHaveClass('font-semibold', 'text-body')
     expect(prompt).not.toHaveTextContent(/Ponix|Qué hace/)
     expect(names(buttons)).toEqual(['Minimizar', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
     expect(buttons[3]).toHaveFocus()
-    // Los tres en una sola fila, siempre (Gastón: «los 3 botones no están alineados»): el pie no se parte; el atajo cede su ancho (parte su texto) y el «no» y la principal van juntos al final.
-    const footer = buttons[1]!.parentElement!.parentElement!
+    // Los tres en una sola fila, siempre (Gastón: «los 3 botones no están alineados»): el pie no se parte; el «no» y la principal van juntos al final (la principal, a la derecha).
+    const footer = buttons[1]!.parentElement!
     expect(footer).toHaveClass('flex')
     expect(footer).not.toHaveClass('flex-wrap')
-    expect(buttons[1]!.parentElement).toHaveClass('min-w-0', 'flex-1')
     expect(buttons[2]!.parentElement).toBe(buttons[3]!.parentElement)
     expect(buttons[2]!.parentElement!.parentElement).toBe(footer)
     fireEvent.click(buttons[1]!)
@@ -122,79 +121,89 @@ describe('AskPrompt', () => {
   })
 })
 
-describe('MatPrompt: minimizar un cartel de la mesa', () => {
+describe('AutoPanel: minimizar un cartel del automático', () => {
   const ask = (key: number) => <AskPrompt key={key} text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
 
   onDesktop()
 
-  it('la flecha lo reduce a un asa de una línea con la pregunta (el foco va a su flecha) y la del asa lo reabre; minimizado es de esa pregunta: una nueva abre sola', () => {
+  it('la flecha lo reduce a una tira con la pregunta y sus botones (el foco va a su flecha) y la de la tira lo reabre; minimizado es de esa pregunta: una nueva abre sola', () => {
     const { rerender } = renderBare(<Provider store={store}>{ask(1)}</Provider>)
 
     fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
-    const handle = screen.getByRole('status', { name: '¿Activás el efecto?' })
+    const strip = screen.getByRole('dialog', { name: '¿Activás el efecto?' })
 
-    expect(handle).toHaveAttribute('data-minimized')
-    expect(handle).toHaveTextContent(/^¿Activás el efecto\?$/)
-    expect(within(handle).getAllByRole('button')).toHaveLength(1)
+    expect(strip).toHaveAttribute('data-minimized')
+    expect(names(within(strip).getAllByRole('button'))).toEqual(['Mostrar la pregunta', 'No activar', 'Activar efecto'])
     expect(screen.getByRole('button', { name: 'Mostrar la pregunta' })).toHaveFocus()
 
     rerender(<Provider store={store}>{ask(2)}</Provider>)
-    expect(screen.getByRole('status')).not.toHaveAttribute('data-minimized')
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('data-minimized')
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
   })
 
   it('abre siempre entero y nunca se minimiza solo: con la misma `key` (la misma decisión) se actualiza en el lugar, minimizado si lo estaba', () => {
     const { rerender } = render(ask(1))
-    const open = screen.getByRole('status')
+    const open = screen.getByRole('dialog')
 
     expect(open).not.toHaveAttribute('data-minimized')
     rerender(ask(1))
-    expect(screen.getByRole('status')).toBe(open)
+    expect(screen.getByRole('dialog')).toBe(open)
     fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
     rerender(ask(1))
-    expect(screen.getByRole('status')).toHaveAttribute('data-minimized')
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-minimized')
   })
 })
 
-describe('MatPrompt en el celular: la hoja de abajo estándar (no un cartel en el medio)', () => {
-  const grip = () => screen.getByRole('button', { name: /la hoja/ })
-
-  it('«¿Activás el efecto?» es una hoja de abajo de borde a borde: el asa, la pregunta y, debajo, los botones; el foco va a la principal; Escape la baja sin contestar y queda la tira con la pregunta y los botones', () => {
+describe('AutoPanel en el celular: apoyado abajo, sobre la mano, con techo en la línea', () => {
+  it('«¿Activás el efecto?» va de borde a borde abajo: la pregunta y, debajo, los botones; el foco va a la principal; Escape lo minimiza sin contestar y queda la tira con la pregunta y los botones', () => {
     const yes = vi.fn()
     const no = vi.fn()
     render(<AskPrompt kicker="Tras la Invocación Especial" place="Campo" text="¿Activás el efecto?" card={{ name: 'Angelechy Castellan', art: null }} yes={{ label: 'Activar efecto', onSelect: yes }} no={{ label: 'No activar', onSelect: no }} />)
-    const sheet = screen.getByRole('status')
+    const sheet = screen.getByRole('dialog')
 
     expect(sheet).toHaveAttribute('data-prompt', 'ask')
-    expect(sheet).toHaveClass('fixed', 'inset-x-0', 'bottom-0')
-    expect(names(within(sheet).getAllByRole('button'))).toEqual(['Bajar la hoja', 'No activar', 'Activar efecto'])
-    expect(grip()).toHaveAttribute('aria-expanded', 'true')
+    expect(sheet).toHaveClass('fixed', 'inset-x-0', 'bottom-0', 'mat-square', 'bg-card-background/92', 'max-h-[calc(100dvh-var(--panel-ceiling,50dvh))]')
+    expect(sheet.className).not.toMatch(/backdrop-blur|min-h-\[|(^| )h-\d/)
+    expect(names(within(sheet).getAllByRole('button'))).toEqual(['Minimizar', 'No activar', 'Activar efecto'])
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
-    expect(screen.queryByRole('button', { name: 'Minimizar' })).toBeNull()
 
     escape()
     expect(yes).not.toHaveBeenCalled()
     expect(no).not.toHaveBeenCalled()
-    expect(sheet).toHaveAttribute('data-lowered')
-    expect(grip()).toHaveAccessibleName('Subir la hoja: ¿Activás el efecto?')
-    expect(within(sheet).getByText('Tras la Invocación Especial').closest('[inert]')).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Activar efecto' }).closest('[inert], [hidden]')).toBeNull()
-    fireEvent.click(grip())
-    expect(sheet).not.toHaveAttribute('data-lowered')
-    fireEvent.click(screen.getByRole('button', { name: 'Activar efecto' }))
+    const strip = screen.getByRole('dialog')
+
+    expect(strip).toHaveAttribute('data-minimized')
+    expect(strip).not.toHaveTextContent('Tras la Invocación Especial')
+    fireEvent.click(within(strip).getByRole('button', { name: 'Activar efecto' }))
     expect(yes).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar la pregunta' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('Tras la Invocación Especial')
   })
 
-  it('una banda de cartas también: las cartas y, debajo, «Cancelar» y la principal; con «Cancelar», Escape es de la mesa (no la baja)', () => {
+  it('el techo es el borde de abajo de la línea (`data-duel-line`): el cartel nunca tapa el campo ni la cadena', () => {
+    const line = document.createElement('div')
+
+    line.setAttribute('data-duel-line', '')
+    line.getBoundingClientRect = () => ({ bottom: 512 }) as DOMRect
+    document.body.append(line)
+    try {
+      render(<AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
+      expect(screen.getByRole('dialog').style.getPropertyValue('--panel-ceiling')).toBe('512px')
+    } finally {
+      line.remove()
+    }
+  })
+
+  it('una banda de cartas también: las cartas y, debajo, «Cancelar» y la principal; con «Cancelar», Escape es de la mesa (no la minimiza)', () => {
     const onCancel = vi.fn()
-    render(<PickBand title="Elegí 2 cartas para desterrar · 0/2" cards={CARDS.slice(0, 3)} chosen={[]} eligible={new Set(['a', 'b', 'c'])} multi done={false} onToggle={() => {}} onPick={() => {}} onCancel={onCancel} />)
-    const group = screen.getByRole('group', { name: 'Elegí 2 cartas para desterrar · 0/2' })
+    render(<PickBand title="Elegí 2 cartas para desterrar · 1 de 2" cards={CARDS.slice(0, 3)} chosen={[]} eligible={new Set(['a', 'b', 'c'])} multi done={false} onToggle={() => {}} onPick={() => {}} onCancel={onCancel} />)
+    const group = screen.getByRole('group', { name: 'Elegí 2 cartas para desterrar · 1 de 2' })
 
     expect(group).toHaveClass('fixed', 'bottom-0')
-    expect(names(within(group).getAllByRole('button'))).toEqual(['Bajar la hoja', 'Cancelar', 'Listo'])
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Cancelar', 'Listo'])
     expect(within(group).getByRole('listbox').compareDocumentPosition(within(group).getByRole('button', { name: 'Cancelar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     escape()
-    expect(group).not.toHaveAttribute('data-lowered')
+    expect(group).not.toHaveAttribute('data-minimized')
   })
 })
 
@@ -207,11 +216,13 @@ describe('MatPrompt: la fase y el turno arriba de la pregunta', () => {
   describe('en escritorio', () => {
     onDesktop()
 
-    it('con la fase que da la mesa, una línea chica y apagada arriba de la cabeza; sin ella (catálogo, práctica manual), nada', () => {
+    it('con la fase que da la mesa, una línea chica en la barra de título de la ventana, arriba de la pregunta; sin ella (catálogo, práctica manual), nada', () => {
       const { unmount } = render(<PromptTurnContext value={{ phase: 'draw', mine: false }}>{respond}</PromptTurnContext>)
 
       expect(turnLine()).toHaveTextContent(/^Draw Phase · Turno del rival$/)
-      expect(turnLine()).toHaveClass('text-micro', 'text-muted')
+      // En escritorio es el título corto de la ventana (TI-145): blanco sobre la barra violeta.
+      expect(turnLine()).toHaveClass('text-micro')
+      expect(turnLine()!.closest('[data-window-bar]')).toHaveClass('bg-primary', 'text-white')
       expect(turnLine()!.compareDocumentPosition(screen.getByText('¿Activás algo ahora?')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       unmount()
 
@@ -219,12 +230,13 @@ describe('MatPrompt: la fase y el turno arriba de la pregunta', () => {
       expect(turnLine()).toBeNull()
     })
 
-    it('la fila de acciones pegada abajo es opaca de borde a borde: llega al borde del relleno del cuerpo (regla 11) y a su ancho entero', () => {
+    it('lo único que se desplaza es la bandeja: los botones quedan siempre a la vista, debajo y fuera de ella', () => {
       render(respond)
-      const body = document.querySelector('[data-prompt-body]')!
+      const body = document.querySelector('[data-panel-body]')!
 
-      expect(body).toHaveClass('px-4', 'py-1', '[&>:last-child:not(:first-child)]:sticky', '[&>:last-child:not(:first-child)]:-bottom-1', '[&>:last-child:not(:first-child)]:-mx-4', '[&>:last-child:not(:first-child)]:px-4', '[&>:last-child:not(:first-child)]:bg-card-background')
-      expect(body).not.toHaveClass('[&>:last-child:not(:first-child)]:bottom-0')
+      expect(body).toHaveClass('min-h-0', 'overflow-y-auto')
+      expect(body).not.toContainElement(screen.getByRole('button', { name: 'No responder' }))
+      expect(body.compareDocumentPosition(screen.getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
     it('en inglés, y la pregunta del rival de pasar de fase no la repite (ya la nombra)', () => {
@@ -242,7 +254,7 @@ describe('MatPrompt: la fase y el turno arriba de la pregunta', () => {
     })
   })
 
-  it('en el celular va en la cabeza de la hoja; bajada no se repite (queda la tira con la pregunta corta)', () => {
+  it('en el celular va arriba de la pregunta; minimizado no se repite (queda la tira con la pregunta corta)', () => {
     render(
       <PromptTurnContext value={{ phase: 'main1', mine: true }}>
         <AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
@@ -251,8 +263,8 @@ describe('MatPrompt: la fase y el turno arriba de la pregunta', () => {
 
     expect(turnLine()).toHaveTextContent('Main Phase 1 · Tu turno')
     escape()
-    expect(screen.getByRole('status')).toHaveAttribute('data-lowered')
-    expect(turnLine()!.closest('[hidden]')).not.toBeNull()
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-minimized')
+    expect(turnLine()).toBeNull()
   })
 })
 
@@ -284,13 +296,21 @@ describe('AskOptions', () => {
     expect(onPick).toHaveBeenCalledWith(['def'])
   })
 
-  it('cancelable: la X y Escape la cancelan', () => {
+  it('cancelable: «Cancelar» (sin caja) y Escape la cancelan', () => {
     const onCancel = vi.fn()
     render(<AskOptions title="Elegí una opción" options={POSITIONS} mode="one" onPick={() => {}} onCancel={onCancel} />)
 
     escape()
-    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     expect(onCancel).toHaveBeenCalledTimes(2)
+  })
+
+  it('el contador va sólo con un total mayor que 1: nunca «0 de 1» ni «1/1»', () => {
+    render(<AskOptions title="Declará 1 Atributo" options={['DARK', 'LIGHT'].map((name) => ({ id: name, label: name }))} mode={{ count: 1 }} onPick={() => {}} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'DARK' }))
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByRole('dialog')).not.toHaveTextContent(/\d+ de 1|\d\/1/)
   })
 
   it('varios Tipos: pastillas con aria-pressed; al llegar al tope las demás se apagan y «Declarar» contesta en orden', () => {
@@ -334,10 +354,11 @@ describe('PickBand', () => {
     band({ onCancel })
     const group = screen.getByRole('group', { name: 'Elegí 2 cartas para desterrar · 0/2' })
 
-    expect(group).toHaveAttribute('data-prompt-row')
+    // En escritorio, la ventana (TI-145).
+    expect(group).toHaveAttribute('data-auto-panel', 'floating')
     expect(group).toHaveTextContent('Cementerio · 3')
-    // Con pocas, 4 columnas (no quedan enormes); hasta 6, una por carta: siempre una fila.
-    expect(within(group).getByRole('listbox')).toHaveClass('grid-cols-4')
+    // La bandeja: una sola fila de cartas de 1/6 del ancho (con pocas no se agrandan); con más de seis, se desliza.
+    expect(within(group).getByRole('listbox')).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]', 'overflow-x-auto')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
     expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Cancelar', 'Listo'])
     expect(within(group).getByRole('button', { name: 'Listo' })).toBeDisabled()
@@ -358,14 +379,14 @@ describe('PickBand', () => {
     expect(document.querySelector('[data-ask-why]')).toBeNull()
   })
 
-  it('las elegidas, con su estado, el marco que gira y su número (blanco); completa, la principal dice cuántas y contesta; con una sola y sin cancelar, sin pie', () => {
+  it('las elegidas, con su estado, el aro lima y su número (blanco); completa, la principal dice cuántas y contesta; con una sola y sin cancelar, sin pie', () => {
     const onPick = vi.fn()
     const onToggle = vi.fn()
     band({ chosen: ['b', 'a'], done: true, onPick, onToggle })
     const second = screen.getByRole('option', { name: /Fallen of Albaz/ })
 
     expect(screen.getByRole('option', { name: /Aluber/ })).toHaveAttribute('aria-selected', 'true')
-    expect(second.querySelector('[data-fx="frame"]')).not.toBeNull()
+    expect(second.querySelector('[data-pick-chosen]')).toHaveClass('outline-info')
     expect(within(second).getByText('2')).toHaveClass('text-white')
     fireEvent.click(screen.getByRole('option', { name: /Branded/ }))
     expect(onToggle).toHaveBeenCalledWith('c', false)
@@ -402,7 +423,7 @@ describe('RespondBand', () => {
     respond({ onPass })
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
-    expect(group).toHaveAttribute('data-prompt-row')
+    expect(group).toHaveAttribute('data-auto-panel', 'floating')
     expect(group).not.toHaveTextContent(/Ash Blossom|Tu respuesta|CL2|Rival/)
     expect(group.querySelector('img')).toBeNull()
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelectorAll('.text-soft')).toHaveLength(0)
@@ -421,7 +442,7 @@ describe('RespondBand', () => {
     expect(onPass).toHaveBeenCalledTimes(1)
   })
 
-  it('la elegida, con el marco celeste que gira (el de la mano, sin tilde); la principal contesta; el modo, sólo en escritorio', () => {
+  it('la elegida, con el aro y la tilde lima; la principal contesta; el modo, sólo en escritorio', () => {
     const onChain = vi.fn()
     const onMode = vi.fn()
     respond({ chosen: 'b', onChain, mode: { value: 'ask', onChange: onMode } })
@@ -429,27 +450,26 @@ describe('RespondBand', () => {
     const chosen = within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })
 
     expect(chosen).toHaveAttribute('aria-selected', 'true')
-    expect(chosen.querySelector('[data-fx="frame"] [data-fx="orbit"]')).not.toBeNull()
-    expect(chosen.querySelector('[data-fx="frame"]')).toHaveStyle({ '--fx-rgb': '56 189 248' })
-    expect(chosen.querySelector('svg, .outline-info, .outline-2')).toBeNull()
-    expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelector('[data-fx]')).toBeNull()
+    expect(chosen.querySelector('[data-pick-chosen]')).toHaveClass('outline-info')
+    expect(chosen.querySelector('.bg-info svg')).not.toBeNull()
+    expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelector('[data-pick-chosen]')).toBeNull()
     fireEvent.click(within(group).getByRole('button', { name: 'Encadenar como CL3' }))
     expect(onChain).toHaveBeenCalledTimes(1)
     const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
 
-    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila de arriba: a su derecha (y de la fase), antes de minimizar, sin un renglón propio (el alto es de las cartas).
+    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila del título: a su derecha, sin un renglón propio (el alto es de las cartas). Minimizar va en la barra de la
+    // ventana, arriba (TI-145).
     const title = within(group).getByText('Responder a la cadena')
     const minimize = within(group).getByRole('button', { name: 'Minimizar' })
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
-    expect(modes.parentElement?.parentElement).toBe(minimize.parentElement)
-    expect(minimize.parentElement).toContainElement(title)
+    expect(modes.parentElement?.parentElement).toBe(title.parentElement?.parentElement)
+    expect(minimize.closest('[data-window-bar]')).not.toBeNull()
     expect(title.compareDocumentPosition(modes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(modes.compareDocumentPosition(minimize) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    // Las cartas y las acciones, en una sola fila que se parte si no entran: con pocas, las acciones a la derecha de las cartas (la carta se queda con el alto). Las columnas, las de 6.
+    expect(minimize.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Texto arriba, bandeja, botones abajo (el mismo orden que en el celular); las columnas, las de 6.
     const listbox = within(group).getByRole('listbox')
-    expect(listbox.parentElement).toHaveClass('@container', 'flex', 'flex-wrap', 'items-end')
-    expect(listbox).toHaveClass('grid-flow-col', 'auto-cols-[calc((100cqw-2.5rem)/6)]')
-    expect(listbox.parentElement).toContainElement(within(group).getByRole('button', { name: 'No responder' }))
+    expect(listbox).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]')
+    expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // El nombre, en un renglón (entero al pasar el mouse): cada píxel de alto es de la carta.
     const name = within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' }).querySelector('[data-pick-name]')!
     expect(name).toHaveAttribute('title', 'Aluber the Jester of Despia')
@@ -465,28 +485,28 @@ describe('RespondBand', () => {
   })
 })
 
-describe('MatPrompt: el cartel de escritorio, apretado para la carta', () => {
+describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
   onDesktop()
 
-  it('entre la cabeza y el cuerpo (y entre lo del cuerpo), 8 px: la escala de la guía (4 · 8 · 16 · 24), no 12', () => {
+  it('entre grupos, 8 px (la escala de la guía: 4 · 8 · 16 · 24); la ventana sale centrada en la columna de la mesa, con 620 px de ancho máximo y apoyada abajo (TI-145)', () => {
     render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
-    expect(group).toHaveClass('gap-2')
-    expect(group).not.toHaveClass('gap-3')
-    expect(group.querySelector('[data-prompt-body]')).toHaveClass('gap-[inherit]')
+    expect(group).toHaveClass('fixed', 'bottom-0', 'left-[var(--mat-x,50%)]', 'w-[min(38.75rem,var(--mat-w,100vw))]')
+    expect(group.querySelector('[data-panel-body]')!.parentElement).toHaveClass('gap-2', 'p-2')
+    expect(group.querySelector('.gap-3')).toBeNull()
   })
 })
 
 describe('RespondBand en el celular', () => {
-  it('sin el modo (queda en «Más opciones»), las cartas en 6 columnas sin sus nombres y las acciones debajo, como siempre', () => {
+  it('sin el modo (queda en «Más opciones»), la pregunta a la vista, las cartas en la bandeja y las acciones debajo', () => {
     render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} mode={{ value: 'ask', onChange: () => {} }} />)
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
     const listbox = within(group).getByRole('listbox')
 
     expect(within(group).queryByRole('radiogroup')).toBeNull()
-    expect(listbox).toHaveClass('grid-cols-6', '[&_[data-pick-name]]:hidden')
-    expect(listbox.parentElement).not.toHaveClass('flex-wrap')
+    expect(within(group).getByText('Responder a la cadena')).not.toHaveClass('sr-only')
+    expect(listbox).toHaveClass('grid-flow-col')
     expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
@@ -499,8 +519,9 @@ describe('CardPicker', () => {
     const list = screen.getByRole('listbox', { name: 'Cartas para elegir' })
     const option = (name: RegExp) => within(list).getByRole('option', { name })
 
-    // En la hoja hay lugar: el nombre, en dos renglones desde 1101 px (en la banda del cartel, en uno).
-    expect(within(list).getAllByRole('option')[0]!.querySelector('[data-pick-name] > span')).toHaveClass('min-[1101px]:line-clamp-2')
+    // La bandeja en una fila que se desliza; el nombre, en un renglón (entero al pasar el mouse).
+    expect(list).toHaveClass('grid-flow-col', 'overflow-x-auto')
+    expect(within(list).getAllByRole('option')[0]!.querySelector('[data-pick-name]')).toHaveAttribute('title', 'Fallen of Albaz')
 
     expect(list).toHaveAttribute('aria-multiselectable', 'true')
     expect(screen.getByRole('button', { name: 'Listo' })).toBeDisabled()
@@ -524,7 +545,7 @@ describe('CardPicker', () => {
     expect(onCancel).toHaveBeenCalledTimes(2)
   })
 
-  it('de varios lugares: un grupo por lugar con su encabezado (la mano primero, después en el orden que llegan), un chip por carta y el lugar en el nombre accesible; también en inglés', () => {
+  it('de varios lugares: por lugar (la mano primero, después en el orden que llegan), un chip por carta y el lugar en el nombre accesible; también en inglés', () => {
     const onPick = vi.fn()
     const cards: PickCard[] = [
       { key: 'kirin', name: 'Kirin', art: null, ...pickPlace('deck', false) },
@@ -533,12 +554,8 @@ describe('CardPicker', () => {
       { key: 'ponix-hand', name: 'Ponix', art: null, ...pickPlace('hand', false) },
     ]
     render(<CardPicker title="Elegí 1 carta para destruir" cards={cards} min={1} max={1} onPick={onPick} />)
-    const groups = within(screen.getByRole('listbox', { name: 'Cartas para elegir' })).getAllByRole('group')
 
-    expect(groups.map((group) => group.getAttribute('aria-labelledby') && document.getElementById(group.getAttribute('aria-labelledby')!)!.textContent)).toEqual(['Tu mano · 1', 'Tu Deck · 2', 'La mano del rival · 1'])
     expect(names(screen.getAllByRole('option'))).toEqual(['Ponix, en tu mano', 'Kirin, en tu Deck', 'Ponix, en tu Deck', 'Effect Veiler, en la mano del rival'])
-    // El encabezado queda arriba scrolleando la hoja.
-    expect(document.getElementById(groups[0]!.getAttribute('aria-labelledby')!)).toHaveClass('sticky', '-top-5')
     // Las dos Ponix nunca se ven iguales: la de la mano, el chip violeta lleno; la del Deck, el neutro.
     const chip = (name: string) => screen.getByRole('option', { name }).querySelector('[data-pick-place]')!
     expect(chip('Ponix, en tu mano')).toHaveTextContent('Mano')
@@ -556,7 +573,6 @@ describe('CardPicker', () => {
     try {
       render(<CardPicker title="Choose" cards={cards.map((card) => ({ ...card, ...pickPlace(card.from!, card.theirs ?? false) }))} min={1} max={1} onPick={() => {}} />)
       expect(names(screen.getAllByRole('option'))).toEqual(['Ponix, in your hand', 'Kirin, in your Deck', 'Ponix, in your Deck', "Effect Veiler, in the opponent's hand"])
-      expect(screen.getByText("The opponent's hand · 1")).toBeInTheDocument()
       expect(screen.getByRole('option', { name: "Effect Veiler, in the opponent's hand" })).toHaveTextContent('Opp. Hand')
     } finally {
       applyLocale('es')
@@ -691,8 +707,17 @@ describe('AutoBar', () => {
     expect(screen.queryByRole('button', { name: 'Salir del duelo' })).toBeNull()
   })
 
-  it('en el celular en vertical, debajo de los íconos va el marcador plano: tus vidas, el turno una sola vez y las del rival; la fase no va en la barra (la dice el botón del campo)', () => {
+  it('en el celular en vertical la barra es sólo la fila de los íconos: las vidas van en las chapas y el aviso en la línea (los pone la pantalla)', () => {
     window.matchMedia = ((query: string) => ({ matches: query === '(max-width: 639.98px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    render(<AutoBar {...props} lane={{ kind: 'thinking' }} />)
+
+    expect(screen.queryByTestId('auto-score')).toBeNull()
+    expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    expect(document.querySelector('[data-lane]')).toBeNull()
+    expect(screen.getByRole('toolbar', { name: 'Mesa' })).toBeInTheDocument()
+  })
+
+  it('de 640 a 1100 px, debajo de los íconos va el marcador plano: tus vidas, el turno una sola vez y las del rival; la fase no va en la barra (la dice el botón del campo)', () => {
     const { rerender } = render(<AutoBar {...props} />)
     const score = screen.getByTestId('auto-score')
 

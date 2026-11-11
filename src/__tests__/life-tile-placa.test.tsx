@@ -11,7 +11,7 @@ import { applyLocale, loadLocale, t } from '../i18n'
 describe('la placa de vidas', () => {
   afterEach(cleanup)
 
-  const chip = (tile: HTMLElement) => tile.querySelector<HTMLElement>('.rounded-full.uppercase')!
+  const chip = (tile: HTMLElement) => tile.querySelector<HTMLElement>('.uppercase.tracking-wider')!
   const bar = (tile: HTMLElement) => within(tile).getByRole('meter').firstElementChild!
 
   it('dice de quién es, cuántas cartas tiene en la mano y cuántas vidas, y el lector de pantalla oye lo mismo en una frase', () => {

@@ -166,7 +166,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
             mine={bottomView}
             theirs={topView}
             turn={frame.turn === bottom ? 'mine' : 'theirs'}
-            className="[--cell:max(3rem,min(6.5rem,calc((100dvh-35rem)/5.2)))] max-sm:mx-auto max-sm:w-[min(100%,calc(5*max(3rem,(100dvh_-_32rem)/7)_+_1rem))] sm:max-[1101px]:mx-auto sm:max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_35rem)/5.2)_+_1.5rem))]"
+            className="[--cell:max(3rem,min(6.5rem,calc((100dvh-35rem)/5.2)))] max-[1101px]:mx-auto max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_35rem)/5.2)_+_1.5rem))]"
           />
           {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={null} who={banner.who} className="absolute inset-0 z-30" /> : null}
         </div>

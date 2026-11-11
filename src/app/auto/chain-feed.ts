@@ -149,8 +149,8 @@ export function chainFeed(steps: readonly ChainStep[], count: number): ChainFeed
   return { key: start, rows: rows.filter(Boolean), resolving, done, focus }
 }
 
-/** Cuánto se lee cada eslabón al resolverse en una cadena de dos o más. */
-export const CHAIN_SOLVE_MS = 1200
+/** Cuánto se lee cada eslabón al resolverse en una cadena de dos o más: lo que dura su animación (chain-motion.ts, 750 ms por eslabón). */
+export const CHAIN_SOLVE_MS = 750
 /** Cuánto se ve un eslabón que se suma (y una activación suelta al resolverse): breve. */
 export const CHAIN_LINK_MS = 700
 
