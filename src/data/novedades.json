@@ -1,6 +1,65 @@
 {
   "entries": [
     {
+      "id": "2026-11-11-1-duelo-movil",
+      "date": "2026-11-11",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "El duelo, rearmado",
+        "novedades": [
+          "En el celular, la mesa usa el mismo campo que en escritorio, con Deck y Extra en los extremos y las casillas en siete columnas. El campo no se mueve nunca: ni al tocar una carta, ni con una pregunta, ni con una cadena.",
+          "Fondo nuevo: un remolino violeta y lima en vez de un color sólido, con casillas transparentes y líneas blancas, todo con esquinas rectas.",
+          "Tus vidas y las del rival van en chapas junto a cada lado de la mesa, y debajo del campo hay una línea fija que muestra la última jugada, un aviso o la cadena. Cuando cambian las vidas, el número late y aparece cuánto subió o bajó.",
+          "Duelo automático: los carteles dicen qué pasó, qué te piden y cuánto falta, la ficha de una carta muestra todas sus jugadas de una vez y las fases son seis botones.",
+          "Las cadenas se ven como cadenas: cada efecto es un eslabón que encaja y, al resolverse, se tensa y se suelta, de atrás para adelante. En escritorio, los carteles del duelo automático son ventanas: las movés de la barra violeta, las estirás de los bordes y se acuerdan de dónde las dejaste."
+        ],
+        "comoSeUsa": [
+          "Abrí un duelo (Solo o por enlace) desde el celular: el campo ya es el de escritorio.",
+          "En el duelo automático, tocá una carta de tu mano: aparecen todas sus jugadas.",
+          "En escritorio, arrastrá la barra violeta de un cartel para moverlo y tirá de su borde para cambiarle el tamaño; con doble clic en la barra vuelve a su lugar."
+        ],
+        "arreglos": [
+          "El menú de la mesa manual (la práctica y el duelo manual por enlace) sigue con las mismas opciones: sólo cambia el estilo (esquinas rectas y fondo translúcido).",
+          "En las preguntas del automático ya no aparece «1/1»: el contador sale sólo cuando hay más de uno por elegir.",
+          "El texto gris sobre el fondo nuevo se lee mejor."
+        ],
+        "ojo": [
+          "El video de un replay sigue dibujando el campo de antes.",
+          "La cadena animada es del duelo automático; en el manual sólo se ve el aviso «X activó Y».",
+          "La línea de abajo del campo queda vacía hasta que pase algo.",
+          "No se probó en un celular real."
+        ]
+      },
+      "en": {
+        "title": "The duel, rebuilt",
+        "novedades": [
+          "On your phone, the table now uses the same field as on desktop, with Deck and Extra at the ends and the zones in seven columns. The field never moves: not when you tap a card, not with a question, not with a chain.",
+          "New background: a violet and lime swirl instead of a solid color, with transparent zones and white lines, all with square corners.",
+          "Your life points and your opponent's sit in plates beside each side of the table, and below the field a fixed line shows the last play, a notice or the chain. When life points change, the number pulses and shows how much it went up or down.",
+          "Automatic duel: the prompts say what happened, what they ask of you and how much is left, a card's sheet shows all its plays at once and the phases are six buttons.",
+          "Chains look like chains: each effect is a link that snaps in and, when it resolves, tightens and releases, back to front. On desktop, the automatic duel prompts are windows: you move them by the violet bar, stretch them from the edges and they remember where you left them."
+        ],
+        "comoSeUsa": [
+          "Open a duel (Solo or by link) from your phone: the field is now the desktop one.",
+          "In the automatic duel, tap a card in your hand: all its plays appear.",
+          "On desktop, drag a prompt's violet bar to move it and pull its edge to resize it; double-click the bar to put it back."
+        ],
+        "arreglos": [
+          "The manual table menu (practice and the manual link duel) keeps the same options: only the style changes (square corners and a translucent background).",
+          "Automatic duel questions no longer show \"1/1\": the counter only appears when there is more than one to pick.",
+          "Gray text over the new background is easier to read."
+        ],
+        "ojo": [
+          "A replay video still draws the old field.",
+          "The animated chain belongs to the automatic duel; in the manual one you only see the \"X activated Y\" notice.",
+          "The line below the field stays empty until something happens.",
+          "It was not tested on a real phone."
+        ]
+      }
+    },
+    {
       "id": "2026-11-10-4-sin-conexion",
       "date": "2026-11-10",
       "tags": [
