@@ -9,7 +9,7 @@ import { act as active, loc, pos, stringId } from './support/auto-session-fake'
 import { core, handCard, renderAuto } from './support/auto-screen-harness'
 import { Harness, render, tap } from './support/practice-mat-harness'
 
-// El aviso de «Deshacer» de lo que acabás de activar (en «Jugar solo automático» y en la práctica) y «Cancelar» del segundo paso de «Activar efecto».
+// El aviso de «Deshacer» de lo que acabás de activar (en «Jugar solo automático» y en la práctica) y cerrar la ficha de una carta sin elegir ninguna jugada.
 
 const IDLE: CoreAsk = {
   type: 'select_idlecmd',
@@ -97,17 +97,17 @@ describe('el aviso de «Deshacer»', () => {
     expect(chip()).toBeNull()
   })
 
-  it('el segundo paso de «Activar efecto» (cuál de los efectos) se cancela sin contestar nada', () => {
+  it('la ficha de una carta con varios efectos (un botón por efecto) se cierra sin elegir y no contesta nada', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
     fireEvent.click(screen.getByRole('button', { name: 'GY: 1' }))
     fireEvent.click(screen.getByRole('button', { name: /^Nibiru/ }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /Activar efecto/ }))
-    const sheet = screen.getByRole('dialog', { name: 'Activar efecto' })
+    const sheet = screen.getByRole('region', { name: 'Nibiru' })
 
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Cancelar' }))
-    expect(screen.queryByRole('dialog', { name: 'Activar efecto' })).toBeNull()
+    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Efecto 2', 'Efecto 3'])
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByRole('region', { name: 'Nibiru' })).toBeNull()
     expect(fake.answers).toEqual([])
   })
 
