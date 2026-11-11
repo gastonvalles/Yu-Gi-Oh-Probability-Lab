@@ -285,6 +285,9 @@ export const auto = {
   'auto.pick.statRank': '{name}, rango {rank}, ATK {atk}, DEF {def}, elegible',
   'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, elegible',
   'auto.phase.notYet': 'Todavía no',
+  // El selector de fases del automático (`AutoPhases`): el título y la palabra debajo de la fase de ahora.
+  'auto.phase.title': 'Elegí la fase a la que pasás',
+  'auto.phase.now': 'ahora',
 
   // La insignia del eslabón sobre la carta («CL1»): se ve la sigla; el nombre de la carta lo dice con palabras.
   'auto.link.badge': 'CL{numbers}',

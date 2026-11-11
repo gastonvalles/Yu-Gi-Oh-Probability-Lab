@@ -186,7 +186,7 @@ describe('auto-screen · las hojas', () => {
     const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para desterrar · 0 de 2' })
     const options = within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
 
-    expect(band).toHaveAttribute('data-prompt-row')
+    expect(band).toHaveAttribute('data-auto-panel', 'docked')
     expect(options).toEqual(['Nibiru, en tu Cementerio', 'Zeus, en tu Extra Deck'])
     expect(within(band).getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'Cancelar', 'Listo'])
     fireEvent.click(within(band).getAllByRole('option')[1]!)
@@ -222,8 +222,8 @@ describe('auto-screen · las hojas', () => {
 
     expect(band).toHaveTextContent('El Cementerio del rival · 2')
     expect(within(band).getAllByRole('option').every((option) => !option.getAttribute('aria-label')!.includes(','))).toBe(true)
-    // Una sola, sin poder cancelar: sin pie (sólo el asa de la hoja de abajo, en el celular); el toque contesta.
-    expect(within(band).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Bajar la hoja'])
+    // Una sola, sin poder cancelar: sin botones abajo (sólo «Minimizar», arriba); el toque contesta.
+    expect(within(band).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Minimizar'])
     fireEvent.click(within(band).getAllByRole('option')[1]!)
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
   })

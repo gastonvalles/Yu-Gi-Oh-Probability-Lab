@@ -8,8 +8,9 @@ import { AskWhy } from '../duel/AskWhy'
 import { Options } from '../probability/CardSheet'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
-import { Modal } from '../ui/Modal'
 import { choiceChip } from '../ui/surfaces'
+import { AutoPanel } from './AutoPanel'
+import { PickCount } from './CardPicker'
 
 /** Una opción del núcleo: un texto, una posición, un número, un Tipo o un Atributo. */
 export interface AskOption {
@@ -33,7 +34,7 @@ interface AskOptionsProps {
   mode: 'one' | { count: number }
   /** Las elegidas, en el orden en que se eligieron. */
   onPick: (ids: string[]) => void
-  /** Sólo si se puede cancelar (el segundo paso de «Activar efecto», que todavía no contestó nada): la X, Escape y, con `'one'`, «Cancelar» abajo. Sin esto (las del núcleo no se cancelan), hay que contestar. */
+  /** Sólo si se puede cancelar (el segundo paso de «Activar efecto», que todavía no contestó nada): «Cancelar» abajo y Escape. Sin esto (las del núcleo no se cancelan), hay que contestar. */
   onCancel?: () => void
   /** Con `'one'`: una opción por fila, a la izquierda (la lista de efectos, como en la mesa manual). Sin esto, de a una por fila sólo si algún texto es largo. */
   stacked?: boolean
@@ -43,10 +44,9 @@ interface AskOptionsProps {
 const LONG_LABEL = 22
 
 /**
- * Las opciones de una pregunta del núcleo que el campo no puede expresar, en una hoja chica (`Modal keypad`, de 26 rem, al centro de la fila Extra: `anchor="mat"`; se minimiza sin contestar). Con `'one'`, los
- * botones de la hoja de una carta (`CardSheet`: de a dos por fila, `menuitem`) y un toque contesta. Con `{ count }`, pastillas que se prenden en lima (`aria-pressed`) y bajan de renglón, así se ven los 25
- * Tipos a la vez (`FilterChips` exige una cuenta por chip y en el celular es una sola fila que se desliza): con `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan.
- * Va dentro de un `Presence` (así sale al contestarse).
+ * Las opciones de una pregunta del núcleo que el campo no puede expresar (posición, número, Tipo/Atributo, qué efecto), en el cartel del automático (`AutoPanel`). Con `'one'`, los botones de la hoja
+ * de una carta (`Options`: de a dos por fila, `menuitem`) y un toque contesta. Con `{ count }`, pastillas que se prenden en lima (`aria-pressed`) y bajan de renglón (los 25 Tipos a la vez): con
+ * `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan, y el contador va sólo con un total mayor que 1. Va dentro de un `Presence` (así sale al contestarse).
  */
 export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel, stacked }: AskOptionsProps) {
   const leaving = useLeaving()
@@ -55,37 +55,29 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
   const count = mode === 'one' ? 0 : mode.count
   const full = count > 0 && chosen.length >= count
 
-  // Sin cancelar, Escape no cierra esto ni lo que haya abajo: hay que contestar.
-  useEscapeKey(() => {}, !onCancel && !leaving)
+  // Con cancelar, Escape cancela; sin él, no cierra esto ni lo que haya abajo: hay que contestar.
+  useEscapeKey(onCancel ?? (() => {}), !leaving)
 
   const toggle = (id: string) => setChosen((current) => (current.includes(id) ? current.filter((key) => key !== id) : count === 1 ? [id] : current.length < count ? [...current, id] : current))
 
   return (
-    <Modal
-      isOpen={!leaving}
-      onClose={onCancel ?? (() => {})}
-      dismissible={Boolean(onCancel)}
-      size="keypad"
-      lowerable
-      anchor="mat"
-      veil={false}
-      kicker={why ? <AskWhy id={whyId} why={why} /> : kicker}
-      {...(why ? { ariaDescribedBy: whyId } : {})}
-      title={title}
-      ariaLabel={title}
-      footer={
+    <AutoPanel
+      kind="options"
+      label={title}
+      {...(why ? { describedBy: whyId } : {})}
+      focus={mode === 'one' ? '[role="menuitem"]' : '[aria-pressed]'}
+      top={why ? <AskWhy id={whyId} why={why} /> : kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
+      actions={
         mode === 'one' ? (
           onCancel ? (
-            <Button variant="tertiary" size="sm" className="mr-auto" onClick={onCancel}>
+            <Button variant="tertiary" size="sm" onClick={onCancel}>
               {t('common.cancel')}
             </Button>
           ) : undefined
         ) : (
           <>
-            <p role="status" className="m-0 mr-auto text-body tabular-nums text-muted">
-              {t('auto.picker.status', { chosen: chosen.length, max: count })}
-            </p>
-            <Button variant="primary" size="sm" disabled={!full} onClick={() => onPick(chosen)}>
+            <PickCount chosen={chosen.length} max={count} />
+            <Button variant="primary" size="sm" className="ml-auto" disabled={!full} onClick={() => onPick(chosen)}>
               {t('auto.options.declare')}
             </Button>
           </>
@@ -109,6 +101,6 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
           })}
         </div>
       )}
-    </Modal>
+    </AutoPanel>
   )
 }

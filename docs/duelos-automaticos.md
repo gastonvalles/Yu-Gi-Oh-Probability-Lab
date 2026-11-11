@@ -32,9 +32,9 @@ Capa 4 del motor de cartas (`docs/motor-de-cartas.md`). Corre `ocgcore` con los 
 - **Las preguntas** (`ask-ui.ts`, `AskPrompt`):
   - El rótulo de un efecto es el `strN` que nombra su `desc`, nunca un número (el orden de la pregunta no es el del texto).
   - Brilla en celeste lo que se activa, invoca especial, ataca o se pide elegir; en ámbar, cada eslabón (`app/card-glow.ts`). Invocar normal, colocar o cambiar de posición, no.
-  - Hasta 6 cartas van en banda (`PickBand`; se achican, nunca se cortan); con más, la hoja (`CardPicker`). Declarar ofrece sólo lo que ese asiento conoce (`declarable`).
+  - Preguntas, ficha de una carta (sin submenús) y fases: `AutoPanel`, sobre la mano con techo en la línea, sólo con `duel.auto` (la manual sigue igual: `auto-panel.test.tsx`). Declarar ofrece sólo lo que ese asiento conoce (`declarable`).
   - **Cancelar una casilla:** el núcleo no deja (`select_place` no trae `can_cancel`): «Cancelar» y Escape son `undo`, con una jugada tuya hecha y sin un eslabón resolviendo (no en el enlace).
-  - Todo cartel sale en su lugar (`matSpot`; celular: `BottomSheet`) y nada se minimiza solo. El título dice qué se pide (`HINT_SELECTMSG` previo, `pickTitle`: sólo códigos comprobados) y `AskWhy`, por qué: miniatura, CLn y «costo», «al activar» o «efecto», nunca su texto. Costo y objetivos van juntos tras `chaining`: es costo sólo si algo elegible no puede ser objetivo (`ask-why.ts`).
+  - Nada se minimiza solo. El título dice qué se pide (`HINT_SELECTMSG` previo, `pickTitle`: sólo códigos comprobados) y `AskWhy`, por qué: miniatura, CLn y «costo», «al activar» o «efecto», nunca su texto. Costo y objetivos van juntos tras `chaining`: es costo sólo si algo elegible no puede ser objetivo (`ask-why.ts`).
   - Al rival automático rechazado se le repregunta con `randomLegalPolicy`; tres seguidas cortan.
 
 ## Datos y pruebas

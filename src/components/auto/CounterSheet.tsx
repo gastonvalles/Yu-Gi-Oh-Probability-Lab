@@ -1,17 +1,15 @@
 import { useId, useState } from 'react'
 
-import { useEscapeKey } from '../../app/use-overlay'
-import { useLeaving } from '../../app/use-presence'
 import type { AskWhyView } from '../../app/auto/ask-why'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { AskWhy } from '../duel/AskWhy'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
-import { Modal } from '../ui/Modal'
 import { Stepper } from '../ui/Stepper'
 import { listItemSelected } from '../ui/surfaces'
-import type { PickCard } from './CardPicker'
+import { AutoPanel } from './AutoPanel'
+import { PickCount, type PickCard } from './CardPicker'
 
 interface CounterSheetProps {
   /** Las cartas con contadores, cada una con cuántos tiene (`has`). */
@@ -25,37 +23,33 @@ interface CounterSheetProps {
 }
 
 /**
- * Sacar contadores (`select_counter`: «sacá 3 contadores de tu campo») en una hoja chica (`Modal keypad`): una fila por carta, con su arte, cuántos tiene y un `Stepper` de 0 a lo que se le puede
- * sacar (lo que tiene, y nunca más del total). La fila con alguno lleva el aro de lo elegido. «Sacar contadores» se enciende con el total justo. Hay que contestar: no se cierra con Escape ni tocando
- * afuera (se minimiza sin contestar). Va dentro de un `Presence` (así sale al contestarse).
+ * Sacar contadores (`select_counter`: «sacá 3 contadores de tu campo») en el cartel del automático (`AutoPanel`): una fila por carta, con su arte, cuántos tiene y un `Stepper` de 0 a lo que se le puede
+ * sacar (lo que tiene, y nunca más del total). La fila con alguno lleva el aro de lo elegido. «Sacar contadores» se enciende con el total justo. Hay que contestar: Escape lo minimiza,
+ * sin contestar. Va dentro de un `Presence` (así sale al contestarse).
  */
 export function CounterSheet({ cards, need, onPick, why }: CounterSheetProps) {
-  const leaving = useLeaving()
   const whyId = useId()
   const [counts, setCounts] = useState(() => cards.map(() => 0))
   const total = counts.reduce((sum, count) => sum + count, 0)
   const title = t('auto.counter.title', { count: need })
 
-  useEscapeKey(() => {}, !leaving)
-
   return (
-    <Modal
-      isOpen={!leaving}
-      onClose={() => {}}
-      dismissible={false}
-      size="keypad"
-      lowerable
-      anchor="mat"
-      veil={false}
-      {...(why ? { kicker: <AskWhy id={whyId} why={why} />, ariaDescribedBy: whyId } : {})}
-      title={title}
-      subtitle={t('auto.counter.hint')}
-      footer={
+    <AutoPanel
+      kind="counters"
+      label={title}
+      {...(why ? { describedBy: whyId } : {})}
+      focus="button"
+      escape
+      top={
         <>
-          <p role="status" className="m-0 mr-auto text-body tabular-nums text-muted">
-            {t('auto.picker.status', { chosen: total, max: need })}
-          </p>
-          <Button variant="primary" size="sm" disabled={total !== need} onClick={() => onPick(counts)}>
+          {why ? <AskWhy id={whyId} why={why} /> : null}
+          <p className="m-0 text-micro text-muted">{t('auto.counter.hint')}</p>
+        </>
+      }
+      actions={
+        <>
+          <PickCount chosen={total} max={need} />
+          <Button variant="primary" size="sm" className="ml-auto" disabled={total !== need} onClick={() => onPick(counts)}>
             {t('auto.counter.done')}
           </Button>
         </>
@@ -73,7 +67,7 @@ export function CounterSheet({ cards, need, onPick, why }: CounterSheetProps) {
               </span>
               <span className="grid min-w-0 flex-1 gap-0.5">
                 <span className="truncate text-body font-semibold text-foreground">{card.name}</span>
-                <span className="text-micro text-soft">{[card.place, t('auto.counter.has', { count: card.has })].filter(Boolean).join(' · ')}</span>
+                <span className="text-micro text-muted">{[card.place, t('auto.counter.has', { count: card.has })].filter(Boolean).join(' · ')}</span>
               </span>
               <Stepper
                 size="lg"
@@ -87,6 +81,6 @@ export function CounterSheet({ cards, need, onPick, why }: CounterSheetProps) {
           )
         })}
       </ul>
-    </Modal>
+    </AutoPanel>
   )
 }

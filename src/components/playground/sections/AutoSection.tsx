@@ -5,12 +5,14 @@ import type { ChainRowState } from '../../../app/auto/chain-feed'
 import { ELFNOTE, ELFNOTE_DECK, SKY_STRIKER_DECK } from '../../../app/bot-deck-lists'
 import { DuelRailsContext } from '../../../app/duel-rails'
 import { BOT_DECK_MENU, DEFAULT_HANDTRAP_CONFIG, rivalKindOf, withRival, type BotDeckInfo } from '../../../app/handtraps'
+import { PHASES } from '../../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { Presence } from '../../../app/use-presence'
 import { t } from '../../../i18n'
 import type { ApiCardSearchResult } from '../../../ygoprodeck'
 import { AskOptions, type AskOption } from '../../auto/AskOptions'
 import { AskPrompt } from '../../auto/AskPrompt'
+import { AutoCardSheet, AutoPhases } from '../../auto/AutoPanel'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
@@ -29,7 +31,7 @@ import { SoloScreen } from '../../duel/SoloScreen'
 import { LifeScore } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext } from '../../probability/MatBarActions'
-import { CardMenu } from '../../probability/MatDialogs'
+import { CardMenu, type MenuItem } from '../../probability/MatDialogs'
 import type { PracticeHandMatch } from '../../probability/practice'
 import { PracticeBoard } from '../../probability/PracticeBoard'
 import { RulesPill, type RulesSummary } from '../../probability/RulesPill'
@@ -44,7 +46,7 @@ import { ChainProposalSamples } from './ChainProposal'
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
 /** La caja de la ranura de la pregunta, como en la mesa (`PracticeMat`): más ancha con una banda, del ancho del asa minimizada. */
-const PROMPT_BOX = 'pointer-events-auto w-[min(24rem,100%)] max-w-full has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]'
+const PROMPT_BOX = 'pointer-events-auto w-full has-data-leaving:pointer-events-none'
 const ASH = { name: 'Ash Blossom & Joyous Spring', art: art(14558127) }
 const PONIX = { name: 'Legendary Fire King Ponix', art: art(90681088) }
 /** Por qué se pregunta (`AskWhy`): el costo de una activación, lo que se elige al activar (un objetivo) y el efecto de un eslabón del rival, con su número. */
@@ -140,6 +142,9 @@ export function AutoSection() {
 
   return (
     <SpecimenGrid min="22rem">
+      <FamilySample onAnswer={setAnswer} />
+      {/* Cada cartel del automático (`AutoPanel`), en su muestra y no abajo de la pantalla: el marco hace de celular (`SheetHost phone`). */}
+      <SheetHost phone>
       <PromptSample kind="card" onAnswer={setAnswer} />
       <PromptSample kind="context" onAnswer={setAnswer} />
       <PromptSample kind="plain" onAnswer={setAnswer} />
@@ -171,6 +176,7 @@ export function AutoSection() {
 
       <SortSample onAnswer={setAnswer} />
       <CounterSample onAnswer={setAnswer} />
+      </SheetHost>
       <BotLogSample />
       <RivalSample />
       <BotDeckSample />
@@ -296,6 +302,47 @@ function RivalSample() {
       </Button>
       <RivalSheet isOpen={open} config={withRival(DEFAULT_HANDTRAP_CONFIG, 'bot', 'sky-striker')} decks={decks} onClose={() => setOpen(false)} onApply={(next) => { setApplied(rivalKindOf(next, decks)); setOpen(false) }} onChooseHandtraps={() => setOpen(false)} />
       <Tag>{`Aplicado: ${applied}`}</Tag>
+    </Specimen>
+  )
+}
+
+/**
+ * La familia del automático a 390 y a 1440 px (el mismo cartel; en escritorio, 620 px de ancho máximo y centrado): la ficha de una carta con todas sus jugadas (la principal primero, sin «Más» ni
+ * submenús: los dos efectos son dos botones) y las fases (la de ahora en lima, las elegibles con aro blanco, las que no, punteadas).
+ */
+function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
+  const reply = (label: string) => () => onAnswer(label)
+  const plays: MenuItem[] = [
+    { label: t('practice.menu.normalSummon'), onSelect: reply(t('practice.menu.normalSummon')) },
+    { label: t('practice.menu.set'), onSelect: reply(t('practice.menu.set')) },
+    { label: t('practice.menu.specialSummon'), onSelect: reply(t('practice.menu.specialSummon')) },
+    { label: t('practice.menu.activateEffect'), onSelect: () => {}, children: [1, 2].map((n) => ({ label: t('auto.effect.number', { n }), onSelect: reply(t('auto.effect.number', { n })) })) },
+  ]
+  const phases: MenuItem[] = PHASES.map((phase, index) => ({ label: phase.name, current: index === 2, disabled: index < 2 || index === 4, onSelect: reply(phase.name) }))
+  const card = { ...sampleDeckCard(14558127), cardType: 'Effect Monster', atk: '0', def: '1800', description: 'Texto de muestra del efecto, recortado a tres renglones: «Ver carta» abre el texto entero con sus números, su arte y sus impresiones.' }
+  const frame = (width: string, label: string) => (
+    <div className={cx('grid content-start gap-2', width)}>
+      <p className="m-0 text-micro text-muted">{label}</p>
+      <div className="grid gap-3 border border-border-subtle bg-background py-3">
+        <AutoCardSheet name={ASH.name} kicker={t('auto.picker.place.mine.hand')} art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} />
+        <AutoPhases items={phases} onClose={reply(t('common.cancel'))} />
+      </div>
+    </div>
+  )
+
+  return (
+    <Specimen
+      title="La familia del automático · la ficha y las fases"
+      layout="column"
+      className="col-span-full"
+      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo; apoyado sobre la mano con techo en la línea; 92 % en alfa plano, esquinas rectas. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
+    >
+      <SheetHost phone>
+        <div className="flex flex-wrap items-start gap-4">
+          {frame('w-full max-w-[24.375rem]', '390 px')}
+          {frame('min-w-0 flex-1 basis-[38.75rem]', '1440 px (620 px de ancho máximo)')}
+        </div>
+      </SheetHost>
     </Specimen>
   )
 }

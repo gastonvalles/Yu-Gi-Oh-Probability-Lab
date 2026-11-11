@@ -246,7 +246,7 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
       expect(calls).toEqual(['chain', 'pass'])
     })
 
-    it('«¿Activás el efecto?» también: en el pie de la cadena; sin cadena, es su propia hoja de abajo (no un cartel en el medio)', () => {
+    it('«¿Activás el efecto?» también: en el pie de la cadena; sin cadena, es su propio cartel abajo (no en el medio)', () => {
       const ask = <AskPrompt text="¿Activás el efecto?" card={{ name: 'Ponix', art: null }} yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
       const view = render(mat([PONIX], ask))
 
@@ -257,11 +257,13 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
 
       expect(sheet).toHaveClass('fixed', 'bottom-0', 'inset-x-0')
       expect(sheet).toContainElement(screen.getByRole('button', { name: 'Activar efecto' }))
-      // Bajada: la tira con la pregunta y los botones, a la vista.
-      fireEvent.click(grip())
-      expect(sheet).toHaveAttribute('data-lowered')
-      expect(grip()).toHaveAccessibleName('Subir la hoja: ¿Activás el efecto?')
-      expect(screen.getByRole('button', { name: 'Activar efecto' }).closest('[inert], [hidden]')).toBeNull()
+      // Minimizado (el cartel del automático, `AutoPanel`): la tira con la pregunta y los botones, a la vista.
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Minimizar' }))
+      const strip = document.querySelector<HTMLElement>('[data-prompt="ask"]')!
+
+      expect(strip).toHaveAttribute('data-minimized')
+      expect(strip).toHaveAccessibleName('¿Activás el efecto?')
+      expect(within(strip).getByRole('button', { name: 'Activar efecto' }).closest('[inert], [hidden]')).toBeNull()
     })
 
     it('mientras se elige en la mesa o la mano (un costo), subida o bajada se reduce a su asa sobre la línea de estado y sin pie; al terminar, vuelve como estaba', () => {
