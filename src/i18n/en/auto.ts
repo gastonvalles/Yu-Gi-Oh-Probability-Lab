@@ -268,6 +268,9 @@ export const auto: Translated<typeof es> = {
   'auto.pick.statRank': '{name}, Rank {rank}, ATK {atk}, DEF {def}, selectable',
   'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, selectable',
   'auto.phase.notYet': 'Not yet',
+  // The automatic duel's phase selector (`AutoPhases`): its title and the word under the current phase.
+  'auto.phase.title': 'Select the phase to switch to',
+  'auto.phase.now': 'now',
 
   // The chain link badge on a card («CL1»): the short form is shown; the card's name says it in words.
   'auto.link.badge': 'CL{numbers}',

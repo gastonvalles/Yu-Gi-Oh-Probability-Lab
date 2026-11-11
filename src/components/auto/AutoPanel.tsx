@@ -328,7 +328,7 @@ const CHOOSABLE = '[role="menuitem"]:not([aria-disabled="true"])'
  * tocar afuera la cierran.
  */
 export function AutoPhases({ items, onClose }: { items: MenuItem[]; onClose: () => void }) {
-  const title = t('practice.phaseRow.title')
+  const title = t('auto.phase.title')
   const onKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const rows = [...event.currentTarget.querySelectorAll<HTMLElement>(CHOOSABLE)]
     const at = rows.findIndex((row) => row === document.activeElement)
@@ -359,7 +359,8 @@ export function AutoPhases({ items, onClose }: { items: MenuItem[]; onClose: () 
           <TileButton
             key={item.label}
             role="menuitem"
-            label={word}
+            // Debajo de la de ahora, «ahora» (su nombre lo dice la caja: «M1»); el lector oye «Fase actual: Main Phase 1».
+            label={item.current ? t('auto.phase.now') : word}
             aria-label={name}
             aria-current={item.current ? 'true' : undefined}
             aria-disabled={item.disabled || undefined}
