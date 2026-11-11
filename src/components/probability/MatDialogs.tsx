@@ -381,7 +381,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
 
   // Al cerrarse sigue montado mientras vuelve a la carta (`usePresence`): sin atajar el toque siguiente.
   return usePresence(open, open && typeof document !== 'undefined' ? createPortal(
-    <div ref={rootRef} className={cx('fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop}>
+    <div ref={rootRef} className={cx('mat-square fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop}>
       <div
         ref={ref}
         role="menu"
@@ -502,7 +502,7 @@ export function PlayTag({ anchor, item, name, onClose }: { anchor: DOMRect | nul
   if (!open || typeof document === 'undefined') return null
 
   return createPortal(
-    <div ref={rootRef} className="fixed inset-0 z-210" onClick={() => (performance.now() - openedAtRef.current >= GHOST_CLICK_MS ? onClose() : undefined)}>
+    <div ref={rootRef} className="mat-square fixed inset-0 z-210" onClick={() => (performance.now() - openedAtRef.current >= GHOST_CLICK_MS ? onClose() : undefined)}>
       <Button
         variant="primary"
         icon={tagIcon(item.label)}

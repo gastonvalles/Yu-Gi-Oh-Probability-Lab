@@ -98,7 +98,7 @@ import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, SHORT_SCREEN_MEDIA_QUERY, compactDuelFieldStyle, mediumDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
-import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
+import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
@@ -341,15 +341,14 @@ const RIVAL_MONSTER: MatCard = { get name() { return t('practice.attack.rivalMon
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 
 /**
- * El borde y el velo de una casilla vacía: una línea fina **blanca** (`field-line`, como el campo de referencia: Gastón, 2026-10-19) con un velo parejo, para que la zona se lea como un lugar y no como un hueco.
- * Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: no hay zonas de otro color; el color queda para lo que pasa (elegir, soltar una carta).
+ * El borde de una casilla vacía: una línea fina **blanca** (`field-line`, como el campo de referencia: Gastón, 2026-10-19) y **sin relleno**: la casilla es transparente y se ve el fondo de la mesa
+ * (Gastón, 2026-11-10: «el fondo del campo transparente»). Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: el dueño lo dice el color del conteo de una pila
+ * (`PileBadge`) y el color queda para lo que pasa (elegir, soltar una carta).
  */
-/** El hueco de una casilla: más oscuro arriba y con una sombra hacia adentro, como una casilla grabada en la placa (la luz viene de arriba). */
-const SLOT = 'bg-linear-to-b from-black/45 to-field-line/[0.05] shadow-[inset_0_3px_12px_rgb(0_0_0/0.65),inset_0_-1px_0_rgb(var(--field-line-rgb)/0.1)]'
-const CELL_LOOK = `border border-solid border-field-line/50 ${SLOT}`
-/** Las zonas del centro no se dibujan con el borde de su casilla cuadrada sino con las líneas de la carta (`ZoneLines`, como el tapete): el borde queda invisible (y se enciende al elegir o soltar una carta) y las de monstruos llevan el velo en toda la casilla. */
-const CELL_LOOK_MONSTER = `border border-solid border-transparent ${SLOT}`
-const CELL_LOOK_SPELL = 'border border-solid border-transparent'
+const CELL_LOOK = 'border border-solid border-field-line/50'
+/** Las zonas del centro no se dibujan con el borde de su casilla cuadrada sino con las líneas de la carta (`ZoneLines`, como el tapete): el borde queda invisible (y se enciende al elegir o soltar una carta). */
+const CELL_LOOK_MONSTER = 'border border-solid border-transparent'
+const CELL_LOOK_SPELL = CELL_LOOK_MONSTER
 
 /**
  * Lo que tiene toda casilla del campo o de una pila: su borde y velo (ver `CELL_LOOK`); se enciende con una carta arrastrada encima y se resalta cuando se está eligiendo.
@@ -2836,7 +2835,8 @@ function PracticeMatBody({
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
         // `grid-cols-[minmax(0,1fr)]`: la columna mide lo que mide la pantalla; sin eso crece hasta lo más ancho que tenga adentro (la barra de arriba) y en un celular chico se corta todo el lado derecho.
-        'relative isolate grid h-full min-h-0 select-none grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] bg-background',
+        // `mat-square`: la mesa va con esquinas rectas (los radios de los tokens en 0); sus hojas, que salen por un portal, lo llevan cada una.
+        'mat-square relative isolate grid h-full min-h-0 select-none grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] bg-background',
         // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
         sidePanel && 'min-[1101px]:grid-cols-[minmax(0,1fr)_var(--mat-right,20rem)]',
         // Con el detalle fijo a la izquierda (y los pasos o el chat a la derecha) son tres columnas: el detalle, la mesa y el panel (20 rem cada uno, o lo que se les dé arrastrando su borde).
@@ -2917,7 +2917,7 @@ function PracticeMatBody({
             cards={rivalHand.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)), usedAt: rivalUsedAt.get(id) ?? null }))}
             selectedId={selectedId}
             onOpen={openCard}
-            // Un poco más de aire que entre las demás piezas: el rombo de arriba de la placa del campo sobresale y no toca las cartas.
+            // Un poco más de aire que entre las demás piezas.
             className="mb-1"
           />
         ) : null}
@@ -2938,8 +2938,6 @@ function PracticeMatBody({
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
           style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.8rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d', bare ? { bottomRow: false, short: shortPhone, tallScore: Boolean(duel.scoreTall) } : undefined) : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare, Boolean(duel.scoreTall))) } as CSSProperties) : undefined}
         >
-          {/* La placa de la arena, debajo de todo el campo (decoración). */}
-          <MatPlate />
           {/* Tu magia de campo boca arriba: su arte de fondo, sólo en tu mitad (la del rival va en `duel.opponent`). Sale de la mesa, no de la carta que espera en la zona a que se elija cómo sale. */}
           <FieldArt side="mine" src={fieldArtSrc(state.field, artById)} />
           {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. */}
@@ -3495,11 +3493,13 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
 /**
  * Cantidad grande en el centro de la pila, como en la mesa real, y el nombre de la casilla chico debajo. En una pila angosta (el campo de 320 o 360 px con el marcador arriba, de unos
  * 23 px) el nombre no entra y se monta sobre el borde: se esconde (lo dice el nombre de la pila) y el número baja un paso.
+ * El conteo lleva el color del dueño (Gastón, 2026-11-10: las casillas ya no lo dicen): violeta con texto blanco lo tuyo y lima con texto carbón lo del rival, cuya pila lleva `data-rival-drop`
+ * (`DuelTable`). Recto, como toda la mesa.
  */
 export const PileBadge = memo(function PileBadge({ label, count }: { label: string; count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none @container">
-      <span className={cx('rounded-full px-1.5 py-0.5 text-lead font-extrabold tabular-nums text-foreground min-[1101px]:text-title @max-[2rem]:px-0.5 @max-[2rem]:text-body', count > 0 && 'bg-background/70')}>{count}</span>
+      <span className={cx('px-1.5 py-0.5 text-lead font-extrabold tabular-nums min-[1101px]:text-title @max-[2rem]:px-0.5 @max-[2rem]:text-body', 'bg-primary text-primary-foreground', 'in-[[data-rival-drop]]:bg-info in-[[data-rival-drop]]:text-background')}>{count}</span>
       <span className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem] @max-[2rem]:hidden">{label}</span>
     </span>
   )
