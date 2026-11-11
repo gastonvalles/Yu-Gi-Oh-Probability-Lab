@@ -64,7 +64,7 @@ export function DuelOpening({ snapshot, myName, canReady, actions, rename }: Due
             <Button variant={ready.mine ? 'secondary' : 'primary'} size="lg" color={ready.mine ? 'brand' : 'success'} icon={ready.mine ? undefined : 'check'} disabled={!ready.mine && !canReady} onClick={() => actions.setReady(!ready.mine)}>
               {ready.mine ? t('duel.opening.readyCancel') : t('duel.opening.readyAction')}
             </Button>
-            <p className="m-0 text-center text-micro text-soft" role="status">
+            <p className="m-0 text-center text-micro text-muted" role="status">
               {ready.mine ? t('duel.opening.readyWaiting', { name: rival }) : t('duel.opening.readyHint')}
             </p>
           </div>
@@ -113,7 +113,7 @@ export function PlayerCard({ side, caption, name, ready, showReady = true, renam
       <span aria-hidden="true" className={cx('hidden size-12 place-items-center rounded-full border-2 text-lead font-extrabold uppercase @[46rem]:grid', color.border, color.bubble, color.text)}>
         {Array.from((rename?.value || name).trim())[0] ?? '?'}
       </span>
-      <span className="text-micro font-semibold uppercase tracking-[0.04em] text-soft">{caption}</span>
+      <span className="text-micro font-semibold uppercase tracking-[0.04em] text-muted">{caption}</span>
       {rename ? <NameInput value={rename.value} onCommit={rename.onCommit} /> : <span className="max-w-full truncate text-body font-bold text-foreground @[46rem]:text-lead">{name}</span>}
       {showReady ? (
         <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-micro font-semibold', ready ? 'bg-success/20 text-success-soft' : 'bg-tint/8 text-muted')}>
@@ -166,7 +166,7 @@ function TossStep({ snapshot, nameOf, actions }: StepProps) {
 
   return (
     <div className="grid gap-2">
-      <p className="m-0 text-center text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.opening.title')}</p>
+      <p className="m-0 text-center text-micro font-semibold uppercase tracking-[0.04em] text-muted">{t('duel.opening.title')}</p>
 
       {opening.method === null ? (
         <>
@@ -226,7 +226,7 @@ function TossStep({ snapshot, nameOf, actions }: StepProps) {
               </Button>
             ))}
           </div>
-          <p className="m-0 text-center text-micro text-soft" role="status">
+          <p className="m-0 text-center text-micro text-muted" role="status">
             {rps.theirs !== null ? t('duel.games.rps.rivalPicked', { name: rival }) : t('duel.games.rps.hint')}
           </p>
         </>
