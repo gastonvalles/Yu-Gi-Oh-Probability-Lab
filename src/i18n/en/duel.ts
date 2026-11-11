@@ -464,6 +464,7 @@ export const duel: Translated<typeof es> = {
   'duel.result.matchWin': 'You won the Match!',
   'duel.result.matchLose': 'You lost the Match',
   'duel.result.matchScore': 'Match {mine}–{theirs}.',
+  'duel.result.scoreTo': 'to',
   'duel.series.chip': 'Duel {game} · {mine}–{theirs}',
   'duel.result.rematchWaiting': 'Waiting for {name}…',
   'duel.result.rematchOffered': '{name} wants a rematch.',
