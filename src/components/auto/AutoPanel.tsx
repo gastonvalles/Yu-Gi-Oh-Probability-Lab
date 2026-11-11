@@ -145,6 +145,9 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
         'fixed inset-x-0 bottom-0 z-[130] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] border-t border-primary/60 shadow-overlay',
         'min-[1101px]:inset-x-auto min-[1101px]:left-[var(--mat-x,50%)] min-[1101px]:w-[min(38.75rem,var(--mat-w,100vw))] min-[1101px]:-translate-x-1/2 min-[1101px]:border-x',
         'pb-[env(safe-area-inset-bottom,0px)]',
+        // Una sola capa abajo: con el visor de una pila abierto en el celular (`data-pile-sheet`), las preguntas se esconden sin cerrarse (como la hoja de la cadena) y vuelven al cerrarlo; la ficha y
+        // las fases (`onDismiss`), al revés, esconden el visor (`PracticeMat`).
+        !onDismiss && 'in-[body:has([data-pile-sheet])]:hidden',
       )
   const surface = 'mat-square pointer-events-auto bg-card-background/92 text-body text-foreground motion-safe:animate-sheet-in'
 

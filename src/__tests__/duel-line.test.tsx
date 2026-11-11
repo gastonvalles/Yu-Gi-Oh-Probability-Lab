@@ -138,6 +138,19 @@ describe('las chapas de vidas', () => {
     }
   })
 
+  it('muestra un solo número durante y después del cambio (el número que late y el «−N» no comparten clave: «75007500»)', () => {
+    vi.useFakeTimers()
+    const view = renderBare(<LifeBadge name="Rival" label="Rival" life={8000} />)
+    const number = () => screen.getByRole('group', { name: /^Puntos de vida de Rival/ }).querySelector('.text-stat')!.parentElement!.parentElement!
+
+    for (const life of [7500, 7000, 5500]) {
+      act(() => view.rerender(<LifeBadge name="Rival" label="Rival" life={life} />))
+      expect(number().firstElementChild).toHaveTextContent(new RegExp(`^${life}$`))
+      act(() => vi.advanceTimersByTime(2000))
+      expect(number().textContent).toBe(String(life))
+    }
+  })
+
   it('con `onClick` (el duelo manual) es un botón de 44 px que abre la calculadora', () => {
     const open = vi.fn()
 
