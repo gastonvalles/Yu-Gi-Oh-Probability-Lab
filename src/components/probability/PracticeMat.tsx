@@ -1,4 +1,4 @@
-import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -95,7 +95,7 @@ import { CardSheet } from './CardSheet'
 import { AskWhy } from '../duel/AskWhy'
 import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
-import { COMPACT_FIELD_MEDIA_QUERY, SHORT_SCREEN_MEDIA_QUERY, compactDuelFieldStyle, mediumDuelFieldStyle } from './compact-field'
+import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from './compact-field'
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
@@ -145,6 +145,16 @@ const REVIEW_HAND: CSSProperties = { transform: 'translateY(4px) scale(0.72)', t
 /** Con el replay partido, el campo y tu mano suben lo que mide la línea de tiempo (44 px, pegada a los botones: sus pastillas ya llevan aire): ella pasó de arriba (debajo del aviso) a abajo, debajo de los botones. También es una transformación. */
 const REVIEW_LIFT = '-translate-y-11'
 
+/** El duelo en el celular (`phoneDuelLayout`): la barra con el marcador y el hueco de la columna (102 + 8 px medidos; 4 más con las vidas de 44 px), el lugar de la mano del rival y el margen de abajo de la columna. */
+const PHONE_BAR = 110
+const PHONE_RIVAL = THEIR_HAND.mobile.room + MOBILE_HAND_GAP
+const PHONE_BOTTOM = 8
+const onResize = (listener: () => void) => {
+  window.addEventListener('resize', listener)
+  return () => window.removeEventListener('resize', listener)
+}
+const screenSize = () => `${window.innerWidth}x${window.innerHeight}`
+
 /** Lo que baja el aviso de la cadena desde el borde de la barra: el aviso de la línea (44 px) va justo debajo de ella, y el de la cadena, debajo de ese. */
 const CHAIN_BELOW_BAR_PX = 52
 /** Lo que mide un eslabón de la lista de la cadena (con el aire de la lista): con menos lugar que eso, la pila queda en su resumen mientras se pregunta. */
@@ -155,8 +165,6 @@ const PROMPT_ART_MIN_PX = 32
 export interface DuelMatLink {
   /** Las áreas de la grilla con los dos campos. */
   areas: string
-  /** Las mismas áreas en un celular en vertical (menos de 640 px): cinco columnas y una fila de pilas por jugador. */
-  areasCompact: string
   /** Las casillas del rival (zonas, pilas y su Banish en el medio), ya con su `gridArea`. */
   opponent: ReactNode
   /** La carta del rival que ocupa, vista desde acá, la Zona Extra `index` (0 = izquierda); null si no hay. */
@@ -673,12 +681,10 @@ function PracticeMatBody({
   const stepsPanel = !duel || Boolean(duel.steps)
   const sidePanel = stepsPanel || Boolean(duel?.aside)
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  // Celular en vertical: el campo del duelo se ajusta al alto de la pantalla para que se vea tu mano (ver `compact-field.ts`).
   const compact = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
-  // «Jugar solo automático» hasta 1100 px: tus vidas y el turno van en el marcador de la barra (`scoreInHeader`) y la mesa no lleva fila de abajo; en un celular bajo (< 700 px de alto) el campo
-  // se achica más y la mano del rival va más chica (`compact-field.ts`).
+  // «Jugar solo automático» hasta 1100 px: tus vidas y el turno van en el marcador de la barra (`scoreInHeader`) y la mesa no lleva fila de abajo.
   const bare = !isDesktop && Boolean(duel?.scoreInHeader)
-  const shortPhone = useMediaQuery(SHORT_SCREEN_MEDIA_QUERY) && compact && bare
+  const screen = useSyncExternalStore(onResize, screenSize)
   // Laterales: en un duelo de escritorio, si la columna de la mesa tiene ancho de sobra, lo que rodea al campo va a sus costados (ver `duel-rails.ts`). Se mira sólo si entran: arrastrar el borde de un
   // panel le cambia el ancho a la columna en cada cuadro y la mesa no se vuelve a dibujar por eso.
   const columnRef = useRef<HTMLDivElement | null>(null)
@@ -854,6 +860,9 @@ function PracticeMatBody({
   const panels = useMatPanels(sectionRef, { left: Boolean(detail), right: sidePanel })
   const view = useMatView()
   const isDuel = Boolean(duel)
+  // El duelo en el celular: geometría fija, sacada sólo del tamaño de la pantalla (`phoneDuelLayout`): el campo y tu mano no se mueven con nada de lo que aparece.
+  const [screenWidth, screenHeight] = screen.split('x').map(Number) as [number, number]
+  const phone = compact && bare ? phoneDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_BAR + (duel?.scoreTall ? 4 : 0), rival: PHONE_RIVAL, bottom: PHONE_BOTTOM }) : null
   const isAuto = Boolean(duel?.auto)
   // El ATK/DEF de cada monstruo boca arriba (`StatTag`, siempre): el de ahora si hay núcleo (`duel.auto.stats`, que arma la pantalla), el impreso si no.
   const autoStats = duel?.auto?.stats
@@ -2884,7 +2893,9 @@ function PracticeMatBody({
         className={cx(
           !duel && '@container',
           Boolean(detail) && 'min-[1440px]:col-start-2',
-          'col-start-1 row-start-2 min-h-0 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2',
+          'col-start-1 row-start-2 min-h-0 overflow-y-auto overflow-x-hidden pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2',
+          // En el celular la orilla de 4 px de `phoneDuelLayout`.
+          phone ? 'px-1' : 'px-1.5',
           rails ? 'grid grid-cols-[minmax(13rem,1fr)_minmax(0,calc(var(--cell-h)*6.3714+3rem))_minmax(13rem,1fr)] grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-x-4' : 'flex flex-col gap-2',
         )}
       >
@@ -2901,7 +2912,8 @@ function PracticeMatBody({
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative my-auto flex flex-col gap-2', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
+        {/* En el celular el grupo va pegado abajo y cada pieza mide lo que dice `phoneDuelLayout`: su lugar sale sólo del alto de la pantalla. */}
+        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative flex flex-col', phone ? 'mt-auto' : 'my-auto gap-2', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
         {/* Las vidas del rival en la esquina de arriba a la derecha (sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
         {duel?.corner && !rails && (isDesktop || duel.rivalHand) ? (
           <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room }}>
@@ -2927,23 +2939,20 @@ function PracticeMatBody({
           ref={setField}
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
-          className={cx(!duel && 'min-[1101px]:my-auto', !duel && (hasRivalStrip ? RIVAL_STRIP_FIELD : 'min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]'), "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] max-sm:grid-cols-[repeat(5,minmax(0,1fr))] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]',
-            // Las áreas: en la práctica, escritas acá; en un duelo las arma la pantalla (`duel.areas` y `duel.areasCompact`, por variables: el estilo en línea no se puede cambiar con un medio).
-            // En un celular en vertical (menos de 640 px) son cinco columnas y una fila de pilas abajo —el Extra Deck a la izquierda y el Deck a la derecha, en los extremos, la Zona de campo en el medio, el Banish a su izquierda y el Cementerio a su derecha—: las casillas pasan de 55 a 72 px.
-            duel
-              ? '[grid-template-areas:var(--areas)] max-sm:[grid-template-areas:var(--areas-compact)]'
-              : "[grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] max-sm:[grid-template-areas:'p1_emz1_p2_emz2_p3'_'m1_m2_m3_m4_m5'_'s1_s2_s3_s4_s5'_'extra_ban_fld_gy_deck']",
+          className={cx(!duel && 'min-[1101px]:my-auto', !duel && (hasRivalStrip ? RIVAL_STRIP_FIELD : 'min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]'), "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] max-sm:gap-0.75 min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]',
+            // Las áreas: en la práctica, escritas acá; en un duelo las arma la pantalla (`duel.areas`, por variable). Siete columnas en todos los anchos, también en el celular.
+            duel ? '[grid-template-areas:var(--areas)]' : "[grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck']",
           )}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.8rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d', bare ? { bottomRow: false, short: shortPhone, tallScore: Boolean(duel.scoreTall) } : undefined) : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare, Boolean(duel.scoreTall))) } as CSSProperties) : undefined}
+          // En el celular, la caja del campo de `phoneDuelLayout`: arriba, el lugar de la mano del rival (en 3D, menos lo que la perspectiva baja su borde) y abajo, nada (la línea va pegada).
+          style={duel ? ({ '--areas': duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.8rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(phone ? { width: phone.fieldWidth, height: phone.fieldHeight, marginInline: 'auto', marginTop: PHONE_RIVAL - phone.drop } : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare, Boolean(duel.scoreTall))) } as CSSProperties) : undefined}
         >
           {/* Tu magia de campo boca arriba: su arte de fondo, sólo en tu mitad (la del rival va en `duel.opponent`). Sale de la mesa, no de la carta que espera en la zona a que se elija cómo sale. */}
           <FieldArt side="mine" src={fieldArtSrc(state.field, artById)} />
           {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. */}
           {duel?.rivalHand ? (
-            // En una pantalla baja sin la fila de abajo, la mano del rival va al 72 % (desde su borde de abajo): el campo sube lo que ella deja (`compactDuelFieldStyle`, `short`).
-            <div className={cx('absolute bottom-full left-1/2 z-10 -translate-x-1/2', shortPhone && 'origin-bottom scale-72')} style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
+            <div className="absolute bottom-full left-1/2 z-10 -translate-x-1/2" style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
               {duel.rivalHand}
             </div>
           ) : null}
@@ -3063,11 +3072,18 @@ function PracticeMatBody({
         </div>
         </div>
 
+        {/* La línea (celular): una ranura de alto fijo entre el campo y tu mano, con el aire que sobre debajo. Acá va la cadena; lo que se apoya encima (la ficha, los carteles) llega hasta su borde de abajo. */}
+        {phone ? (
+          <div data-duel-line="" className="relative shrink-0 overflow-hidden" style={{ height: phone.lineHeight, marginBottom: phone.air }}>
+            {duel?.chain}
+          </div>
+        ) : null}
+
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van en la píldora de la barra en el celu (`rulesPill`) y en el panel lateral en escritorio. */}
         {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
         {/* Repasando un combo en un duelo de escritorio, tu mano se achica como `REVIEW_HAND`: la barra del replay va debajo, a lo largo de la mesa, y le tapaba la franja de abajo. Con poco
             alto (46 rem o menos, la mesa angosta: 1101 × 700), al 66 % y sin bajar: al 72 % le asomaban 9 px debajo de la barra. */}
-        <div className={cx('relative', duel && 'pointer-events-none z-10', duel && isDesktop && replayBar && 'origin-top translate-y-1 scale-72 [@media(max-height:46rem)]:translate-y-0 [@media(max-height:46rem)]:scale-66')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
+        <div className={cx('relative', duel && 'pointer-events-none z-10', duel && isDesktop && replayBar && 'origin-top translate-y-1 scale-72 [@media(max-height:46rem)]:translate-y-0 [@media(max-height:46rem)]:scale-66')} style={phone ? { height: phone.handHeight, flexShrink: 0, ...(splitReplay ? REVIEW_HAND : null) } : duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"
@@ -3081,7 +3097,7 @@ function PracticeMatBody({
           <PracticeHand
             cards={handCards}
             sizeSlots={Math.max(session.initial.hand.length, 1)}
-            maxCardWidth={isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
+            maxCardWidth={phone ? phone.handCard : isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
             glowOf={glowKindOf}
             {...(duel?.links?.size ? { links: duel.links } : {})}
@@ -3410,7 +3426,7 @@ function PracticeMatBody({
           con el visor de una pila abierto (otra hoja), se esconde. */}
       <SheetHost yieldTo={pileSheet ? 'hide' : choosing ? 'grip' : null}>
       {/* La cadena (duelo automático): arriba de la columna de la mesa; sólo la píldora y su lista reciben toques. */}
-      {duel?.chain ? (
+      {duel?.chain && !phone ? (
         <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
           {duel.chain}
         </div>
