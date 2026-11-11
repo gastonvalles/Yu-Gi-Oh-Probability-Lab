@@ -172,6 +172,38 @@
   --animate-confetti: confetti 2.2s var(--ease-snap) both;
   --animate-banner-veil: banner-veil 2.8s var(--ease-out) both;
   --animate-banner-rise: banner-rise 600ms var(--ease-out) 350ms both;
+  /* La cadena animada (prototipo de TI-138): sólo transform y opacity; cada uso, con `motion-reduce:animate-none`. Las curvas, las de docs/movimiento.md. */
+  /* Un eslabón nuevo encaja: entra de 40 px, se pasa 3 y se traba. */
+  --animate-link-in: link-in 300ms var(--ease-snap) both;
+  /* La carta que se encadena se levanta 10 px y vuelve. */
+  --animate-lift: lift 320ms var(--ease-out);
+  /* La carta que resuelve ejecuta su efecto: sube 8 px y vuelve. */
+  --animate-act: act 160ms var(--ease-out);
+  /* El trazo recto que une las cartas de la cadena crece desde su punta (scaleX). */
+  --animate-seg-in: seg-in 280ms var(--ease-out) both;
+  /* El número del trazo aparece cuando el trazo ya creció. */
+  --animate-seg-num-in: fade-in 200ms var(--ease-out) 160ms both;
+  /* Una capa ya dibujada se enciende: la lima del que resuelve, la menta de lo resuelto, el rojo de lo negado. */
+  --animate-glow-in: fade-in 120ms var(--ease-out) both;
+  /* El eslabón que resuelve sube 4 px. */
+  --animate-rise: rise 120ms var(--ease-out) forwards;
+  /* La cadena se tensa: los eslabones de cada lado tiran 7 px hacia el que resuelve. */
+  --animate-pull-l: pull-l 200ms var(--ease-in-out);
+  --animate-pull-r: pull-r 200ms var(--ease-in-out);
+  /* El eslabón resuelto o negado se parte en dos mitades que se separan y se funden. */
+  --animate-split-a: split-a 260ms var(--ease-out) forwards;
+  --animate-split-b: split-b 260ms var(--ease-out) forwards;
+  /* El rótulo de un eslabón que se parte se apaga antes que sus mitades. */
+  --animate-split-fade: fade-out 140ms var(--ease-out) forwards;
+  /* «Sin efecto»: el eslabón se apaga deslizándose 26 px hacia abajo. */
+  --animate-slide-off: slide-off 260ms var(--ease-out) forwards;
+  /* Lo negado: el tajo rojo se dibuja de punta a punta. */
+  --animate-slash-in: slash-in 120ms var(--ease-out) forwards;
+  /* Se apaga: el trazo de un eslabón que se fue y lo que queda de la cadena al final. */
+  --animate-fade-out: fade-out 200ms var(--ease-out) forwards;
+  /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida) y el «−N ▼» sube 30 px y se funde. */
+  --animate-life-bump: life-bump 240ms var(--ease-out);
+  --animate-life-delta: life-delta 1400ms var(--ease-out) both;
 
   /* Brillo de carga: sólo se mueve un degradé con transform (compuesto en la GPU, sin repintar). */
   @keyframes shimmer {
@@ -1131,6 +1163,157 @@
       transform: translateY(8px) scale(0.96);
     }
   }
+
+  @keyframes link-in {
+    from {
+      opacity: 0;
+      transform: translateX(40px);
+    }
+
+    70% {
+      opacity: 1;
+      transform: translateX(-3px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes lift {
+    0%,
+    100% {
+      transform: none;
+    }
+
+    40% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes act {
+    0%,
+    100% {
+      transform: none;
+    }
+
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes seg-in {
+    from {
+      transform: scaleX(0);
+    }
+
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes rise {
+    to {
+      transform: translateY(-4px);
+    }
+  }
+
+  @keyframes pull-l {
+    0%,
+    100% {
+      transform: none;
+    }
+
+    50% {
+      transform: translateX(7px);
+    }
+  }
+
+  @keyframes pull-r {
+    0%,
+    100% {
+      transform: none;
+    }
+
+    50% {
+      transform: translateX(-7px);
+    }
+  }
+
+  @keyframes split-a {
+    to {
+      opacity: 0;
+      transform: translate(-22px, 6px) rotate(-10deg);
+    }
+  }
+
+  @keyframes split-b {
+    to {
+      opacity: 0;
+      transform: translate(22px, 6px) rotate(10deg);
+    }
+  }
+
+  @keyframes slide-off {
+    to {
+      opacity: 0;
+      transform: translateY(26px);
+    }
+  }
+
+  @keyframes slash-in {
+    from {
+      transform: rotate(-18deg) scaleX(0);
+    }
+
+    to {
+      transform: rotate(-18deg) scaleX(1);
+    }
+  }
+
+  @keyframes life-bump {
+    0%,
+    100% {
+      transform: none;
+    }
+
+    50% {
+      transform: scale(1.08);
+    }
+  }
+
+  @keyframes life-delta {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+
+    to {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+  }
 }
 
 /*
@@ -1417,7 +1600,7 @@
 
 /*
  * La mesa como escena (Gastón, 2026-10-20: «comparado con la imagen que te envié, el nuestro es totalmente simplón»; sólo estética: la mesa funciona igual). El lienzo de la app es de un solo color; la mesa es la
- * excepción: una arena de la misma familia índigo, con luz (un pozo violeta debajo del campo), hondura (una viñeta y una placa levantada con sombra con desplazamiento) y un marco con esquinas y rombos.
+ * excepción: una arena de la misma familia índigo, con luz (un pozo violeta debajo del campo) y hondura (una viñeta); el campo no lleva placa: sus casillas son transparentes y la arena se ve a través.
  * Todo con los colores de la paleta y sin imágenes; es decoración (`aria-hidden`, sin toques) y no cambia el tamaño ni el lugar de nada.
  */
 @utility mat-scene {
@@ -1442,30 +1625,25 @@
   }
 }
 
-/* La placa del campo: se levanta del fondo (sombra hacia abajo), tiene luz propia en el medio, un enrejado de rombos apenas marcado y un doble filo. Va detrás del campo y toma su perspectiva. */
-@utility mat-plate {
-  pointer-events: none;
-  border-radius: var(--radius-card);
-  background-image:
-    linear-gradient(112deg, transparent 36%, rgb(var(--foreground-rgb) / 0.06) 50%, transparent 64%),
-    radial-gradient(circle at 50% 50%, transparent 0 19.2%, rgb(var(--accent-rgb) / 0.18) 19.4% 19.9%, transparent 20.1% 33.2%, rgb(var(--accent-rgb) / 0.12) 33.4% 33.8%, transparent 34%),
-    radial-gradient(ellipse 74% 64% at 50% 50%, rgb(var(--primary-hover-rgb) / 0.4), rgb(var(--primary-rgb) / 0.14) 55%, transparent 80%),
-    repeating-linear-gradient(45deg, rgb(var(--field-line-rgb) / 0.05) 0 1px, transparent 1px 15px),
-    repeating-linear-gradient(-45deg, rgb(var(--field-line-rgb) / 0.05) 0 1px, transparent 1px 15px),
-    linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.92), rgb(var(--background-rgb) / 0.96));
-  box-shadow:
-    inset 0 0 0 1px rgb(var(--primary-hover-rgb) / 0.34),
-    inset 0 1px 0 rgb(var(--foreground-rgb) / 0.09),
-    inset 0 -26px 50px rgb(0 0 0 / 0.38),
-    0 24px 46px -10px rgb(0 0 0 / 0.7);
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0.55rem;
-    border-radius: calc(var(--radius-card) - 0.4rem);
-    box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.15);
-  }
+/*
+ * La mesa del duelo y sus hojas van con esquinas rectas (Gastón: «no me gustan los bordes redondeados»), no toda la app: los radios de los tokens valen 0 adentro de la raíz de la mesa y de cada
+ * hoja o menú suyo que sale por un portal (`CardSheet`, `BottomSheet`, `CardMenu`, `PlayTag`), también los de la escala de Tailwind (`rounded-lg`). Los tokens globales no cambian. Lo que no sale de
+ * un token (`rounded-full`, `rounded-[…]`) no lo apaga: `mesa-esquinas.test.tsx` lleva la cuenta.
+ */
+@utility mat-square {
+  --radius-tag: 0px;
+  --radius-control: 0px;
+  --radius-card: 0px;
+  --radius-panel: 0px;
+  --radius-chip: 0px;
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
 }
 
 /* La placa de vidas (`LifeTile`): flota sobre la mesa (la mesa es la excepción a «sin brillos»): degradado índigo de arriba abajo, un filo de luz de 1 px arriba, uno oscuro abajo y su sombra. El borde, del color del dueño. */
@@ -1480,7 +1658,7 @@
 /*
  * El arte de la magia de campo activada (`FieldArt`; Gastón, 2026-10-21): la única imagen del tapete. Cubre la mitad de quien la activó (el lugar lo da `grid-area`, en línea), bien visible (al 60 %: con 45 % «quedó muy tenue», Gastón; a 70 % las etiquetas chicas de las pilas se apagaban sobre un arte oscuro) y sin
  * desenfoque ni filtros (rendimiento). Una máscara (dos degradés que se cruzan) la desvanece en todos sus bordes, sin cortes rectos, y más hacia la fila del medio (arriba la tuya, abajo la del
- * rival: `--art-fade`): el tapete, las líneas, las cartas y los números se siguen leyendo. Encima de la placa (`-z-10`) y debajo de las casillas; entra y se va con un fundido.
+ * rival: `--art-fade`): el tapete, las líneas, las cartas y los números se siguen leyendo. Detrás de las casillas (transparentes); entra y se va con un fundido.
  */
 @utility mat-field-art {
   position: absolute;
@@ -1514,29 +1692,6 @@
   @media (prefers-reduced-motion: reduce) {
     transition: none;
   }
-}
-
-/* Una esquina del marco de la placa (dos líneas en L): `--cx` y `--cy` dicen de qué esquina es. */
-@utility mat-corner {
-  position: absolute;
-  width: 1.25rem;
-  height: 1.25rem;
-  color: rgb(var(--accent-rgb) / 0.8);
-  background:
-    linear-gradient(currentColor, currentColor) var(--cx) var(--cy) / 100% 2px no-repeat,
-    linear-gradient(currentColor, currentColor) var(--cx) var(--cy) / 2px 100% no-repeat;
-}
-
-/* Un rombo en el medio de un lado del marco. */
-@utility mat-stud {
-  position: absolute;
-  width: 0.75rem;
-  height: 0.75rem;
-  rotate: 45deg;
-  background: rgb(var(--accent-rgb) / 0.95);
-  box-shadow:
-    0 0 0 3px rgb(var(--background-rgb)),
-    0 0 0 4px rgb(var(--accent-rgb) / 0.4);
 }
 
 /* Una casilla que se puede elegir: cuatro esquinas (y, si está libre, un rombo en el medio), como las marcas de un visor. */

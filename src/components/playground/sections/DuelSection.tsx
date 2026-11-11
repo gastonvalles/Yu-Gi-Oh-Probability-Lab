@@ -1,13 +1,13 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
-import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
+import { MatScene, PickMarks } from '../../probability/MatArena'
 import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, fxVars } from '../../probability/MatFx'
 import { glowFrame } from '../../probability/practice-styles'
 import { ChevronTrail } from '../../probability/AttackFx'
 import { t } from '../../../i18n'
 import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
-import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
+import { CELL, CELL_MONSTER, CELL_SPELL, PileBadge, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
 import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
 import { RivalExtraDeck } from '../../duel/RivalExtraDeck'
@@ -738,7 +738,7 @@ const ARENA_CELLS: Array<{ label: string; pick?: boolean; diamond?: boolean; ove
   { label: 'Vacía' },
 ]
 
-/** La arena de la mesa: el fondo con luz y viñeta, la placa del campo con su marco y las casillas hundidas; todo es decoración y no cambia el tamaño de nada. Mismos componentes y estilos que la mesa de verdad. */
+/** La arena de la mesa: el fondo con luz y viñeta y las casillas transparentes con sus líneas blancas; todo es decoración y no cambia el tamaño de nada. Mismos componentes y estilos que la mesa de verdad. */
 function ArenaSamples() {
   return (
     <Specimen
@@ -747,20 +747,34 @@ function ArenaSamples() {
       className="col-span-full"
       note={
         <>
-          El fondo (<Tag>MatScene</Tag>), la placa que va debajo del campo (<Tag>MatPlate</Tag>: sombra con desplazamiento, enrejado, anillos y un marco con esquinas y rombos), las casillas hundidas (<Tag>CELL_MONSTER</Tag>) y las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
+          El fondo (<Tag>MatScene</Tag>) se ve a través de las casillas, transparentes y con las líneas blancas de la carta (<Tag>CELL_MONSTER</Tag>, <Tag>CELL_SPELL</Tag> y <Tag>ZoneLines</Tag>); las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>) y el conteo de una pila con el color de su dueño (<Tag>PileBadge</Tag>: violeta lo tuyo, lima lo del rival, cuya pila lleva <Tag>data-rival-drop</Tag>). La mesa y sus hojas van con esquinas rectas (<Tag>mat-square</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag>, <Tag>probability/PracticeMat.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
         </>
       }
     >
-      <div className="relative isolate grid min-h-[18rem] place-items-center overflow-hidden rounded-card border border-border-subtle px-8 py-10">
+      <div className="mat-square relative isolate grid min-h-[18rem] place-items-center overflow-hidden border border-border-subtle px-4 py-10 min-[1101px]:px-8">
         <MatScene className="absolute inset-0 -z-10" />
         <div className="relative isolate grid w-full max-w-2xl grid-cols-5 gap-2 [transform:perspective(900px)_rotateX(28deg)]">
-          <MatPlate />
           {ARENA_CELLS.map(({ label, pick, diamond, over }, index) => (
             <div key={index} role="group" aria-label={label} data-over={over ? 'true' : 'false'} data-pick={pick ? 'true' : 'false'} data-chosen="false" className={CELL_MONSTER}>
               <ZoneLines kind="monster" />
               {pick ? <PickMarks diamond={Boolean(diamond)} /> : null}
             </div>
           ))}
+          <div role="group" aria-label="Tu cementerio: 7" className={CELL}>
+            <PileBadge label="GY" count={7} />
+          </div>
+          <div role="group" aria-label="Mágica o Trampa" className={CELL_SPELL}>
+            <ZoneLines kind="spell" />
+          </div>
+          <div role="group" aria-label="Mágica o Trampa" className={CELL_SPELL}>
+            <ZoneLines kind="spell" />
+          </div>
+          <div role="group" aria-label="Mágica o Trampa" className={CELL_SPELL}>
+            <ZoneLines kind="spell" />
+          </div>
+          <div role="group" aria-label="Cementerio del rival: 3" data-rival-drop="gy" className={CELL}>
+            <PileBadge label="GY" count={3} />
+          </div>
         </div>
       </div>
       <ul className="m-0 grid list-none grid-cols-5 gap-2 p-0 text-center text-micro text-soft">

@@ -6,31 +6,14 @@ import type { Placed } from '../../app/practice-mat'
 import { cx } from '../ui/cx'
 
 /**
- * La arena de la mesa (Gastón, 2026-10-20: «comparado con la imagen que te envié, el nuestro es totalmente simplón»; sólo estética). Cuatro piezas que no cambian el tamaño ni el lugar de nada, todas decoración (`aria-hidden`, sin toques):
- * - `MatScene`: el fondo de la mesa, con luz y viñeta (en vez del color liso del resto de la app).
- * - `MatPlate`: la placa que está debajo del campo, con su marco de esquinas y rombos; toma la perspectiva del campo.
+ * La arena de la mesa (Gastón, 2026-10-20: «comparado con la imagen que te envié, el nuestro es totalmente simplón»; sólo estética). Tres piezas que no cambian el tamaño ni el lugar de nada, todas decoración (`aria-hidden`, sin toques):
+ * - `MatScene`: el fondo de la mesa, con luz y viñeta (en vez del color liso del resto de la app). El campo no lleva placa: sus casillas son transparentes y el fondo se ve a través.
  * - `FieldArt`: el arte de la magia de campo activada, de fondo de la mitad de quien la activó.
  * - `PickMarks`: las esquinas (y el rombo) de una casilla que se puede elegir.
- * Los estilos están en `index.css` (`mat-scene`, `mat-plate`, `mat-field-art`, `mat-corner`, `mat-stud`, `mat-pick-marks`) y se ven en `/playground`.
+ * Los estilos están en `index.css` (`mat-scene`, `mat-field-art`, `mat-pick-marks`) y se ven en `/playground`.
  */
 export function MatScene({ className }: { className?: string }) {
   return <div aria-hidden="true" className={cx('mat-scene', className)} />
-}
-
-/** La placa del campo: va como primer hijo del campo, que tiene que ser su propio contexto (`isolate`) para que quede detrás de las casillas. Sobresale un poco del campo por todos lados. */
-export function MatPlate() {
-  return (
-    <span aria-hidden="true" className="mat-plate absolute -inset-x-[1%] -inset-y-[5%] -z-10">
-      <span className="mat-corner left-[0.55rem] top-[0.55rem] [--cx:left] [--cy:top]" />
-      <span className="mat-corner right-[0.55rem] top-[0.55rem] [--cx:right] [--cy:top]" />
-      <span className="mat-corner bottom-[0.55rem] left-[0.55rem] [--cx:left] [--cy:bottom]" />
-      <span className="mat-corner bottom-[0.55rem] right-[0.55rem] [--cx:right] [--cy:bottom]" />
-      <span className="mat-stud left-1/2 top-0 -translate-x-1/2 -translate-y-1/2" />
-      <span className="mat-stud bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2" />
-      <span className="mat-stud left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 max-[1101px]:hidden" />
-      <span className="mat-stud right-0 top-1/2 -translate-y-1/2 translate-x-1/2 max-[1101px]:hidden" />
-    </span>
-  )
 }
 
 /** Una imagen de carta de YGOPRODeck (la entera, la chica o la recortada): su número da el arte solo. */
@@ -58,7 +41,7 @@ const FIELD_HALF = {
 
 /**
  * El arte de la magia de campo activada, de fondo de la mitad de quien la activó (Gastón, 2026-10-21: «si se activa una magia de campo el arte de la carta debe aparecer como background del campo
- * de quien la activó, pero solo de su campo»). Va adentro del campo, como la placa (el campo es `isolate`): queda encima de ella y debajo de las casillas, y en la vista 3D se inclina con el campo. Entra con un
+ * de quien la activó, pero solo de su campo»). Va adentro del campo (que es `isolate`): queda debajo de las casillas, y en la vista 3D se inclina con el campo. Entra con un
  * fundido cuando la imagen llegó y, si la carta se va o se da vuelta, se apaga con otro (se queda con la última imagen mientras tanto); con movimiento reducido, sin fundido. Va derecho para los dos:
  * las cartas del rival miran hacia él, su fondo no. El estilo es `mat-field-art` (`index.css`).
  */
