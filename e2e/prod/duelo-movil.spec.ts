@@ -303,7 +303,8 @@ test.describe('duelo automático (sólo contra el sitio publicado)', () => {
     expect(await plays.count(), `jugadas de ${name}`).toBeGreaterThanOrEqual(1)
     expect(await plays.count(), `jugadas de ${name}`).toBeLessThanOrEqual(4)
     await expect(sheet.getByRole('menuitem', { name: /^Más/ })).toHaveCount(0)
-    await expect(page.getByText(/^\d+\s*\/\s*\d+$/)).toHaveCount(0)
+    // Sólo en los carteles del automático: la franja «Paso actual» de la mesa lleva su propio «2/2» y no es el contador de elegir.
+    await expect(page.locator('[data-auto-panel]').getByText(/^\d+\s*\/\s*\d+$/)).toHaveCount(0)
     if (isMobile) expect(await lineHeight(), 'alto de la línea con la ficha abierta').toBe(before)
     await page.keyboard.press('Escape')
     await expect(sheet).toHaveCount(0)
