@@ -70,6 +70,8 @@ describe('auto · capas de abajo en el celular', () => {
     fireEvent.click(phaseButton())
     settle()
     expect(document.querySelector('[data-prompt="phases"]')).not.toBeNull()
+    // Debajo del cartel, tu mano y tu fila se atenúan (sólo `opacity`): su texto no compite con el del cartel a través del fondo al 92 %.
+    expect(screen.getByRole('list', { name: 'Mano' })).toHaveClass('in-[body:has(>[data-auto-panel=docked]:not([data-minimized]))]:opacity-30')
     expect(viewer()).toBeNull()
     fireEvent.click(within(document.querySelector<HTMLElement>('[data-prompt="phases"]')!).getByRole('button', { name: 'Cancelar' }))
     settle()
@@ -81,6 +83,28 @@ describe('auto · capas de abajo en el celular', () => {
     settle()
     expect(viewer()).toBeNull()
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 5, index: 0 }])
+  })
+
+  it('con un cartel acoplado abierto, tu mano lleva la atenuación y su regla se cumple; minimizado o sin cartel, no', () => {
+    const fake = renderAuto()
+    const dim = 'in-[body:has(>[data-auto-panel=docked]:not([data-minimized]))]:opacity-30'
+    // La regla de la clase (`body:has(…)`): lo que el navegador evalúa para atenuar.
+    const under = () => document.body.matches('body:has(>[data-auto-panel=docked]:not([data-minimized]))')
+
+    core(() => fake.ask(IDLE))
+    expect(screen.getByRole('list', { name: 'Mano' })).toHaveClass(dim)
+    expect(under()).toBe(false)
+
+    fireEvent.click(phaseButton())
+    settle()
+    expect(under()).toBe(true)
+    fireEvent.click(within(document.querySelector<HTMLElement>('[data-prompt="phases"]')!).getByRole('button', { name: 'Minimizar' }))
+    settle()
+    expect(under()).toBe(false)
+    fireEvent.click(within(document.querySelector<HTMLElement>('[data-prompt="phases"]')!).getByRole('button', { name: 'Cancelar' }))
+    settle()
+    expect(document.querySelector('[data-prompt="phases"]')).toBeNull()
+    expect(under()).toBe(false)
   })
 
   it('una pregunta del núcleo se esconde mientras el visor de una pila está abierto (la regla va en el cartel; el visor lleva la marca)', () => {

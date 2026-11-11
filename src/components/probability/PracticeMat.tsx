@@ -153,6 +153,11 @@ const REVIEW_LIFT = '-translate-y-11'
 const PHONE_BAR = 58
 const PHONE_RIVAL = THEIR_HAND.mobile.room + MOBILE_HAND_GAP
 const PHONE_BOTTOM = 68
+/**
+ * Debajo de un cartel del automático apoyado abajo (la ficha, las fases, una pregunta: `AutoPanel` va en un portal, hijo de `body`), tu mano y tu fila se atenúan mientras está abierto: a través de su fondo al 92 %
+ * se leían «Vos 8000» y los textos de las cartas y competían con sus botones. Sólo `opacity` (nada se corre); minimizado, vuelven.
+ */
+const UNDER_PANEL = 'transition-opacity motion-reduce:transition-none in-[body:has(>[data-auto-panel=docked]:not([data-minimized]))]:opacity-30'
 const onResize = (listener: () => void) => {
   window.addEventListener('resize', listener)
   return () => window.removeEventListener('resize', listener)
@@ -3115,6 +3120,7 @@ function PracticeMatBody({
             sizeSlots={Math.max(session.initial.hand.length, 1)}
             maxCardWidth={phone ? phone.handCard : isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
+            className={duel?.auto ? UNDER_PANEL : undefined}
             glowOf={glowKindOf}
             {...(duel?.links?.size ? { links: duel.links } : {})}
             dimUnlit={dimUnlit}
@@ -3160,7 +3166,7 @@ function PracticeMatBody({
           <div className={cx('pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55', phone && !splitReplay ? 'h-15' : 'h-11')} data-mat-float="">
             {/* El celular: tu fila de abajo (60 px), tu chapa a la izquierda y la botonera cuadrada a la derecha; lo que falta elegir se apoya encima (`status`). */}
             {phone && !splitReplay ? (
-              <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto">
+              <div inert={choosing} data-mat-seat="" className={cx('absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto', duel?.auto && UNDER_PANEL)}>
                 {duel?.life}
                 <span className="flex items-center gap-2">
                   {duel?.steps ? stepsButton : null}
