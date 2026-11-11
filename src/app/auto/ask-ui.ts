@@ -1,11 +1,11 @@
-import { t, type MessageKey } from '../../i18n'
+import { getLocale, t, type MessageKey } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { nowStat, type PickStat } from '../field-stats'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
 import { spotOf, type Adapter, type AutoOverlay, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
 import type { AskWhyView } from './ask-why'
 import { passivePolicy } from './policies'
-import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
+import { LOCATION as L, POSITION as P, parseAnswer, splitDesc, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
 
 /**
  * Duelos automáticos · las preguntas del núcleo en la mesa de siempre (§2–§4 del diseño de F2b). Puro: sin React, sin DOM y sin el
@@ -146,6 +146,8 @@ export interface AskOptionsView {
   /** `value`: el índice (opción, número), la posición (1, 2, 4, 8), el bit (Tipo, Atributo) o la mano (piedra, papel o tijera, `RPS`). Sin `label`, la pantalla lo nombra. */
   options: { value: number; label?: string; description?: string }[]
   chosen: number[]
+  /** En la posición, la carta (`select_position` la trae): el título la nombra. */
+  card?: number
 }
 
 export interface AskSortView {
@@ -528,7 +530,7 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
               label,
               ...(at ? { at } : {}),
               children: indices.map((index) => ({
-                label: ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
+                label: effectText(ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) ?? null, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
                 answer: answer(index),
                 effect: effect(index),
                 ...intoOf(cards[index]!),
@@ -664,8 +666,22 @@ export function respondOffer(view: AskView, chain: readonly ChainLink[]): Respon
   return { to: last ? { link: last, number: chain.length } : null, link: chain.length + 1, candidates }
 }
 
-/** Lo que dice la pregunta de un efecto (`select_effectyn`). */
-export function effectAskText(prompt: AskPromptView, cause: TriggerCause | null): EffectAskText {
+/**
+ * El rótulo de un efecto de una carta (su `strN`, que el `.cdb` trae sólo en inglés): en inglés, tal cual; en español, su número («Efecto 2»: `str1` es el 1). Sin rótulo, null.
+ * ponytail: el número es el del texto (`strN`), que por costumbre de los scripts sigue el orden de los efectos de la carta; un `strN` de una pregunta suelta puede no ser un efecto.
+ */
+export function effectText(label: string | null, description: string): string | null {
+  return label && getLocale() === 'es' ? t('auto.effect.number', { n: splitDesc(description).n + 1 }) : label
+}
+
+/** El sí o no a secas (`select_yesno`): el texto de la carta (`effectLabel`) en inglés, o su número y su carta en español; sin texto, «¿Lo hacés?». */
+export function yesNoText(label: string | null, description: string, name: string | null): string {
+  if (!label) return t('auto.ask.fallback')
+  return getLocale() === 'es' && name ? t('auto.ask.effectN', { n: splitDesc(description).n + 1, name }) : label
+}
+
+/** Lo que dice la pregunta de un efecto (`select_effectyn`): con la carta, «¿Activás el efecto de «X»?». */
+export function effectAskText(prompt: AskPromptView, cause: TriggerCause | null, name?: string): EffectAskText {
   const kicker = !prompt.trigger
     ? null
     : cause?.kind === 'phase'
@@ -674,7 +690,12 @@ export function effectAskText(prompt: AskPromptView, cause: TriggerCause | null)
         ? t('auto.ask.afterEvent', { event: t(`auto.ask.event.${cause.kind}`) })
         : t('auto.ask.kicker')
 
-  return { kicker, text: t('auto.ask.effect'), place: placeLabel(prompt.at) }
+  return { kicker, text: name ? t('auto.ask.effectOf', { name }) : t('auto.ask.effect'), place: placeLabel(prompt.at) }
+}
+
+/** El título de responder a una cadena: qué pasó (el último eslabón, con su carta y su número) y qué se te pide; sin cadena, sólo la pregunta. */
+export function respondTitle(offer: RespondOffer, name: string): string {
+  return offer.to ? t('auto.respond.activated', { name, link: offer.to.number }) : t('auto.respond.now')
 }
 
 export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, ctx: AskContext): AskState {
@@ -736,7 +757,7 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
     case 'select_option':
       base.options = ask.options.map((description, value) => {
         const system = SYSTEM_OPTIONS[description as keyof typeof SYSTEM_OPTIONS]
-        const label = ctx.effectLabel?.(0, description) || (system ? t(system) : null)
+        const label = effectText(ctx.effectLabel?.(0, description) ?? null, description) || (system ? t(system) : null)
 
         return { value, description, ...(label ? { label } : {}) }
       })
@@ -865,6 +886,7 @@ export function askView(state: AskState): AskView {
         count: ask.type === 'announce_race' || ask.type === 'announce_attrib' ? ask.count : 1,
         options: base.options,
         chosen: [...chosen],
+        ...(ask.type === 'select_position' && ask.code ? { card: ask.code } : {}),
       }
       break
     case 'select_place':
@@ -905,9 +927,9 @@ export function askView(state: AskState): AskView {
 export const ATTACK_TARGET_HINT = '549'
 
 /**
- * Para qué se eligen las cartas: el `HINT_SELECTMSG` que precede a la pregunta (`AskState.title`), con las palabras de las cartas (`strings.conf` no viaja). Sólo los códigos
- * comprobados con el núcleo real (decks del meta jugados al azar legal): lo que les pasó a las elegidas es lo que dice el texto (500 al Cementerio desde el campo o la mano, 504 al
- * Cementerio, 506 a la mano, 509 al campo, 551 objetivo…). Los demás (los de filtro, «boca arriba»; los que no se pudieron ver, negar o cambiar el ATK; los textos de una carta) dejan el título genérico.
+ * Para qué se eligen las cartas: el `HINT_SELECTMSG` que precede a la pregunta (`AskState.title`), con las palabras de las cartas. Es la tabla propia de los textos del sistema
+ * (`strings.conf` no viaja: licencia, sólo inglés, 54 KB): cada código, con el sentido de su nombre en `constant.lua` (`HINTMSG_*`); 500 a 512, 519, 526, 527, 533 y 551 se
+ * comprobaron además con el núcleo real. Uno sin mapear (560 «Select», el texto de una carta) deja el título genérico.
  */
 const PICK_PURPOSE: Readonly<Record<string, Extract<MessageKey, `auto.pick.why.${string}`>>> = {
   '500': 'auto.pick.why.tribute',
@@ -923,24 +945,82 @@ const PICK_PURPOSE: Readonly<Record<string, Extract<MessageKey, `auto.pick.why.$
   '510': 'auto.pick.why.set',
   '511': 'auto.pick.why.fusion',
   '512': 'auto.pick.why.synchro',
+  '513': 'auto.pick.why.xyz',
+  '514': 'auto.pick.why.faceUp',
+  '515': 'auto.pick.why.faceDown',
+  '516': 'auto.pick.why.attack',
+  '517': 'auto.pick.why.defense',
+  '518': 'auto.pick.why.equip',
   '519': 'auto.pick.why.detach',
+  '520': 'auto.pick.why.control',
+  '521': 'auto.pick.why.replace',
+  '522': 'auto.pick.why.faceUpAttack',
+  '523': 'auto.pick.why.faceUpDefense',
+  '524': 'auto.pick.why.faceDownAttack',
+  '525': 'auto.pick.why.faceDownDefense',
   '526': 'auto.pick.why.reveal',
   '527': 'auto.pick.why.place',
+  '528': 'auto.pick.why.position',
+  '529': 'auto.pick.why.yours',
+  '530': 'auto.pick.why.rival',
+  '531': 'auto.pick.why.tributeSummon',
+  '532': 'auto.pick.why.detachFrom',
   '533': 'auto.pick.why.link',
+  '550': 'auto.pick.why.activate',
   '551': 'auto.pick.why.target',
+  '566': 'auto.pick.why.activate',
+  '572': 'auto.pick.why.counter',
+  '575': 'auto.pick.why.negate',
+  '576': 'auto.pick.why.atkDef',
+  '577': 'auto.pick.why.applyTo',
+  '578': 'auto.pick.why.attach',
+  '579': 'auto.pick.why.returnToGy',
 }
 
-/** El título de una elección de cartas: cuántas, para qué (si el código de pista está comprobado) y, si se eligen varias, cuántas van («Elegí 2 cartas para desterrar · 1/2»). */
-export function pickTitle(pick: CardPick, hint?: string): string {
+/**
+ * El título de una elección de cartas: cuántas, para qué (el código de pista, si está en la tabla) y, si se eligen varias, cuántas van («Elegí 2 cartas para desterrar · 1 de 2»):
+ * la cuenta va sólo con un total mayor que 1. `name`, la carta que ataca (a qué monstruo ataca «X»).
+ */
+export function pickTitle(pick: CardPick, hint?: string, name?: string): string {
   if (pick.type === 'announce_card') return t('auto.pick.announce')
-  if (pick.type === 'select_tribute') return t('auto.pick.tribute', { chosen: pick.count.now, total: pick.count.need })
-  if (pick.type === 'select_sum') return t('auto.pick.sum', { chosen: pick.count.now, total: pick.count.need })
-  if (pick.type === 'select_card' && hint === ATTACK_TARGET_HINT) return t('auto.pick.attackTarget')
+  if (pick.type === 'select_tribute') return pick.count.need > 1 ? t('auto.pick.tribute', { chosen: pick.count.now, total: pick.count.need }) : t('auto.pick.tributeOne')
+  if (pick.type === 'select_sum') return t(pick.atLeast ? 'auto.pick.sumAtLeast' : 'auto.pick.sum', { chosen: pick.count.now, total: pick.count.need })
+  if (pick.type === 'select_card' && hint === ATTACK_TARGET_HINT) return name ? t('auto.pick.attackTargetOf', { name }) : t('auto.pick.attackTarget')
   const what = pick.min === pick.max ? t('auto.pick.cards', { count: pick.max }) : t('auto.pick.range', { min: pick.min, max: pick.max })
   const why = hint === undefined ? undefined : PICK_PURPOSE[hint]
   const title = why ? t('auto.pick.for', { what, why: t(why) }) : what
 
   return pick.max > 1 ? `${title} · ${t('auto.pick.count', { chosen: pick.count.now, max: pick.count.need })}` : title
+}
+
+/**
+ * El título de elegir casillas. `name`, la carta que va (el núcleo la manda como título de `select_place`: su código, medido con el núcleo real): «Elegí una casilla para «X»».
+ * Sin ella, cuántas; si todas son del rival (dar el control), lo dice.
+ */
+export function zoneTitle(view: Pick<AskView, 'type' | 'zonePick'>, name: string | null): string {
+  const pick = view.zonePick!
+
+  if (view.type === 'select_disfield') return t('auto.pick.disfield', { count: pick.count })
+  if (pick.targets.length && pick.targets.every((target) => target.side === 'theirs')) return t('auto.pick.zoneRival', { count: pick.count })
+  return name && pick.count === 1 ? t('auto.pick.zoneFor', { name }) : t('auto.pick.zone', { count: pick.count })
+}
+
+/** El título de las opciones del núcleo: qué se elige (de un efecto, por su pista: 550/566 activar, 556 aplicar) y, en la posición, de qué carta (`name`). */
+export function optionsTitle(options: AskOptionsView, hint: string | undefined, name: string | null): string {
+  switch (options.of) {
+    case 'position':
+      return name ? t('auto.options.positionOf', { name }) : t('auto.options.position')
+    case 'number':
+      return t('auto.options.number')
+    case 'race':
+      return t('auto.options.race', { count: options.count })
+    case 'attribute':
+      return t('auto.options.attribute', { count: options.count })
+    case 'rps':
+      return t('duel.games.rps.title')
+    default:
+      return t(hint === '550' || hint === '566' ? 'auto.options.effect' : hint === '556' ? 'auto.options.apply' : 'auto.options.option')
+  }
 }
 
 function cardPickOf(ask: AskOf<'select_card' | 'select_tribute' | 'select_sum' | 'select_unselect_card'>, cards: AskCard[], chosen: readonly number[]): CardPick {

@@ -88,11 +88,11 @@ describe('auto-screen · varias obligatorias', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(FORCED))
-    const band = screen.getByRole('group', { name: 'Tenés que activar estas 2. ¿Cuál va primero?' })
+    const band = screen.getByRole('group', { name: 'Elegí cuál de los 2 efectos obligatorios se activa primero' })
 
     // La línea de «Tenés que activar la carta que brilla: tocala» es para una sola.
     expect(lane()).toBeNull()
-    expect(band).toHaveTextContent('Sin «No responder»: son obligatorias.')
+    expect(band).toHaveTextContent('Los demás se activan después.')
     expect(within(band).queryByRole('button', { name: 'No responder' })).toBeNull()
     expect(within(band).getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
     fireEvent.click(within(band).getByRole('option', { name: /Ash Blossom/ }))
@@ -105,7 +105,7 @@ describe('auto-screen · varias obligatorias', () => {
     const rival = { ...pos(700, L.MZONE, 0, 1, 1), description: '0', client_mode: 1 }
 
     core(() => fake.ask({ ...FORCED, selects: [FORCED.selects[0]!, rival] }))
-    const band = screen.getByRole('group', { name: 'Tenés que activar estas 2. ¿Cuál va primero?' })
+    const band = screen.getByRole('group', { name: 'Elegí cuál de los 2 efectos obligatorios se activa primero' })
 
     expect(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ })).toHaveTextContent('Rival, Campo')
     fireEvent.click(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ }))

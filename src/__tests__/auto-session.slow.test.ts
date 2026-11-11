@@ -207,7 +207,7 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
     }
 
     expect(pending.ask).toEqual({ type: 'select_option', player: 0, options: [String((BigInt(MANIFESTATION) << 20n) | 3n)] })
-    expect(askView(openAsk(pending, { queries: session.adapter!, prefs: { chainMode: 'ask', placeMode: 'auto' }, effectLabel })).options?.options.map((option) => option.label)).toEqual(['Search 1 "Mystical Space Typhoon"'])
+    expect(askView(openAsk(pending, { queries: session.adapter!, prefs: { chainMode: 'ask', placeMode: 'auto' }, effectLabel })).options?.options.map((option) => option.label)).toEqual(['Efecto 4'])
     session.destroy()
   })
 
