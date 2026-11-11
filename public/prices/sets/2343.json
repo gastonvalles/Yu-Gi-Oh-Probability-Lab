@@ -33,12 +33,12 @@
 ["HISU-EN032","Secret Rare","1st Edition",1.44,180354,30607616,"Oboro-Guruma, the Wheeled Mayakashi"],
 ["HISU-EN033","Secret Rare","1st Edition",1.63,180362,77092311,"Tsuchigumo, the Poisonous Mayakashi"],
 ["HISU-EN034","Secret Rare","1st Edition",1.67,180360,4103668,"Tengu, the Winged Mayakashi"],
-["HISU-EN035","Secret Rare","1st Edition",4.03,180363,3486020,"Yoko, the Graceful Mayakashi"],
+["HISU-EN035","Secret Rare","1st Edition",4.07,180363,3486020,"Yoko, the Graceful Mayakashi"],
 ["HISU-EN036","Secret Rare","1st Edition",0.87,180348,39475024,"Gashadokuro, the Skeletal Mayakashi"],
-["HISU-EN037","Secret Rare","1st Edition",3.02,180361,66870733,"Yuki-Onna, the Ice Mayakashi"],
+["HISU-EN037","Secret Rare","1st Edition",2.6,180361,66870733,"Yuki-Onna, the Ice Mayakashi"],
 ["HISU-EN038","Secret Rare","1st Edition",0.44,180351,2364438,"Mayakashi Return"],
 ["HISU-EN039","Super Rare","1st Edition",0.33,180318,39753577,"Mayakashi Metamorphosis"],
-["HISU-EN040","Super Rare","1st Edition",0.29,180319,36107810,"Night's End Sorcerer"],
+["HISU-EN040","Super Rare","1st Edition",0.28,180319,36107810,"Night's End Sorcerer"],
 ["HISU-EN041","Super Rare","1st Edition",0.35,180440,36630403,"Shiranui Spectralsword"],
 ["HISU-EN042","Super Rare","1st Edition",0.32,180331,96729612,"Preparation of Rites"],
 ["HISU-EN043","Super Rare","1st Edition",1.14,180342,76647978,"Ultra Polymerization"],
@@ -47,7 +47,7 @@
 ["HISU-EN046","Super Rare","1st Edition",4.89,180340,31786629,"Thunder Dragon"],
 ["HISU-EN047","Super Rare","1st Edition",0.87,180316,95492061,"Manju of the Ten Thousand Hands"],
 ["HISU-EN048","Super Rare","1st Edition",0.3,180338,99423156,"Shiranui Spiritmaster"],
-["HISU-EN049","Super Rare","1st Edition",0.3,180337,35818851,"Shiranui Samurai"],
+["HISU-EN049","Super Rare","1st Edition",0.29,180337,35818851,"Shiranui Samurai"],
 ["HISU-EN050","Super Rare","1st Edition",0.24,180339,55863245,"Tatsunoko"],
 ["HISU-EN051","Secret Rare","1st Edition",1.35,180349,75500286,"Gold Sarcophagus"],
 ["HISU-EN052","Super Rare","1st Edition",0.23,180311,48206762,"Fulfillment of the Contract"],
@@ -58,5 +58,5 @@
 ["HISU-EN057","Super Rare","1st Edition",0.21,180310,17236839,"Flash Fusion"],
 ["HISU-EN058","Super Rare","1st Edition",0.3,180312,22829942,"Fusion Recycling Plant"],
 ["HISU-EN059","Super Rare","1st Edition",0.43,180335,90846359,"Rivalry of Warlords"],
-["HISU-EN060","Super Rare","1st Edition",0.42,180313,53334471,"Gozen Match"]
+["HISU-EN060","Super Rare","1st Edition",0.41,180313,53334471,"Gozen Match"]
 ]
