@@ -345,7 +345,7 @@ const EMPTY_IDS: ReadonlySet<string> = new Set()
  * (Gastón, 2026-11-10: «el fondo del campo transparente»). Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: el dueño lo dice el color del conteo de una pila
  * (`PileBadge`) y el color queda para lo que pasa (elegir, soltar una carta).
  */
-const CELL_LOOK = 'border border-solid border-field-line/50'
+const CELL_LOOK = 'border border-solid border-field-line/50 min-[1101px]:border-field-line/55' // al 55 % en escritorio: 3:1 contra el punto más claro de su remolino (scripts/remolino/medir.mjs)
 /** Las zonas del centro no se dibujan con el borde de su casilla cuadrada sino con las líneas de la carta (`ZoneLines`, como el tapete): el borde queda invisible (y se enciende al elegir o soltar una carta). */
 const CELL_LOOK_MONSTER = 'border border-solid border-transparent'
 const CELL_LOOK_SPELL = CELL_LOOK_MONSTER
