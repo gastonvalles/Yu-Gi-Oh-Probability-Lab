@@ -95,7 +95,8 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
   }, [])
 
   return (
-    <div className={cx('flex min-h-0 flex-col gap-3', className)}>
+    // `**:rounded-none!`: en el celular el panel sale en un diálogo (un portal, fuera de la mesa) y sus círculos (`rounded-full`) también van rectos, como en la mesa.
+    <div className={cx('flex min-h-0 flex-col gap-3 **:rounded-none!', className)}>
       {showCombos ? (
         <Segmented
           value={tab}

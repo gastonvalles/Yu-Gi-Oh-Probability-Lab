@@ -1,7 +1,7 @@
 // QA de SÓLO LECTURA contra el sitio publicado (`npm run test:prod`): el duelo rearmado (TI-138: campo de siete columnas, fondo remolino, esquinas rectas, chapas y línea, menús), en celular y escritorio.
 // Nunca crea una sala ni envía un formulario: las rutas con # son locales al navegador y el deck se siembra en el `localStorage` de la prueba. El catálogo de YGOPRODeck se responde vacío y las imágenes de cartas se cortan.
 // Dos grupos: la práctica MANUAL (`ygo-lab:auto-duel` en «off»: «Solo» → «Jugar contra las handtraps» abre la mesa sin núcleo ni relay) y el duelo AUTOMÁTICO (sólo contra el sitio publicado: necesita `/auto-data/*` y el núcleo).
-// Cada caso afirma un criterio de aceptación de TI-140 a TI-148: 7 pistas y sin scroll horizontal, el campo y tu mano quietos al abrir una carta, ningún `border-radius` salvo los círculos de la barra, un solo AVIF de fondo por ancho,
+// Cada caso afirma un criterio de aceptación de TI-140 a TI-148: 7 pistas y sin scroll horizontal, el campo y tu mano quietos al abrir una carta, ningún `border-radius` distinto de 0 (tampoco en la barra ni en el panel «Pasos y combos»), un solo AVIF de fondo por ancho,
 // el menú manual intacto (con «Al deck ›») y, en el automático, la ficha sin «Más», seis fases cuadradas, las chapas y la línea de alto fijo.
 //
 // Lo que se afirma en la práctica manual y no en el duelo: las chapas («Vos» y «Rival») y la línea (`data-duel-line`) sólo existen en un duelo (automático o por enlace); la práctica manual no tiene vidas.
@@ -158,37 +158,44 @@ test.describe('práctica manual', () => {
     expect(seen.hand[1] - seen.hand[0], `la y de tu mano varió entre ${seen.hand[0]} y ${seen.hand[1]}`).toBeLessThanOrEqual(0.5)
   })
 
-  test('esquinas rectas: en la mesa y en la hoja o el menú de una carta, ningún `border-radius` salvo los círculos de la barra', async ({ page, isMobile }) => {
+  test('esquinas rectas: en la mesa (la barra, el ⋯, el panel «Pasos y combos» y sus fichas) y en la hoja o el menú de una carta, ningún `border-radius` distinto de 0', async ({ page, isMobile }) => {
     await openMat(page)
+    // La mesa y, por portal, su hoja, su menú o su panel: cada raíz `mat-square` y todo lo que lleva adentro. `rounded-full` computa a un valor enorme (3.35544e+07 px): también cuenta.
+    const roundCorners = () =>
+      page.evaluate(() => {
+        const roots = new Set<Element>([document.querySelector('[aria-label="Mesa de práctica"]')!, ...document.querySelectorAll('.mat-square')])
+        const all = new Set<Element>()
+        for (const root of roots) for (const node of [root, ...root.querySelectorAll('*')]) all.add(node)
+        return [...all].flatMap((node) => {
+          const style = getComputedStyle(node)
+          const radii = [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius]
+          return radii.every((radius) => parseFloat(radius) === 0) ? [] : [`${node.tagName.toLowerCase()}[${node.getAttribute('aria-label') ?? (node.textContent ?? '').trim().slice(0, 20)}] y=${Math.round(node.getBoundingClientRect().top)}`]
+        })
+      })
+
+    // Escritorio: el panel lateral está abierto, con las fichas de «Salidas y problemas» abajo.
+    if (!isMobile) await expect(page.getByRole('region', { name: 'Pasos y combos' })).toBeVisible()
+    expect(await roundCorners(), 'elementos de la mesa con `border-radius` distinto de 0').toEqual([])
+
+    // El ⋯ abierto (sus interruptores) y, en el celular, el panel de pasos en su diálogo.
+    await page.getByRole('button', { name: 'Más opciones' }).first().click()
+    await expect(page.getByRole('menuitemcheckbox').first()).toBeVisible()
+    expect(await roundCorners(), 'con el ⋯ abierto').toEqual([])
+    await page.keyboard.press('Escape')
+    if (isMobile) {
+      await page.getByRole('button', { name: 'Pasos y combos' }).tap()
+      await expect(page.getByRole('dialog', { name: 'Pasos y combos' })).toBeVisible()
+      expect(await roundCorners(), 'con el panel «Pasos y combos» abierto').toEqual([])
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog', { name: 'Pasos y combos' })).toHaveCount(0)
+    }
+
+    // La hoja (celular) o el menú (escritorio) de una carta.
     const { item, name } = await monsterOf(page)
     if (isMobile) await item.tap()
     else await item.click()
     await expect(page.getByRole('menu', { name, exact: true })).toBeVisible()
-
-    // La mesa y, por portal, su hoja o su menú: cada raíz `mat-square` y todo lo que lleva adentro.
-    const { round, circles, known } = await page.evaluate(() => {
-      const roots = new Set<Element>([document.querySelector('[aria-label="Mesa de práctica"]')!, ...document.querySelectorAll('.mat-square')])
-      const all = new Set<Element>()
-      for (const root of roots) for (const node of [root, ...root.querySelectorAll('*')]) all.add(node)
-      const round: string[] = []
-      const circles: string[] = []
-      const known: string[] = []
-      for (const node of all) {
-        const style = getComputedStyle(node)
-        const radii = [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius]
-        if (radii.every((radius) => parseFloat(radius) === 0)) continue
-        const describe = `${node.tagName.toLowerCase()}[${node.getAttribute('aria-label') ?? (node.textContent ?? '').trim().slice(0, 20)}] y=${Math.round(node.getBoundingClientRect().top)}`
-        // `rounded-full` computa a un valor enorme (3.35544e+07 px): es el círculo, que no es de token.
-        if (radii.some((radius) => parseFloat(radius) >= 1000)) (node.getBoundingClientRect().top < 100 ? circles : node.closest('section[aria-label="Pasos y combos"]') ? known : round).push(describe)
-        else round.push(describe)
-      }
-      return { round, circles, known }
-    })
-    // CONOCIDO (TI-150, a decidir por el Jefe): en escritorio las fichas de «Salidas y problemas», del panel lateral de «Pasos y combos», siguen en `rounded-full` (la lista de radios fijos de `mesa-esquinas.test.tsx` se arma en jsdom, que no abre ese panel). Cuando se enderecen, sacar `known`.
-    console.log(`[conocido] círculos fuera de la barra: ${known.join(' | ') || 'ninguno'}`)
-    expect(round, 'elementos de la mesa con `border-radius` distinto de 0').toEqual([])
-    // Los radios fijos que quedan (`mesa-esquinas.test.tsx`) son los círculos de la barra de arriba (en jsdom, 3; con la píldora de salidas y los demás botones, la barra real lleva más): ninguno fuera de ella.
-    expect(circles.length, 'círculos en la barra').toBeLessThanOrEqual(6)
+    expect(await roundCorners(), 'con la hoja o el menú de una carta').toEqual([])
   })
 
   test('el fondo: `mat-scene` lleva el remolino, se baja un solo AVIF por ancho y el respaldo es el carbón', async ({ page, isMobile }) => {
