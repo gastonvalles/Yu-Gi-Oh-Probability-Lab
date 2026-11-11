@@ -3,6 +3,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { TurnClock } from '../app/duel-clock'
@@ -12,6 +13,7 @@ import { Icon } from '../components/ui/Icon'
 import { IconButton } from '../components/ui/IconButton'
 import { CardMenu, PlayTag, SaveComboDialog } from '../components/probability/MatDialogs'
 import { PhaseRow } from '../components/probability/PhaseRow'
+import { RulesPill } from '../components/probability/RulesPill'
 import { BottomSheet } from '../components/ui/BottomSheet'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
@@ -61,9 +63,13 @@ function radiusOf(className: string): { token: string } | { fixed: string } | 'z
   return FIXED_UTILITIES.includes(base) ? { fixed: base } : null
 }
 
+/** `**:rounded-none!` (la raíz de la mesa, el panel de pasos, la hoja de las salidas) pone en 0, con `!important`, el radio de todo lo que lleva adentro (no el suyo). */
+const SQUARED = '[class~="**:rounded-none!"]'
+
 /** Los radios que no quedan en 0 dentro de `root` (incluido): el token que no vale 0, el estilo en línea o la clase de radio fijo. */
 function roundCorners(root: Element): string[] {
   return [root, ...root.querySelectorAll('*')].flatMap((element) => {
+    if (element.parentElement?.closest(SQUARED)) return []
     const style = getComputedStyle(element)
     const radii = [...element.classList].map(radiusOf).filter((radius) => radius !== null)
     // El reset de la base le da a todo control el radio de `--radius-control`, si sus clases no dicen otro.
@@ -103,9 +109,47 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
     render(<Harness />)
     const mesa = screen.getByRole('region', { name: 'Mesa de práctica' })
 
-    expect(mesa).toHaveClass('mat-square')
-    // Lo que queda: los círculos de los tres botones de la barra (`IconButton` sin caja, de `ui/`). El turno y los rombos de las escalas de péndulo ya son rectos.
-    expect(roundCorners(mesa).sort()).toEqual(Array(3).fill('rounded-full'))
+    expect(mesa).toHaveClass('mat-square', '**:rounded-none!')
+    // Ningún radio fijo: los círculos de la barra (`IconButton`, la píldora de salidas) los endereza `**:rounded-none!` sin cambiar esos componentes fuera de la mesa. Que no vuelva ninguno.
+    expect(roundCorners(mesa)).toEqual([])
+  })
+
+  it('el panel «Pasos y combos» es recto: el lateral de escritorio (dentro de la mesa) y el diálogo del celular, con sus círculos de los pasos', () => {
+    const plays = [{ type: 'activate', id: 'card-1-1' }, { type: 'target', id: 'card-2-1' }] satisfies ComponentProps<typeof Harness>['actions']
+    // Escritorio: el panel va al costado, dentro de la mesa.
+    const phone = window.matchMedia
+    window.matchMedia = ((query: string) => ({ ...phone(query), matches: query.includes('reduce') || query.includes('min-width: 1101px') })) as typeof window.matchMedia
+    render(<Harness actions={plays} />)
+    const side = screen.getByRole('region', { name: 'Pasos y combos' })
+
+    expect(side.closest('[aria-label="Mesa de práctica"]')).toHaveClass('**:rounded-none!')
+    expect(roundCorners(side)).toEqual([])
+    cleanup()
+
+    // Celular: el mismo panel en un diálogo (un portal, fuera de la mesa), recto también.
+    window.matchMedia = phone
+    render(<Harness actions={plays} />)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Pasos y combos' })[0]!)
+    const dialog = screen.getByRole('dialog', { name: 'Pasos y combos' })
+
+    expect(dialog.closest('.mat-square')).not.toBeNull()
+    expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThan(0)
+    expect(roundCorners(dialog.closest('.mat-square')!)).toEqual([])
+  })
+
+  it('la hoja de «Salidas y problemas» que abre la píldora de la barra (un portal) es recta, con sus fichas', () => {
+    render(
+      <RulesPill summary={{ openings: 1, problems: 1, unplayable: false, blocked: false }}>
+        <button type="button" className="rounded-full">
+          Salida básica
+        </button>
+      </RulesPill>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /^Salidas y problemas de tu mano/ }))
+    const sheet = screen.getByRole('dialog', { name: 'Salidas y problemas de tu mano' })
+
+    expect(sheet).toHaveClass('mat-square')
+    expect(roundCorners(sheet)).toEqual([])
   })
 
   it('la hoja de una carta del celular (`CardSheet`), abierta desde la mesa, también es recta', () => {
