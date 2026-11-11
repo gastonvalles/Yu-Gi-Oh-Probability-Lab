@@ -1,8 +1,8 @@
 [
 ["OP15-EN001","Ultimate Rare","Unlimited",10.23,232919,59464593,"Armed Dragon LV10"],
-["OP15-EN002","Ultimate Rare","Unlimited",22.22,232920,1621413,"Dark Requiem Xyz Dragon"],
+["OP15-EN002","Ultimate Rare","Unlimited",22.26,232920,1621413,"Dark Requiem Xyz Dragon"],
 ["OP15-EN003","Ultimate Rare","Unlimited",13.88,232921,50588353,"Crystron Halqifibrax"],
-["OP15-EN004","Super Rare","Unlimited",0.68,232922,77723643,"Shaddoll Dragon"],
+["OP15-EN004","Super Rare","Unlimited",0.64,232922,77723643,"Shaddoll Dragon"],
 ["OP15-EN005","Super Rare","Unlimited",1.51,232923,74393852,"Zoodiac Boarbow"],
 ["OP15-EN006","Super Rare","Unlimited",0.9,232924,13117073,"Barricadeborg Blocker"],
 ["OP15-EN007","Super Rare","Unlimited",0.25,232926,53241226,"Cross Over"],
@@ -16,7 +16,7 @@
 ["OP15-EN015","Common","Unlimited",0.21,232939,46384672,"Armed Dragon LV5"],
 ["OP15-EN016","Common","Unlimited",0.37,232941,980973,"Armed Dragon LV3"],
 ["OP15-EN017","Common","Unlimited",0.87,232943,9622164,"D.D.R. - Different Dimension Reincarnation"],
-["OP15-EN018","Common","Unlimited",0.38,232945,96383838,"Tri-Wight"],
+["OP15-EN018","Common","Unlimited",0.4,232945,96383838,"Tri-Wight"],
 ["OP15-EN019","Common","Unlimited",0.26,232946,14212201,"Shadow Vampire"],
 ["OP15-EN020","Common","Unlimited",0.14,232948,57734012,"Rank-Up-Magic - The Seventh One"],
 ["OP15-EN021","Common","Unlimited",0.17,232952,98287529,"Amorphactor Pain, the Imagination Dracoverlord"],
@@ -24,5 +24,5 @@
 ["OP15-EN023","Common","Unlimited",0.22,232956,43722862,"Windwitch - Ice Bell"],
 ["OP15-EN024","Common","Unlimited",0.68,232957,5795882,"Vampire's Domain"],
 ["OP15-EN025","Common","Unlimited",0.17,232958,545781,"Mahaama the Fairy Dragon"],
-["OP15-EN026","Super Rare","Unlimited",3.56,232959,46647145,"World Legacy Token"]
+["OP15-EN026","Super Rare","Unlimited",3.54,232959,46647145,"World Legacy Token"]
 ]

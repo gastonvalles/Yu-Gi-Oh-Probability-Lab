@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-10T15:03:48.895Z",
+  "fetchedAt": "2026-11-11T14:34:42.354Z",
   "windowDays": 56,
   "source": "https://ygoprodeck.com/deck-search/",
   "cards": {
@@ -159,6 +159,17 @@
         "boardbreaker"
       ]
     },
+    "17266660": {
+      "name": "Herald of Orange Light",
+      "image": "https://images.ygoprodeck.com/images/cards_small/17266660.jpg",
+      "ban": {
+        "tcg": null,
+        "ocg": "limited"
+      },
+      "kinds": [
+        "handtrap"
+      ]
+    },
     "18144506": {
       "name": "Harpie's Feather Duster",
       "image": "https://images.ygoprodeck.com/images/cards_small/18144506.jpg",
@@ -259,6 +270,17 @@
         "boardbreaker"
       ]
     },
+    "29726552": {
+      "name": "Kumongous, the Sticky String Kaiju",
+      "image": "https://images.ygoprodeck.com/images/cards_small/29726552.jpg",
+      "ban": {
+        "tcg": null,
+        "ocg": null
+      },
+      "kinds": [
+        "boardbreaker"
+      ]
+    },
     "33017964": {
       "name": "Illusion Gate",
       "image": "https://images.ygoprodeck.com/images/cards_small/33017964.jpg",
@@ -295,6 +317,17 @@
     "35480699": {
       "name": "Book of Eclipse",
       "image": "https://images.ygoprodeck.com/images/cards_small/35480699.jpg",
+      "ban": {
+        "tcg": null,
+        "ocg": null
+      },
+      "kinds": [
+        "boardbreaker"
+      ]
+    },
+    "36956512": {
+      "name": "Gadarla, the Mystery Dust Kaiju",
+      "image": "https://images.ygoprodeck.com/images/cards_small/36956512.jpg",
       "ban": {
         "tcg": null,
         "ocg": null
@@ -351,6 +384,17 @@
     "42141493": {
       "name": "Mulcharmy Fuwalos",
       "image": "https://images.ygoprodeck.com/images/cards_small/42141493.jpg",
+      "ban": {
+        "tcg": null,
+        "ocg": null
+      },
+      "kinds": [
+        "handtrap"
+      ]
+    },
+    "46502744": {
+      "name": "Retaliating \"C\"",
+      "image": "https://images.ygoprodeck.com/images/cards_small/46502744.jpg",
       "ban": {
         "tcg": null,
         "ocg": null
@@ -458,9 +502,31 @@
         "handtrap"
       ]
     },
+    "65302903": {
+      "name": "Dominusteer Rosepamela",
+      "image": "https://images.ygoprodeck.com/images/cards_small/65302903.jpg",
+      "ban": {
+        "tcg": null,
+        "ocg": null
+      },
+      "kinds": [
+        "handtrap"
+      ]
+    },
     "66236707": {
       "name": "Gordian Slicer",
       "image": "https://images.ygoprodeck.com/images/cards_small/66236707.jpg",
+      "ban": {
+        "tcg": null,
+        "ocg": null
+      },
+      "kinds": [
+        "boardbreaker"
+      ]
+    },
+    "66247039": {
+      "name": "Mind Mirror Force",
+      "image": "https://images.ygoprodeck.com/images/cards_small/66247039.jpg",
       "ban": {
         "tcg": null,
         "ocg": null
@@ -636,17 +702,48 @@
     }
   },
   "decks": [
+    {"id":744074,"region":"ocg","name":"Harpie","date":"2026-11-08","tournament":"3rd Motsu-kai","placement":"Top 4","players":37,"player":"ショウ07選手","cover":65302903,"url":"harpie-744074","main":[[23434538,1],[14558127,2],[59438930,2],[65302903,1],[97268402,3],[94145021,1],[97045737,3],[10045474,3]],"side":[[84192580,2],[42141493,2],[73642296,2],[27204311,1],[38814750,1],[2729965,2]]},
+    {"id":744073,"region":"ocg","name":"Amazoness Harpie","date":"2026-11-08","tournament":"3rd Motsu-kai","placement":"Runner-Up","players":37,"player":"婆酸選手","cover":80237445,"url":"amazoness-harpie-744073","main":[[14558127,2],[94145021,1],[23434538,1],[65302903,1],[59438930,2],[73642296,2],[97268402,1],[97045737,3],[10045474,3]],"side":[[27204311,1],[42141493,3],[84192580,1],[2729965,2]]},
+    {"id":744072,"region":"ocg","name":"Amazoness Harpie","date":"2026-11-08","tournament":"3rd Motsu-kai","placement":"Winner","players":37,"player":"くまだい選手","cover":29510428,"url":"amazoness-harpie-744072","main":[[94145021,1],[23434538,1],[14558127,2],[59438930,3],[97268402,3],[65302903,1],[97045737,3],[10045474,3]],"side":[[42141493,3],[84192580,1],[27204311,2],[73642296,2],[2729965,2]]},
+    {"id":744068,"region":"ocg","name":"Amazoness Harpie","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Top 4","players":34,"player":"しおちる","cover":45141013,"url":"amazoness-harpie-744068","main":[[42141493,3],[65302903,1],[14558127,2],[59438930,2],[23434538,1],[94145021,1],[27204311,1],[10045474,3],[97045737,2]],"side":[[34267821,3],[73642296,3],[27204311,2],[29726552,2],[2729965,2]]},
+    {"id":744067,"region":"ocg","name":"Amazoness Harpie","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Top 4","players":34,"player":"くらら","cover":27420823,"url":"amazoness-harpie-744067","main":[[14558127,2],[23434538,1],[59438930,2],[94145021,1],[97268402,2],[27204311,1],[97045737,3],[10045474,3]],"side":[[34267821,2],[42141493,3],[84192580,2],[29726552,2],[73642296,1],[2729965,2]]},
+    {"id":744066,"region":"ocg","name":"Amazoness Harpie","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Top 4","players":34,"player":"強貪芸人","cover":74892653,"url":"amazoness-harpie-744066","main":[[59438930,3],[14558127,2],[97268402,2],[23434538,1],[94145021,1],[97045737,3],[10045474,3]],"side":[[42141493,3],[84192580,2],[34267821,2],[29726552,2],[27204311,1],[2729965,2]]},
+    {"id":744065,"region":"ocg","name":"Elfnote Power Patron Ars Magna","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Top 4","players":34,"player":"するえへ","cover":65424481,"url":"elfnote-power-patron-ars-magna-744065","main":[[42141493,3],[97268402,3],[59438930,2],[14558127,2],[27204311,1],[23434538,1],[94145021,1]],"side":[[27204311,1],[34267821,3],[2729965,2]]},
+    {"id":744064,"region":"ocg","name":"Mitsurugi Light and Darkness Ritual","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Top 4","players":34,"player":"ヤマ","cover":30316053,"url":"mitsurugi-light-and-darkness-ritual-744064","main":[[70088809,3],[14558127,2],[23434538,1],[94145021,1],[42141493,3],[27204311,1]],"side":[[38814750,1],[27204311,2],[73642296,1],[2729965,2]]},
+    {"id":744063,"region":"ocg","name":"Sacred Beast","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Top 4","players":34,"player":"いなきんぐさん","cover":7044562,"url":"sacred-beast-744063","main":[[97268402,3],[42141493,3],[59438930,3],[14558127,2],[23434538,1],[94145021,1],[10045474,3]],"side":[[27204311,2],[38814750,1],[2729965,2]]},
+    {"id":744062,"region":"ocg","name":"Sacred Beast","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Runner-Up","players":34,"player":"あいれふ","cover":7044562,"url":"sacred-beast-744062","main":[[97268402,3],[59438930,3],[27204311,3],[14558127,2],[23434538,1],[94145021,1],[10045474,3]],"side":[[42141493,3],[73642296,2],[2729965,2]]},
+    {"id":744061,"region":"ocg","name":"Yubel Sacred Beast","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Runner-Up","players":34,"player":"村人","cover":80453041,"url":"yubel-sacred-beast-744061","main":[[42141493,3],[23434538,1],[14558127,2],[94145021,1],[97268402,3],[27204311,2]],"side":[[84192580,2],[59438930,2],[2729965,2]]},
+    {"id":744060,"region":"ocg","name":"Radiant Typhoon Sky Striker","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Runner-Up","players":34,"player":"ren","cover":71599345,"url":"radiant-typhoon-sky-striker-744060","main":[[94145021,1],[14558127,2],[42141493,3],[23434538,1],[5318639,1]],"side":[[34267821,2],[2729965,1],[19613556,1]]},
+    {"id":744059,"region":"ocg","name":"Radiant Typhoon Dark Time Wizard","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Winner","players":34,"player":"ぽとふ","cover":4063756,"url":"radiant-typhoon-dark-time-wizard-744059","main":[[94145021,1],[27204311,3],[59438930,3],[14558127,2],[65302903,2],[97268402,3],[23434538,1],[5318639,1],[97045737,2]],"side":[[42141493,3],[2729965,1]]},
+    {"id":744058,"region":"ocg","name":"Raise Moon","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Winner","players":34,"player":"つけめん","cover":6387204,"url":"raise-moon-744058","main":[[23434538,1],[59438930,2],[14558127,2],[97268402,3],[70088809,2],[27204311,2]],"side":[[59438930,1],[73642296,3],[84192580,1],[42141493,3],[18144506,1],[2729965,2]]},
+    {"id":744057,"region":"ocg","name":"Sky Striker","date":"2026-11-08","tournament":"32nd Wayo CS (3-person team tournament)","placement":"Winner","players":34,"player":"ぷるーと","cover":81109178,"url":"sky-striker-744057","main":[[23434538,1],[14558127,2],[94145021,1],[24299458,3],[5318639,1],[48130397,1]],"side":[[34267821,1],[42141493,3],[2729965,2],[18144506,1]]},
+    {"id":744010,"region":"ocg","name":"Raise Moon","date":"2026-11-08","tournament":"5th Rabbit CS","placement":"Top 4","players":33,"player":"ていけつあつ","cover":52417194,"url":"raise-moon-744010","main":[[94145021,1],[23434538,1],[2729965,1]],"side":[[42141493,3],[15693423,3],[66247039,3]]},
+    {"id":744009,"region":"ocg","name":"Power Patron","date":"2026-11-08","tournament":"5th Rabbit CS","placement":"Top 4","players":33,"player":"くろは","cover":16938770,"url":"power-patron-744009","main":[[14558127,2],[23434538,1],[94145021,1],[42141493,3],[17266660,1],[10045474,2]],"side":[[84192580,2],[18144506,1],[2729965,2],[40366667,2],[23002292,1]]},
+    {"id":744008,"region":"ocg","name":"Winter Raven Ashtra","date":"2026-11-08","tournament":"5th Rabbit CS","placement":"Runner-Up","players":33,"player":"灰神楽","cover":14883228,"url":"winter-raven-ashtra-744008","main":[[23434538,1],[14558127,2],[94145021,1],[10045474,3],[40366667,2],[66247039,3],[14883228,3]],"side":[[87126721,3],[42141493,3],[2729965,1]]},
+    {"id":744007,"region":"ocg","name":"Ars Magna Power Patron Elfnote","date":"2026-11-08","tournament":"5th Rabbit CS","placement":"Winner","players":33,"player":"うろん","cover":52352005,"url":"ars-magna-power-patron-elfnote-744007","main":[[23434538,1],[14558127,2],[94145021,1],[42141493,3],[59438930,3],[97268402,3]],"side":[[27204311,2],[34267821,3],[84192580,2],[2729965,2],[10045474,2],[23002292,1]]},
+    {"id":744005,"region":"ocg","name":"Battlewasp","date":"2026-11-08","tournament":"Waseda Festival CS","placement":"Top 4","players":34,"player":"スペック","cover":83838727,"url":"battlewasp-744005","main":[[46502744,1],[23434538,1],[14558127,2],[70088809,3]],"side":[[94145021,1],[36956512,2],[42141493,3],[84192580,3],[87126721,3],[2729965,1]]},
+    {"id":744003,"region":"ocg","name":"Dark Magician Witchcrafter Fairy Tail","date":"2026-11-08","tournament":"Waseda Festival CS","placement":"Runner-Up","players":34,"player":"かをぽっぽ","cover":40041559,"url":"dark-magician-witchcrafter-fairy-tail-744003","main":[[23434538,1],[14558127,2],[94145021,1],[97268402,3],[42141493,3],[10045474,2]],"side":[[84192580,3],[59438930,3],[2729965,2]]},
+    {"id":743950,"region":"tcg","name":"Ars Magna Power Patron Artmage","date":"2026-11-08","tournament":"Weston-Super-Mare WCQ Regional","placement":"Top 8","players":46,"player":"Blue Hamilton","cover":2729965,"url":"ars-magna-power-patron-artmage-743950","main":[[42141493,3],[94145021,1],[48130397,3],[2729965,3]],"side":[[14558127,3],[14965712,3],[84192580,2],[40366667,3]]},
+    {"id":743946,"region":"tcg","name":"Sacred Beasts","date":"2026-11-08","tournament":"Weston-Super-Mare WCQ Regional","placement":"Winner","players":46,"player":"Dahang Liu","cover":74203495,"url":"sacred-beasts-743946","main":[[14558127,3],[42141493,3],[97268402,3],[59438930,3],[27204311,3],[94145021,1]],"side":[[67750322,3],[84192580,3],[73642296,2],[38814750,1],[74203495,3],[18144506,1]]},
+    {"id":743944,"region":"tcg","name":"Tenpai Dragon Radiant Typhoon","date":"2026-11-08","tournament":"Braunschweig WCQ Regional","placement":"Top 8","players":100,"player":"Hung Le Dinh","cover":65326118,"url":"tenpai-dragon-radiant-typhoon-743944","main":[[33854624,1],[94145021,1],[42141493,3],[14558127,3],[5318639,3],[24299458,3]],"side":[[102380,3],[14532163,1],[18144506,1],[14883228,3]]},
+    {"id":743935,"region":"tcg","name":"K9 Dark Time Wizard","date":"2026-11-08","tournament":"Brasilia WCQ Regional","placement":"Runner-Up","players":48,"player":"Luis Fernando de Castro","cover":3129527,"url":"k9-dark-time-wizard-743935","main":[[14558127,3],[59438930,3],[97268402,3],[27204311,2],[94145021,1],[10045474,3]],"side":[[52038441,2],[67750322,2],[38814750,1],[74203495,3],[14883228,3]]},
+    {"id":743928,"region":"tcg","name":"Clown Crew","date":"2026-11-08","tournament":"Brasilia WCQ Regional","placement":"Top 8","players":48,"player":"Lucas Castro","cover":30109445,"url":"clown-crew-743928","main":[[42141493,3],[14558127,3],[97268402,3],[59438930,3],[27204311,2],[94145021,1],[97045737,3]],"side":[[84192580,3],[8267140,3]]},
+    {"id":743913,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-11-08","tournament":"Brasilia WCQ Regional","placement":"Winner","players":48,"player":"Leandro Hamilton da Silva Pedrosa","cover":14307929,"url":"ars-magna-elfnote-743913","main":[[14558127,3],[42141493,3],[84192580,3],[97268402,3],[94145021,1]],"side":[[59438930,3],[102380,2],[18144506,1],[14883228,3]]},
     {"id":743694,"region":"tcg","name":"Angelechy","date":"2026-11-08","tournament":"Weston-Super-Mare WCQ Regional","placement":"Top 4","players":46,"player":"Josh Pang","cover":77543769,"url":"angelechy-743694","main":[[42141493,3],[14558127,3],[59438930,3],[94145021,1],[97045737,3],[40366667,3],[6325660,3]],"side":[[84192580,3],[27204311,3],[14883228,3]]},
     {"id":743662,"region":"tcg","name":"Blitzclique","date":"2026-11-08","tournament":"Zenica WCQ Regional","placement":"Top 4","players":41,"player":"Bekir Jarkoč","cover":12197223,"url":"blitzclique-743662","main":[[42141493,3],[14558127,3],[59438930,2],[94145021,1],[97045737,3]],"side":[[12197223,2],[84192580,3],[15693423,3]]},
     {"id":743661,"region":"tcg","name":"Despia Branded","date":"2026-11-08","tournament":"Zenica WCQ Regional","placement":"Top 8","players":41,"player":"Jan Moljević","cover":6763530,"url":"despia-branded-743661","main":[[19096726,1],[33854624,1],[42141493,3],[14558127,3],[59438930,3],[94145021,1],[48130397,3]],"side":[[67750322,3],[84192580,3],[8267140,2],[15693423,3]]},
     {"id":743659,"region":"tcg","name":"Despia Branded","date":"2026-11-08","tournament":"Zenica WCQ Regional","placement":"Top 4","players":41,"player":"Džavid Berberović","cover":94395649,"url":"despia-branded-743659","main":[[82489470,1],[19096726,1],[42141493,3],[14558127,3],[59438930,3],[94145021,1],[48130397,3]],"side":[[69680031,1],[34267821,2],[102380,2],[27204311,2],[18144506,1],[15693423,3]]},
     {"id":743655,"region":"tcg","name":"Blitzclique","date":"2026-11-08","tournament":"Braunschweig WCQ Regional","placement":"Runner-Up","players":100,"player":"Ali Orhan","cover":97045737,"url":"blitzclique-743655","main":[[42141493,3],[27204311,2],[14558127,3],[59438930,2],[94145021,1],[97045737,3]],"side":[[84192580,3],[66236707,2],[14883228,2]]},
-    {"id":743646,"region":"tcg","name":"Ashtra Atlantis","date":"2026-11-08","tournament":"Brazilia WCQ Regional","placement":"Top 4","players":48,"player":"Sophie","cover":64603351,"url":"ashtra-atlantis-743646","main":[[67750322,3],[14558127,3],[59438930,3]],"side":[[84192580,2],[42141493,1],[27204311,2],[10045474,2],[14883228,3]]},
+    {"id":743646,"region":"tcg","name":"Ashtra Atlantis","date":"2026-11-08","tournament":"Brasilia WCQ Regional","placement":"Top 4","players":48,"player":"Sophie","cover":64603351,"url":"ashtra-atlantis-743646","main":[[67750322,3],[14558127,3],[59438930,3]],"side":[[84192580,2],[42141493,1],[27204311,2],[10045474,2],[14883228,3]]},
     {"id":743479,"region":"tcg","name":"Radiant Typhoon Blitzclique","date":"2026-11-08","tournament":"Bologna WCQ Regional","placement":"Top 4","players":115,"player":"Filippo Badii","cover":54143349,"url":"radiant-typhoon-blitzclique-743479","main":[[42141493,3],[94145021,1],[5318639,2],[48130397,3]],"side":[[48770333,1],[84192580,3],[27204311,2],[14558127,3],[59438930,2],[97045737,2]]},
     {"id":743478,"region":"tcg","name":"Radiant Typhoon","date":"2026-11-08","tournament":"Weston-Super-Mare WCQ Regional","placement":"Top 8","players":46,"player":"Fletcher Laity","cover":98829635,"url":"radiant-typhoon-743478","main":[[12197223,3],[42141493,3],[14558127,3],[94145021,1],[5318639,3]],"side":[[59438930,3]]},
     {"id":743477,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-11-08","tournament":"Bologna WCQ Regional","placement":"Runner-Up","players":115,"player":"Giacomo Massaferro","cover":26237713,"url":"ars-magna-elfnote-743477","main":[[42141493,3],[27204311,2],[14558127,3],[59438930,3],[94145021,1],[97268402,3]],"side":[[67750322,3],[84192580,3],[10045474,3],[14883228,3]]},
     {"id":743475,"region":"tcg","name":"Magistus Invoked Fairy Tail","date":"2026-11-08","tournament":"Weston-Super-Mare WCQ Regional","placement":"Top 4","players":46,"player":"Jordan Kotwica","cover":27632520,"url":"magistus-invoked-fairy-tail-743475","main":[[42141493,3],[14558127,3],[59438930,3],[94145021,1]],"side":[[67750322,2],[87126721,3],[97268402,3],[2729965,2],[14883228,3]]},
     {"id":743472,"region":"tcg","name":"Angelechy","date":"2026-11-08","tournament":"Braunschweig WCQ Regional","placement":"Top 8","players":100,"player":"Henry Heils","cover":60465049,"url":"angelechy-743472","main":[[42141493,3],[14558127,3],[59438930,3],[94145021,1],[97045737,3],[40366667,3],[6325660,2]],"side":[[97268402,3],[8267140,2],[14883228,3]]},
+    {"id":743948,"region":"tcg","name":"Magistus Fairy Tail","date":"2026-11-07","tournament":"Madrid WCQ Regional","placement":"Top 8","players":80,"player":"Marcos Tedin Cueto","cover":22623509,"url":"magistus-fairy-tail-743948","main":[[14558127,3],[42141493,3],[97268402,3],[59438930,3],[27204311,2],[94145021,1],[48130397,3]],"side":[[67750322,3],[84192580,3],[27204311,1],[14883228,3]]},
+    {"id":743947,"region":"tcg","name":"Angelechy","date":"2026-11-07","tournament":"Madrid WCQ Regional","placement":"Top 8","players":80,"player":"Diego Baragaño García","cover":13068112,"url":"angelechy-743947","main":[[42141493,3],[14558127,3],[59438930,3],[40366667,3],[97045737,3],[6325660,3]],"side":[[27204311,2],[84192580,2],[34267821,2],[94145021,1],[14883228,3]]},
+    {"id":743931,"region":"tcg","name":"Ashtra","date":"2026-11-07","tournament":"Gothenburg WCQ Regional","placement":"Top 8","players":27,"player":"Axel Svensson","cover":12975671,"url":"ashtra-743931","main":[[70088809,3],[42141493,3],[14558127,3],[59438930,3],[94145021,1],[40366667,3],[10045474,3]],"side":[[84192580,3],[27204311,2],[14883228,3]]},
+    {"id":743930,"region":"tcg","name":"Angelechy","date":"2026-11-07","tournament":"Madrid WCQ Regional","placement":"Top 4","players":80,"player":"Pablo Garcia Herrero","cover":42091632,"url":"angelechy-743930","main":[[27204311,3],[58053438,3],[97045737,3],[10045474,3],[40366667,3],[6325660,3],[42091632,3]],"side":[[14558127,3],[59438930,3],[14883228,3]]},
     {"id":743723,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-11-07","tournament":"Grantham WCQ Regional","placement":"Top 8","players":63,"player":"Bojidar Dimitrov","cover":63767246,"url":"ars-magna-elfnote-743723","main":[[42141493,3],[14558127,3],[59438930,3],[94145021,1],[10045474,3]],"side":[[34267821,3],[84192580,2],[27204311,2],[97268402,3]]},
     {"id":743719,"region":"tcg","name":"Ars Magna Power Patron Artmage","date":"2026-11-07","tournament":"Mar Del Plata WCQ Regional","placement":"Runner-Up","players":51,"player":"Leone Nazareno","cover":51669847,"url":"ars-magna-power-patron-artmage-743719","main":[[42141493,3],[94145021,1],[48130397,3]],"side":[[14965712,3],[14558127,3],[59438930,3],[14883228,3]]},
     {"id":743718,"region":"tcg","name":"Ars Magna Power Patron Artmage","date":"2026-11-07","tournament":"Mar Del Plata WCQ Regional","placement":"Top 4","players":51,"player":"Taiel Fernandez","cover":23829452,"url":"ars-magna-power-patron-artmage-743718","main":[[42141493,3],[94145021,1],[2729965,3]],"side":[[14965712,3],[14558127,3],[59438930,3],[48130397,3]]},
@@ -715,14 +812,15 @@
     {"id":743374,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-11-07","tournament":"Grantham WCQ Regional","placement":"Top 8","players":63,"player":"Thomas Rolph","cover":67750322,"url":"ars-magna-elfnote-743374","main":[[14965712,3],[67750322,3],[42141493,3],[14558127,3],[59438930,3]],"side":[[84192580,3],[27204311,3],[94145021,1],[97268402,2],[2729965,3],[14883228,3]]},
     {"id":743373,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-11-07","tournament":"Gothenburg WCQ Regional","placement":"Top 4","players":27,"player":"Nyx Gustafsson","cover":94677445,"url":"ars-magna-elfnote-743373","main":[[42141493,3],[84192580,2],[14558127,3],[59438930,3],[94145021,1]],"side":[[84192580,1],[8267140,3],[2729965,1],[15693423,3]]},
     {"id":743372,"region":"tcg","name":"Radiant Typhoon","date":"2026-11-07","tournament":"Grantham WCQ Regional","placement":"Runner-Up","players":63,"player":"Liam Davis","cover":94103142,"url":"radiant-typhoon-743372","main":[[12197223,3],[42141493,3],[14558127,3],[94145021,1],[5318639,3]],"side":[[84192580,3],[87126721,2],[27204311,3]]},
+    {"id":743939,"region":"tcg","name":"Sky Striker","date":"2026-11-01","tournament":"Ecublens WCQ Regional","placement":"Runner-Up","players":57,"player":"Michael Rey","cover":86066372,"url":"sky-striker-743939","main":[[14558127,3],[59438930,2],[94145021,1],[5318639,1]],"side":[[102380,2],[42141493,3],[14532163,1]]},
     {"id":743437,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-11-01","tournament":"Ecublens WCQ Regional","placement":"Top 8","players":57,"player":"Johnathan Claude","cover":64491754,"url":"ars-magna-elfnote-743437","main":[[42141493,3],[27204311,2],[14558127,3],[59438930,3],[94145021,1],[97268402,3]],"side":[[67750322,2],[84192580,3],[2729965,3],[40366667,3]]},
     {"id":743430,"region":"tcg","name":"Runick Angelechy Light and Darkness Ritual","date":"2026-11-01","tournament":"Rio de Janeiro WCQ Regional","placement":"Top 8","players":68,"player":"Lucas Machado","cover":55990317,"url":"runick-angelechy-light-and-darkness-ritual-743430","main":[[14558127,2],[59438930,3],[94145021,1]],"side":[]},
     {"id":743391,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-11-01","tournament":"Rio de Janeiro WCQ Regional","placement":"Top 4","players":68,"player":"Lucas Medeiros","cover":14152862,"url":"ars-magna-elfnote-743391","main":[[42141493,3],[14558127,3],[59438930,3],[97268402,2],[10045474,3]],"side":[[14965712,3],[67750322,2],[84192580,2],[73642296,2],[2729965,2],[14883228,3]]},
     {"id":743380,"region":"tcg","name":"Ars Magna Power Patron Light and Darkness Ritual","date":"2026-11-01","tournament":"Rio de Janeiro WCQ Regional","placement":"Winner","players":68,"player":"Thor Salgado","cover":27285068,"url":"ars-magna-power-patron-light-and-darkness-ritual-743380","main":[[14965712,3],[42141493,3],[14558127,3],[59438930,3],[94145021,1],[10045474,3]],"side":[[67750322,3],[27204311,3],[8267140,1],[40366667,3],[14883228,3]]},
     {"id":743119,"region":"ocg","name":"Sun God","date":"2026-11-01","tournament":null,"placement":null,"players":null,"player":null,"cover":10000090,"url":"sun-god-743119","main":[[27204311,3],[59438930,3],[14558127,2],[23434538,1],[94145021,1],[48130397,2],[40366667,2],[10045474,3]],"side":[[73642296,2],[42141493,3],[84192580,3],[2729965,2]]},
-    {"id":743118,"region":"ocg","name":"Elfnote Power Patron Ars Magna","date":"2026-11-01","tournament":null,"placement":null,"players":null,"player":null,"cover":66247039,"url":"elfnote-power-patron-ars-magna-743118","main":[[23434538,1],[14558127,2],[94145021,1],[42141493,3],[84192580,1],[59438930,1],[27204311,1]],"side":[[73642296,1],[59438930,1],[84192580,2],[87126721,1],[34267821,1],[2729965,2],[23002292,1]]},
-    {"id":743117,"region":"ocg","name":"Dark Time Wizard","date":"2026-11-01","tournament":"2nd Motsu CS","placement":"Runner-Up","players":48,"player":"Gawara","cover":65302903,"url":"dark-time-wizard-743117","main":[[14558127,2],[59438930,3],[23434538,1],[94145021,1],[27204311,3],[97268402,3],[97045737,2]],"side":[[84192580,3],[42141493,3],[2729965,2],[18144506,1]]},
-    {"id":743116,"region":"ocg","name":"Harpie","date":"2026-11-01","tournament":"2nd Motsu CS","placement":"Winner","players":48,"player":"ショウ07","cover":86038337,"url":"harpie-743116","main":[[94145021,1],[23434538,1],[14558127,2],[59438930,2],[42141493,2],[97045737,3],[10045474,3]],"side":[[27204311,1],[73642296,2],[42141493,1],[84192580,2],[2729965,2],[18144506,1]]},
+    {"id":743118,"region":"ocg","name":"Elfnote Power Patron Ars Magna","date":"2026-11-01","tournament":null,"placement":null,"players":null,"player":null,"cover":66247039,"url":"elfnote-power-patron-ars-magna-743118","main":[[23434538,1],[14558127,2],[94145021,1],[42141493,3],[84192580,1],[59438930,1],[27204311,1],[66247039,1]],"side":[[73642296,1],[59438930,1],[84192580,2],[87126721,1],[34267821,1],[2729965,2],[23002292,1]]},
+    {"id":743117,"region":"ocg","name":"Dark Time Wizard","date":"2026-11-01","tournament":"2nd Motsu CS","placement":"Runner-Up","players":48,"player":"Gawara","cover":65302903,"url":"dark-time-wizard-743117","main":[[14558127,2],[59438930,3],[23434538,1],[94145021,1],[65302903,1],[27204311,3],[97268402,3],[97045737,2]],"side":[[84192580,3],[42141493,3],[2729965,2],[18144506,1]]},
+    {"id":743116,"region":"ocg","name":"Harpie","date":"2026-11-01","tournament":"2nd Motsu CS","placement":"Winner","players":48,"player":"ショウ07","cover":86038337,"url":"harpie-743116","main":[[94145021,1],[23434538,1],[14558127,2],[65302903,1],[59438930,2],[42141493,2],[97045737,3],[10045474,3]],"side":[[27204311,1],[73642296,2],[42141493,1],[84192580,2],[2729965,2],[18144506,1]]},
     {"id":742845,"region":"tcg","name":"@Ignister Maliss","date":"2026-11-01","tournament":"San Salvador WCQ Regional","placement":"Runner-Up","players":150,"player":"Daniel Lizama","cover":64865,"url":"ignister-maliss-742845","main":[[33854624,1],[6637331,1],[42141493,3],[14558127,3],[59438930,3],[94145021,1],[10045474,3],[40366667,3]],"side":[[67750322,2],[84192580,2],[27204311,2],[8267140,3]]},
     {"id":742809,"region":"tcg","name":"Sacred Beasts","date":"2026-11-01","tournament":"Ecublens WCQ Regional","placement":"Top 4","players":57,"player":"Arthur Damiano","cover":98127546,"url":"sacred-beasts-742809","main":[[27204311,2],[42141493,3],[84192580,2],[94145021,1],[14558127,3],[59438930,3],[48130397,3]],"side":[[74203495,3],[67750322,3],[34267821,3],[8267140,3],[14883228,1]]},
     {"id":742732,"region":"tcg","name":"Sky Striker","date":"2026-11-01","tournament":"Panama City WCQ Regional","placement":"Winner","players":60,"player":"Moises Pedraza","cover":10045474,"url":"sky-striker-742732","main":[[27204311,2],[14558127,3],[59438930,2],[94145021,1],[5318639,1],[10045474,3]],"side":[[42141493,3],[8267140,2]]},
@@ -860,7 +958,7 @@
     {"id":741306,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-10-24","tournament":"Seattle WCQ Regional","placement":"Top 8","players":120,"player":"Tim Ho","cover":26237713,"url":"ars-magna-elfnote-741306","main":[[42141493,3],[84192580,3],[14558127,3],[59438930,3],[10045474,3]],"side":[[14965712,3],[12197223,3],[27204311,2],[94145021,1],[14883228,3]]},
     {"id":741115,"region":"tcg","name":"Angelechy","date":"2026-10-24","tournament":"Seattle WCQ Regional","placement":"Top 4","players":120,"player":"Logan Johnson","cover":84211599,"url":"angelechy-741115","main":[[14558127,3],[59438930,3],[94145021,1],[97268402,1],[97045737,3],[40366667,3],[6325660,3]],"side":[[42141493,3],[84192580,3],[8267140,2],[14883228,3]]},
     {"id":741113,"region":"tcg","name":"Angelechy","date":"2026-10-24","tournament":"Fort Worth WCQ Regional","placement":"Top 8","players":103,"player":"Creighton Pree","cover":42091632,"url":"angelechy-741113","main":[[58053438,3],[97045737,3],[40366667,3],[6325660,3],[42091632,3]],"side":[[67750322,3],[14558127,3],[59438930,3],[2729965,1],[8267140,2]]},
-    {"id":741107,"region":"tcg","name":"Ashtra Angelechy","date":"2026-10-24","tournament":"Almeria WCQ Regional","placement":"Runner-Up","players":31,"player":"Antonio","cover":43419178,"url":"ashtra-angelechy-741107","main":[[42141493,3],[14558127,3],[59438930,3],[94145021,1],[40366667,3]],"side":[[84192580,3],[97045737,3]]},
+    {"id":741107,"region":"tcg","name":"Ashtra Angelechy","date":"2026-10-24","tournament":"Almeria WCQ Regional","placement":"Runner-Up","players":31,"player":"Antonio Oliva","cover":43419178,"url":"ashtra-angelechy-741107","main":[[42141493,3],[14558127,3],[59438930,3],[94145021,1],[40366667,3]],"side":[[84192580,3],[97045737,3]]},
     {"id":741099,"region":"tcg","name":"Radiant Typhoon","date":"2026-10-24","tournament":"Fort Worth WCQ Regional","placement":"Top 8","players":103,"player":"Derrick Leal","cover":1149109,"url":"radiant-typhoon-741099","main":[[12197223,2],[67750322,1],[42141493,3],[27204311,2],[14558127,3],[59438930,2],[94145021,1],[5318639,3],[24299458,2],[97045737,3]],"side":[[84192580,2],[2729965,2],[15693423,3]]},
     {"id":741098,"region":"tcg","name":"Angelechy","date":"2026-10-24","tournament":"Seattle WCQ Regional","placement":"Top 8","players":120,"player":"Billy Gadier","cover":52038441,"url":"angelechy-741098","main":[[14558127,3],[52038441,2],[59438930,3],[94145021,1],[97268402,3],[97045737,3],[40366667,3],[6325660,2]],"side":[[34267821,2],[42141493,3],[14883228,3]]},
     {"id":741060,"region":"tcg","name":"Fiendsmith Light and Darkness Ritual Tearlaments","date":"2026-10-24","tournament":"Almeria WCQ Regional","placement":"Top 8","players":31,"player":"Miguel Gómez Dris","cover":84330567,"url":"fiendsmith-light-and-darkness-ritual-tearlaments-741060","main":[[42141493,3],[14558127,3],[48130397,3]],"side":[[14965712,3],[27204311,3],[59438930,3],[18144506,1]]},
@@ -1189,7 +1287,7 @@
     {"id":734762,"region":"ocg","name":"Xenovader△","date":"2026-09-26","tournament":"21st Fuwadora Cup 3-Person Team Battle","placement":"Runner-Up","players":114,"player":"リットン","cover":96205925,"url":null,"main":[[94145021,1],[23434538,1],[70088809,3]],"side":[[84192580,3],[42141493,3],[66236707,3]]},
     {"id":734761,"region":"ocg","name":"Magnet Warrior Adamancipator","date":"2026-09-26","tournament":"21st Fuwadora Cup 3-Person Team Battle","placement":"Runner-Up","players":114,"player":"pina","cover":36187051,"url":"magnet-warrior-adamancipator-734761","main":[[23434538,1],[42141493,2],[84192580,2]],"side":[[84192580,1],[42141493,1],[94145021,1],[2729965,3],[18144506,1],[19613556,1]]},
     {"id":734760,"region":"ocg","name":"HERO","date":"2026-09-26","tournament":"21st Fuwadora Cup 3-Person Team Battle","placement":"Runner-Up","players":114,"player":"ぽこべぇ","cover":40237839,"url":"hero-734760","main":[[40237839,3],[42141493,3],[14558127,2],[23434538,1],[94145021,1],[24299458,3]],"side":[[35480699,2],[18144506,1],[19613556,1],[23002292,1]]},
-    {"id":734759,"region":"ocg","name":"Sky Striker","date":"2026-09-26","tournament":"21st Fuwadora Cup 3-Person Team Battle","placement":"Top 4","players":114,"player":"Kamiyan","cover":66247039,"url":"sky-striker-734759","main":[[14558127,2],[59438930,2],[73642296,2],[94145021,1],[23434538,1],[5318639,1]],"side":[[84192580,3],[42141493,3],[2729965,3]]},
+    {"id":734759,"region":"ocg","name":"Sky Striker","date":"2026-09-26","tournament":"21st Fuwadora Cup 3-Person Team Battle","placement":"Top 4","players":114,"player":"Kamiyan","cover":66247039,"url":"sky-striker-734759","main":[[14558127,2],[59438930,2],[73642296,2],[94145021,1],[23434538,1],[5318639,1]],"side":[[84192580,3],[42141493,3],[2729965,3],[66247039,2]]},
     {"id":734758,"region":"ocg","name":"Xenovader△","date":"2026-09-26","tournament":"21st Fuwadora Cup 3-Person Team Battle","placement":"Top 4","players":114,"player":"しーぜる","cover":35761342,"url":null,"main":[[23434538,1],[94145021,1]],"side":[[42141493,3],[27204311,2],[14558127,2],[59438930,2],[73642296,1],[18144506,1]]},
     {"id":734757,"region":"ocg","name":"Magistus Witchcrafter","date":"2026-09-26","tournament":"21st Fuwadora Cup 3-Person Team Battle","placement":"Top 4","players":114,"player":"ぐりむ","cover":6958567,"url":"magistus-witchcrafter-734757","main":[[14558127,2],[59438930,2],[23434538,1],[38814750,1],[42141493,3],[94145021,1]],"side":[[27204311,2],[84192580,2],[73642296,2],[2729965,2]]},
     {"id":734756,"region":"ocg","name":"Light and Darkness Ritual Mitsurugi","date":"2026-09-26","tournament":"21st Fuwadora Cup 3-Person Team Battle","placement":"Top 4","players":114,"player":"ゆうくん","cover":13332685,"url":"light-and-darkness-ritual-mitsurugi-734756","main":[[23434538,1],[14558127,2],[94145021,1],[70088809,3],[42141493,3]],"side":[[84192580,3],[27204311,3],[73642296,2],[59438930,1],[2729965,1]]},
@@ -1198,7 +1296,7 @@
     {"id":734676,"region":"ocg","name":"Branded","date":"2026-09-26","tournament":"Fun Card Shop Tournament","placement":"Top 4","players":34,"player":null,"cover":68468459,"url":"branded-734676","main":[[82489470,1],[19096726,1],[97268402,2],[14558127,2],[94145021,1],[23434538,1],[42141493,3],[84192580,3]],"side":[[73642296,2],[27204311,1],[102380,2],[59438930,1]]},
     {"id":734674,"region":"ocg","name":"Raise Moon","date":"2026-09-26","tournament":"Fun Card Shop Tournament","placement":"Top 4","players":34,"player":null,"cover":46983930,"url":"raise-moon-734674","main":[[97268402,3],[59438930,2],[14558127,2],[23434538,1],[27204311,1]],"side":[[34267821,2],[84192580,2],[42141493,2],[27204311,1],[73642296,1],[94145021,1]]},
     {"id":734656,"region":"tcg","name":"Elfnote","date":"2026-09-26","tournament":"Ballarat WCQ Regional","placement":"Top 4","players":35,"player":"Clyde Montaner","cover":54577949,"url":"elfnote-734656","main":[[70088809,3],[42141493,3],[84192580,3],[14558127,3],[59438930,1],[94145021,2]],"side":[[27204311,3],[18144506,1],[15693423,3]]},
-    {"id":734651,"region":"tcg","name":"Melodious","date":"2026-09-26","tournament":"Ballarat WCQ Regional","placement":"Top 4","players":35,"player":"Kevin Duong","cover":40177746,"url":"melodious-734651","main":[[42141493,3],[14558127,3],[24299458,2]],"side":[[84192580,3],[15693423,3]]},
+    {"id":734651,"region":"tcg","name":"Melodious","date":"2026-09-26","tournament":"Ballarat WCQ Regional","placement":"Top 4","players":35,"player":"Kevin Duong","cover":40177746,"url":"melodious-734651","main":[[17266660,3],[42141493,3],[14558127,3],[24299458,2]],"side":[[84192580,3],[15693423,3]]},
     {"id":734649,"region":"tcg","name":"Power Patron Artmage","date":"2026-09-26","tournament":"Ballarat WCQ Regional","placement":"Top 8","players":35,"player":"Cameron Whitford","cover":22125101,"url":"power-patron-artmage-734649","main":[[42141493,3],[84192580,3],[94145021,2],[48130397,3]],"side":[[14558127,3],[59438930,2],[18144506,1],[15693423,3]]},
     {"id":734647,"region":"tcg","name":"Azamina White Forest","date":"2026-09-26","tournament":"Ballarat WCQ Regional","placement":"Top 8","players":35,"player":"Alex Bellingham","cover":29925614,"url":"azamina-white-forest-734647","main":[[42141493,3],[84192580,2],[14558127,3],[94145021,2],[15693423,3],[10045474,3]],"side":[[84192580,1],[73642296,2],[59438930,1],[14532163,2]]},
     {"id":734646,"region":"tcg","name":"Branded Light and Darkness Ritual","date":"2026-09-26","tournament":"Ballarat WCQ Regional","placement":"Top 8","players":35,"player":"Frederick Cammell","cover":76636978,"url":"branded-light-and-darkness-ritual-734646","main":[[70088809,3],[42141493,3],[84192580,3],[94145021,2]],"side":[[69680031,1],[27204311,3],[14558127,3],[33854624,1],[6325660,2]]},
@@ -1224,7 +1322,7 @@
     {"id":733498,"region":"tcg","name":"Synchron Kewl Tune","date":"2026-09-20","tournament":"Greensborough WCQ Regional","placement":"Top 4","players":40,"player":"Henry Lai","cover":13021682,"url":"synchron-kewl-tune-733498","main":[[70088809,3],[14558127,3],[59438930,1],[73642296,3],[94145021,2],[97268402,3],[10045474,3]],"side":[[42141493,3],[84192580,2],[18144506,1],[14532163,1],[33017964,1]]},
     {"id":733497,"region":"tcg","name":"Branded Elfnote","date":"2026-09-20","tournament":"Greensborough WCQ Regional","placement":"Runner-Up","players":40,"player":"Yuqi Lu","cover":1906812,"url":"branded-elfnote-733497","main":[[70088809,3],[33854624,1],[42141493,3],[14558127,3],[73642296,1],[59438930,1],[94145021,2]],"side":[[27204311,1],[84192580,2],[59438930,1],[73642296,1],[24508238,1],[33017964,1],[15693423,2]]},
     {"id":733495,"region":"tcg","name":"Dark Magician Mitsurugi Yummy","date":"2026-09-20","tournament":"Greensborough WCQ Regional","placement":"Top 8","players":40,"player":"Callum Prosser","cover":88570003,"url":"dark-magician-mitsurugi-yummy-733495","main":[[42141493,3],[84192580,3],[94145021,2],[33017964,2],[6325660,2]],"side":[[14558127,3],[18144506,1]]},
-    {"id":733494,"region":"tcg","name":"Despia Branded","date":"2026-09-20","tournament":"Greensborough WCQ Regional","placement":"Winner","players":40,"player":"Kevin Lin","cover":35984222,"url":"despia-branded-733494","main":[[82489470,1],[19096726,1],[60242223,1],[33854624,1],[42141493,3],[94145021,2],[48130397,3],[15693423,3]],"side":[[84192580,3],[18144506,1]]},
+    {"id":733494,"region":"tcg","name":"Despia Branded","date":"2026-09-20","tournament":"Greensborough WCQ Regional","placement":"Winner","players":40,"player":"Kevin Lin","cover":35984222,"url":"despia-branded-733494","main":[[82489470,1],[19096726,1],[60242223,1],[33854624,1],[42141493,3],[94145021,2],[48130397,3],[15693423,3]],"side":[[46502744,2],[84192580,3],[18144506,1]]},
     {"id":735896,"region":"tcg","name":"Invoked","date":"2026-09-19","tournament":"Brisbane WCQ Regional","placement":"Top 4","players":60,"player":"Lachlan","cover":10673071,"url":"invoked-735896","main":[[42141493,3],[84192580,2],[27204311,2],[14558127,3],[94145021,2],[48130397,3]],"side":[[91800273,1],[18144506,1],[24299458,2],[15693423,3]]},
     {"id":735787,"region":"tcg","name":"Synchron Elfnote","date":"2026-09-19","tournament":"YCS Paris","placement":"Top 64","players":2588,"player":"Romain Brunet","cover":52687916,"url":"synchron-elfnote-735787","main":[[70088809,3],[42141493,3],[14558127,3],[73642296,2],[59438930,2]],"side":[[102380,2],[84192580,3],[94145021,2],[33854624,1],[18144506,1]]},
     {"id":735410,"region":"tcg","name":"Mitsurugi Orcust Phantom Knights","date":"2026-09-19","tournament":"Auckland WCQ Regional","placement":"Runner-Up","players":40,"player":"Ross Hitchens","cover":83566725,"url":"mitsurugi-orcust-phantom-knights-735410","main":[[42141493,3],[84192580,3],[14558127,3],[94145021,2],[24299458,3],[40366667,3],[6325660,2]],"side":[[38814750,1],[74203495,2],[73642296,3],[10045474,3],[6325660,1]]},
@@ -1244,7 +1342,7 @@
     {"id":734593,"region":"tcg","name":"Elfnote","date":"2026-09-19","tournament":"YCS Paris","placement":"Runner-Up","players":2588,"player":"Timoti Baggio","cover":12375297,"url":"elfnote-734593","main":[[70088809,3],[42141493,3],[14558127,3],[73642296,3],[94145021,2],[97268402,3]],"side":[[84192580,2],[27204311,2],[59438930,2],[24508238,3],[33854624,1]]},
     {"id":734372,"region":"tcg","name":"Kewl Tune","date":"2026-09-19","tournament":"St. Pölten WCQ Regional","placement":"Top 4","players":31,"player":"Ben Grandl","cover":74203495,"url":"kewl-tune-734372","main":[[70088809,3],[14558127,3],[73642296,3],[59438930,1],[94145021,2],[97268402,3],[74203495,2],[38814750,1],[10045474,2]],"side":[[74203495,1],[42141493,3],[84192580,3],[18144506,1],[14532163,2]]},
     {"id":734370,"region":"tcg","name":"Angelechy Elfnote","date":"2026-09-19","tournament":"Bilbao WCQ Regional","placement":"Top 4","players":35,"player":"Fco Javier Gonzalez","cover":55393975,"url":"angelechy-elfnote-734370","main":[[27204311,2],[42141493,3],[14558127,3],[59438930,2],[94145021,2]],"side":[[102380,3],[18144506,1],[14532163,1],[54693926,1]]},
-    {"id":734306,"region":"tcg","name":"Branded Angelechy Light and Darkness Ritual","date":"2026-09-19","tournament":"Bilbao WCQ Regional","placement":"Top 8","players":35,"player":"SoyAner","cover":71821687,"url":"branded-angelechy-light-and-darkness-ritual-734306","main":[[42141493,3],[94145021,2],[14558127,3],[59438930,2]],"side":[[27204311,2],[102380,3],[73642296,2],[54693926,3]]},
+    {"id":734306,"region":"tcg","name":"Branded Angelechy Light and Darkness Ritual","date":"2026-09-19","tournament":"Bilbao WCQ Regional","placement":"Top 8","players":35,"player":"SoyAner","cover":71821687,"url":"branded-angelechy-light-and-darkness-ritual-734306","main":[[42141493,3],[94145021,2],[14558127,3],[59438930,2]],"side":[[27204311,2],[102380,3],[46502744,3],[73642296,2],[54693926,3]]},
     {"id":734300,"region":"tcg","name":"Invoked","date":"2026-09-19","tournament":"YCS Paris","placement":"Top 32","players":2588,"player":"Kevin Trinh","cover":48130397,"url":"invoked-734300","main":[[91800273,1],[42141493,3],[84192580,2],[14558127,3],[73642296,2],[94145021,2],[48130397,3]],"side":[[27204311,3],[33854624,1],[6637331,1],[59438930,2],[18144506,1],[14532163,1],[10045474,2]]},
     {"id":734297,"region":"tcg","name":"@Ignister Maliss","date":"2026-09-19","tournament":"YCS Paris","placement":"Top 64","players":2588,"player":"Amelys K.","cover":20726052,"url":"ignister-maliss-734297","main":[[91800273,1],[33854624,1],[6637331,1],[72656408,1],[14558127,3],[94145021,2],[97268402,3],[6325660,2],[40366667,3],[10045474,3]],"side":[[60242223,1],[27204311,3],[74203495,2],[38814750,1]]},
     {"id":734294,"region":"tcg","name":"Azamina Dark Magician Light and Darkness Ritual","date":"2026-09-19","tournament":"YCS Paris","placement":"Top 64","players":2588,"player":"Pierre-Louis Taillet","cover":22888900,"url":"azamina-dark-magician-light-and-darkness-ritual-734294","main":[[42141493,3],[84192580,3],[14558127,3],[94145021,2],[6325660,3],[40366667,3]],"side":[[27204311,1],[102380,3]]},
@@ -1303,7 +1401,7 @@
     {"id":733493,"region":"tcg","name":"Blitzclique","date":"2026-09-19","tournament":"Charlottetown WCQ Regional","placement":"Top 8","players":80,"player":"Cody Leger","cover":81674782,"url":"blitzclique-733493","main":[[91800273,1],[42141493,3],[14558127,3],[94145021,2],[97045737,3]],"side":[[48770333,1],[84192580,3]]},
     {"id":733491,"region":"tcg","name":"Synchron Kewl Tune","date":"2026-09-19","tournament":"Eindhoven WCQ Regional","placement":"Top 8","players":43,"player":"Vinh Nguyen","cover":60283232,"url":"synchron-kewl-tune-733491","main":[[14558127,3],[59438930,3],[94145021,2],[97268402,3],[10045474,3]],"side":[[38814750,1],[74203495,1],[27204311,2],[42141493,3],[73642296,2]]},
     {"id":733488,"region":"tcg","name":"Fiendsmith Magnet Warrior","date":"2026-09-19","tournament":"Eindhoven WCQ Regional","placement":"Top 4","players":43,"player":"Erik van den Reijen","cover":98567237,"url":"fiendsmith-magnet-warrior-733488","main":[[42141493,3],[14558127,3],[73642296,2],[59438930,2],[94145021,2],[10045474,3]],"side":[[46565218,1],[27204311,1],[84192580,3],[24508238,2],[18144506,1],[14532163,2],[97045737,3]]},
-    {"id":733487,"region":"tcg","name":"Darklord","date":"2026-09-19","tournament":"Eindhoven WCQ Regional","placement":"Top 8","players":43,"player":"Bruce Wentzel","cover":93023136,"url":"darklord-733487","main":[[42141493,3],[84192580,3],[14558127,3],[24299458,1],[40366667,3]],"side":[[46565218,3],[94145021,2]]},
+    {"id":733487,"region":"tcg","name":"Darklord","date":"2026-09-19","tournament":"Eindhoven WCQ Regional","placement":"Top 8","players":43,"player":"Bruce Wentzel","cover":93023136,"url":"darklord-733487","main":[[17266660,3],[42141493,3],[84192580,3],[14558127,3],[24299458,1],[40366667,3]],"side":[[46565218,3],[94145021,2]]},
     {"id":733485,"region":"tcg","name":"Dark Magician Light and Darkness Ritual","date":"2026-09-19","tournament":"Madrid WCQ Regional","placement":"Top 8","players":64,"player":"Yun Zhou","cover":23020408,"url":"dark-magician-light-and-darkness-ritual-733485","main":[[42141493,3],[84192580,1],[14558127,3],[94145021,2],[40366667,2]],"side":[[14965712,1],[102380,2],[27204311,1],[84192580,2],[18144506,1]]},
     {"id":733484,"region":"tcg","name":"Branded Red Dragon Archfiend Light and Darkness Ritual","date":"2026-09-19","tournament":"Eindhoven WCQ Regional","placement":"Runner-Up","players":43,"player":"Contijn Kamerbeek","cover":45675980,"url":"branded-red-dragon-archfiend-light-and-darkness-ritual-733484","main":[[33854624,1],[70088809,3],[42141493,3],[84192580,3],[14558127,3],[73642296,2],[59438930,3],[94145021,2],[24299458,1],[48130397,3]],"side":[[102380,3],[27204311,3],[24299458,2]]},
     {"id":733483,"region":"tcg","name":"Fiendsmith Light and Darkness Ritual Tearlaments","date":"2026-09-19","tournament":"Charlottetown WCQ Regional","placement":"Top 8","players":80,"player":"Jon Gould","cover":4928565,"url":"fiendsmith-light-and-darkness-ritual-tearlaments-733483","main":[[42141493,3],[84192580,3],[94145021,2]],"side":[[46565218,1],[14558127,3],[18144506,1],[48130397,3]]},
