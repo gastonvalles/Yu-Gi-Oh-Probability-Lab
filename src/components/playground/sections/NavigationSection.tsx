@@ -434,20 +434,26 @@ export function NavigationSection() {
   const [collapsed, setCollapsed] = useState(false)
   const [drawer, setDrawer] = useState(false)
   const [sheetKey, setSheetKey] = useState<string | null>(null)
-  const [shell, setShell] = useState(false)
+  // `table`: el armazón como lo pide la mesa (pantalla completa, sin la barra de arriba): desde 1101 px el menú se pliega al riel.
+  const [shell, setShell] = useState<'page' | 'table' | null>(null)
   const [finding, setFinding] = useState(false)
 
   return (
     <div className="grid gap-4">
-      <Specimen title="Armazón completo" note={<>Prueba el <Tag>AppShell</Tag> a pantalla completa: menú lateral en escritorio; en el celular, barra de arriba con hamburguesa (cajón de ajustes) y barra de abajo con los cuatro grupos (cambia con el ancho de la ventana, 1101 px). Archivo: <Tag>shell/AppShell.tsx</Tag></>}>
-        <Button variant="primary" icon="play" onClick={() => setShell(true)}>
-          Probar el armazón
-        </Button>
+      <Specimen title="Armazón completo" note={<>Prueba el <Tag>AppShell</Tag> a pantalla completa: menú lateral en escritorio; en el celular, barra de arriba con hamburguesa (cajón de ajustes) y barra de abajo con los cuatro grupos (cambia con el ancho de la ventana, 1101 px). En la mesa (la práctica, la mesa del duelo; el lobby no), desde 1101 px el menú se pliega al riel de 76 px: abrirlo vale mientras dure la mesa y no cambia tu preferencia; al salir vuelve como estaba. Archivo: <Tag>shell/AppShell.tsx</Tag></>}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" icon="play" onClick={() => setShell('page')}>
+            Probar el armazón
+          </Button>
+          <Button variant="secondary" onClick={() => setShell('table')}>
+            Probar la mesa
+          </Button>
+        </div>
       </Specimen>
       {shell ? (
         <div className="fixed inset-0 z-[300] overflow-auto bg-background">
-          <AppShell groups={groups} activeKey={active} onSelect={(key) => setActive(key)} contentScrollable>
-            <DemoPage onExit={() => setShell(false)} />
+          <AppShell groups={groups} activeKey={active} onSelect={(key) => setActive(key)} contentScrollable={shell === 'page'} immersive={shell === 'table'}>
+            <DemoPage onExit={() => setShell(null)} />
           </AppShell>
         </div>
       ) : null}
