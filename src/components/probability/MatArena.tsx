@@ -7,7 +7,7 @@ import { cx } from '../ui/cx'
 
 /**
  * La arena de la mesa (Gastón, 2026-10-20: «comparado con la imagen que te envié, el nuestro es totalmente simplón»; sólo estética). Tres piezas que no cambian el tamaño ni el lugar de nada, todas decoración (`aria-hidden`, sin toques):
- * - `MatScene`: el fondo de la mesa, con luz y viñeta (en vez del color liso del resto de la app). El campo no lleva placa: sus casillas son transparentes y el fondo se ve a través.
+ * - `MatScene`: el fondo de la mesa: un remolino violeta y lima (en vez del color liso del resto de la app). El campo no lleva placa: sus casillas son transparentes y el fondo se ve a través.
  * - `FieldArt`: el arte de la magia de campo activada, de fondo de la mitad de quien la activó.
  * - `PickMarks`: las esquinas (y el rombo) de una casilla que se puede elegir.
  * Los estilos están en `index.css` (`mat-scene`, `mat-field-art`, `mat-pick-marks`) y se ven en `/playground`.
