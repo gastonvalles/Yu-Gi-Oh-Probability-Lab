@@ -55,6 +55,10 @@
   /* Margen lateral del contenido en mobile (22 px, como el diseño). */
   --spacing-gutter: 1.375rem;
 
+  /* El remolino de fondo del duelo (`mat-scene`): uno para el celular y otro para escritorio. Vite los saca a /assets con hash y el service worker los precachea. */
+  --image-remolino-movil: url('./assets/duelo/remolino-medio-movil.avif');
+  --image-remolino-escritorio: url('./assets/duelo/remolino-medio-escritorio.avif');
+
   /* Lavanda clara del diseño: botón y anillo sobre una tarjeta violeta. */
   --color-lavender-light: #ece5ff;
 
@@ -1599,30 +1603,16 @@
 }
 
 /*
- * La mesa como escena (Gastón, 2026-10-20: «comparado con la imagen que te envié, el nuestro es totalmente simplón»; sólo estética: la mesa funciona igual). El lienzo de la app es de un solo color; la mesa es la
- * excepción: una arena de la misma familia índigo, con luz (un pozo violeta debajo del campo) y hondura (una viñeta); el campo no lleva placa: sus casillas son transparentes y la arena se ve a través.
- * Todo con los colores de la paleta y sin imágenes; es decoración (`aria-hidden`, sin toques) y no cambia el tamaño ni el lugar de nada.
+ * El fondo de la mesa, de la sala y de la apertura del duelo (Gastón, 2026-11-10: «de fondo algo así con nuestros colores»): un remolino violeta y lima sobre el carbón, generado por
+ * `scripts/remolino/` (con un tope de luz: el contraste contra su punto más claro lo mide `scripts/remolino/medir.mjs`). El campo no lleva placa: sus casillas son transparentes y el remolino se ve a través.
+ * El navegador baja sólo el de su tamaño (escritorio desde 1101 px); mientras carga, o sin AVIF, queda el carbón. Plano y quieto: sin `bg-fixed` (repinta al desplazar en el celular), sin animación,
+ * sin `filter` y sin `preload` (es decoración: `aria-hidden`, sin toques; no cambia el tamaño ni el lugar de nada). En la vista 3D no se inclina: va fuera del campo inclinado.
  */
 @utility mat-scene {
   position: relative;
   pointer-events: none;
   background-color: var(--background);
-  background-image:
-    radial-gradient(ellipse 125% 105% at 50% 42%, transparent 50%, rgb(0 0 0 / 0.55) 100%),
-    radial-gradient(ellipse 52% 20% at 50% 100%, rgb(var(--primary-rgb) / 0.38), transparent 72%),
-    radial-gradient(circle at 9% 6%, rgb(var(--accent-rgb) / 0.2), transparent 26%),
-    radial-gradient(circle at 91% 6%, rgb(var(--accent-rgb) / 0.2), transparent 26%),
-    radial-gradient(ellipse 60% 46% at 50% 47%, rgb(var(--primary-rgb) / 0.4), rgb(var(--primary-rgb) / 0.13) 50%, transparent 76%),
-    linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.75), transparent 36%);
-
-  /* Un grano finísimo, para que el fondo tenga material y no un degradé liso. */
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    opacity: 0.05;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-  }
+  @apply bg-(image:--image-remolino-movil) bg-cover bg-center bg-no-repeat min-[1101px]:bg-(image:--image-remolino-escritorio);
 }
 
 /*
