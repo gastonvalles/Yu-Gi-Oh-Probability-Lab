@@ -244,10 +244,10 @@ describe('auto-screen-online · la mesa', () => {
     expect(screen.queryByRole('button', { name: 'Guardar combo' })).toBeNull()
   })
 
-  it('en escritorio sin el detalle, el visor de las pilas es una tira ancha sobre la fila de las Zonas Extra, con renglones que se deslizan de arriba abajo; una casilla que pregunta el núcleo la esconde hasta contestar, y jugar una carta suya la cierra', () => {
+  it('en escritorio, el visor de las pilas es una tira ancha sobre la fila de las Zonas Extra, con renglones que se deslizan de arriba abajo; una casilla que pregunta el núcleo la esconde hasta contestar, y jugar una carta suya la cierra', () => {
     const media = window.matchMedia
 
-    // Desde 1101 px (sin el detalle fijo, que llega a los 1440): a la derecha va el chat.
+    // Desde 1101 px: a la derecha va la columna (Carta · Cadena · Chat); una sola jugada es su etiqueta.
     window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
     const { start } = setup()
     const session = start()
@@ -267,7 +267,7 @@ describe('auto-screen-online · la mesa', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
     core(() => session.ask(withZeus))
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: /^Zeus/ }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Invocación Especial · Zeus' }))
     expect(session.answers.at(-1)).toEqual({ type: 'select_idlecmd', action: 1, index: 0 })
     expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()
     expect(dispatches).toBe(0)

@@ -22,8 +22,11 @@ import { Icon, type IconName } from '../ui/Icon'
 import { CloseButton, IconButton, TileButton } from '../ui/IconButton'
 import { overline } from '../ui/typography'
 
-/** `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px). Sin decirlo, según el ancho. */
-type AutoPanelVariant = 'docked' | 'floating'
+/**
+ * `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px). Sin decirlo, según el ancho. `column`: en su lugar, dentro de la
+ * pestaña «Carta» de la columna del escritorio (la ficha de una carta: su nombre, la X y sus jugadas debajo del detalle), sin portal, sin barra ni velo.
+ */
+type AutoPanelVariant = 'docked' | 'floating' | 'column'
 
 /**
  * Dónde recuerda cada ventana su lugar y su tamaño: las preguntas comparten una (la próxima sale donde quedó la anterior); la ficha de una carta y las fases, la suya; las del catálogo (`playground`),
@@ -82,8 +85,9 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
   const leaving = useLeaving()
   const host = useSheetHost()
   const slot = host?.slot ?? null
-  // En un marco del catálogo (`SheetHost phone`), en su lugar: ni portal ni `fixed`.
-  const inline = host?.phone === true && !slot
+  const column = variant === 'column'
+  // En un marco del catálogo (`SheetHost phone`) o en la columna, en su lugar: ni portal ni `fixed`.
+  const inline = (host?.phone === true && !slot) || column
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
   // En el pie de la hoja de la cadena (celular) nunca es ventana.
   const floating = !slot && (variant === 'floating' || (variant === undefined && desktop))
@@ -131,13 +135,14 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
     return () => window.removeEventListener('resize', place)
   }, [slot, inline, minimized])
 
-  const named = labelledBy ?? titleId
+  // En la columna el nombre es su propio título (la cabeza de la ficha no se dibuja: el detalle de arriba ya muestra la carta).
+  const named = column ? titleId : (labelledBy ?? titleId)
   const attrs = {
     role,
     // Minimizado, su nombre es la pregunta corta de la tira (lo que lo nombraba abierto ya no está).
     ...(minimized ? { 'aria-label': label } : { 'aria-labelledby': named, ...(describedBy ? { 'aria-describedby': describedBy } : {}) }),
     'data-prompt': kind,
-    'data-auto-panel': floating ? 'floating' : 'docked',
+    'data-auto-panel': column ? 'column' : floating ? 'floating' : 'docked',
     // `data-lowered`: el mismo estado con el nombre de las hojas del celular (lo leen la mesa y sus pruebas).
     ...(minimized ? { 'data-minimized': '', 'data-lowered': '' } : {}),
   }
@@ -241,7 +246,19 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
     </p>
   ) : null
 
-  const view = floating ? (
+  const view = column ? (
+    // La ficha en la pestaña «Carta»: su nombre y la X, y las jugadas al pie del detalle (sin cabeza, barra, agarres ni velo; no se minimiza).
+    <div ref={ref} {...attrs} className={cx('flex min-w-0 shrink-0 flex-col gap-2 border-t border-border-subtle pt-2', className)}>
+      <div className="flex min-w-0 items-center gap-2">
+        <h2 id={titleId} className="m-0 min-w-0 flex-1 truncate text-body font-semibold">
+          {label}
+        </h2>
+        {onDismiss ? <CloseButton size="lg" tone="ghost" className="-my-1 shrink-0" aria-label={t('common.close')} onClick={onDismiss} /> : null}
+      </div>
+      {children}
+      {actions ? <div className="flex min-w-0 items-center justify-between gap-2">{actions}</div> : null}
+    </div>
+  ) : floating ? (
     minimized ? (
       // La tira: la barra con la pregunta y sus botones, en el mismo lugar y con el mismo ancho (el alto, el suyo).
       <div ref={ref} {...attrs} className={cx(windowSurface, windowPlace, 'flex h-auto! min-w-0 flex-col', className)}>

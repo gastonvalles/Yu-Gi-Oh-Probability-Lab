@@ -4,13 +4,13 @@ import '@testing-library/jest-dom'
 import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { MAT_PANELS_KEY, useMatPanels } from '../app/mat-panels'
+import { MAT_PANELS_KEY, MAT_PANELS_KEY_V1, useMatPanels } from '../app/mat-panels'
 import { ResizeHandle } from '../components/ui/ResizeHandle'
 
 /** La sección con los dos agarres, como en la mesa (sin diseño: jsdom no mide, así que la sección no recorta nada). */
-function Harness() {
+function Harness({ column = false }: { column?: boolean }) {
   const ref = useRef<HTMLElement | null>(null)
-  const panels = useMatPanels(ref, { left: true, right: true })
+  const panels = useMatPanels(ref, { left: !column, right: true }, column)
 
   return (
     <section ref={ref} aria-label="Mesa" style={panels.style}>
@@ -69,7 +69,7 @@ describe('el agarre del borde de un panel', () => {
     expect(handle('Panel')).toHaveAttribute('aria-valuenow', '256')
     fireEvent.keyDown(handle('Panel'), { key: 'End' })
     expect(handle('Panel')).toHaveAttribute('aria-valuenow', '576')
-    expect(stored()).toEqual({ left: 272, right: 576 })
+    expect(stored()).toEqual({ left: 272, right: 576, column: null })
   })
 
   it('se arrastra con el puntero: mientras se mueve, el ancho va directo a la sección (y el cursor ↔ tapa la pantalla); al soltar queda y se guarda', async () => {
@@ -95,7 +95,7 @@ describe('el agarre del borde de un panel', () => {
     expect(right).toHaveAttribute('aria-valuenow', '576')
     expect(section().style.getPropertyValue('--mat-right')).toBe('576px')
     expect(document.body.querySelector('.fixed.inset-0.cursor-ew-resize')).not.toBeInTheDocument()
-    expect(stored()).toEqual({ left: null, right: 576 })
+    expect(stored()).toEqual({ left: null, right: 576, column: null })
   })
 
   it('un clic sin mover no elige nada (sigue el ancho de siempre) y otro puntero no lo mueve', () => {
@@ -136,7 +136,7 @@ describe('el agarre del borde de un panel', () => {
     fireEvent.doubleClick(handle('Detalle'))
     expect(handle('Detalle')).toHaveAttribute('aria-valuenow', '320')
     expect(section().style.getPropertyValue('--mat-left')).toBe('')
-    expect(stored()).toEqual({ left: null, right: null })
+    expect(stored()).toEqual({ left: null, right: null, column: null })
   })
 
   it('lo guardado vuelve al abrir la mesa otra vez', () => {
@@ -147,5 +147,16 @@ describe('el agarre del borde de un panel', () => {
     expect(handle('Panel')).toHaveAttribute('aria-valuenow', '300')
     expect(section().style.getPropertyValue('--mat-left')).toBe('448px')
     expect(section().style.getPropertyValue('--mat-right')).toBe('300px')
+  })
+
+  it('la columna del automático lleva su propio ancho: arranca con el del panel de la derecha guardado antes (v1) y arrastrarla no cambia el de la práctica', () => {
+    localStorage.setItem(MAT_PANELS_KEY_V1, JSON.stringify({ left: 448, right: 300 }))
+    render(<Harness column />)
+
+    expect(handle('Panel')).toHaveAttribute('aria-valuenow', '300')
+    expect(section().style.getPropertyValue('--mat-right')).toBe('300px')
+    fireEvent.keyDown(handle('Panel'), { key: 'ArrowLeft' })
+    expect(stored()).toEqual({ left: 448, right: 300, column: 316 })
+    expect(localStorage.getItem(MAT_PANELS_KEY_V1)).toBeNull()
   })
 })

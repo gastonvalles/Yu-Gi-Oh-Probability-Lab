@@ -8,6 +8,8 @@ import { isRecord } from './utils'
  * sobre los bordes y arrastrando»): el detalle de la carta a la izquierda (desde 1440 px) y los pasos y combos —o el chat de un duelo— a la derecha (desde 1101 px). Cada uno mide 20 rem hasta que se
  * arrastra su borde; lo elegido se recuerda en el navegador (uno para la práctica y el duelo: es cómo se ve la mesa) y la mesa del medio nunca queda más angosta que `MAT_MIN_PX`.
  *
+ * En el duelo automático no hay detalle a la izquierda: una sola columna a la derecha («Carta · Cadena · Pasos»), con su ancho aparte (`column`).
+ *
  * Lo guardado es lo que se eligió y no se pisa al achicar la ventana: lo que se usa sale de recortarlo a lo que entra (`fitPanels`), así que si la ventana vuelve a crecer, vuelve el ancho elegido.
  */
 
@@ -25,7 +27,9 @@ export const PANEL_MAX_PX = 36 * REM_PX
  */
 export const MAT_MIN_PX = 33 * REM_PX
 
-export const MAT_PANELS_KEY = 'ygo-lab:mat-panels:v1'
+export const MAT_PANELS_KEY = 'ygo-lab:mat-panels:v2'
+/** La de antes, con los dos paneles: se lee si todavía no hay la nueva, y la columna del automático arranca con el ancho que tenía el panel de la derecha (el que reemplaza). */
+export const MAT_PANELS_KEY_V1 = 'ygo-lab:mat-panels:v1'
 
 export type PanelSide = 'left' | 'right'
 
@@ -33,6 +37,8 @@ export type PanelSide = 'left' | 'right'
 export interface MatPanels {
   left: number | null
   right: number | null
+  /** La columna única del duelo automático en escritorio («Carta · Cadena · Pasos»): va en el lugar del panel de la derecha, con su ancho propio. */
+  column: number | null
 }
 
 /** Qué paneles hay ahora (el detalle sólo desde 1440 px; el de la derecha, en un duelo sólo con el chat). */
@@ -53,7 +59,7 @@ export const clampPanel = (width: number, max: number = PANEL_MAX_PX): number =>
  * Lo que mide cada panel en una sección de ese ancho: lo elegido (o el de siempre), recortado a lo que entra. Si no entran los dos con la mesa, cede primero el de la derecha (hasta su mínimo) y
  * después el detalle. Un panel que no está mide 0.
  */
-export function fitPanels(chosen: MatPanels, section: number, shown: PanelsShown): Record<PanelSide, number> {
+export function fitPanels(chosen: Pick<MatPanels, PanelSide>, section: number, shown: PanelsShown): Record<PanelSide, number> {
   const left = shown.left ? clampPanel(chosen.left ?? PANEL_DEFAULT_PX, panelMax(section, shown.right ? PANEL_MIN_PX : 0)) : 0
   const right = shown.right ? clampPanel(chosen.right ?? PANEL_DEFAULT_PX, panelMax(section, left)) : 0
 
@@ -63,22 +69,31 @@ export function fitPanels(chosen: MatPanels, section: number, shown: PanelsShown
 /** Un ancho guardado que se entiende (un número; lo de afuera del rango se acota) o el de siempre. */
 const parsePanel = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? clampPanel(value) : null)
 
-/** Lo guardado, o los anchos de siempre si no hay o no se entiende (cada panel por su lado). */
+/** Lo guardado (o, si no hay, lo de la clave de antes), o los anchos de siempre si no hay o no se entiende (cada panel por su lado). */
 export function readMatPanels(storage: () => Storage = () => localStorage): MatPanels {
   let stored: unknown = null
+  let old = false
 
   try {
-    stored = JSON.parse(storage().getItem(MAT_PANELS_KEY) ?? 'null')
+    const raw = storage().getItem(MAT_PANELS_KEY)
+
+    old = raw === null
+    stored = JSON.parse(raw ?? storage().getItem(MAT_PANELS_KEY_V1) ?? 'null')
   } catch {
     // Sin almacenamiento o lo guardado no se entiende: valen los de siempre.
   }
 
-  return isRecord(stored) && !Array.isArray(stored) ? { left: parsePanel(stored.left), right: parsePanel(stored.right) } : { left: null, right: null }
+  if (!isRecord(stored) || Array.isArray(stored)) return { left: null, right: null, column: null }
+  const right = parsePanel(stored.right)
+
+  return { left: parsePanel(stored.left), right, column: old ? right : parsePanel(stored.column) }
 }
 
+/** Se guarda con la clave nueva y se borra la de antes (ya se leyó). */
 export function writeMatPanels(panels: MatPanels, storage: () => Storage = () => localStorage): void {
   try {
-    storage().setItem(MAT_PANELS_KEY, JSON.stringify({ left: panels.left, right: panels.right }))
+    storage().setItem(MAT_PANELS_KEY, JSON.stringify({ left: panels.left, right: panels.right, column: panels.column }))
+    storage().removeItem(MAT_PANELS_KEY_V1)
   } catch {
     // Sin almacenamiento (ventana privada, cuota): vale hasta recargar.
   }
@@ -99,14 +114,17 @@ export interface PanelHandle {
  * Los anchos de los paneles de la mesa (`sectionRef`: la sección con la grilla, que lleva las variables): `style` va en la sección y `left` / `right` en los agarres de cada borde. Mientras se
  * arrastra se escribe la variable directo en la sección (la mesa es enorme: no se vuelve a dibujar en cada cuadro); al soltar queda el estado y se guarda.
  */
-export function useMatPanels(sectionRef: RefObject<HTMLElement | null>, shown: PanelsShown): { style: CSSProperties; left: PanelHandle; right: PanelHandle } {
+export function useMatPanels(sectionRef: RefObject<HTMLElement | null>, shown: PanelsShown, column = false): { style: CSSProperties; left: PanelHandle; right: PanelHandle } {
   const [chosen, setChosen] = useState(() => readMatPanels())
   const measured = useElementWidth(sectionRef)
   // Sin medir todavía (o en las pruebas, sin diseño), la sección no recorta nada.
   const section = measured > 0 ? measured : Number.POSITIVE_INFINITY
-  const fitted = fitPanels(chosen, section, shown)
+  // Con la columna del automático (`column`), el panel de la derecha es ella, con su ancho guardado aparte.
+  const keyOf = (side: PanelSide): keyof MatPanels => (side === 'right' && column ? 'column' : side)
+  const view = { left: chosen.left, right: chosen[keyOf('right')] }
+  const fitted = fitPanels(view, section, shown)
   // Un panel lleva su variable si se eligió su ancho o si no le entra el de siempre; si no, queda el de la clase (20 rem): quien nunca toca un borde ve la mesa como siempre.
-  const widthOf = (side: PanelSide) => (shown[side] && (chosen[side] !== null || fitted[side] !== PANEL_DEFAULT_PX) ? `${fitted[side]}px` : undefined)
+  const widthOf = (side: PanelSide) => (shown[side] && (view[side] !== null || fitted[side] !== PANEL_DEFAULT_PX) ? `${fitted[side]}px` : undefined)
   const left = widthOf('left')
   const right = widthOf('right')
   const style = useMemo(() => ({ ...(left ? { [PANEL_VAR.left]: left } : {}), ...(right ? { [PANEL_VAR.right]: right } : {}) }) as CSSProperties, [left, right])
@@ -132,8 +150,8 @@ export function useMatPanels(sectionRef: RefObject<HTMLElement | null>, shown: P
         else element.style.removeProperty(PANEL_VAR[side])
       },
       // Lo que se ve es lo que queda: si el otro panel estaba recortado (la ventana es más chica que cuando se eligió), se guarda como se ve, así no vuelve a crecer mientras se achica este.
-      onCommit: (width) => save({ ...chosen, [side]: width, ...(shown[other] && fitted[other] !== (chosen[other] ?? PANEL_DEFAULT_PX) ? { [other]: fitted[other] } : {}) }),
-      onReset: () => save({ ...chosen, [side]: null }),
+      onCommit: (width) => save({ ...chosen, [keyOf(side)]: width, ...(shown[other] && fitted[other] !== (view[other] ?? PANEL_DEFAULT_PX) ? { [keyOf(other)]: fitted[other] } : {}) }),
+      onReset: () => save({ ...chosen, [keyOf(side)]: null }),
     }
   }
 
