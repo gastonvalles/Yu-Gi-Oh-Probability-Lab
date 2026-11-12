@@ -27,7 +27,7 @@ import { t } from '../../i18n'
 import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { handLinksOf, type ChainBadgeData } from '../../app/card-glow'
+import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
 import { ChainBadge, FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, VOIDED_ART, chainLinkLabel, fxVars } from './MatFx'
 import { CARD_BACK, glowFrame } from './practice-styles'
 
@@ -94,8 +94,10 @@ interface PracticeHandProps {
   fanDegrees: number
   /** Por qué brilla cada carta: una salida (verde) o un problema (rojo) del Lab o, en un duelo, lo que podés hacer (celeste) y lo que se activa (ámbar): `app/card-glow.ts`. */
   glowOf: (id: string) => GlowKind | null
-  /** En un duelo, las cartas que están en la cadena a la vista: llevan la insignia de su eslabón («CL1») y su nombre lo dice. */
+  /** En un duelo, las cartas que están en la cadena a la vista: su nombre lo dice. */
   links?: ReadonlyMap<string, ChainBadgeData>
+  /** Los medallones de la cadena de lo activado desde la mano, al resolver (`medalsOf`): van sobre la mano. */
+  medals?: readonly ChainMedal[]
   /** Las que no brillan se oscurecen (una salida o un problema del Lab; en un duelo, no: la mano sigue a la vista). */
   dimUnlit: boolean
   /** Mano no jugable: las cartas se ven grises. */
@@ -152,7 +154,7 @@ const siblingIndex = (element: HTMLElement) => (element.parentElement ? Array.pr
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
  */
-export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowOf, links, dimUnlit, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowOf, links, medals, dimUnlit, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   // El tamaño de la carta sale de la mano inicial (no cambia al jugar o robar), pero la separación, el abanico y el centrado salen de las cartas que hay: al salir una, las que quedan se vuelven a centrar.
@@ -356,7 +358,6 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
   const onCardKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>, id: string) => latest.current.handleKeyDown(event, id), [])
   const deckRect = useCallback(() => latest.current.getDeckRect(), [])
   /** El lugar de la carta `index` en el abanico, en reposo: un poco más abajo y más inclinada cuanto más lejos del centro. */
-  const handLeft = handLinksOf(links, cards.map((card) => card.id))
   const restTransform = (index: number) => `translate3d(${slotLeft(layout, index)}px, ${TOP_ROOM + Math.abs(index - (count - 1) / 2) ** 2 * 1.6}px, 0) rotate(${fanAngle(index, count, fanDegrees)}deg)`
 
   return (
@@ -400,22 +401,10 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
           />
         )
       })}
-      {/* Los medallones de la cadena, sobre su carta y con su mismo lugar en el abanico (la carta recorta lo que se sale). Van después de todas las cartas: no cambian su lugar entre hermanas. */}
-      {links
-        ? cards.map((card, index) => {
-            const link = links.get(card.id)
-
-            return link && draggedId !== card.id ? (
-              <span key={`cl:${card.id}`} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 z-60" style={{ width: layout.cardWidth, height: layout.cardHeight, transform: restTransform(index) }}>
-                <ChainBadge link={link} />
-              </span>
-            ) : null
-          })
-        : null}
-      {/* Lo activado desde la mano que ya se fue de ella (un costo): su medallón, sobre la mano. */}
-      {handLeft ? (
+      {/* Los medallones de lo activado desde la mano, sobre la mano (donde se activó, aunque la carta se haya ido como costo). Después de las cartas: no cambian su lugar entre hermanas. */}
+      {medals?.length ? (
         <span data-hand-links="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-60">
-          <ChainBadge link={handLeft} />
+          <ChainBadge medals={medals} />
         </span>
       ) : null}
       {cards.length === 0 ? <span className="absolute inset-0 grid place-items-center text-micro text-soft">{t('practice.hand.empty')}</span> : null}

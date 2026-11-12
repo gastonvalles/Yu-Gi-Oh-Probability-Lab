@@ -1,7 +1,9 @@
-import type { ChainOutcome, ChainRowState } from '../../app/auto/chain-feed'
+import { useEffect, useState } from 'react'
+
+import { CHAIN_LEAVE_MS, type ChainOutcome, type ChainRowState } from '../../app/auto/chain-feed'
 
 // El catálogo corre la escena con el ritmo real: los valores del núcleo salen de acá (`auto-isolation.test.ts`).
-export { CHAIN_LINGER_MS, chainDwell, chainFeed } from '../../app/auto/chain-feed'
+export { CHAIN_LEAVE_MS, CHAIN_LINGER_MS, chainDwell, chainFeed } from '../../app/auto/chain-feed'
 import { frameClass, type CardFrame } from '../../app/card-frame'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -95,12 +97,15 @@ function Bond({ number, from, to, fromAt, toAt }: { number: number; from: readon
  * campo: llena su alto (3:4; quien la usa le da un alto).
  * - **Armar:** cada activación entra grande y derecha desde el centro y cae inclinada a su lugar (`starting:`) con un borde de luz, y el campo baja un poco más; su número enorme (del
  *   color de su dueño, con borde) se sale por la esquina de abajo y destella. La última va adelante y más grande; las anteriores, atrás, más chicas y más arriba (`DEPTH`); desde la
- *   quinta, las viejas se achican y se van hacia arriba. Una cadena de metal la une con la anterior y, con dos o más, «CADENA» destella al medio. Una activación sola entra igual, con su «1».
+ *   quinta, las viejas se achican y se van hacia arriba. Una cadena de metal la une con la anterior y, con dos o más, «CADENA» destella al medio. Una activación sola entra igual, con su
+ *   «1». El nombre va sólo en la carta sin imagen (con imagen ya está impreso).
  * - **El velo:** mientras está, el campo de atrás baja (una capa al lado de la escena que llena la capa de la mesa, sólo `opacity`); no ataja toques.
- * - **Una sola línea** arriba (`role="status"`, sobre la fila de atrás del rival: nunca pisa tu campo ni tu mano): «Se resuelve del último al primero».
- * - **Corrida** (`away`, mientras el núcleo pregunta algo que no es responder): ni cartas, ni velo, ni línea a la vista, y vuelve después.
- * - **Resolver** (Gastón: «la animación con las cartas grandes sucede al momento de encadenar»): apenas empieza, la escena se va entera y no vuelve; quedan los medallones sobre cada lugar
- *   donde se activó un eslabón (`ChainBadge`, `linksOf`) y lo que pasó con cada uno, en esta línea oculta a la vista (para el lector de pantalla) y en Pasos.
+ * - **Sin línea a la vista:** «Se resuelve del último al primero» (y, resolviendo, qué pasó con cada uno) va en un `role="status"` oculto, para el lector de pantalla; ya lo dicen
+ *   «CADENA» y los números.
+ * - **Respondiendo** (`answering`, con la hoja o la ventana de «¿Respondés?» abierta): la escena se achica hacia arriba, así el número de la última carta no queda debajo del cartel.
+ * - **Corrida** (`away`, mientras el núcleo pregunta algo que no es responder): ni cartas, ni velo a la vista, y vuelve después.
+ * - **Resolver** (Gastón: «la animación con las cartas grandes sucede al momento de encadenar»): apenas empieza, la escena y el velo se van con un fundido corto (`CHAIN_LEAVE_MS`,
+ *   sin alargar `chainDwell`) y no vuelven; quedan los medallones donde se activó cada eslabón (`ChainBadge`, `medalsOf`) y lo que pasó, en la línea oculta y en Pasos.
  * - Sólo `translate`/`rotate`/`scale`/`opacity`; con movimiento reducido aparece y se va sin moverse ni destellar (sólo la opacidad). No ataja toques (`pointer-events-none`): lo de
  *   abajo se sigue tocando. El ritmo lo pone quien la usa (`chainDwell`, `use-auto-asks.tsx`).
  */
@@ -109,6 +114,7 @@ export function ChainStage({
   current,
   done = false,
   away = false,
+  answering = false,
 }: {
   rows: readonly ChainNoticeRow[]
   /** El que se resuelve (índice en `rows`); -1 mientras se arma. */
@@ -116,27 +122,48 @@ export function ChainStage({
   done?: boolean
   /** Se corre: el núcleo te pregunta algo que no es responder (el campo se ve entero). */
   away?: boolean
+  /** Está abierto «¿Respondés?»: la escena se achica hacia arriba. */
+  answering?: boolean
 }) {
-  // Resolviendo (algún eslabón dejó de esperar) o terminada: sólo la línea, oculta a la vista.
-  const resolving = current >= 0 || rows.some((link) => link.state !== 'chained')
+  // Resolviendo (algún eslabón dejó de esperar) o terminada: la escena se va con un fundido y queda sólo la línea oculta.
+  const over = done || current >= 0 || rows.some((link) => link.state !== 'chained')
+  const [gone, setGone] = useState(over)
+
+  if (!over && gone) setGone(false)
+  useEffect(() => {
+    if (!over) return
+    const timer = window.setTimeout(() => setGone(true), CHAIN_LEAVE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [over])
   const row = rows[current >= 0 ? current : rows.length - 1]
   const depth = (index: number) => rows.length - 1 - index
   const pose = (index: number): Pose => (away ? 'out' : depth(index) >= SHOWN ? 'back' : 'slot')
+  const hidden = away || over
+  const status = (
+    <p data-testid={over ? 'chain-notice' : undefined} role="status" className="sr-only">
+      {current < 0 || !row ? t('auto.chain.order') : t('auto.chain.say', { card: row.name, what: whatHappened(row, rows) })}
+    </p>
+  )
 
   if (!row) return null
-  if (resolving || done) {
-    return (
-      <p data-testid="chain-notice" role="status" className="sr-only">
-        {current < 0 ? t('auto.chain.order') : t('auto.chain.say', { card: row.name, what: whatHappened(row, rows) })}
-      </p>
-    )
-  }
+  if (over && gone) return status
   return (
     <>
-      <div aria-hidden="true" data-chain-veil="" className={cx('pointer-events-none absolute inset-0 bg-background/60 transition-opacity duration-300 starting:opacity-0 motion-reduce:transition-opacity', away ? 'opacity-0' : 'opacity-100')} />
+      <div aria-hidden="true" data-chain-veil="" className={cx('pointer-events-none absolute inset-0 bg-background/60 transition-opacity duration-200 ease-out starting:opacity-0 motion-reduce:transition-opacity', hidden ? 'opacity-0' : 'opacity-100')} />
       {/* Mientras entra un eslabón, el campo baja todavía más. */}
-      {away ? null : <div key={`veil-${rows.length}`} aria-hidden="true" data-chain-dim="" className="pointer-events-none absolute inset-0 animate-chain-veil bg-background/45 motion-reduce:hidden" />}
-      <div data-testid="chain-notice" data-chain-stage="" {...(away ? { 'data-away': '' } : {})} className="pointer-events-none relative aspect-3/4 h-full max-w-full select-none">
+      {hidden ? null : <div key={`veil-${rows.length}`} aria-hidden="true" data-chain-dim="" className="pointer-events-none absolute inset-0 animate-chain-veil bg-background/45 motion-reduce:hidden" />}
+      <div
+        data-testid={over ? undefined : 'chain-notice'}
+        data-chain-stage=""
+        {...(away ? { 'data-away': '' } : {})}
+        {...(over ? { 'data-leaving': '' } : {})}
+        className={cx(
+          'pointer-events-none relative aspect-3/4 h-full max-w-full origin-top select-none transition-[scale,opacity] duration-200 ease-out motion-reduce:transition-opacity',
+          answering && 'scale-85',
+          over && 'opacity-0',
+        )}
+      >
         <svg aria-hidden="true" viewBox="0 0 300 400" className="absolute inset-0 z-6 size-full overflow-visible">
           {rows.map((link, index) =>
             // La cadena entre esta carta y la anterior, mientras las dos están en la escena; cada vez que se corren, vuelve a salir desde la anterior.
@@ -148,7 +175,7 @@ export function ChainStage({
         {rows.map((link, index) => {
           const at = pose(index)
           // La que acaba de entrar: adelante y más grande, con un borde de luz y su número destellando.
-          const newest = index === rows.length - 1 && !away
+          const newest = index === rows.length - 1 && !hidden
 
           return (
             <div
@@ -164,7 +191,7 @@ export function ChainStage({
               )}
             >
               <CardArt remoteUrl={link.art} name={link.name} {...(link.frame ? { frame: link.frame } : {})} className="block size-full object-cover" />
-              <span className="absolute inset-x-1 top-1 truncate bg-background/85 px-1 text-micro font-semibold text-foreground">{link.name}</span>
+              {link.art ? null : <span data-chain-name="" className="absolute inset-x-1 top-1 truncate bg-background/85 px-1 text-micro font-semibold text-foreground">{link.name}</span>}
               {newest ? <span aria-hidden="true" data-chain-glow="" className="absolute -inset-1.5 animate-fx-flash border-4 border-foreground motion-reduce:hidden" /> : null}
               <span aria-hidden="true" data-chain-number="" className={cx('absolute -bottom-8 -left-5 text-hit font-extrabold tabular-nums', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].text)}>
                 {newest ? <span data-chain-flash="" className="absolute inset-0 animate-fx-flash text-center motion-reduce:hidden">{link.number}</span> : null}
@@ -177,15 +204,14 @@ export function ChainStage({
             </div>
           )
         })}
-        {rows.length > 1 && !away ? (
+        {rows.length > 1 && !hidden ? (
           <span key={rows.length} aria-hidden="true" data-chain-word="" className="absolute inset-0 z-20 flex animate-fx-flash items-center justify-center text-display font-extrabold uppercase text-foreground text-shadow-lg text-shadow-background motion-reduce:hidden">
             {t('auto.chain.title')}
           </span>
         ) : null}
-        <p role="status" className={cx('absolute inset-x-0 top-0 m-0 truncate bg-background/90 px-3 py-1.5 text-center text-body font-semibold text-foreground', away && 'sr-only')}>
-          {t('auto.chain.order')}
-        </p>
+        {over ? null : status}
       </div>
+      {over ? status : null}
     </>
   )
 }

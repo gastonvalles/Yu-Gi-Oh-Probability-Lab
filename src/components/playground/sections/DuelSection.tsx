@@ -13,7 +13,7 @@ import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
 import { RivalExtraDeck } from '../../duel/RivalExtraDeck'
 import { DEFAULT_RIVAL_EXTRA, HANDTRAP_CATALOG, type ExtraPick, type HandtrapConfig } from '../../../app/handtraps'
 import type { PickStat } from '../../../app/auto/ask-ui'
-import type { ChainBadgeData } from '../../../app/card-glow'
+import type { ChainMedal } from '../../../app/card-glow'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { DuelOffline } from '../../duel/DuelOffline'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
@@ -250,23 +250,30 @@ function PendulumPickerSample({ range, title, note }: { range: string; title: st
   )
 }
 
+/** Una cadena de seis resolviéndose (ya se fueron el 6 y el 5; el 4 late): cada eslabón donde se activó. Dos en tu Cementerio y sólo el 3 tachado. */
+const medal = (number: number, mine: boolean, extra: Partial<ChainMedal> = {}): ChainMedal => ({ number, mine, voided: false, resolving: false, ...extra })
+const SAMPLE_MEDALS = {
+  mine: new Map<string, ChainMedal[]>([
+    ['gy', [medal(3, true, { voided: true }), medal(4, true, { resolving: true })]],
+    ['st:3', [medal(1, true)]],
+  ]),
+  theirs: new Map<string, ChainMedal[]>([
+    ['mz:0', [medal(2, false)]],
+    ['hand', [medal(5, false)]],
+  ]),
+}
+
 /**
- * Los medallones de la cadena: una cadena de cinco sobre la mesa de muestra (1, un monstruo del rival en ataque; 2, uno tuyo en defensa; 3, tu Cementerio; 4, tu Zona de campo; 5, desde la
- * mano del rival, sobre su abanico). Los pide `links` de cada lado (`linksOf` de `app/card-glow.ts`, por id). «Resolviendo»: el 5 y el 4 ya se resolvieron, el 3 late y el 2 quedó sin efecto.
+ * Los medallones de la cadena al resolver, sobre la mesa de muestra (`medalsOf` de `app/card-glow.ts`, por lugar): el 1 en una casilla tuya que quedó vacía (la carta se fue), el 2 en un
+ * monstruo del rival, el 3 (sin efecto, tachado) y el 4 (el que se resuelve, late) en tu Cementerio, y el 5, de la mano del rival, sobre su abanico.
  */
 function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
-  const [mode, setMode] = useState<'on' | 'solve' | 'off'>('on')
-  const on = mode !== 'off'
+  const [mode, setMode] = useState<'solve' | 'off'>('solve')
   const sides = useMemo(() => {
-    const solving = mode === 'solve'
-    const extra = (n: number) => ({ ...(solving && n === 2 ? { voided: { state: 'disabled' as const, by: 1 } } : {}), ...(solving && n === 3 ? { resolving: 3 } : {}) })
-    const links = (ids: ReadonlyArray<string | undefined>, first: number, owner: boolean, fromHand = false) =>
-      new Map<string, ChainBadgeData>(ids.flatMap((id, i) => (id && !(solving && first + i > 3) ? [[id, { numbers: [first + i], mine: owner, fromHand, ...extra(first + i) }] as const] : [])))
-    const mine = links(['card-59438930-1', duel.mine.state.gy.at(-1), duel.mine.state.field?.id], 2, true)
-    const theirs = new Map([...links([duel.theirs.state.mz[0]?.id], 1, false), ...links(['de-la-mano'], 5, false, true)])
+    const on = mode === 'solve'
 
-    return { mine: { ...duel.mine, ...(on ? { links: mine } : {}) }, theirs: { ...duel.theirs, handCount: duel.theirs.handCount ?? 5, ...(on ? { links: theirs } : {}) } }
-  }, [duel, on, mode])
+    return { mine: { ...duel.mine, ...(on ? { medals: SAMPLE_MEDALS.mine } : {}) }, theirs: { ...duel.theirs, handCount: duel.theirs.handCount ?? 5, ...(on ? { medals: SAMPLE_MEDALS.theirs } : {}) } }
+  }, [duel, mode])
 
   return (
     <Specimen
@@ -275,14 +282,14 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
       className="col-span-full"
       note={
         <>
-          Como en Master Duel al resolver (la escena grande es sólo para encadenar): un medallón por eslabón, un aro de cadena redondo (una ficha) con su número en el color de su dueño, de 36 px,
-          centrado en el lugar donde se activó: la casilla de la carta, la pila (Cementerio, Desterradas, Deck, Extra), la carta de tu mano o, si se fue (un costo), tu mano, y el abanico del rival.
-          Varios en un mismo lugar, corridos. Del último al primero: el que se resuelve late (con movimiento reducido, quieto) y, al empezar el siguiente, se va; el negado o sin efecto se tacha en
-          rojo y su carta se ve gris y latiendo. No ataja toques: el eslabón también va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>ChainBadge</Tag>, <Tag>VOIDED_ART</Tag>)
+          Como en Master Duel, sólo al resolver (al encadenar lo dice la escena grande): un medallón por eslabón, un aro de cadena redondo (una ficha) con su número en el color de su dueño, de 36
+          px, en el lugar donde se activó, aunque la carta se haya ido: la casilla (aunque quede vacía), la pila (Cementerio, Desterradas, Deck, Extra) o la mano (la tuya o el abanico del rival).
+          Varios en un mismo lugar, corridos. Del último al primero: el que se resuelve late (con movimiento reducido, quieto) y, al empezar el siguiente, se va; sólo el negado o sin efecto se
+          tacha en rojo. No ataja toques: el eslabón también va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>ChainBadge</Tag>)
         </>
       }
     >
-      <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'on', label: 'Armada' }, { value: 'solve', label: 'Resolviendo' }, { value: 'off', label: 'Sin cadena' }]} />
+      <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'solve', label: 'Resolviendo' }, { value: 'off', label: 'Sin cadena' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
     </Specimen>
   )
@@ -529,7 +536,7 @@ const GLOWS: Array<{ key: string; label: string; kind: 'can' | 'act' | 'aim' | n
   { key: 'act', label: 'Se activa', kind: 'act' },
   { key: 'none', label: 'Sin brillo', kind: null },
 ]
-const CL1: ChainBadgeData = { numbers: [1], mine: false, fromHand: false }
+const CL1: ChainMedal[] = [{ number: 1, mine: false, voided: false, resolving: true }]
 
 function GlowsSample() {
   return (
@@ -562,7 +569,7 @@ function GlowsSample() {
                   {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />}
                   {frame ? <FxFrame {...frame} /> : null}
                 </div>
-                {kind === 'act' ? <ChainBadge link={CL1} /> : null}
+                {kind === 'act' ? <ChainBadge medals={CL1} /> : null}
                 {attack ? <AttackMark /> : null}
               </div>
               <span className="text-micro text-muted">{label}</span>

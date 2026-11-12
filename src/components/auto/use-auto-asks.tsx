@@ -9,7 +9,7 @@ import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type Cha
 import { frameKindOf, frameOfType, type CardFrame } from '../../app/card-frame'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { rivalAttackInCourse } from '../../app/attack-trail'
-import { actingOf, handLinksOf, linksOf } from '../../app/card-glow'
+import { actingOf, linksOf, medalsOf } from '../../app/card-glow'
 import type { PhaseView } from '../../app/auto/online'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { turnReasons } from '../../app/auto/no-plays'
@@ -422,7 +422,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `theirsUpTo` y `stepsDue` leen `order` y `steps`
   }, [reviewing, steps, paced, theirsBefore, rivalPhases])
   const settled = paced.cursor === paced.actions.length && theirsShown === snap.theirsActs.length && chainSeen >= steps.length && !snap.replaying
-  const lifeHeld = useStrikeHold(paced.actions, paced.cursor, limit, !reviewing && !snap.replaying) || rivalStrike.held
+  // Las vidas (y el golpe letal) esperan también a la cadena: mientras falte mostrar un paso suyo, la escena puede estar a la vista (o yéndose): bajan después.
+  const chainHolding = !reviewing && !snap.replaying && chainSeen < steps.length
+  const lifeHeld = useStrikeHold(paced.actions, paced.cursor, limit, !reviewing && !snap.replaying) || rivalStrike.held || chainHolding
   // Lo que se ve del rival, las vidas y el turno, hasta donde contó la mesa (`rivalPhases`): su espejo de a una (como un replay), las vidas de `lifeSteps` y el turno sin los pases que
   // falta mostrar. Al día, los del núcleo (los mismos objetos: nada se vuelve a dibujar).
   const shownAt = paced.cursor + theirsShown
@@ -858,7 +860,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const acting = useMemo(() => actingOf(reviewing ? null : feed), [feed, reviewing])
   // Los medallones de la cadena, donde se activó cada eslabón: los pendientes, y se van del último al primero (`linksOf`).
   // Terminado el duelo y contada la cadena hasta el final, nada de ella (ni escena ni medallones) bajo el cartel del final.
-  const links = useMemo(() => linksOf(feed && !reviewing && !(ended && settled) && !(feed.done && chainGone === feed.key) ? feed : null), [feed, reviewing, ended, settled, chainGone])
+  const chainLive = feed && !reviewing && !(ended && settled) && !(feed.done && chainGone === feed.key) ? feed : null
+  const links = useMemo(() => linksOf(chainLive), [chainLive])
+  // Los medallones, sólo al resolver y donde se activó cada eslabón (`medalsOf`).
+  const medals = useMemo(() => medalsOf(chainLive), [chainLive])
 
   // ── El rival: su espejo, dibujado por lo que el núcleo dejó ver (`codeOf`). ──
   const theirs = theirsState
@@ -918,6 +923,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       ...(rivalZones ? { zones: rivalZones } : {}),
       act: acting.theirs,
       links: links.theirs,
+      medals: medals.theirs,
       // Tocar una carta suya la elige (o la activa: con varios efectos, pregunta cuál) si la pregunta la ofrece; si no, la muestra. Tocar su Cementerio, su Destierro o su Extra con
       // cartas boca arriba abre (o cierra) su visor.
       onMark: (target, rect) => {
@@ -935,7 +941,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         else showRival(rivalPeekOf(target.card), rect)
       },
     }),
-    [theirs, artOf, gesture, rivalPicks, rivalZones, rivalPlays, showRival, rivalPeekOf, acting, links, fieldStats.theirs],
+    [theirs, artOf, gesture, rivalPicks, rivalZones, rivalPlays, showRival, rivalPeekOf, acting, links, medals, fieldStats.theirs],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
@@ -973,7 +979,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     return (
       <TheirHand
         count={rivalHandCount}
-        links={handLinksOf(links.theirs, [])}
+        medals={medals.theirs.get('hand') ?? null}
         {...(open
           ? {
               cards: open.map((code) => (code !== 0 || shownHand ? { name: nameOf(null, code), art: artOf(null, code), ...(shownHand ? {} : { public: true }) } : null)),
@@ -983,7 +989,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           : {})}
       />
     )
-  }, [rivalHandCount, links.theirs, shownHand, publicHand, nameOf, artOf, showRival, hoverDock])
+  }, [rivalHandCount, medals.theirs, shownHand, publicHand, nameOf, artOf, showRival, hoverDock])
   const onRivalHover = useCallback((id: string) => hoverDock(rivalPeekOf(id)), [hoverDock, rivalPeekOf])
   // Abrir una pila tuya cierra la del rival: van en el mismo lugar.
   const onActivity = useCallback((activity: Activity | null) => {
@@ -1128,7 +1134,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     [feed, nameOf, artOf, linkApi, cards, linkFrames],
   )
   // Una cadena nueva es otra (sus números vuelven a empezar): sus cartas no se animan contra las de la anterior.
-  const chainNotice = useMemo(() => (chainShown && feed ? <ChainStage key={feed.key} rows={chainRows} current={feed.current} done={feed.done} away={chainAway} /> : null), [chainShown, feed, chainRows, chainAway])
+  // Con «¿Respondés?» abierto (la hoja o la ventana), la escena se achica hacia arriba: el número de la última carta no queda debajo del cartel.
+  const answering = shown?.type === 'select_chain' && !shown.phaseWindow
+  const chainNotice = useMemo(() => (chainShown && feed ? <ChainStage key={feed.key} rows={chainRows} current={feed.current} done={feed.done} away={chainAway} answering={answering} /> : null), [chainShown, feed, chainRows, chainAway, answering])
   // En escritorio el detalle de la izquierda muestra el eslabón del que habla la escena (el que se resuelve o, armando, el último), con la frase de su efecto resaltada cuando no
   // hay duda de cuál es (`linkPhrase`).
   const linkRow = desktop && chainShown && feed ? (feed.rows[feed.current >= 0 ? feed.current : feed.rows.length - 1] ?? null) : null
@@ -1226,6 +1234,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ...(rivalAim ? { rivalAim } : {}),
     act: acting.mine,
     links: links.mine,
+    medals: medals.mine,
     prompt: prompt ? (
       <AskPrompt
         key={askId ?? 0}

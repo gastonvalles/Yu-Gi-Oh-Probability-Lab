@@ -1,7 +1,7 @@
 import { useContext, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
-import { fieldLinkOf, handLinksOf, pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
+import { pileLinksOf, type ChainBadgeData, type ChainMedal } from '../../app/card-glow'
 import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
 import { flatTransform, type Point } from '../../app/flat-quad'
@@ -57,8 +57,10 @@ export interface DuelSideView {
   zones?: { targets: readonly { zone: MatSpot; index: number }[]; onPick: (zone: MatSpot, index: number) => void }
   /** Las cartas de este lado cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en lima, y la pila que tenga una adentro, también. */
   act?: ReadonlySet<string>
-  /** Las cartas de este lado que están en la cadena a la vista, con sus eslabones: llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
+  /** Las cartas de este lado que están en la cadena a la vista, con sus eslabones: su nombre lo dice y la negada se ve gris. */
   links?: ReadonlyMap<string, ChainBadgeData>
+  /** Los medallones de la cadena al resolver, por lugar (`medalsOf`): van donde se activó cada eslabón (la casilla, aunque quede vacía; la pila; la mano). */
+  medals?: ReadonlyMap<string, readonly ChainMedal[]>
 }
 
 /** Qué se dibuja: los dos campos, sólo el propio o sólo el del rival (para elegir entre uno y otro en una pantalla chica). */
@@ -117,7 +119,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
 
   return (
     <div className={cx('grid gap-1.5', className)}>
-      {showTheirs && hand !== undefined ? <TheirHand count={hand} align="start" links={handLinksOf(theirs.links, [])} /> : null}
+      {showTheirs && hand !== undefined ? <TheirHand count={hand} align="start" medals={theirs.medals?.get('hand') ?? null} /> : null}
       <div role="group" aria-label={t('duel.table.label')} className={GRID} style={{ '--areas': rows.join(' ') } as CSSProperties}>
         {showTheirs ? <SideCells side={theirs} owner="theirs" /> : null}
         {[0, 1].map((index) => (
@@ -170,12 +172,12 @@ export function TheirHand({
   onMark,
   onCard,
   onCardHover,
-  links,
+  medals,
   align = 'center',
 }: {
   count: number
-  /** Los eslabones de la cadena que activó desde la mano (duelo automático): sus medallones, sobre el abanico. */
-  links?: ChainBadgeData | null
+  /** Los medallones de lo que activó desde la mano (duelo automático, al resolver): sobre el abanico. */
+  medals?: readonly ChainMedal[] | null
   /** Cómo la pone su lugar: centrada (encima del campo de la mesa) o arrimada a la izquierda (en una grilla: `DuelTable`, la vista del espectador). */
   align?: 'center' | 'start'
   /** Boca arriba, en su orden (sin esto, de dorso). */
@@ -277,9 +279,9 @@ export function TheirHand({
           )
         })}
       </div>
-      {links ? (
+      {medals?.length ? (
         <div data-hand-links="" className="pointer-events-none absolute inset-y-0 z-8" style={fanBox}>
-          <ChainBadge link={links} />
+          <ChainBadge medals={medals} />
         </div>
       ) : null}
       {marked || onMark ? (
@@ -319,6 +321,7 @@ function SharedZone({ area, index, mine, theirs }: { area: string; index: number
     <div role="group" aria-label={label} className={cx(CELL_MONSTER, conflict && 'border-solid border-danger')} style={{ gridArea: area }}>
       <ZoneLines kind="monster" />
       {own ? <CardOnZone placed={own} spot="emz" side={mine} owner="mine" label={label} /> : other ? <CardOnZone placed={other} spot="emz" side={theirs} owner="theirs" label={label} /> : null}
+      {mine.medals?.get(`emz:${index}`) ? <ChainBadge medals={mine.medals.get(`emz:${index}`)!} /> : theirs.medals?.get(`emz:${1 - index}`) ? <ChainBadge medals={theirs.medals.get(`emz:${1 - index}`)!} /> : null}
       {conflict ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-2 grid size-4 place-items-center rounded-full bg-danger text-[0.6rem] font-extrabold leading-none text-white">!</span> : null}
     </div>
   )
@@ -327,7 +330,13 @@ function SharedZone({ area, index, mine, theirs }: { area: string; index: number
 /** La carta del rival que ocupa, vista desde acá, la Zona Extra `index` (0 = izquierda), para dibujarla dentro de la casilla propia; null si no hay. */
 export function sharedZoneCard(theirs: DuelSideView, index: number) {
   const placed = theirs.state.emz[1 - index] ?? null
-  return placed ? <CardOnZone placed={placed} spot="emz" side={theirs} owner="theirs" label={zoneLabel('mine', 'emz', index)} /> : null
+  const medals = theirs.medals?.get(`emz:${1 - index}`)
+  return placed || medals ? (
+    <>
+      {placed ? <CardOnZone placed={placed} spot="emz" side={theirs} owner="theirs" label={zoneLabel('mine', 'emz', index)} /> : null}
+      {medals ? <ChainBadge medals={medals} /> : null}
+    </>
+  ) : null
 }
 
 /** Las zonas y pilas de un lado, y el arte de su magia de campo boca arriba de fondo de su mitad. Las áreas del rival llevan una `t` delante (`tm1`, `tgy`…). */
@@ -385,6 +394,7 @@ function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: 
       {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
       {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
       {placed ? <CardOnZone placed={placed} spot={spot} side={side} owner={owner} label={label} /> : null}
+      {side.medals?.get(spot === 'field' ? 'field' : `${spot}:${index}`) ? <ChainBadge medals={side.medals.get(spot === 'field' ? 'field' : `${spot}:${index}`)!} /> : null}
     </div>
   )
 }
@@ -403,7 +413,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   // De una carta de esta mesa se sabe su arte, no si es un Xyz; los materiales sólo se ponen debajo de uno (Invocación Xyz o «Adjuntar» a un Xyz), así que se muestran los que tenga. Boca abajo también: siguen debajo, a la vista.
   const materials = placed.materials.length
   const acting = side.act?.has(placed.id) ?? false
-  const link = fieldLinkOf(side.links, placed.id)
+  const link = side.links?.get(placed.id)
   const picked = side.pickStats?.get(placed.id)
   const stat = picked ?? side.stats?.get(placed.id) ?? null
   const named = picked ? pickStatLabel(label, picked) : stat ? statLabel(label, stat) : label
@@ -437,7 +447,6 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: named })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
         {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white">{placed.counters}</span> : null}
       </div>
-      {link ? <ChainBadge link={link} /> : null}
       {spot === 'mz' || spot === 'emz' ? <StatTag stat={stat} /> : null}
     </>
   )
@@ -484,7 +493,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
       {marked ? <TargetMark key={`mira:${shown}`} /> : null}
       </span>
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
-      {link ? <ChainBadge link={link} /> : null}
+      {side.medals?.get(pile) ? <ChainBadge medals={side.medals.get(pile)!} /> : null}
     </div>
   )
 }

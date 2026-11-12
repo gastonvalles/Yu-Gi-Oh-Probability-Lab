@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { CardRef } from '../app/auto/adapter'
-import { CHAIN_LINGER_MS, CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
+import { CHAIN_LEAVE_MS, CHAIN_LINGER_MS, CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
 import { setAutoPref } from '../app/auto-prefs'
 import { readHandtrapConfig, writeHandtrapConfig } from '../app/handtraps'
 import { AutoSoloScreen, RIVAL_READ_MS, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
@@ -133,7 +133,7 @@ describe('auto-screen · el rival de handtraps', () => {
     const overlay = fake.getSnapshot().overlay
     const mine = { card: { side: 'mine' as const, id: 'card-200-1' }, code: 200, description: '0', state: 'chained' as const }
     const theirs = { card: { side: 'theirs' as const, id: 'c1' }, code: ASH.id, description: '0', state: 'chained' as const }
-    const link = (index: number, ref: { card: CardRef; code: number }): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: ref.card, code: ref.code, mine: ref.card.side === 'mine' } })
+    const link = (index: number, ref: { card: CardRef; code: number }): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: ref.card, code: ref.code, mine: ref.card.side === 'mine', place: { side: ref.card.side, location: L.MZONE, sequence: 0 } } })
     const step = (kind: ChainStep['kind'], index: number): ChainStep => ({ kind, at: 0, index })
     const notice = () => screen.getByTestId('chain-notice')
     const say = () => within(notice()).getByRole('status')
@@ -156,19 +156,21 @@ describe('auto-screen · el rival de handtraps', () => {
     // Se resuelve de una en el núcleo; la pantalla lo cuenta de a un eslabón, del último al primero, sin nada grande (la escena es sólo para encadenar): lo que pasó, en una línea
     // oculta (para el lector de pantalla); en la mesa, los medallones.
     const all = [...two, step('solving', 1), step('disabled', 0), step('solved', 1), step('solving', 0), step('solved', 0), step('end', -1)]
-    const medal = () => document.querySelector('[data-card-id="card-200-1"]')!.parentElement!.querySelector('[data-chain-link]')
+    const medal = () => document.querySelector('[data-drop="mz:0"] [data-chain-medal="1"]')
 
     act(() => fake.set({ overlay: { ...overlay, chain: [], negated: [{ ...mine, state: 'disabled' }] }, chainSteps: all }))
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
+    // La escena se va con un fundido corto.
+    act(() => vi.advanceTimersByTime(CHAIN_LEAVE_MS))
     expect(pose()).toEqual([])
     expect(notice()).toHaveClass('sr-only')
     expect(notice()).toHaveTextContent(`${ASH.name}: Resuelta`)
     // Mientras se resuelve, Ash deja tu Maxx C sin efecto: su medallón se tacha.
-    expect(medal()).toHaveAttribute('data-chain-void')
+    expect(medal()).toHaveAttribute('data-voided')
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
     // Al llegarle el turno no se cuenta otra vez: su medallón late, tachado, y se queda a leer 1,6 s más.
     expect(notice()).toHaveTextContent(/^Maxx C: Sin efecto$/)
-    expect(medal()!.querySelector('[data-resolving]')).not.toBeNull()
+    expect(medal()).toHaveAttribute('data-resolving')
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS + CHAIN_READ_MS))
     expect(medal()).toBeNull()
     // Nada de la cadena en la línea.

@@ -85,9 +85,10 @@ function ChainStageSample() {
         <>
           Como en Master Duel, sólo al encadenar: cada activación entra grande y derecha con un borde de luz y cae inclinada a su lugar, con su número enorme en el color de su dueño (con
           borde) saliéndose por la esquina de abajo y destellando; el campo de atrás baja (un velo, más fuerte mientras entra). La última va adelante y la más grande; las anteriores, atrás,
-          más chicas y más arriba; desde la quinta, las viejas se achican y se van hacia arriba. Una cadena de metal cruza de una a otra y, con dos o más, «CADENA» destella al medio. Arriba,
-          una sola línea: «Se resuelve del último al primero». Al empezar a resolverse la escena se va entera y no vuelve: quedan los medallones sobre la mesa (la muestra de la mesa, en
-          Duelo). Con una pregunta abierta que no es responder (elegir casilla o cartas, sí o no) se corre y el campo se ve entero. Ritmo (<Tag>chainDwell</Tag>): 0,7 s por eslabón que entra y 0,9 s por cada uno que se resuelve (tres, 4,8 s; sola, 1 s). Sólo <Tag>translate</Tag>, <Tag>rotate</Tag>,{' '}
+          más chicas y más arriba; desde la quinta, las viejas se achican y se van hacia arriba. Una cadena de metal cruza de una a otra y, con dos o más, «CADENA» destella al medio. El
+          nombre va sólo en la carta sin imagen; «Se resuelve del último al primero», sólo para el lector de pantalla. Al empezar a resolverse la escena y el velo se van con un fundido de
+          0,2 s y no vuelven: quedan los medallones sobre la mesa (la muestra de la mesa, en Duelo). Con «¿Respondés?» abierto se achica hacia arriba (el número no queda bajo el cartel);
+          con una pregunta que no es responder (elegir casilla o cartas, sí o no) se corre y el campo se ve entero. Ritmo (<Tag>chainDwell</Tag>): 0,7 s por eslabón que entra y 0,9 s por cada uno que se resuelve (tres, 4,8 s; sola, 1 s). Sólo <Tag>translate</Tag>, <Tag>rotate</Tag>,{' '}
           <Tag>scale</Tag> y <Tag>opacity</Tag>; con movimiento reducido (la preferencia del sistema) aparece y se va sin moverse ni destellar. No ataja toques. Archivo: <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }

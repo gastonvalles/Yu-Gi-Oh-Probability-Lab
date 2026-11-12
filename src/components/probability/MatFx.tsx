@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
-import type { ChainBadgeData } from '../../app/card-glow'
+import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
 import { printedBadge, statShift } from '../../app/field-stats'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
@@ -181,26 +181,26 @@ export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
 const MEDAL_RING = Array.from({ length: 12 }, (_, i) => i * 30)
 
 /**
- * Los medallones de la cadena (Master Duel, al resolver): uno por eslabón, centrados en lo que los lleva (la casilla de la carta, la pila, la carta de la mano o la mano; quien lo usa
- * pone la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, del color de su dueño
- * (`PLAYER_COLOR`), de 36 px. El que se resuelve (`resolving`) late; el negado o sin efecto se tacha en rojo y el arte de su carta va gris y latiendo (`VOIDED_ART`). No ataja
- * toques; sólo se mira (`aria-hidden`): el eslabón va en el nombre de la carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`linksOf`).
+ * Los medallones de la cadena (Master Duel, al resolver): uno por eslabón, centrados en el lugar donde se activó (la casilla, aunque quede vacía; la pila; la mano: quien lo usa pone
+ * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, del color de su dueño
+ * (`PLAYER_COLOR`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira (`aria-hidden`): el eslabón va en el nombre de la
+ * carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
  */
-export function ChainBadge({ link }: { link: ChainBadgeData }) {
+export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
   return (
     <span
       aria-hidden="true"
-      data-chain-link={link.numbers.join(',')}
-      data-chain-owner={link.mine ? 'mine' : 'theirs'}
-      data-chain-void={link.voided ? (link.voided.by ?? '') : undefined}
+      data-chain-link={medals.map((medal) => medal.number).join(',')}
+      data-chain-owner={medals[0]?.mine ? 'mine' : 'theirs'}
       className="pointer-events-none absolute inset-0 z-11 flex items-center justify-center -space-x-3"
     >
-      {link.numbers.map((number) => (
+      {medals.map(({ number, mine, voided, resolving }) => (
         <span
           key={number}
           data-chain-medal={number}
-          {...(link.resolving === number ? { 'data-resolving': '' } : {})}
-          className={cx('relative grid size-9 shrink-0 place-items-center', link.resolving === number && 'animate-pulse motion-reduce:animate-none')}
+          {...(resolving ? { 'data-resolving': '' } : {})}
+          {...(voided ? { 'data-voided': '' } : {})}
+          className={cx('relative grid size-9 shrink-0 place-items-center', resolving && 'animate-pulse motion-reduce:animate-none')}
         >
           <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
             <circle cx={20} cy={20} r={18} className="fill-background" />
@@ -211,9 +211,9 @@ export function ChainBadge({ link }: { link: ChainBadgeData }) {
                 <rect key={angle} x={16.5} y={1.25} width={7} height={3} rx={1.5} transform={`rotate(${angle} 20 20)`} className="fill-muted" />
               ),
             )}
-            {link.voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
+            {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
           </svg>
-          <span className={cx('relative text-lead font-extrabold leading-none tabular-nums', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].text)}>{number}</span>
+          <span className={cx('relative text-lead font-extrabold leading-none tabular-nums', PLAYER_COLOR[mine ? 'mine' : 'theirs'].text)}>{number}</span>
         </span>
       ))}
     </span>

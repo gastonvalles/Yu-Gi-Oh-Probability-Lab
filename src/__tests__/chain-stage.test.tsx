@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { Provider } from 'react-redux'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { frameKindOf, frameOfType } from '../app/card-frame'
-import { ChainStage, type ChainNoticeRow } from '../components/auto/ChainNotice'
+import { CHAIN_LEAVE_MS, ChainStage, type ChainNoticeRow } from '../components/auto/ChainNotice'
 import { PLAYER_COLOR } from '../components/duel/player-color'
 
 // La cadena en grande (K-01 a K-03), sólo al encadenar: cartas grandes inclinadas con su número enorme y el borde de su tipo, unidas por una cadena de metal; resolviendo, no está
@@ -30,8 +30,10 @@ const cards = () => [...document.querySelectorAll<HTMLElement>('[data-chain-card
 const pose = () => cards().map((card) => `${card.dataset.chainCard}:${card.dataset.pose}`)
 const bonds = () => [...document.querySelectorAll('[data-chain-bond]')].map((bond) => `${bond.getAttribute('data-chain-bond')}:${bond.getAttribute('class')?.includes('opacity-100') ? 'on' : 'off'}`)
 
+afterEach(() => vi.useRealTimers())
+
 describe('la cadena en grande', () => {
-  it('armando: cada carta inclinada entre 3 y 7°, con su número enorme del color de su dueño (con borde), el borde de su tipo y una cadena de metal a la anterior; la última adelante y más grande; el campo baja; una sola línea arriba dice el orden', () => {
+  it('armando: cada carta inclinada entre 3 y 7°, con su número enorme del color de su dueño (con borde), el borde de su tipo y una cadena de metal a la anterior; la última adelante y más grande; el campo baja; el orden, sólo para el lector de pantalla', () => {
     stage([ENGAGE, ASH, CALLED])
 
     expect(pose()).toEqual(['1:slot', '2:slot', '3:slot'])
@@ -60,24 +62,63 @@ describe('la cadena en grande', () => {
     expect(document.querySelector('[data-chain-word]')).toHaveTextContent('Cadena')
     expect(document.querySelector('[data-chain-word]')).toHaveClass('uppercase', 'animate-fx-flash', 'motion-reduce:hidden')
     expect(veil()).toHaveClass('opacity-100', 'pointer-events-none', 'bg-background/60')
+    // «Se resuelve del último al primero», sin línea a la vista (tapaba el Deck y el Extra del rival): en el status oculto.
     expect(screen.getByRole('status')).toHaveTextContent(/^Se resuelve del último al primero$/)
-    expect(screen.getByRole('status')).toHaveClass('top-0')
+    expect(screen.getByRole('status')).toHaveClass('sr-only')
+    // El nombre va impreso en la carta con imagen; sólo la que no tiene imagen lleva su placa.
+    expect(document.querySelectorAll('[data-chain-name]')).toHaveLength(3)
     expect(screen.getByRole('img', { name: 'Eslabón 2: Ash Blossom, del rival. En espera' })).toBeInTheDocument()
     expect(document.body.textContent).not.toMatch(/CL\d/)
   })
 
-  it('resolviendo, la escena no está (ni cartas, ni velo, ni línea a la vista): lo que pasó con el que se resuelve queda en una línea oculta, para el lector de pantalla', () => {
-    stage([ENGAGE, { ...ASH, state: 'disabled', by: 3 }, { ...CALLED, state: 'solved', outcome: 'Destierra 1 carta' }], 2)
+  it('con imagen, sin la placa del nombre (ya está impreso); con «¿Respondés?» abierto, la escena se achica hacia arriba', () => {
+    const view = stage([{ ...ENGAGE, art: 'engage.jpg' }, ASH])
+
+    expect(document.querySelectorAll('[data-chain-name]')).toHaveLength(1)
+    expect(document.querySelector('[data-chain-stage]')).toHaveClass('origin-top')
+    expect(document.querySelector('[data-chain-stage]')).not.toHaveClass('scale-85')
+    view.rerender(
+      <Provider store={store}>
+        <ChainStage rows={[{ ...ENGAGE, art: 'engage.jpg' }, ASH]} current={-1} answering />
+      </Provider>,
+    )
+    expect(document.querySelector('[data-chain-stage]')).toHaveClass('scale-85')
+  })
+
+  it('resolviendo, la escena y el velo se van con un fundido corto (`CHAIN_LEAVE_MS`) y no quedan: lo que pasó con el que se resuelve queda en una línea oculta', () => {
+    vi.useFakeTimers()
+    const rows = [ENGAGE, { ...ASH, state: 'disabled' as const, by: 3 }, { ...CALLED, state: 'solved' as const, outcome: 'Destierra 1 carta' }]
+    const view = stage([ENGAGE, ASH, CALLED])
+
+    view.rerender(
+      <Provider store={store}>
+        <ChainStage rows={rows} current={2} />
+      </Provider>,
+    )
+    // Se está yendo: sólo opacidad, y sin el oscurecido de entrar ni «CADENA».
+    expect(document.querySelector('[data-chain-stage]')).toHaveAttribute('data-leaving')
+    expect(document.querySelector('[data-chain-stage]')).toHaveClass('opacity-0', 'duration-200', 'motion-reduce:transition-opacity')
+    expect(veil()).toHaveClass('opacity-0', 'duration-200')
+    expect(document.querySelector('[data-chain-dim]')).toBeNull()
+    expect(document.querySelector('[data-chain-word]')).toBeNull()
+    expect(CHAIN_LEAVE_MS).toBeGreaterThanOrEqual(150)
+    expect(CHAIN_LEAVE_MS).toBeLessThanOrEqual(200)
+    act(() => vi.advanceTimersByTime(CHAIN_LEAVE_MS))
 
     expect(document.querySelector('[data-chain-stage]')).toBeNull()
     expect(cards()).toEqual([])
     expect(veil()).toBeNull()
+    // Si ya llega resolviendo (un rearme), no hay nada que fundir.
+    view.unmount()
+    stage(rows, 2)
+    expect(document.querySelector('[data-chain-stage]')).toBeNull()
     expect(document.querySelector('[data-chain-word]')).toBeNull()
     expect(screen.getByRole('status')).toHaveClass('sr-only')
     expect(screen.getByRole('status')).toHaveTextContent(/^Called by the Grave: Destierra 1 carta$/)
   })
 
   it('una activación sola, aunque nadie pueda responder, entra igual con su «1» (sin «CADENA») y se va apenas empieza a resolverse', () => {
+    vi.useFakeTimers()
     const view = stage([ENGAGE])
 
     expect(pose()).toEqual(['1:slot'])
@@ -88,6 +129,7 @@ describe('la cadena en grande', () => {
         <ChainStage rows={[{ ...ENGAGE, state: 'solving' }]} current={0} />
       </Provider>,
     )
+    act(() => vi.advanceTimersByTime(CHAIN_LEAVE_MS))
     expect(document.querySelector('[data-chain-stage]')).toBeNull()
     expect(screen.getByRole('status')).toHaveTextContent('Engage!: Resolviendo')
   })

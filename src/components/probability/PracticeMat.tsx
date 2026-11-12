@@ -118,7 +118,7 @@ import { UndoChip, useUndoPlay, type UndoPlay } from './UndoChip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
 import { CARD_BACK, CARD_BACK_URL, DECK_LAYERS, glowFrame } from './practice-styles'
-import { fieldLinkOf, glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
+import { glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData, type ChainMedal } from '../../app/card-glow'
 
 export interface MatCard {
   name: string
@@ -234,6 +234,8 @@ export interface DuelMatLink {
   act?: ReadonlySet<string>
   /** Mis cartas que están en la cadena a la vista, con sus eslabones (`linksOf` de `app/card-glow.ts`): llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
   links?: ReadonlyMap<string, ChainBadgeData>
+  /** Los medallones de la cadena al resolver, por lugar (`medalsOf`: `mz:0`, `st:2`, `field`, `gy`, `deck`, `hand`…): van donde se activó cada eslabón, aunque la carta se haya ido. */
+  medals?: ReadonlyMap<string, readonly ChainMedal[]>
   /** Lo que hay que contestar ahora (la pregunta del rival de pasar de fase): va en el medio de la mesa, centrado en su columna y encima del campo, sin fondo que la tape ni empujar nada. */
   prompt?: ReactNode
   /** La cadena en grande (duelo automático: `ChainStage`), en todos los anchos una capa centrada sobre el campo (en escritorio, sobre la columna del medio) que deja pasar los toques. */
@@ -2401,7 +2403,7 @@ function PracticeMatBody({
             stat={fieldStats.get(shown.id) ?? null}
             pickStat={duel?.auto?.cardPick?.stats?.get(shown.id) ?? null}
             targeted={targetedIds.has(shown.id)}
-            link={fieldLinkOf(duel?.links, shown.id)}
+            link={duel?.links?.get(shown.id) ?? null}
             selected={selectedId === shown.id}
             hold={holdPlay(shown.id) !== null}
             still={isAuto}
@@ -2416,6 +2418,7 @@ function PracticeMatBody({
           </span>
         ) : null}
         {!shown && spot === 'emz' && duel ? duel.sharedZone(index) : null}
+        {duel?.medals?.get(drop) ? <ChainBadge medals={duel.medals.get(drop)!} /> : null}
         {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
       </div>
     )
@@ -2464,7 +2467,7 @@ function PracticeMatBody({
           {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
           {marked ? <TargetMark key={`mira:${shown}`} /> : null}
         </span>
-        {link ? <ChainBadge link={link} /> : null}
+        {duel?.medals?.get(pile) ? <ChainBadge medals={duel.medals.get(pile)!} /> : null}
       </button>
     )
   }
@@ -3117,7 +3120,7 @@ function PracticeMatBody({
             ) : null}
             <PileBadge count={state.deck.length} />
             {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
-            {deckLink ? <ChainBadge link={deckLink} /> : null}
+            {duel?.medals?.get('deck') ? <ChainBadge medals={duel.medals.get('deck')!} /> : null}
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
@@ -3173,6 +3176,7 @@ function PracticeMatBody({
             fanDegrees={2.2}
             glowOf={glowKindOf}
             {...(duel?.links?.size ? { links: duel.links } : {})}
+            {...(duel?.medals?.get('hand') ? { medals: duel.medals.get('hand')! } : {})}
             dimUnlit={dimUnlit}
             muted={muted}
             flash={flash}
@@ -3735,7 +3739,6 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
       </div>
-      {link && !dragging ? <ChainBadge link={link} /> : null}
       {canAttack && !dragging ? <AttackMark /> : null}
       {/* Parada, la carta llega al pie de la casilla: la etiqueta de elegida va ahí, y el ATK/DEF, encima. */}
       {spot === 'mz' || spot === 'emz' ? <StatTag stat={dragging ? null : (pickStat ?? stat)} className={cx(chosen && !sideways && 'bottom-4.5')} /> : null}

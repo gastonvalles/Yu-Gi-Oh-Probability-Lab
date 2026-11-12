@@ -3,6 +3,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
+import { CHAIN_ALONE_MS, CHAIN_LEAVE_MS, CHAIN_LINK_MS, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { endWaitMs, LETHAL_MS } from '../app/end-reveal'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
@@ -187,6 +188,43 @@ describe('auto-screen · los estados', () => {
     act(() => vi.advanceTimersByTime(endWaitMs(8000, false) - LETHAL_MS))
     expect(screen.getByRole('alertdialog', { name: 'Perdiste' })).toBeInTheDocument()
     expect(screen.queryByTestId('lethal-blow')).toBeNull()
+  })
+
+  it('el golpe letal espera a la cadena: con la escena a la vista, ni golpe ni vidas; se va la escena, después el golpe, la chapa a 0 y el resultado', () => {
+    vi.useFakeTimers()
+    const fake = renderAuto()
+    const theirs = () => screen.getAllByRole('group', { name: /^Puntos de vida de Rival/ })[0]!
+    const mine = { side: 'mine' as const, id: 'card-200-1' }
+    const steps: ChainStep[] = [
+      { kind: 'chain', at: 0, index: 0, link: { card: mine, code: 200, mine: true, place: { side: 'mine', location: L.MZONE, sequence: 0 } } },
+      { kind: 'solving', at: 0, index: 0 },
+      { kind: 'solved', at: 0, index: 0 },
+      { kind: 'end', at: 0, index: -1 },
+    ]
+
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    // Un efecto de quemar (tu activación sola) deja al rival en 0: el núcleo lo dice todo de una.
+    core(() => fake.set({ chainSteps: steps, overlay: { ...fake.getSnapshot().overlay, lp: [8000, 0] } }))
+    core(() => fake.end(0, 1))
+    act(() => vi.advanceTimersByTime(0))
+    expect(document.querySelector('[data-chain-stage]:not([data-leaving])')).not.toBeNull()
+    expect(screen.queryByTestId('lethal-blow')).toBeNull()
+    expect(theirs()).toHaveAccessibleName('Puntos de vida de Rival: 8000')
+    // Empieza a resolverse: la escena se va (con su fundido); el golpe todavía no.
+    act(() => vi.advanceTimersByTime(CHAIN_LINK_MS + 1))
+    act(() => vi.advanceTimersByTime(CHAIN_LEAVE_MS))
+    expect(document.querySelector('[data-chain-stage]')).toBeNull()
+    expect(screen.queryByTestId('lethal-blow')).toBeNull()
+    expect(theirs()).toHaveAccessibleName('Puntos de vida de Rival: 8000')
+    // Contada la cadena entera, el golpe; después la chapa a 0 y el resultado.
+    act(() => vi.advanceTimersByTime(CHAIN_ALONE_MS - CHAIN_LINK_MS - CHAIN_LEAVE_MS + 10))
+    expect(screen.getByTestId('lethal-blow')).toHaveAttribute('data-side', 'theirs')
+    expect(theirs()).toHaveAccessibleName('Puntos de vida de Rival: 8000')
+    act(() => vi.advanceTimersByTime(LETHAL_MS + 10))
+    expect(theirs()).toHaveAccessibleName('Puntos de vida de Rival: 0')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    act(() => vi.advanceTimersByTime(endWaitMs(8000, false)))
+    expect(screen.getByRole('alertdialog', { name: '¡Ganaste!' })).toBeInTheDocument()
   })
 
   it('«Más opciones» ofrece «Reiniciar el mismo duelo»; lo que la mesa no puede mostrar va a la línea', () => {
