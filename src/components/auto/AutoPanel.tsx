@@ -9,6 +9,7 @@ import { useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving, usePresence } from '../../app/use-presence'
+import { useFoldMotion } from '../../app/use-fold-motion'
 import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
@@ -137,14 +138,22 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
   const [minimized, setMinimized] = useState(false)
   // La ventana se lleva de la barra y se estira del borde y la esquina; posición y tamaño, por tipo (`autoWindowKey`). En la mesa se centra con su `translate`: el corrimiento va en `--drag-x/y`.
   const move = useDraggableOffset(phoneWindow ? onPhone(autoWindowKey(kind)) : autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, phoneWindow ? WINDOW_MIN_PHONE : WINDOW_MIN, true)
-  // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; minimizado, la tira hacia arriba lo abre.
+  // Minimizar y abrir sin saltos: baja hasta la tira y recién ahí se minimiza; abierto, sube desde la tira. En el marco del catálogo (en el flujo, sin apoyarse abajo), como siempre.
+  const fold = useFoldMotion(ref, minimized)
+  const dragged = useRef(0)
+  // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; soltada cerca, vuelve deslizándose. Minimizado, la tira hacia arriba lo abre.
   const follow = (dy: number | null) => {
     if (ref.current) ref.current.style.translate = dy === null ? '' : `${desktop && !slot ? '-50%' : '0'} ${dy}px`
+    if (dy === null) fold.settle(dragged.current)
+    dragged.current = dy ?? 0
   }
+  // Lo que queda a la vista minimizado: la tira del celular (44 px y su aire) o, en la ventana, la barra y la fila de botones. Si queda corrida unos px, la tira se acomoda sola.
+  const minimize = (from = 0) => (inline ? setMinimized(true) : fold.fold(() => setMinimized(true), (panel) => panel.offsetHeight - (floating ? 44 + (actions ? 52 : 0) : 52), from))
+  const restore = () => (inline ? setMinimized(false) : fold.raise(() => setMinimized(false)))
   const dismissible = Boolean(onDismiss) && !leaving
   const openedAt = useRef(0)
 
-  useEscapeKey(() => (onDismiss ? onDismiss() : setMinimized(true)), (dismissible || escape) && !minimized && !leaving)
+  useEscapeKey(() => (onDismiss ? onDismiss() : minimize()), (dismissible || escape) && !minimized && !leaving)
   useFocusTrap(ref, dismissible && !minimized && !inline)
 
   // Al abrir (y al reabrirlo), el foco va a lo que se decide; minimizado, a la tira que lo sube. Sin desplazar la página.
@@ -264,7 +273,7 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
         <Icon name="grip" />
       </span>
       {minimized ? (
-        <button type="button" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left font-semibold focus-visible:outline-none focus-visible:shadow-focus" onClick={() => setMinimized(false)}>
+        <button type="button" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left font-semibold focus-visible:outline-none focus-visible:shadow-focus" onClick={restore}>
           {strip ?? <span className="min-w-0 truncate">{label}</span>}
         </button>
       ) : desk ? (
@@ -280,7 +289,7 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
       {onDismiss && !minimized ? <CloseButton size="lg" tone="raised" aria-label={t('common.close')} onClick={onDismiss} /> : null}
       {/* Minimizar con el mouse o el dedo (antes, sólo Escape): un botón de 44 px a la derecha de la barra; la tira que queda se sube tocándola. */}
       {!onDismiss && !minimized ? (
-        <IconButton tone="raised" size="lg" data-window-minimize="" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setMinimized(true)}>
+        <IconButton tone="raised" size="lg" data-window-minimize="" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => minimize()}>
           <Icon name="chevron-down" />
         </IconButton>
       ) : null}
@@ -337,7 +346,7 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
   const row = actions ? <div className={ACTIONS}>{actions}</div> : null
   // Minimizado: tocar cualquier lugar de la tira que no sea uno de sus botones la sube (el texto es el botón para el teclado).
   const raiseFrom = (event: ReactMouseEvent<HTMLElement>) => {
-    if (!(event.target as Element).closest('button:not([data-panel-show]), a, [role="option"]')) setMinimized(false)
+    if (!(event.target as Element).closest('button:not([data-panel-show]), a, [role="option"]')) restore()
   }
 
   const view = floating ? (
@@ -391,8 +400,8 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
   ) : minimized ? (
     // La tira (M-07): la pregunta y sus botones, a la vista; tocarla entera (o arrastrarla para arriba) la sube.
     <div ref={ref} {...attrs} className={cx(surface, place, 'flex min-w-0 cursor-pointer items-center gap-2 px-2 py-1', className)} onClick={raiseFrom}>
-      <Swipe dir="up" onFold={() => setMinimized(false)} className="flex min-w-0 flex-1 touch-none">
-        <button type="button" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1 text-left font-semibold focus-visible:outline-none focus-visible:shadow-focus" onClick={() => setMinimized(false)}>
+      <Swipe dir="up" onFold={restore} className="flex min-w-0 flex-1 touch-none">
+        <button type="button" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1 text-left font-semibold focus-visible:outline-none focus-visible:shadow-focus" onClick={restore}>
           {strip ?? <span className="min-w-0 truncate">{label}</span>}
           <Icon name="chevron-up" size={16} strokeWidth={2} className="ml-auto shrink-0 text-muted" />
         </button>
@@ -402,14 +411,14 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
   ) : (
     <div ref={ref} {...attrs} className={cx(surface, place, 'flex min-h-0 min-w-0 flex-col gap-2 px-2 pb-2', className)}>
       {/* La franja de arriba es el asa: arrastrarla hacia abajo lo minimiza; el asa misma es un botón («Minimizar», para el teclado). No suma alto (va sobre el aire de arriba). */}
-      <Swipe dir="down" onFold={() => setMinimized(true)} follow={follow} className="relative flex min-w-0 touch-none select-none items-start gap-2 pt-3">
+      <Swipe dir="down" onFold={minimize} follow={follow} className="relative flex min-w-0 touch-none select-none items-start gap-2 pt-3">
         <button
           type="button"
           data-panel-grip=""
           aria-label={t('duel.prompt.minimize')}
           title={t('duel.prompt.minimize')}
           className="absolute left-1/2 top-0 grid h-3 w-16 -translate-x-1/2 place-items-center focus-visible:outline-none focus-visible:shadow-focus"
-          onClick={() => setMinimized(true)}
+          onClick={() => minimize()}
         >
           <span aria-hidden="true" className="h-1 w-10 bg-muted/50" />
         </button>
@@ -441,7 +450,7 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
 }
 
 /** La franja que se arrastra (`useSwipeFold`): un componente por estado, así lo que recuerda un arrastre (el clic que lo sigue se descarta) no pasa a la tira ni al cartel abierto. */
-function Swipe({ dir, onFold, follow, className, children }: { dir: 'down' | 'up'; onFold: () => void; follow?: (dy: number | null) => void; className: string; children: ReactNode }) {
+function Swipe({ dir, onFold, follow, className, children }: { dir: 'down' | 'up'; onFold: (from: number) => void; follow?: (dy: number | null) => void; className: string; children: ReactNode }) {
   const swipe = useSwipeFold({ dir, onFold, ...(follow ? { follow } : {}) })
 
   return (

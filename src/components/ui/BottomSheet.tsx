@@ -125,7 +125,8 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
         'mat-square pointer-events-none inset-x-0 bottom-0 flex flex-col motion-safe:animate-sheet-up',
         inline ? 'absolute top-0' : tall ? 'fixed h-[min(70dvh,34rem)]' : 'fixed h-[55dvh]',
         over ? 'z-180' : 'z-[135]',
-        // Cediendo, el asa se apoya sobre la línea de estado de la mesa (44 px a 8 del borde): «Cancelar» y «Listo» quedan a la vista.
+        // Cediendo, el asa se apoya sobre la línea de estado de la mesa (44 px a 8 del borde): «Cancelar» y «Listo» quedan a la vista. Sube y baja deslizándose, como la hoja de adentro.
+        'motion-safe:transition-[translate] motion-safe:duration-200 motion-safe:ease-snap',
         yieldTo === 'grip' && '-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]',
         className,
       )}

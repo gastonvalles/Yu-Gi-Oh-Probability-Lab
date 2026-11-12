@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { cloneElement, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type Ref, type RefObject } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
@@ -6,7 +6,7 @@ import { printedBadge, statShift } from '../../app/field-stats'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
-import { useLeaving } from '../../app/use-presence'
+import { EXIT_MS, useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
@@ -417,6 +417,8 @@ interface SpotlightProps {
   origin?: (id: string) => CardPose | null
   /** Dónde se ubica (el padre dice sobre qué parte de la mesa se centran las cartas). */
   className?: string
+  /** Su raíz (`SpotlightSwap` la funde al llegar otra). */
+  ref?: Ref<HTMLDivElement>
 }
 
 /** Lo que tarda la carta grande en llegar desde su carta hasta el centro. */
@@ -559,11 +561,12 @@ const STAGE_CARD_WIDTH_WITH_DETAIL = 'w-[min(34cqw,10.5rem)]'
  * la placa con el nombre (ya está impreso): ésa queda sólo en la carta sin imagen o de dorso. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
  * recuadro, no las de la pantalla. Con `origin`, cada una sale de su carta en la mesa (`useStageTravel`).
  */
-export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, origin, className }: SpotlightProps) {
+export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, origin, className, ref }: SpotlightProps) {
   const tone = STAGE_TONE[kind]
   const shown = cards.slice(0, 4)
   const rootRef = useRef<HTMLDivElement | null>(null)
 
+  useImperativeHandle(ref, () => rootRef.current!, [])
   useStageRoom(rootRef)
   useStageTravel(rootRef, origin)
 
@@ -618,4 +621,55 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
       </div>
     </div>
   )
+}
+
+/** ¿Se ve todavía? Corre alguna animación con fin de la carta grande (su espera y su salida; lo que gira sin fin no cuenta). */
+const onStage = (root: HTMLElement | null) =>
+  root?.getAnimations?.({ subtree: true }).some((animation) => animation.playState === 'running' && Number.isFinite(Number(animation.effect?.getComputedTiming().endTime))) === true
+
+/**
+ * La carta grande que llega con otra todavía a la vista no la reemplaza en seco (`docs/movimiento.md`: ningún vuelo se corta): la anterior se funde en `EXIT_MS` y recién después entra la nueva
+ * (la `key` de cada `Spotlight` dice cuál es). Lo mismo si se va sin reemplazo. Si la anterior ya se fue sola (su animación terminó), la nueva entra enseguida. Sin la Web Animations API (jsdom) o
+ * con movimiento reducido, como antes. Sólo `opacity`.
+ */
+export function SpotlightSwap({ children }: { children: ReactElement<SpotlightProps> | null }) {
+  const [shown, setShown] = useState(children)
+  const node = useRef<HTMLDivElement | null>(null)
+  const latest = useRef(children)
+  const same = (shown?.key ?? null) === (children?.key ?? null)
+  // La misma carta sigue con lo último que le pasan (el nombre que llega después); sin ninguna, la nueva entra ya.
+  if (same ? shown !== children : shown === null) setShown(children)
+  const changing = shown !== null && !same
+
+  useLayoutEffect(() => {
+    latest.current = children
+  })
+  useLayoutEffect(() => {
+    if (!changing) return
+    const root = node.current
+
+    if (!root || typeof root.animate !== 'function' || prefersReducedMotion() || !onStage(root)) {
+      setShown(latest.current)
+      return
+    }
+    let over = false
+    const end = () => {
+      if (over) return
+      over = true
+      setShown(latest.current)
+    }
+    const fade = root.animate([{ opacity: 0 }], { duration: EXIT_MS, easing: EASE_OUT, fill: 'forwards' })
+    // Si la pestaña quedó atrás y la salida no avisa, igual entra la nueva.
+    const net = window.setTimeout(end, EXIT_MS + 100)
+
+    fade.finished.then(end, () => {})
+    // Al terminar ya no está (la nueva tiene otra `key`); si en cambio vuelve la misma, se ve otra vez.
+    return () => {
+      over = true
+      window.clearTimeout(net)
+      fade.cancel()
+    }
+  }, [changing])
+
+  return shown ? cloneElement(shown, { ref: node }) : null
 }

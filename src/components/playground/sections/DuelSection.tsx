@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatScene, PickMarks } from '../../probability/MatArena'
-import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from '../../probability/MatFx'
+import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, TargetMark, fxVars } from '../../probability/MatFx'
 import { glowFrame } from '../../probability/practice-styles'
 import { AttackFx, ChevronTrail, measureStrike, type Strike } from '../../probability/AttackFx'
 import { t } from '../../../i18n'
@@ -722,13 +722,15 @@ function RivalEffectSample() {
       layout="column"
       note={
         <>
-          Cuando el rival elige un efecto entre varios, el cartel del centro dice cuál (<Tag>Ana activa el efecto 2 de …</Tag>) y, al lado o debajo de la carta, lleva la frase del efecto tal cual el texto, con su número y cuándo se activa; se queda 7 s. Sin efecto elegido, la carta grande (la mitad del recuadro, como la de adelante de la cadena; en el celular, nunca menos del 38 %) y, arriba y recto, sólo quién hizo qué, sin repetir el nombre que la carta ya trae impreso: no lleva placa con el nombre (ésa queda para la carta sin imagen o de dorso). Donde el texto del paso ya está a la vista (el Replay, el combo) no lleva cartel. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>Spotlight detail</Tag>)
+          Cuando el rival elige un efecto entre varios, el cartel del centro dice cuál (<Tag>Ana activa el efecto 2 de …</Tag>) y, al lado o debajo de la carta, lleva la frase del efecto tal cual el texto, con su número y cuándo se activa; se queda 7 s. Sin efecto elegido, la carta grande (la mitad del recuadro, como la de adelante de la cadena; en el celular, nunca menos del 38 %) y, arriba y recto, sólo quién hizo qué, sin repetir el nombre que la carta ya trae impreso: no lleva placa con el nombre (ésa queda para la carta sin imagen o de dorso). Donde el texto del paso ya está a la vista (el Replay, el combo) no lleva cartel. «Volver a mostrar» con la carta a la vista: la anterior se funde antes de que entre la nueva (<Tag>SpotlightSwap</Tag>), nunca se reemplaza en seco. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>Spotlight detail</Tag>)
         </>
       }
     >
       <div className="relative isolate min-h-[30rem] overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
-        <Spotlight key={shown} kind="activate" cards={[RIVAL_EFFECT.card]} caption={RIVAL_EFFECT.caption} detail={RIVAL_EFFECT.detail} className="absolute inset-0" />
+        <SpotlightSwap>
+          <Spotlight key={shown} kind="activate" cards={[RIVAL_EFFECT.card]} caption={RIVAL_EFFECT.caption} detail={RIVAL_EFFECT.detail} className="absolute inset-0" />
+        </SpotlightSwap>
       </div>
       <div data-testid="spotlight-alone" className="relative isolate min-h-[30rem] overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />

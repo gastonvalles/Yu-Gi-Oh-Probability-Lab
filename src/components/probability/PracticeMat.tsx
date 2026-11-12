@@ -105,7 +105,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -3534,9 +3534,10 @@ function PracticeMatBody({
 
       {/* En el automático, activar no sale acá (ni lo propio ni lo del rival): lo muestra la cadena en grande, en su capa (lámina C). Un combo guardado no trae cadena: ahí sí (`session.replay`). */}
       {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin los paneles de los costados (`--mat-left` / `--mat-right`, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
+      {/* Si llega otra mientras se ve una, la anterior sale antes (`SpotlightSwap`): nunca se reemplaza en seco. */}
       <Deferred value={stage}>
-        {(shown) =>
-          shown && !(isAuto && shown.kind === 'activate' && !session.replay) ? (
+        {(shown) => (
+          <SpotlightSwap>{shown && !(isAuto && shown.kind === 'activate' && !session.replay) ? (
             <Spotlight
               key={shown.key}
               kind={shown.kind}
@@ -3546,12 +3547,12 @@ function PracticeMatBody({
               origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
               className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
             />
-          ) : null
-        }
+          ) : null}</SpotlightSwap>
+        )}
       </Deferred>
 
       {/* Lo que hace el rival y se anima: sus cartas aparecen grandes en el centro con un cartel que dice qué pasó, como en un combo guardado. Salen de su carta (de cabeza, como se ven) o del medio de su mano y se enderezan en el camino. */}
-      {duel?.rivalEffect && !duel.rivalEffect.quiet && !(isAuto && duel.rivalEffect.kind === 'activate') ? (
+      <SpotlightSwap>{duel?.rivalEffect && !duel.rivalEffect.quiet && !(isAuto && duel.rivalEffect.kind === 'activate') ? (
         <Spotlight
           key={duel.rivalEffect.key}
           kind={duel.rivalEffect.kind}
@@ -3564,7 +3565,7 @@ function PracticeMatBody({
           origin={(id) => cardPose(sectionRef.current, duel.rivalFlights?.state ?? null, id, 'theirs')}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
         />
-      ) : null}
+      ) : null}</SpotlightSwap>
 
       {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}

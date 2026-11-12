@@ -15,6 +15,7 @@ export function PhaseBandSample() {
   const [side, setSide] = useState<PlayerSide>('mine')
   const [cue, setCue] = useState<PhaseCue | null>(null)
   const [burst, setBurst] = useState<number | null>(null)
+  const [hold, setHold] = useState(false)
 
   // La ráfaga: Draw, Standby y Main Phase 1, a 250 ms una de otra.
   useEffect(() => {
@@ -33,7 +34,7 @@ export function PhaseBandSample() {
         <>
           Como en Master Duel, con los colores de la casa: cruza el campo por la fila del medio (la del botón de fase), la tuya violeta desde la izquierda y la del rival lima desde la derecha (las de sus
           chapas). Sólo el nombre de la fase: el turno lo dicen el color y la chapa. Entra en 200 ms, el nombre llega 100 ms después, se queda y sale por el otro lado: {PHASE_BAND_MS} ms en total, sin que
-          nadie la espere. Si llega otra fase mientras se ve, la misma banda cambia de texto y vuelve a contar (la ráfaga). Al pasar el turno (nunca en el primero) entra antes «Cambio de turno»: una vez y media más alta, la frase más grande, con un contorno claro y del color de quien empieza a jugar ({TURN_BAND_MS} ms); después, una detrás de la otra, la Draw Phase (o la fase más nueva que llegó mientras tanto). No ataja toques y queda debajo de la cadena y de las preguntas. Con movimiento
+          nadie la espere. Si llega otra fase mientras se ve, la misma banda cambia de texto y vuelve a contar (la ráfaga). Al pasar el turno (nunca en el primero) entra antes «Cambio de turno»: una vez y media más alta, la frase más grande, con un contorno claro y del color de quien empieza a jugar ({TURN_BAND_MS} ms); después, una detrás de la otra, la Draw Phase (o la fase más nueva que llegó mientras tanto). No ataja toques y queda debajo de la cadena y de las preguntas. Con una carta grande en el centro (<Tag>hold</Tag>, el Replay) se funde y espera montada: al soltarse sigue donde iba, sin volver a entrar. La salida termina con su transición (el reloj es sólo la red). Con movimiento
           reducido (la preferencia del sistema), sólo aparece y se va. Sólo <Tag>translate</Tag> y <Tag>opacity</Tag>. Archivo: <Tag>duel/PhaseBand.tsx</Tag>
         </>
       }
@@ -60,10 +61,13 @@ export function PhaseBandSample() {
         <Button variant="secondary" size="sm" icon="swap" onClick={() => setCue({ key: Date.now(), phase: 'draw', side, turn: true })}>
           Cambio de turno
         </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={hold} onClick={() => setHold((value) => !value)}>
+          Carta grande en el centro (hold)
+        </Button>
       </div>
       <div className="mx-auto w-full max-w-[24.375rem] [--cell:3.57rem]">
         <DuelTable mine={duel.mine} theirs={duel.theirs} turn={side}>
-          <PhaseBand cue={cue} />
+          <PhaseBand cue={cue} hold={hold} />
         </DuelTable>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">

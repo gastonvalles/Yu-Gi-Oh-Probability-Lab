@@ -142,6 +142,8 @@
   --animate-nav-drawer: nav-drawer 200ms var(--ease-out) both;
   --animate-side-drawer: side-drawer 200ms var(--ease-out) both;
   --animate-nav-scrim: nav-scrim 200ms var(--ease-out) both;
+  /* El velo del `Modal`: la misma entrada, sin quedarse en su último cuadro, así al minimizar transiciona su `opacity` (una animación que se queda la tapa). */
+  --animate-veil-in: nav-scrim 200ms var(--ease-out) backwards;
   --animate-pop: pop var(--motion-duration) var(--ease-snap) both;
   /* Lo pasajero (el −N de las vidas, el globo de una señal, el emoji del rival): entra como un pop, se queda y se funde al final. La duración la pone cada uso con `style` (animationDuration). */
   --animate-linger: linger 1600ms var(--ease-out) both;

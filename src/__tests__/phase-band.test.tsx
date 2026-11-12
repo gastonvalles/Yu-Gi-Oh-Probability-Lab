@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
 // La banda de la fase (`PhaseBand`): sale con el color de quien juega, no ataja toques, lleva su propio reloj y, si las fases van rápido, no se apila.
-import { act, render } from '@testing-library/react'
+import { act, fireEvent, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PHASE_BAND_MS, PhaseBand, TURN_BAND_MS, type PhaseCue } from '../components/duel/PhaseBand'
+import { PHASE_BAND_HOLD_MS, PHASE_BAND_MS, PhaseBand, TURN_BAND_HOLD_MS, TURN_BAND_MS, type PhaseCue } from '../components/duel/PhaseBand'
 
 const bands = () => document.querySelectorAll('[data-fx="banner"]')
+const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms))
+/** Lo que se queda y la salida, en dos pasos, como en el navegador: la salida cuenta desde que empieza (jsdom no transiciona: termina el reloj de red). */
+const leave = (hold: number, total: number) => {
+  advance(hold)
+  advance(total - hold)
+}
 
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
@@ -33,7 +39,7 @@ describe('PhaseBand', () => {
 
     view.rerender(<PhaseBand cue={null} />)
     expect(bands()).toHaveLength(1)
-    act(() => vi.advanceTimersByTime(PHASE_BAND_MS))
+    leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
     expect(bands()).toHaveLength(0)
   })
 
@@ -42,28 +48,49 @@ describe('PhaseBand', () => {
     const view = render(<PhaseBand cue={cue(1, 'draw')} />)
     const first = bands()[0]!.firstElementChild
 
-    act(() => vi.advanceTimersByTime(250))
+    advance(250)
     view.rerender(<PhaseBand cue={cue(2, 'standby')} />)
-    act(() => vi.advanceTimersByTime(250))
+    advance(250)
     view.rerender(<PhaseBand cue={cue(3, 'main1')} />)
     expect(bands()).toHaveLength(1)
     expect(bands()[0]).toHaveTextContent(/^Main Phase 1$/)
     // Es la misma banda (no vuelve a entrar), y se queda su rato contado desde la última.
     expect(bands()[0]!.firstElementChild).toBe(first)
-    act(() => vi.advanceTimersByTime(PHASE_BAND_MS - 1))
+    advance(PHASE_BAND_HOLD_MS)
+    advance(PHASE_BAND_MS - PHASE_BAND_HOLD_MS - 1)
     expect(bands()).toHaveLength(1)
-    act(() => vi.advanceTimersByTime(1))
+    advance(1)
     expect(bands()).toHaveLength(0)
   })
 
-  it('con una carta grande en el centro (hold) espera: no se dibuja detrás de ella, y su reloj sigue', () => {
+  it('con una carta grande en el centro (hold) espera invisible y montada (no se corta ni vuelve a entrar desde cero), y su reloj sigue', () => {
     const cue: PhaseCue = { key: 1, phase: 'battle', side: 'mine' }
-    const view = render(<PhaseBand cue={cue} hold />)
+    const view = render(<PhaseBand cue={cue} />)
+    const band = bands()[0]!.firstElementChild
 
-    expect(bands()).toHaveLength(0)
-    view.rerender(<PhaseBand cue={null} hold={false} />)
+    view.rerender(<PhaseBand cue={cue} hold />)
     expect(bands()).toHaveLength(1)
-    act(() => vi.advanceTimersByTime(PHASE_BAND_MS))
+    expect(bands()[0]).toHaveClass('opacity-0', 'transition-opacity')
+    view.rerender(<PhaseBand cue={null} hold={false} />)
+    expect(bands()[0]).not.toHaveClass('opacity-0')
+    // La misma banda: sigue donde iba, sin volver a entrar.
+    expect(bands()[0]!.firstElementChild).toBe(band)
+    leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
+    expect(bands()).toHaveLength(0)
+  })
+
+  it('la salida termina con su transición; si el hilo principal se atrasa, igual sale (el reloj de red cuenta desde que empieza a salir)', () => {
+    render(<PhaseBand cue={{ key: 1, phase: 'main1', side: 'theirs' }} />)
+
+    // Un atraso: los dos plazos pasan de una vez. Antes, la banda se iba sin salida; ahora queda saliendo.
+    advance(PHASE_BAND_MS + 400)
+    expect(bands()).toHaveLength(1)
+    expect(bands()[0]!.firstElementChild).toHaveClass('opacity-0')
+    // Termina la transición de su opacidad: se va.
+    const end = new Event('transitionend', { bubbles: true })
+
+    Object.assign(end, { propertyName: 'opacity' })
+    fireEvent(bands()[0]!.firstElementChild!, end)
     expect(bands()).toHaveLength(0)
   })
 
@@ -72,7 +99,7 @@ describe('PhaseBand', () => {
 
     // El primer turno: sólo su fase.
     expect(bands()[0]).toHaveTextContent(/^Draw Phase$/)
-    act(() => vi.advanceTimersByTime(PHASE_BAND_MS))
+    leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
     view.rerender(<PhaseBand cue={{ key: 2, phase: 'draw', side: 'mine', turn: true }} />)
     expect(bands()).toHaveLength(1)
     expect(bands()[0]).toHaveAttribute('data-turn')
@@ -80,15 +107,15 @@ describe('PhaseBand', () => {
     expect(bands()[0]).toHaveTextContent(/^Cambio de turno$/)
     expect(bands()[0]).toHaveClass('h-20', 'pointer-events-none')
     // Una fase que llega mientras se ve espera su turno (no se apilan): sale la más nueva, después.
-    act(() => vi.advanceTimersByTime(500))
+    advance(500)
     view.rerender(<PhaseBand cue={{ key: 3, phase: 'standby', side: 'mine' }} />)
     expect(bands()).toHaveLength(1)
     expect(bands()[0]).toHaveTextContent(/^Cambio de turno$/)
-    act(() => vi.advanceTimersByTime(TURN_BAND_MS - 500))
+    leave(TURN_BAND_HOLD_MS - 500, TURN_BAND_MS - 500)
     expect(bands()).toHaveLength(1)
     expect(bands()[0]).not.toHaveAttribute('data-turn')
     expect(bands()[0]).toHaveTextContent(/^Standby Phase$/)
-    act(() => vi.advanceTimersByTime(PHASE_BAND_MS))
+    leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
     expect(bands()).toHaveLength(0)
   })
 })
