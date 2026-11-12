@@ -890,12 +890,14 @@ function PracticeMatBody({
   const { fx } = fxStep
   const { flash, landing, banner, stage, handFlash } = fx
   // La banda de la fase: la tuya en violeta y la del rival en lima. En un duelo tu mesa sólo trae tus fases, y su pase (turno nuevo) abre el del rival; sus fases llegan en `notice`, y la que
-  // te devuelve el turno («Tu turno», `label`) abre el tuyo. Si están las dos, la más nueva (las dos claves son `Date.now()`): una que todavía no se fue no tapa a la que llega.
+  // te devuelve el turno («Tu turno», `label`) abre el tuyo. Si están las dos, la más nueva (las dos claves son `Date.now()`): una que todavía no se fue no tapa a la que llega. Esos dos pases son
+  // cambios de turno (`turn`: antes, «Cambio de turno»); el primer turno no tiene pase.
   const rivalNotice = duel?.notice
   const dueling = Boolean(duel)
   const phaseCue = useMemo<PhaseCue | null>(() => {
-    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: dueling && banner.turn !== null ? 'theirs' : 'mine' } : null
-    const rival: PhaseCue | null = rivalNotice ? { key: rivalNotice.key, phase: rivalNotice.phase, side: rivalNotice.label ? 'mine' : 'theirs' } : null
+    const passed = dueling && banner?.turn != null
+    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: passed ? 'theirs' : 'mine', turn: passed } : null
+    const rival: PhaseCue | null = rivalNotice ? { key: rivalNotice.key, phase: rivalNotice.phase, side: rivalNotice.label ? 'mine' : 'theirs', turn: Boolean(rivalNotice.label) } : null
 
     return own && rival ? (own.key >= rival.key ? own : rival) : (own ?? rival)
   }, [banner, rivalNotice, dueling])
@@ -3142,7 +3144,7 @@ function PracticeMatBody({
           {pileCell('gy', 'gy')}
           {pileCell('banished', 'ban')}
 
-          {/* Cambio de fase: la banda cruza el campo por la fila del medio, del color de quien juega (`PhaseBand`), en la práctica, repasando un combo y en los duelos. */}
+          {/* Cambio de fase: la banda cruza el campo por la fila del medio, del color de quien juega (`PhaseBand`), en la práctica, repasando un combo y en los duelos; en un duelo, el pase antes con «Cambio de turno». */}
           <Deferred value={phaseCue}>{(cue) => <PhaseBand cue={cue} />}</Deferred>
           {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
           {announcement ? (

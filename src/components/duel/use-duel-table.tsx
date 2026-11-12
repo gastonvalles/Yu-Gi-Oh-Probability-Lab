@@ -164,18 +164,21 @@ export function useRivalNotice(phase: MatPhase | undefined, turn: 'mine' | 'thei
     const before = seen.current
 
     seen.current = { phase, turn }
+    // El turno vuelve a vos: se avisa aunque ya no se mire su fase (el automático online deja de pasarla en tu turno, que empieza en la Draw Phase).
+    const back = before.turn === 'theirs' && turn === 'mine'
+    const now = phase ?? (back ? 'draw' : undefined)
 
-    if (phase === undefined || before.phase === undefined || before.phase === phase) {
+    if (now === undefined || (!back && (before.phase === undefined || before.phase === now))) {
       return
     }
 
-    const name = PHASES.find((entry) => entry.id === phase)?.name ?? phase
+    const name = PHASES.find((entry) => entry.id === now)?.name ?? now
 
     // Llegó a su End Phase y ahora te toca a vos; si no, una fase más de su turno.
-    if (before.turn === 'theirs' && turn === 'mine') {
-      setShown({ key: Date.now(), phase, who: `${rival} · ${name}`, label: t('duel.bar.yourTurn') })
+    if (back) {
+      setShown({ key: Date.now(), phase: now, who: `${rival} · ${name}`, label: t('duel.bar.yourTurn') })
     } else {
-      setShown({ key: Date.now(), phase, who: rival })
+      setShown({ key: Date.now(), phase: now, who: rival })
     }
   }, [phase, turn, rival])
 

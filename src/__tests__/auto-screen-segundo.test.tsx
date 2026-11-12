@@ -60,11 +60,13 @@ describe('auto-screen · quién empieza', () => {
 
     core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, lp: [0, 6500] } }))
     core(() => fake.end(1, 1))
-    // Por vidas: sale cuando la chapa del rival terminó de contar hasta 0 y se vio el 0 (`useEndReveal`).
+    // Por vidas: sale (con la palabra «Victoria» sobre el campo) cuando la chapa del rival terminó de contar hasta 0 y se vio el 0 (`useEndReveal`).
     expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.querySelector('[data-result-word]')).toBeNull()
     act(() => vi.advanceTimersByTime(endWaitMs(8000, true)))
     const cover = screen.getByRole('alertdialog', { name: '¡Ganaste!' })
 
+    expect(cover.querySelector('[data-result-word]')).toHaveTextContent(/^Victoria$/)
     expect(cover).toHaveTextContent('Vos 6500 a Rival 0')
     expect(cover).not.toHaveTextContent('Te quedaste sin puntos de vida.')
     setAutoPref('first', 'me')

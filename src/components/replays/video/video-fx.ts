@@ -1,6 +1,7 @@
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
+import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
 import { drawCard, FONT, wrap, type Ctx, type VideoAssets } from './video-draw'
 import { placesOf, poseOf, type Motion, type Pose } from './video-motion'
@@ -18,7 +19,7 @@ export { STAGE_TONE }
 /**
  * Los tiempos de la mesa, copiados para no cargar la mesa (React) con el video: `FLIGHT_MS`, `FLIGHT_STAGGER_MS` y `LANDING_AT` de `use-card-flights.ts`, `SPOTLIGHT_TRAVEL_MS`
  * de `MatFx.tsx`, `DECK_SHUFFLE_MS` y `HAND_SHUFFLE_MS` de `shuffle-fx.ts`, `FIRST_DEAL_MS`, `NEXT_DEAL_MS` y `DEAL_LAND_AT` de `deal-flight.ts`, `IMPACT_MS` de `AttackFx.tsx`,
- * `DELTA_MS` de `life-effects.ts`, `PHASE_BAND_MS` de `PhaseBand.tsx` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
+ * `DELTA_MS` de `life-effects.ts`, `PHASE_BAND_MS` y `TURN_BAND_MS` de `PhaseBand.tsx` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
  * `PracticeHand.tsx` y `STRIKE_MS` de `AttackFx.tsx`.
  */
 export const MESA = {
@@ -28,6 +29,7 @@ export const MESA = {
   travel: 320,
   stage: 950,
   banner: 850,
+  turnBanner: 1250,
   handFlash: 900,
   flip: 380,
   shuffle: 620,
@@ -184,10 +186,14 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     if (rect) out.push(landingOverlay(rect, FX_RGB[LANDING_TONE(effects.landing.tone)], s, start + (effects.landing.flies && id ? landingOf(id) : 0), speed))
   }
 
-  // La banda de la fase: el nombre sobre el color de quien juega (violeta lo tuyo, lima lo del rival), como `PhaseBand` de la mesa.
+  // La banda de la fase: el nombre sobre el color de quien juega (violeta lo tuyo, lima lo del rival), como `PhaseBand` de la mesa. Un pase de turno, antes «Cambio de turno», y las dos del color de quien empieza.
   if (effects.banner) {
     const name = PHASES.find((phase) => phase.id === effects.banner!.phase)?.name ?? effects.banner.phase
-    out.push(bannerOverlay(name, actor === 0 ? 0 : 1, field, theme, after.layout.cell / 55, at(0), speed))
+    const passed = effects.banner.turn !== null
+    const side = (actor === 0) !== passed ? 0 : 1
+    const k = after.layout.cell / 55
+    if (passed) out.push(bannerOverlay(t('duel.phase.turnChange'), side, field, theme, k, at(0), speed, false, true))
+    out.push(bannerOverlay(name, side, field, theme, k, at(passed ? MESA.turnBanner : 0), speed))
   }
 
   // Una carta entró a tu mano: la mano se enmarca un instante en celeste (`fx-zone` de la mesa; la del rival, no).
@@ -350,14 +356,14 @@ function landingOverlay(cell: Rect, tone: string, s: number, start: number, spee
 }
 
 /** Los tiempos de la banda de la mesa (`PhaseBand`): entra 200 ms desde el costado de quien juega, el nombre llega 100 ms después, se queda hasta los 600 ms y sale en otros 200 por el otro lado. */
-const BAND_IN = 200
-const BAND_HOLD = 600
-const BAND_OUT = 200
-const BAND_TEXT_AT = 100
+const BAND = { in: 200, hold: 600, out: 200, textAt: 100, h: 52, font: 24, ms: MESA.banner }
+/** La de «Cambio de turno»: una vez y media más alta y con la frase más grande; entra en 250, se queda hasta los 1000 y sale en 250. */
+const TURN_BAND = { in: 250, hold: 1000, out: 250, textAt: 100, h: 80, font: 33, ms: MESA.turnBanner }
 
 /** `k`: cuánto se agranda la mesa en el video (la casilla del video sobre la de 55 px del celular). */
-function bannerOverlay(name: string, side: 0 | 1, field: Rect, theme: VideoAssets['theme'], k: number, start: number, speed: VideoSpeed, resumed = false): Overlay {
-  const h = 52 * k
+function bannerOverlay(name: string, side: 0 | 1, field: Rect, theme: VideoAssets['theme'], k: number, start: number, speed: VideoSpeed, resumed = false, turn = false): Overlay {
+  const band = turn ? TURN_BAND : BAND
+  const h = band.h * k
   const cy = field.y + field.h / 2
   const [rgb, ink] = side === 0 ? [theme.primaryRgb, theme.primaryForeground] : [theme.infoRgb, theme.accentForeground]
   const dir = side === 0 ? 1 : -1
@@ -365,11 +371,11 @@ function bannerOverlay(name: string, side: 0 | 1, field: Rect, theme: VideoAsset
     kind: 'banner',
     side,
     start,
-    duration: MESA.banner / speed,
+    duration: band.ms / speed,
     draw: (ctx, p) => {
-      const ms = p * MESA.banner
-      const entered = resumed ? 1 : easeOut(clamp(ms / BAND_IN))
-      const left = easeInOut(clamp((ms - BAND_HOLD) / BAND_OUT))
+      const ms = p * band.ms
+      const entered = resumed ? 1 : easeOut(clamp(ms / band.in))
+      const left = easeInOut(clamp((ms - band.hold) / band.out))
       const alpha = entered * (1 - left)
       if (alpha <= 0) return
       const dx = field.w * dir * (left - (1 - entered))
@@ -378,18 +384,28 @@ function bannerOverlay(name: string, side: 0 | 1, field: Rect, theme: VideoAsset
       ctx.rect(field.x, cy - h / 2, field.w, h)
       ctx.clip()
       ctx.globalAlpha = alpha
-      const band = ctx.createLinearGradient(field.x + dx, 0, field.x + dx + field.w, 0)
-      band.addColorStop(0, rgba(rgb, 0))
-      band.addColorStop(0.14, rgba(rgb, 1))
-      band.addColorStop(0.86, rgba(rgb, 1))
-      band.addColorStop(1, rgba(rgb, 0))
-      ctx.fillStyle = band
+      const fill = ctx.createLinearGradient(field.x + dx, 0, field.x + dx + field.w, 0)
+      fill.addColorStop(0, rgba(rgb, 0))
+      fill.addColorStop(0.14, rgba(rgb, 1))
+      fill.addColorStop(0.86, rgba(rgb, 1))
+      fill.addColorStop(1, rgba(rgb, 0))
+      ctx.fillStyle = fill
       ctx.fillRect(field.x + dx, cy - h / 2, field.w, h)
+      if (turn) {
+        // El contorno luminoso: una línea clara arriba y otra abajo.
+        const edge = ctx.createLinearGradient(field.x + dx, 0, field.x + dx + field.w, 0)
+        edge.addColorStop(0, 'rgba(255,255,255,0)')
+        edge.addColorStop(0.5, 'rgba(255,255,255,0.85)')
+        edge.addColorStop(1, 'rgba(255,255,255,0)')
+        ctx.fillStyle = edge
+        ctx.fillRect(field.x + dx, cy - h / 2, field.w, 2 * k)
+        ctx.fillRect(field.x + dx, cy + h / 2 - 2 * k, field.w, 2 * k)
+      }
       // El nombre, en mayúsculas e itálica: llega un instante después desde el mismo costado.
-      const text = easeOut(clamp((ms - BAND_TEXT_AT) / 200))
+      const text = easeOut(clamp((ms - band.textAt) / band.in))
       ctx.globalAlpha = alpha * text
       ctx.fillStyle = ink
-      ctx.font = `italic 800 ${24 * k}px ${FONT}`
+      ctx.font = `italic 800 ${band.font * k}px ${FONT}`
       ctx.letterSpacing = `${0.6 * k}px`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -398,7 +414,7 @@ function bannerOverlay(name: string, side: 0 | 1, field: Rect, theme: VideoAsset
       ctx.restore()
     },
   }
-  return resumed ? overlay : { ...overlay, carry: bannerOverlay(name, side, field, theme, k, start, speed, true) }
+  return resumed ? overlay : { ...overlay, carry: bannerOverlay(name, side, field, theme, k, start, speed, true, turn) }
 }
 
 /**

@@ -230,8 +230,9 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     step()
     step()
     expect(said()).toBe('Turno de Rival')
-    // Tu pase abre su turno: la banda de su Draw Phase, lima, sin el aro del botón (no son dos avisos).
-    expect(band()).toHaveTextContent(/^Draw Phase$/)
+    // Tu pase abre su turno: «Cambio de turno» (y después la banda de su fase), lima, sin el aro del botón (no son dos avisos).
+    expect(band()).toHaveTextContent(/^Cambio de turno$/)
+    expect(band()).toHaveAttribute('data-turn')
     expect(band()).toHaveAttribute('data-side', 'theirs')
     expect(document.querySelector('[data-fx="phase-pulse"]')).toBeNull()
     // Su robo va con «Turno de Rival», sin cartel propio.
@@ -249,8 +250,8 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
       }
     }
     expect(seen).toEqual(['Rival · Standby Phase', 'Rival · Main Phase 1', 'Rival · End Phase', 'Tu turno'])
-    // Las suyas en lima y «Tu turno», tu Draw Phase en violeta.
-    expect(bands).toEqual(['theirs Standby Phase', 'theirs Main Phase 1', 'theirs End Phase', 'mine Draw Phase'])
+    // Las suyas en lima (la Standby entra cuando se va «Cambio de turno», que dura más que su cartel) y «Tu turno» vuelve a cambiar el turno, en violeta (después, tu Draw Phase).
+    expect(bands).toEqual(['theirs Cambio de turno', 'theirs Main Phase 1', 'theirs End Phase', 'mine Cambio de turno'])
     step()
     expect(cards()).toBe(before + 1)
     act(() => vi.advanceTimersByTime(1100))

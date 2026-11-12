@@ -1004,7 +1004,7 @@ const RESULTS: Array<{ label: string; tone: 'win' | 'lose' | 'draw'; title: stri
   { label: 'se rindió el rival', tone: 'win', title: '¡Ganaste!', reason: 'Beto se rindió.', kind: 'room', next: 'Revancha' },
   { label: 'por tiempo', tone: 'lose', title: 'Perdiste', reason: 'Se te acabó el tiempo.', score: [3000, 2500], kind: 'room', next: 'Revancha' },
   { label: 'serie: partida 1 de 3', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida. Match 0–1.', score: [0, 1200], note: 'Beto quiere la revancha.', kind: 'room', next: 'Siguiente duelo' },
-  { label: 'espectador', tone: 'win', title: 'Ganó Ana', reason: 'Beto se quedó sin puntos de vida.', note: 'Volvés al inicio en unos segundos.', kind: 'watch' },
+  { label: 'espectador', tone: 'win', title: 'Ganó Ana', reason: 'Ganó Ana. Beto se quedó sin puntos de vida.', note: 'Volvés al inicio en unos segundos.', kind: 'watch' },
 ]
 
 function ResultSample({ sample }: { sample: (typeof RESULTS)[number] }) {
@@ -1075,7 +1075,7 @@ function BannerSamples() {
       className="col-span-full"
       note={
         <>
-          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, sin degradados ni brillos) del cartel del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos). El final (<Tag>ResultHero</Tag>) es una hoja opaca y recta apoyada abajo (en escritorio, al centro) sobre la mesa con un velo: el título en el color del resultado (lo único que resalta), el porqué pegado, las vidas «7700 a 0» en grande, las secundarias del mismo ancho y la principal grande abajo; la ✕ va dentro. Antes, el golpe letal en cámara lenta (<Tag>LethalBlow</Tag>: destello, rayos y el daño en grande, 1,5 s); después la chapa del que perdió cuenta hasta 0, una pausa y recién ahí el final (<Tag>app/end-reveal.ts</Tag>). Entra subiendo; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
+          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, sin degradados ni brillos) del cartel del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos). El final (<Tag>ResultHero</Tag>) es la palabra enorme cruzando el campo («Victoria», «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos; entra creciendo) sobre la mesa con un velo, y abajo (en escritorio, al centro, debajo de la palabra) una hoja opaca y recta que no la repite: el porqué como cabeza (el nombre del cartel, «¡Ganaste!», queda para el lector de pantalla), las vidas «7700 a 0» en grande, las secundarias del mismo ancho y la principal grande abajo; la ✕ va dentro. Antes, el golpe letal en cámara lenta (<Tag>LethalBlow</Tag>: destello, rayos y el daño en grande, 1,5 s); después la chapa del que perdió cuenta hasta 0, una pausa y recién ahí el final (<Tag>app/end-reveal.ts</Tag>). Entra subiendo; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
         </>
       }
     >

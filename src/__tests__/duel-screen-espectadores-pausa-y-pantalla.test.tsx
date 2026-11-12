@@ -237,7 +237,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).queryByTestId('turn-banner')).not.toBeInTheDocument()
   })
 
-  it('el final es una hoja: el título en el color del resultado (lima si ganás, rojo si perdés), sin placa, y las vidas en grande', () => {
+  it('el final es la palabra del resultado en su color (lima si ganás, rojo si perdés) y una hoja: sin placa, y las vidas en grande', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
     click(guest, 'Rendirme')
@@ -249,12 +249,12 @@ describe('la pantalla del duelo', () => {
 
     expect(won).toHaveAttribute('data-tone', 'win')
     expect(won.querySelector('[data-medal]')).toBeNull()
-    expect(within(won).getByRole('heading', { name: '¡Ganaste!' })).toHaveClass('text-info')
-    // Rendirse no es un marcador: sin «8000 a 8000» (se lee como un empate); quedan el título y el motivo.
+    expect(won.querySelector('[data-result-word] p')).toHaveClass('text-info')
+    // Rendirse no es un marcador: sin «8000 a 8000» (se lee como un empate); quedan la palabra y el motivo.
     expect(won.querySelector('[data-score]')).toBeNull()
     expect(won).toHaveTextContent('Beto se rindió')
     expect(lost).toHaveAttribute('data-tone', 'lose')
-    expect(within(lost).getByRole('heading', { name: 'Perdiste' })).toHaveClass('text-danger-soft')
+    expect(lost.querySelector('[data-result-word] p')).toHaveClass('text-danger-soft')
     // Los botones de siempre siguen: ver la mesa y la revancha.
     expect(within(won).getByRole('button', { name: 'Revancha' })).toBeInTheDocument()
   })
@@ -276,7 +276,7 @@ describe('la pantalla del duelo', () => {
     flush()
 
     const end = within(watcher.container).getByRole('dialog', { name: 'Ganó Ana' })
-    expect(within(end).getByText('Beto se rindió.')).toBeInTheDocument()
+    expect(within(end).getByText('Ganó Ana. Beto se rindió.')).toBeInTheDocument()
     expect(end).toHaveAttribute('data-tone', 'win')
     expect(within(end).getByRole('button', { name: 'Volver al inicio' })).toBeInTheDocument()
 

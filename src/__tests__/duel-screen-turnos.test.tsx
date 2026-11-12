@@ -533,6 +533,8 @@ describe('la pantalla del duelo', () => {
     expect(visibleBanner(guest)).toHaveAttribute('data-side', 'theirs')
     expect(visibleBanner(host)).toHaveTextContent(/^Main Phase 1$/)
     expect(visibleBanner(host)).toHaveAttribute('data-side', 'mine')
+    // El primer turno no es un cambio de turno.
+    expect(visibleBanner(host)).not.toHaveAttribute('data-turn')
 
     // Las fases son una sola para los dos y sólo las toca quien tiene el turno: Beto las ve (encendidas igual que Ana) pero no puede cambiarlas.
     expect(phaseChip(guest)).toBeDisabled()
@@ -561,9 +563,10 @@ describe('la pantalla del duelo', () => {
     expect(phase(host)).toBe('Draw Phase')
     expect(banner(guest)).toContain('Tu turno')
     expect(banner(host)).toContain('Turno de Beto')
-    // El turno nuevo, en la banda de quien lo empieza: la Draw Phase de Beto, lima para Ana y violeta para él.
+    // El turno nuevo, en la banda de quien lo empieza: «Cambio de turno» (después, su Draw Phase), lima para Ana y violeta para Beto.
     expect(visibleBanner(host)).toHaveAttribute('data-side', 'theirs')
-    expect(visibleBanner(guest)).toHaveTextContent(/^Draw Phase$/)
+    expect(visibleBanner(host)).toHaveAttribute('data-turn')
+    expect(visibleBanner(guest)).toHaveTextContent(/^Cambio de turno$/)
     expect(visibleBanner(guest)).toHaveAttribute('data-side', 'mine')
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest + 1)
     expect(phaseChip(host)).toBeDisabled()

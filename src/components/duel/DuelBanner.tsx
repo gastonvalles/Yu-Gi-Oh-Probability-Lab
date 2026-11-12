@@ -50,12 +50,14 @@ type ResultTone = 'win' | 'lose' | 'draw'
 
 /** El color del resultado, lo único que resalta del cartel: lima si ganaste, rojo si perdiste, lavanda si empataron (los de la placa, `DuelMedal`). */
 const RESULT_TEXT: Record<ResultTone, string> = { win: 'text-info', lose: 'text-danger-soft', draw: 'text-accent' }
+const RESULT_BAND: Record<ResultTone, string> = { win: 'via-info/20', lose: 'via-danger/20', draw: 'via-accent/20' }
+const RESULT_WORD = { win: 'duel.result.word.win', lose: 'duel.result.word.lose', draw: 'duel.result.word.draw' } as const
 
 interface ResultHeroProps {
   tone: ResultTone
-  /** Cómo terminó: el título, en el color del resultado. */
+  /** Cómo terminó, para el lector de pantalla (el nombre del cartel): a la vista lo dice la palabra («Victoria»). */
   title: string
-  /** Por qué, en una línea debajo. */
+  /** Por qué, la cabeza de la hoja. */
   reason: string
   note?: string | null
   score?: ResultScore
@@ -72,10 +74,11 @@ interface ResultHeroProps {
 }
 
 /**
- * El final del duelo (Gastón, 2026-11-12: «mejorar la pantalla de victoria»): una hoja opaca apoyada abajo (en escritorio, al centro de la columna de la mesa) sobre la mesa con un
- * velo, como los menús del duelo. Arriba, el título en el color del resultado (lo único que resalta) con el porqué pegado; las vidas finales en grande («3100 a 0»: el número que
- * decide); las secundarias del mismo ancho y la principal, grande, abajo de todo. Recta (`mat-square`); entra subiendo (sólo `transform`) y el velo aparece (`opacity`).
- * Lo usan los jugadores (con sus botones y sus vidas) y quienes miran (sin ellos).
+ * El final del duelo (Gastón, 2026-11-12: «mejorar la pantalla de victoria»; referencia: el VICTORY de Master Duel): sobre la mesa con un velo, la palabra del resultado enorme
+ * cruzando el campo («Victoria», «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos, quietos; entra creciendo, sólo `scale`/`opacity`), y
+ * abajo (en escritorio, al centro de la columna de la mesa, debajo de la palabra) una hoja opaca que no la repite: el porqué, las vidas finales en grande («3100 a 0»: el número
+ * que decide), las secundarias del mismo ancho y la principal, grande, abajo de todo. Recta (`mat-square`); la hoja entra subiendo (sólo `transform`) y el velo aparece
+ * (`opacity`). El nombre del cartel es `title` («¡Ganaste!»). Lo usan los jugadores (con sus botones y sus vidas) y quienes miran (sin ellos).
  */
 export function ResultHero({ tone, title, reason, note, score, role = 'dialog', onLeave, actions, primary, fixed = false }: ResultHeroProps) {
   const titleId = useId()
@@ -83,13 +86,26 @@ export function ResultHero({ tone, title, reason, note, score, role = 'dialog', 
   return (
     <div role={role} aria-modal="true" aria-labelledby={titleId} data-testid="result-hero" data-tone={tone} className={cx('mat-square inset-0 z-65 flex flex-col justify-end min-[1101px]:justify-center', fixed ? 'fixed' : 'absolute')}>
       <span aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-background/75 motion-reduce:animate-none" />
+      <h2 id={titleId} className="sr-only">
+        {title}
+      </h2>
+      {/* La palabra, en el lugar que deja la hoja (en escritorio, pegada arriba de ella): una franja tenue del color del resultado la cruza de lado a lado. Su tamaño, por el ancho que tiene («Victoria» entra en un renglón desde 360 px). */}
+      <div aria-hidden="true" data-result-word={tone} className="@container relative grid min-h-0 flex-1 place-items-center overflow-hidden py-4 min-[1101px]:flex-none min-[1101px]:py-6">
+        <span className={cx('absolute inset-x-0 top-1/2 h-1/2 max-h-32 -translate-y-1/2 bg-linear-to-r from-transparent to-transparent', RESULT_BAND[tone])} />
+        <p
+          className={cx(
+            'relative m-0 whitespace-nowrap px-4 text-display font-extrabold uppercase italic leading-none tracking-tight [paint-order:stroke_fill] [-webkit-text-stroke:0.1875rem_var(--color-foreground)] text-shadow-[0_0_1.5rem_rgb(255_255_255/0.45)] @min-[23rem]:text-hit @min-[30rem]:text-hit-lg',
+            'transition-[scale,opacity] duration-300 ease-snap starting:scale-150 starting:opacity-0 motion-reduce:transition-none',
+            RESULT_TEXT[tone],
+          )}
+        >
+          {t(RESULT_WORD[tone])}
+        </p>
+      </div>
       <section className="relative grid w-full animate-sheet-up gap-4 border-t border-border bg-card-background px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] motion-reduce:animate-none min-[1101px]:mx-auto min-[1101px]:max-w-md min-[1101px]:animate-sheet-in min-[1101px]:border min-[1101px]:p-6">
         <div className="flex items-start gap-2">
           <div className="grid min-w-0 flex-1 gap-1 pt-1">
-            <h2 id={titleId} className={cx('m-0 text-balance text-title font-extrabold [overflow-wrap:anywhere]', RESULT_TEXT[tone])}>
-              {title}
-            </h2>
-            <p role="status" className="m-0 text-body text-muted">
+            <p role="status" className="m-0 text-balance text-lead font-bold text-foreground">
               {reason}
             </p>
             {note ? <p className="m-0 text-micro text-muted">{note}</p> : null}
@@ -147,7 +163,8 @@ export function WatchResultBanner({ end, nameOf, onLeave, onClose }: { end: Spec
         fixed
         tone={winner === null ? 'draw' : 'win'}
         title={title}
-        reason={`${why}${score}`}
+        // La palabra dice «Victoria»: quién ganó, en la línea de abajo.
+        reason={`${winner === null ? '' : `${title}. `}${why}${score}`}
         {...(end.over ? { note: t('duel.watch.end.back') } : {})}
         {...(end.over
           ? {

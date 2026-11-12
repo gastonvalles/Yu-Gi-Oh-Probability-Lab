@@ -41,8 +41,11 @@ const STEP_MS = 900
  */
 function bannerAt(replay: DuelReplay, from: number, to: number): PhaseCue | null {
   const step = to === from + 1 ? replay.steps[to - 1] : undefined
+  if (!step || step[1].type !== 'phase') return null
+  // A la Draw Phase se llega pasando el turno (la juega quien termina): «Cambio de turno» y la Draw Phase, del color de quien empieza.
+  const turn = step[1].phase === 'draw'
 
-  return step && step[1].type === 'phase' ? { key: to, phase: step[1].phase, side: step[0] === 0 ? 'mine' : 'theirs' } : null
+  return { key: to, phase: step[1].phase, side: (step[0] === 0) !== turn ? 'mine' : 'theirs', turn }
 }
 
 /** Cuánto se ve la carta grande de una activación (lo que dura `card-activate-center`). */

@@ -720,5 +720,11 @@ describe('auto-screen-online · la fase del rival', () => {
     core(() => link.set({ rivalPhase: null, session }))
     phaseIs(PHASES.find((phase) => phase.id === session.getSnapshot().theirs.phase)!.name)
     expect(lane()).toHaveTextContent('Beto está eligiendo…')
+
+    // El turno vuelve a vos: «Cambio de turno» en violeta (después, tu Draw Phase) y el lector oye «Tu turno».
+    core(() => session.set({ status: 'waiting', ask: null, overlay: { ...session.getSnapshot().overlay, turn: 3, turnPlayer: 0 } }))
+    expect(document.querySelector('[data-fx="banner"]')).toHaveAttribute('data-turn')
+    expect(document.querySelector('[data-fx="banner"]')).toHaveAttribute('data-side', 'mine')
+    expect(phaseButton().parentElement!.querySelector('[role="status"]')).toHaveTextContent('Tu turno')
   })
 })

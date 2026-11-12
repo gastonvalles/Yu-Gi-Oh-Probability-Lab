@@ -92,7 +92,8 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
     <ResultHero
       tone={view.tone}
       title={view.title}
-      reason={view.reason}
+      // La palabra dice cómo te fue en este duelo; si con él terminó el Match, la hoja lo dice primero.
+      reason={snapshot.series.match && snapshot.series.winner !== null ? `${view.title} ${view.reason}` : view.reason}
       note={view.note}
       // Rendirse (vos o el rival) no es un marcador: «8000 a 8000» se lee como un empate. Por tiempo o por vidas, sí.
       {...(snapshot.conceded !== null && !snapshot.timeUp ? {} : { score: { mine: snapshot.life.lp[snapshot.me], theirs: snapshot.life.lp[snapshot.me === 0 ? 1 : 0], rival } })}

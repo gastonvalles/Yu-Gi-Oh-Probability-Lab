@@ -25,6 +25,7 @@ export const duel = {
   // De dorso salvo lo que es de conocimiento público (se mostró o vino de una zona a la vista).
   'duel.hand.theirsPublic': 'Mano del rival: {count}, a la vista: {cards}',
   'duel.phase.current': 'Fase actual: {phase}',
+  'duel.phase.turnChange': 'Cambio de turno',
   // El aviso cuando el rival ataca.
   'duel.announce.attack': '{name} ataca a {target}',
   'duel.announce.attackDirect': '{name} te ataca directo',
@@ -456,6 +457,9 @@ export const duel = {
   'duel.result.title.win': '¡Ganaste!',
   'duel.result.title.lose': 'Perdiste',
   'duel.result.title.draw': 'Empate',
+  'duel.result.word.win': 'Victoria',
+  'duel.result.word.lose': 'Derrota',
+  'duel.result.word.draw': 'Empate',
   'duel.result.reason.winLife': '{name} se quedó sin puntos de vida.',
   'duel.result.reason.winTime': '{name} se quedó sin tiempo.',
   'duel.result.reason.loseTime': 'Se te acabó el tiempo.',

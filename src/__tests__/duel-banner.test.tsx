@@ -6,7 +6,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { SpectatorEnd } from '../app/duel-spectator'
-import { TURN_BANNER_MS, TurnOrderBanner, WATCH_NEXT_MS, WATCH_RETURN_MS, WatchResultBanner } from '../components/duel/DuelBanner'
+import { ResultHero, TURN_BANNER_MS, TurnOrderBanner, WATCH_NEXT_MS, WATCH_RETURN_MS, WatchResultBanner } from '../components/duel/DuelBanner'
 import { DuelMedal } from '../components/duel/DuelMedal'
 
 afterEach(() => vi.useRealTimers())
@@ -74,8 +74,9 @@ describe('el cartel del final para quien mira', () => {
     render(<WatchResultBanner end={end({ reason: 'conceded' })} nameOf={names} onLeave={leave} onClose={close} />)
 
     const dialog = screen.getByRole('dialog', { name: 'Ganó Ana' })
-    expect(within(dialog).getByText('Beto se rindió.')).toBeInTheDocument()
-    // Sin placa: el color del resultado va en el título.
+    expect(within(dialog).getByText('Ganó Ana. Beto se rindió.')).toBeInTheDocument()
+    // Sin placa: el color del resultado va en la palabra, «Victoria» (quién ganó, en la línea de abajo).
+    expect(dialog.querySelector('[data-result-word]')).toHaveTextContent(/^Victoria$/)
     expect(dialog).toHaveAttribute('data-tone', 'win')
     expect(dialog.querySelector('[data-medal]')).toBeNull()
 
@@ -108,7 +109,7 @@ describe('el cartel del final para quien mira', () => {
     render(<WatchResultBanner end={end({ match: true, wins: [1, 0], over: false })} nameOf={names} onLeave={leave} onClose={close} />)
 
     const dialog = screen.getByRole('dialog', { name: 'Ganó Ana' })
-    expect(within(dialog).getByText('Beto se quedó sin puntos de vida. Match 1–0. El Match sigue.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Ganó Ana. Beto se quedó sin puntos de vida. Match 1–0. El Match sigue.')).toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Volver al inicio' })).not.toBeInTheDocument()
 
     act(() => {
@@ -122,7 +123,35 @@ describe('el cartel del final para quien mira', () => {
     render(<WatchResultBanner end={end({ match: true, wins: [2, 1], matchWinner: 0 })} nameOf={names} onLeave={() => {}} onClose={() => {}} />)
 
     const dialog = screen.getByRole('dialog', { name: 'Ganó Ana el Match' })
-    expect(within(dialog).getByText('Beto se quedó sin puntos de vida. Match 2–1.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Ganó Ana el Match. Beto se quedó sin puntos de vida. Match 2–1.')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Volver al inicio' })).toBeInTheDocument()
+  })
+})
+
+describe('el final del duelo', () => {
+  it('la palabra del resultado, enorme sobre el campo, y la hoja sin repetirla: el porqué, el marcador y las acciones', () => {
+    const { container } = render(<ResultHero tone="lose" title="Perdiste" reason="Te quedaste sin puntos de vida." score={{ mine: 0, theirs: 3100, rival: 'Rival' }} primary={<button type="button">Jugar otra vez</button>} />)
+    const word = container.querySelector('[data-result-word]')!
+    const sheet = container.querySelector('section')!
+
+    // El nombre del cartel sigue siendo cómo te fue; a la vista, la palabra (en su color, itálica y en mayúsculas), oculta al lector (no la oye dos veces).
+    expect(screen.getByRole('dialog', { name: 'Perdiste' })).toHaveAttribute('data-tone', 'lose')
+    expect(word).toHaveAttribute('aria-hidden', 'true')
+    expect(word).toHaveTextContent(/^Derrota$/)
+    expect(word.querySelector('p')).toHaveClass('text-danger-soft', 'italic', 'uppercase', 'whitespace-nowrap')
+    expect(sheet).not.toContainElement(word as HTMLElement)
+    expect(sheet).not.toHaveTextContent(/Derrota|Perdiste/)
+    expect(within(sheet).getByRole('status')).toHaveTextContent('Te quedaste sin puntos de vida.')
+    expect(sheet).toHaveTextContent(/0\s*a\s*Rival\s*3100/)
+  })
+
+  it('«Victoria» y «Empate» con su color', () => {
+    const win = render(<ResultHero tone="win" title="¡Ganaste!" reason="Rival se rindió." />).container.querySelector('[data-result-word] p')
+    const draw = render(<ResultHero tone="draw" title="Empate" reason="Los dos se quedaron sin puntos de vida." />).container.querySelector('[data-result-word] p')
+
+    expect(win).toHaveTextContent(/^Victoria$/)
+    expect(win).toHaveClass('text-info')
+    expect(draw).toHaveTextContent(/^Empate$/)
+    expect(draw).toHaveClass('text-accent')
   })
 })
