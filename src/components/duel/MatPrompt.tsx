@@ -1,7 +1,6 @@
-import { createContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-import type { MatPhase } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving, usePresence } from '../../app/use-presence'
@@ -11,18 +10,6 @@ import { t } from '../../i18n'
 import { BottomSheet, useSheetHost } from '../ui/BottomSheet'
 import { cx } from '../ui/cx'
 import { PromptHandle } from '../ui/SheetHandle'
-
-/** En qué fase está el duelo (la de quien tiene el turno) y si el turno es tuyo. */
-export interface PromptTurn {
-  phase: MatPhase
-  mine: boolean
-}
-
-/**
- * La fase y el turno de la mesa (`PracticeMat` lo da en el automático). Ninguna pregunta lo muestra ya (cada dato, una vez: la fase la dice su botón y el turno, la chapa); queda hasta que la
- * mesa deje de darlo.
- */
-export const PromptTurnContext = createContext<PromptTurn | null>(null)
 
 interface MatPromptProps {
   /** Lo que dice el asa minimizada: la pregunta, corta («¿Activás el efecto?»). */

@@ -61,7 +61,9 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
     const stats = () => Array.from(document.querySelectorAll('dl > div')).map((element) => element.textContent)
     const view = render(<DuelCardDock peek={peek(blue)} />)
 
-    expect(screen.getByText('[Normal Monster] Dragon/LIGHT')).toBeInTheDocument()
+    // El tipo, en un chip con el color de su marco (Normal: `bg-frame-normal`), y la raza y el atributo al lado.
+    expect(screen.getByText('Normal Monster')).toHaveClass('bg-frame-normal')
+    expect(screen.getByText('Dragon/LIGHT')).toBeInTheDocument()
     expect(stats()).toEqual(['Nivel8', 'ATK3000', 'DEF2500'])
 
     view.rerender(<DuelCardDock peek={peek({ ...blue, ygoprodeckId: 1, cardType: 'XYZ Monster' })} />)

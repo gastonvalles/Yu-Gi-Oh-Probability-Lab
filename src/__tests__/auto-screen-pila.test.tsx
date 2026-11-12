@@ -42,6 +42,11 @@ function mountChain() {
   act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
   // La cinta, con un chip por eslabón.
   expect(within(within(screen.getByTestId('chain-notice')).getByRole('list', { name: /Eslabones de la cadena/ })).getAllByRole('listitem')).toHaveLength(2)
+  // En escritorio va en su capa, sobre la columna del medio (sin el detalle ni los pasos) y sin atajar toques: no hay línea bajo el campo.
+  const layer = screen.getByTestId('duel-chain-layer')
+
+  expect(layer).toContainElement(screen.getByTestId('chain-notice'))
+  expect(layer).toHaveClass('pointer-events-none', 'min-[1101px]:right-[var(--mat-right,20rem)]', 'min-[1440px]:left-[var(--mat-left,20rem)]')
 
   return fake
 }

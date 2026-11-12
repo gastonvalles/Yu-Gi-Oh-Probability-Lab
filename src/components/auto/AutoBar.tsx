@@ -236,7 +236,7 @@ export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: b
 /**
  * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace. Es la barra de la práctica: la flecha de
  * «Volver a Jugar» a la izquierda y, a la derecha, deshacer y el ⋯ (`MatBarActions`), y lo propio del automático: «Opciones del duelo» al final del ⋯ (en escritorio, con `dock`, va en la botonera
- * de la mesa: `AutoDock`), el turno, dicho una sola vez («Tu turno · 3», en el color de quién es; la fase la dice sólo el botón del campo) y las vidas, planas (`LifeScore`): hasta 1100 px en el marcador debajo
+ * de la mesa: `AutoDock`), el turno, dicho una sola vez y sólo hasta 1100 px («Tu turno · 3», en el color de quién es; desde 1101 px lo dice la chapa de quien juega y la fase, sólo el botón del campo) y las vidas, planas (`LifeScore`): hasta 1100 px en el marcador debajo
  * de los íconos («VOS 8000 · Tu turno · 1 · RIVAL 8000»), con laterales en el izquierdo y, en escritorio sin ellos, en las esquinas del campo (las pone la pantalla). Hasta 1100 px la línea del registro va
  * debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se
  * mueve. Todo el estado entra por props.
@@ -268,7 +268,7 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
   const dialogs = gear ? <MoreOptions isOpen={moreOpen} onClose={() => setMoreOpen(false)} {...options} /> : null
 
   // Con laterales (escritorio ancho), las piezas van a la grilla de la mesa como las de `DuelBar`: arriba a la izquierda la flecha y las vidas, y los avisos debajo; arriba a la derecha los íconos
-  // (de 40 px, como los de `DuelBar`: el lateral más angosto tiene lugar para cinco por fila) y, debajo, el turno.
+  // (de 40 px, como los de `DuelBar`: el lateral más angosto tiene lugar para cinco por fila).
   if (rails) {
     return (
       <>
@@ -284,7 +284,6 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
           <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-2', MAT_BAR_ROW)}>
             {actions()}
           </div>
-          {turnLine('text-right')}
         </div>
         {/* El aviso, en lo que el campo agrandado deja libre del lateral (`--field-overhang`, de la mesa) y por encima del tablero (`z-20`): nunca cortado ni debajo. Con menos de 11 rem libres se apoya sobre el borde del campo.
             La caja no ataja toques, sólo el aviso: ocupa todo el lateral y, encima del campo, tapaba el Extra Deck (`RAIL_LANE_STYLE`). */}
@@ -296,15 +295,14 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
 
   if (docked) {
     return (
-      // Escritorio: una sola fila. A la izquierda la flecha; a la derecha los íconos y, debajo, el turno (una vez). Las vidas van en las esquinas del campo (las pone la pantalla); la fila guarda el alto
-      // de cuando las llevaba (`min-h-18`): el campo queda donde estaba.
+      // Escritorio: una sola fila. A la izquierda la flecha y a la derecha los íconos; el turno no se dice (la chapa de quien juega lo dice). Las vidas van en las esquinas del campo (las pone la pantalla);
+      // la fila guarda el alto de cuando las llevaba (`min-h-18`): el campo queda donde estaba.
       <div className="relative flex items-center gap-1.5 px-0.5 pt-1.5">
         <MatExitButton onExit={onExit} />
         <div className="ml-auto flex min-h-18 min-w-0 flex-col items-end justify-center">
           <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-1', MAT_BAR_ROW)}>
             {actions()}
           </div>
-          {turnLine('max-w-full')}
         </div>
         {/* El aviso, centrado debajo de la barra. */}
         {lane ? (

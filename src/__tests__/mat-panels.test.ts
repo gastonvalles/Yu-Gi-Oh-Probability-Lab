@@ -68,51 +68,60 @@ describe('los anchos de los paneles de la mesa', () => {
   })
 })
 
+
 describe('lo que se recuerda en el navegador', () => {
   it('sin nada guardado, o sin almacenamiento, son los de siempre', () => {
-    expect(readMatPanels(() => memoryStorage())).toEqual({ left: null, right: null, column: null })
+    expect(readMatPanels(() => memoryStorage())).toEqual({ left: null, right: null })
     expect(
       readMatPanels(() => {
         throw new Error('sin almacenamiento')
       }),
-    ).toEqual({ left: null, right: null, column: null })
+    ).toEqual({ left: null, right: null })
   })
 
   it('lo que no se entiende vuelve al de siempre, cada panel por su lado; lo de afuera del rango se acota', () => {
     const read = (raw: string) => readMatPanels(() => memoryStorage({ [MAT_PANELS_KEY]: raw }))
 
-    expect(read('{roto')).toEqual({ left: null, right: null, column: null })
-    expect(read('[1,2]')).toEqual({ left: null, right: null, column: null })
-    expect(read('"texto"')).toEqual({ left: null, right: null, column: null })
-    expect(read('null')).toEqual({ left: null, right: null, column: null })
-    expect(read(JSON.stringify({ left: '400', right: true, column: 'x' }))).toEqual({ left: null, right: null, column: null })
-    expect(read(JSON.stringify({ left: 400, right: 'ancho', column: 300 }))).toEqual({ left: 400, right: null, column: 300 })
-    expect(read(JSON.stringify({ left: 5, right: 99999 }))).toEqual({ left: PANEL_MIN_PX, right: PANEL_MAX_PX, column: null })
-    expect(read(JSON.stringify({ left: 300.4, right: null }))).toEqual({ left: 300, right: null, column: null })
+    expect(read('{roto')).toEqual({ left: null, right: null })
+    expect(read('[1,2]')).toEqual({ left: null, right: null })
+    expect(read('"texto"')).toEqual({ left: null, right: null })
+    expect(read('null')).toEqual({ left: null, right: null })
+    expect(read(JSON.stringify({ left: '400', right: true }))).toEqual({ left: null, right: null })
+    expect(read(JSON.stringify({ left: 400, right: 'ancho' }))).toEqual({ left: 400, right: null })
+    expect(read(JSON.stringify({ left: 5, right: 99999 }))).toEqual({ left: PANEL_MIN_PX, right: PANEL_MAX_PX })
+    expect(read(JSON.stringify({ left: 300.4, right: null }))).toEqual({ left: 300, right: null })
+  })
+
+  it('el `column` que guardó la columna con pestañas se ignora: se lee sin él y al guardar no vuelve', () => {
+    const storage = memoryStorage({ [MAT_PANELS_KEY]: '{"left":448,"right":null,"column":400}' })
+
+    expect(readMatPanels(() => storage)).toEqual({ left: 448, right: null })
+    writeMatPanels({ left: 448, right: 300 }, () => storage)
+    expect(storage.getItem(MAT_PANELS_KEY)).toBe('{"left":448,"right":300}')
   })
 
   it('se escribe con su clave y se vuelve a leer igual; sin almacenamiento no rompe', () => {
     const storage = memoryStorage()
 
-    writeMatPanels({ left: 448, right: null, column: 400 }, () => storage)
-    expect(storage.getItem(MAT_PANELS_KEY)).toBe('{"left":448,"right":null,"column":400}')
-    expect(readMatPanels(() => storage)).toEqual({ left: 448, right: null, column: 400 })
+    writeMatPanels({ left: 448, right: null }, () => storage)
+    expect(storage.getItem(MAT_PANELS_KEY)).toBe('{"left":448,"right":null}')
+    expect(readMatPanels(() => storage)).toEqual({ left: 448, right: null })
 
     expect(() =>
-      writeMatPanels({ left: 448, right: 300, column: null }, () => {
+      writeMatPanels({ left: 448, right: 300 }, () => {
         throw new Error('cuota')
       }),
     ).not.toThrow()
   })
 
-  it('de la clave v1 (dos paneles) se migra sin perder nada: la columna del automático arranca con el ancho del panel de la derecha; al guardar, la v1 se borra', () => {
+  it('de la clave v1 se migra sin perder nada; al guardar, la v1 se borra', () => {
     const storage = memoryStorage({ [MAT_PANELS_KEY_V1]: JSON.stringify({ left: 448, right: 400 }) })
 
-    expect(readMatPanels(() => storage)).toEqual({ left: 448, right: 400, column: 400 })
-    writeMatPanels({ left: 448, right: 400, column: 500 }, () => storage)
+    expect(readMatPanels(() => storage)).toEqual({ left: 448, right: 400 })
+    writeMatPanels({ left: 448, right: 400 }, () => storage)
     expect(storage.getItem(MAT_PANELS_KEY_V1)).toBeNull()
-    expect(readMatPanels(() => storage)).toEqual({ left: 448, right: 400, column: 500 })
+    expect(readMatPanels(() => storage)).toEqual({ left: 448, right: 400 })
     // Con la nueva guardada, la v1 ya no se mira.
-    expect(readMatPanels(() => memoryStorage({ [MAT_PANELS_KEY]: '{"left":null,"right":null,"column":null}', [MAT_PANELS_KEY_V1]: '{"left":448,"right":400}' }))).toEqual({ left: null, right: null, column: null })
+    expect(readMatPanels(() => memoryStorage({ [MAT_PANELS_KEY]: '{"left":null,"right":null}', [MAT_PANELS_KEY_V1]: '{"left":448,"right":400}' }))).toEqual({ left: null, right: null })
   })
 })

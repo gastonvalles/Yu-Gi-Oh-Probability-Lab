@@ -14,7 +14,6 @@ import { CardPicker, PickBand, pickPlace, type PickCard } from '../components/au
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
-import { PromptTurnContext } from '../components/duel/MatPrompt'
 import { PassPrompt } from '../components/duel/PassPrompt'
 import { applyLocale } from '../i18n'
 import { menuRow, tapMenu } from './support/mat-menu'
@@ -217,8 +216,8 @@ describe('Sin fase ni turno en los carteles (cada dato, una vez)', () => {
   describe('en escritorio', () => {
     onDesktop()
 
-    it('aunque la mesa dé la fase y el turno, la ventana no los dice: ni en la barra ni arriba de la pregunta; tampoco la pregunta del rival de pasar de fase', () => {
-      render(<PromptTurnContext value={{ phase: 'draw', mine: false }}>{respond}</PromptTurnContext>)
+    it('la ventana no dice la fase ni el turno: ni en la barra ni arriba de la pregunta; tampoco la pregunta del rival de pasar de fase', () => {
+      render(respond)
       expect(turnLine()).toBeNull()
       expect(screen.getByRole('group')).not.toHaveTextContent(/Draw Phase|Turno/)
       cleanup()
@@ -240,11 +239,7 @@ describe('Sin fase ni turno en los carteles (cada dato, una vez)', () => {
   })
 
   it('en el celular tampoco: ni la línea de la fase ni la flecha de bajar (se baja del asa)', () => {
-    render(
-      <PromptTurnContext value={{ phase: 'main1', mine: true }}>
-        <AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
-      </PromptTurnContext>,
-    )
+    render(<AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
 
     expect(turnLine()).toBeNull()
     expect(document.querySelector('[data-panel-fold]')).toBeNull()
@@ -717,7 +712,7 @@ describe('AutoBar', () => {
     expect(screen.getByTestId('auto-turn')).toHaveClass('text-info-soft')
   })
 
-  it('en escritorio sin laterales las vidas no van en la barra (van planas en las esquinas del campo: las pone la pantalla) y el turno va una vez debajo de los íconos, sin chip ni fase; con la botonera (`dock`), el engranaje sale de la barra sólo en escritorio', () => {
+  it('en escritorio sin laterales las vidas no van en la barra (van planas en las esquinas del campo: las pone la pantalla) y no hay renglón del turno (lo dice la chapa de quien juega), ni chip ni fase; con la botonera (`dock`), el engranaje sale de la barra sólo en escritorio', () => {
     const { unmount } = render(<AutoBar {...props} dock />)
 
     expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
@@ -728,7 +723,7 @@ describe('AutoBar', () => {
     const { rerender } = render(<AutoBar {...props} />)
 
     expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-    expect(screen.getByTestId('auto-turn')).toHaveTextContent(/^Tu turno · 3$/)
+    expect(screen.queryByTestId('auto-turn')).toBeNull()
     expect(screen.queryByTestId('auto-phase')).toBeNull()
     expect(screen.queryByText('Turno 3')).toBeNull()
     expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Deshacer', 'Más opciones'])
@@ -845,8 +840,8 @@ describe('AutoBar', () => {
     expect(lane).not.toHaveClass('absolute')
     // La caja ocupa todo el lateral, encima del campo agrandado: sin esto tapaba el Extra Deck, el Field y el Banish del rival, aun vacía. Sólo lo que lleva adentro recibe toques.
     expect(lane?.parentElement).toHaveClass('pointer-events-none', '*:pointer-events-auto')
-    // El turno, una vez, debajo de los íconos; la fase no (la dice el botón del campo).
-    expect(screen.getByTestId('auto-turn')).toHaveTextContent(/^Tu turno · 3$/)
+    // Ni el turno (la chapa de quien juega) ni la fase (el botón del campo) van en la barra.
+    expect(screen.queryByTestId('auto-turn')).toBeNull()
     expect(screen.queryByTestId('auto-phase')).toBeNull()
   })
 

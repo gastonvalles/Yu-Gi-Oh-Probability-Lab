@@ -385,8 +385,7 @@ export interface AutoCardSheetProps {
   /** En el celular, el visor de una pila que la ficha tapa («GY · 2»): arriba, su «volver» (`AutoPanel.crumb`). */
   crumb?: { label: string; onBack: () => void }
   /** Sólo el catálogo lo fuerza (la ventana a 1440 px en su marco); en la mesa, según el ancho. */
-  // ponytail: `column` ya no existe y se trata como sin decir; queda en el tipo hasta que la mesa (TI-193) deje de pasarlo: se borra al rebasar.
-  variant?: AutoPanelVariant | 'column'
+  variant?: AutoPanelVariant
 }
 
 /**
@@ -450,7 +449,7 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
       focus='[role="menuitem"]'
       onDismiss={onClose}
       {...(crumb ? { crumb } : {})}
-      variant={variant === 'column' ? undefined : variant}
+      variant={variant}
       className={armed ? undefined : 'pointer-events-none'}
       actions={foot}
       head={

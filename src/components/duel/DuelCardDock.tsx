@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 
 import { t } from '../../i18n'
 import type { CardTextHighlight } from '../../app/card-text'
+import { frameClass, frameKindOf } from '../../app/card-frame'
 import { Presence } from '../../app/use-presence'
 import { formatInteger } from '../../app/utils'
 import type { ApiCardReference } from '../../types'
@@ -11,7 +12,6 @@ import { CardEffectTraits } from '../card-detail/CardEffectTraits'
 import { CardFlip, useCardFlip } from '../card-detail/CardFlip'
 import { CardPanelBody } from '../card-detail/CardOverlay'
 import { CardZoom } from '../card-detail/CardZoom'
-import { buildCardSummary } from '../card-detail/card-summary'
 import { TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../card-detail/card-tilt'
 import { CARD_BACK } from '../probability/practice-styles'
 import { cx } from '../ui/cx'
@@ -125,13 +125,13 @@ function ArtHolder({ children }: { children: ReactNode }) {
 }
 
 function CardPeekView({ name, card, back = false, highlight = null, now = null, onZoom }: { name: string; card: ApiCardReference | null; back?: boolean; highlight?: CardTextHighlight | null; now?: CardStatsNow | null; onZoom: (card: ApiCardReference, name: string) => void }) {
-  const summary = card ? buildCardSummary(card) : null
   // El texto se muestra sin los espacios de los bordes: el pedazo señalado se corre lo que se sacó del principio.
   const description = card?.description ?? ''
   const shift = description.length - description.trimStart().length
   const range = highlight && card && highlight.ygoprodeckId === card.ygoprodeckId ? { start: highlight.start - shift, end: highlight.end - shift } : undefined
-  // El tipo va solo y los números aparte, rotulados: cada dato se dice una sola vez.
-  const typeLine = summary?.typeLine ?? null
+  // El tipo va solo, en un chip del color de su marco (lámina T), y los números aparte, rotulados: cada dato se dice una sola vez.
+  const frame = card ? frameKindOf(card.frameType, card.cardType) : null
+  const subtype = card ? [card.race, card.attribute].filter(Boolean).join('/') : ''
   const stats = card ? statsOf(card, now) : []
   // La carta que se da vuelta vuelve al frente al pasar a otra (si no, la siguiente se vería de dorso).
   const flip = useCardFlip()
@@ -188,7 +188,14 @@ function CardPeekView({ name, card, back = false, highlight = null, now = null, 
       )}
       <header className="grid flex-none gap-1.5">
         <Heading level="section">{name}</Heading>
-        {typeLine ? <p className="m-0 text-body text-muted [overflow-wrap:anywhere]">{typeLine}</p> : null}
+        {card && frame ? (
+          <p className="m-0 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-body text-muted">
+            <span data-type-chip="" className={cx('relative shrink-0 px-2 font-semibold', frameClass(frame))}>
+              {card.cardType}
+            </span>
+            {subtype ? <span className="min-w-0 [overflow-wrap:anywhere]">{subtype}</span> : null}
+          </p>
+        ) : null}
         {stats.length > 0 ? (
           <dl className="m-0 flex flex-wrap items-baseline gap-x-5 gap-y-1 pt-0.5">
             {stats.map((stat) => (
