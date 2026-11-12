@@ -55,4 +55,15 @@ describe('PhaseBand', () => {
     act(() => vi.advanceTimersByTime(1))
     expect(bands()).toHaveLength(0)
   })
+
+  it('con una carta grande en el centro (hold) espera: no se dibuja detrás de ella, y su reloj sigue', () => {
+    const cue: PhaseCue = { key: 1, phase: 'battle', side: 'mine' }
+    const view = render(<PhaseBand cue={cue} hold />)
+
+    expect(bands()).toHaveLength(0)
+    view.rerender(<PhaseBand cue={null} hold={false} />)
+    expect(bands()).toHaveLength(1)
+    act(() => vi.advanceTimersByTime(PHASE_BAND_MS))
+    expect(bands()).toHaveLength(0)
+  })
 })

@@ -370,8 +370,8 @@ interface SpotlightProps {
   kind: SpotlightKind | ShowcaseKind
   /** Una carta (activar, mostrar, declarar, una invocación) o varias (robar o mandar al cementerio de a más de una). */
   cards: SpotlightCard[]
-  /** Lo que pasó, en una línea (el texto del paso). */
-  caption: string | null
+  /** Lo que pasó, en una línea recta arriba de la carta; sin ella, donde el texto del paso ya está a la vista (el Replay, el combo). */
+  caption?: string | null
   /** El efecto que se activa, si se eligió uno entre varios: cuándo se activa y qué hace, textual, debajo de la carta; se queda 7 s para leerlo. */
   detail?: { lead: string; text: string }
   /** Las cartas salen del deck o del Extra: aparecen de dorso y se dan vuelta en 3D. */
@@ -508,16 +508,20 @@ function useStageRoom(rootRef: RefObject<HTMLDivElement | null>) {
 /** El resplandor de cada carta del centro (el color del paso, con una sombra abajo). */
 const STAGE_FACE = 'absolute inset-0 overflow-hidden bg-input shadow-[0_0_0_3px_rgb(var(--fx-rgb)),0_0_60px_rgb(var(--fx-rgb)/0.8),0_24px_48px_rgba(0,0,0,0.6)]'
 
-/** Ancho de cada carta según cuántas son: una sola es grande; con más, se achican para entrar juntas. */
-const STAGE_CARD_WIDTH = ['', 'w-[min(42cqw,13rem)]', 'w-[min(30cqw,10rem)]', 'w-[min(22cqw,7.5rem)]', 'w-[min(18cqw,6.5rem)]']
+/**
+ * Ancho de cada carta según cuántas son: una sola es grande (la mitad del recuadro: lo que mide la de adelante de `ChainStage`, unos 185 px a 390 px, y nunca menos del 38 %); con más, se achican para entrar juntas.
+ * Con el efecto escrito al lado (`detail`) es más chica.
+ */
+const STAGE_CARD_WIDTH = ['', 'w-[min(50cqw,13rem)]', 'w-[min(30cqw,10rem)]', 'w-[min(22cqw,7.5rem)]', 'w-[min(18cqw,6.5rem)]']
 
-/** Con el efecto escrito debajo la carta es más chica: lo que hay que leer es el texto, y el conjunto tiene que entrar en el alto de la mesa. */
+/** Con el efecto escrito la carta es más chica: lo que hay que leer es el texto, y el conjunto tiene que entrar en el alto de la mesa. */
 const STAGE_CARD_WIDTH_WITH_DETAIL = 'w-[min(34cqw,10.5rem)]'
 
 /**
  * Las cartas grandes en el centro de la mesa cuando se activa, se muestra o se declara una carta (o, al reproducir un combo, cuando
- * un paso las mueve): aparecen con un resplandor y una onda, cada una con su marco de color, un reflejo y su nombre debajo, y arriba una
- * línea que dice qué pasó. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
+ * un paso las mueve): aparecen con un resplandor y una onda, cada una con su marco de color y un reflejo, y arriba, recta, una línea que
+ * dice qué pasó (`caption`; quien ya muestra el texto del paso, como el Replay y el combo, no la pasa). Con su imagen a la vista no lleva
+ * la placa con el nombre (ya está impreso): ésa queda sólo en la carta sin imagen o de dorso. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
  * recuadro, no las de la pantalla. Con `origin`, cada una sale de su carta en la mesa (`useStageTravel`).
  */
 export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, origin, className }: SpotlightProps) {
@@ -534,8 +538,8 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
       data-activation={shown[0]?.id}
       data-kind={kind}
       aria-hidden="true"
-      // En el celular, apoyada sobre la fila del medio (como la lámina): arriba queda la barra a la vista.
-      className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className, 'max-sm:bottom-auto max-sm:h-[var(--stage-room,100%)] max-sm:items-end max-sm:pb-2')}
+      // Con el efecto escrito, en el celular se apoya sobre la fila del medio (arriba queda la barra a la vista); sola, la carta va al medio, grande.
+      className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className, detail && 'max-sm:bottom-auto max-sm:h-[var(--stage-room,100%)] max-sm:items-end max-sm:pb-2')}
       style={fxVars(tone)}
     >
       <span data-stage-glow className="absolute left-1/2 top-1/2 aspect-square w-[min(100cqw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
@@ -543,13 +547,13 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
       {/* En el celular el efecto escrito va al lado de la carta, no debajo: el conjunto entra arriba de la fila del medio. */}
       <div className={cx('relative motion-reduce:animate-none', detail ? 'animate-card-activate-read max-sm:flex max-sm:items-start max-sm:gap-2' : linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
         {caption ? (
-          <span data-stage-text className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] max-sm:mb-1.5 -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
+          <span data-stage-text className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] max-sm:mb-1.5 -translate-x-1/2 truncate whitespace-nowrap border border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
             {caption}
           </span>
         ) : null}
         <div className="flex items-start justify-center gap-3">
           {shown.map((card) => (
-            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2 max-sm:max-w-23', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
+            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2', detail && 'max-sm:max-w-23', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
               {/* Dos caras: la de adelante (la carta) y la de atrás (el dorso), que se muestra primero y se da vuelta en 3D. */}
               <div data-stage-card={card.id} className="relative aspect-[421/614] w-full [perspective:900px]">
                 <div className={cx('absolute inset-0 [transform-style:preserve-3d]', flip && 'animate-fx-flip-in motion-reduce:animate-none')}>
@@ -564,7 +568,7 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
                   ) : null}
                 </div>
               </div>
-              {card.name ? <figcaption data-stage-text className="line-clamp-2 max-w-full bg-background/85 px-2 py-0.5 text-center text-micro font-bold text-foreground">{card.name}</figcaption> : null}
+              {card.name && (card.back || !card.art) ? <figcaption data-stage-text className="line-clamp-2 max-w-full bg-background/85 px-2 py-0.5 text-center text-micro font-bold text-foreground">{card.name}</figcaption> : null}
             </figure>
           ))}
         </div>

@@ -68,12 +68,15 @@ describe('la mesa de práctica', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(spotlight()).toHaveAttribute('data-kind', 'reveal')
-    expect(spotlight()).toHaveTextContent('Revelás Maxx C')
+    // Sin cartel (el paso se lee en la barra); sin imagen, la placa con su nombre.
+    expect(spotlight()).not.toHaveTextContent('Revelás')
+    expect(spotlight()?.querySelector('figcaption')).toHaveTextContent('Maxx C')
     expect(within(hand()).getByRole('listitem', { name: 'Maxx C' })).toHaveAttribute('data-flash-kind', 'reveal')
 
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(spotlight()).toHaveAttribute('data-kind', 'declare')
-    expect(spotlight()).toHaveTextContent('Declarás Called by the Grave')
+    expect(spotlight()).not.toHaveTextContent('Declarás')
+    expect(spotlight()?.querySelector('figcaption')).toHaveTextContent('Called by the Grave')
   })
 
   it('al reproducir un combo cada paso que mueve cartas las muestra grandes con su nombre y lo que pasó (menos el cementerio y el destierro, que sólo van al registro); las que salen del deck se dan vuelta; en vivo, no', () => {
@@ -84,7 +87,7 @@ describe('la mesa de práctica', () => {
     expect(spotlight()).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(spotlight()).toHaveAttribute('data-kind', 'hand')
-    expect(spotlight()).toHaveTextContent('Robás Imperm')
+    expect(spotlight()).not.toHaveTextContent('Robás')
     expect(spotlight()?.querySelector('figcaption')).toHaveTextContent('Imperm')
     // Sale del deck: aparece de dorso y se da vuelta en 3D; la mano se enmarca porque recibió una carta.
     expect(spotlight()?.querySelector('.animate-fx-flip-in')).not.toBeNull()

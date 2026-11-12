@@ -1536,9 +1536,10 @@ function useRivalEffect(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
       const readable = READABLE_KINDS.has(spotlight.kind) && cards[0]!.art !== null
       const real = ids.length > 1 || isToken(spotlight.id) ? undefined : theirs.known[spotlight.id]
       const passcode = readable && real ? passcodeOfDrawId(real) : null
+      const said = t(`duel.announce.${spotlight.kind}`, { name: rival, count: ids.length })
 
       setShown({
-        effect: { key, kind: spotlight.kind, cards, caption: t(`duel.announce.${spotlight.kind}`, { name: rival, count: ids.length }), ...(readable ? { linger: true } : {}) },
+        effect: { key, kind: spotlight.kind, cards, caption: said, brief: said, ...(readable ? { linger: true } : {}) },
         flashId: spotlight.id,
         ...(passcode === null ? {} : { passcode }),
         ...(action.type === 'activate' && action.effect !== undefined ? { effectIndex: action.effect } : {}),
@@ -1553,10 +1554,11 @@ function useRivalEffect(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
       const local = rivalCardName(cardsById, summoned)
       const lookup = added ?? (local === undefined ? summoned : undefined)
       const passcode = lookup ? passcodeOfDrawId(lookup) : null
-      const caption = local !== undefined && isSummonKind(showcase.kind) ? t(`duel.announce.named.${showcase.kind}`, { name: rival, card: local }) : t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length })
+      const brief = t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length })
+      const caption = local !== undefined && isSummonKind(showcase.kind) ? t(`duel.announce.named.${showcase.kind}`, { name: rival, card: local }) : brief
 
       setShown({
-        effect: { key, kind: showcase.kind, cards, ...(showcase.flip ? { flip: true } : {}), caption, ...(added ? { linger: true, peekId: added } : {}) },
+        effect: { key, kind: showcase.kind, cards, ...(showcase.flip ? { flip: true } : {}), caption, brief, ...(added ? { linger: true, peekId: added } : {}) },
         ...(passcode === null ? {} : { passcode }),
         ...(local === undefined ? {} : { named: true }),
       })
@@ -1599,7 +1601,7 @@ function useRivalEffect(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 
         setShown((current) =>
           current && current.effect.key === key
-            ? { ...current, named: true, effect: { ...current.effect, ...(isSummonKind(kind) ? {} : { cards: current.effect.cards.map((card) => ({ ...card, name })) }), caption, ...(detail ? { detail: { lead: detail.lead, text: detail.what } } : {}) } }
+            ? { ...current, named: true, effect: { ...current.effect, ...(isSummonKind(kind) ? {} : { cards: current.effect.cards.map((card) => ({ ...card, name })) }), caption, ...(picked === undefined ? {} : { brief: caption }), ...(detail ? { detail: { lead: detail.lead, text: detail.what } } : {}) } }
             : current,
         )
       })

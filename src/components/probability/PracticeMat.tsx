@@ -219,7 +219,7 @@ export interface DuelMatLink {
    * Lo que el rival acaba de hacer y se anima (activar, mostrar, declarar o marcar una carta, invocar, mandar cartas al cementerio, al destierro, a la mano o al deck…), como en un combo
    * guardado: las cartas (con el id que él les dio y su arte, o de dorso si no las mostró) grandes en el centro y `caption` arriba, que dice qué pasó. Cambiar `key` lo vuelve a mostrar.
    */
-  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean; /** La carta que el rival sumó a su mano sin robar (su id real): el detalle de la izquierda se queda en ella hasta que se toque otra. */ peekId?: string; /** El efecto que activó, si eligió uno entre varios: cuándo se activa («Efecto 2 · When…») y qué hace, **textual**, para que quien tiene que decidir si responde lo lea. */ detail?: { lead: string; text: string } }
+  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; /** Lo mismo sin el nombre de la carta (quién y qué hizo): lo que se dice arriba de la carta grande cuando su imagen ya la muestra. */ brief?: string; linger?: boolean; /** La carta que el rival sumó a su mano sin robar (su id real): el detalle de la izquierda se queda en ella hasta que se toque otra. */ peekId?: string; /** El efecto que activó, si eligió uno entre varios: cuándo se activa («Efecto 2 · When…») y qué hace, **textual**, para que quien tiene que decidir si responde lo lea. */ detail?: { lead: string; text: string } }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
   /** Mis cartas con las que podés hacer algo ahora (activar, invocar de forma especial, atacar, responder, elegir): brillan en celeste (`can` de `app/card-glow.ts`), y la pila que tenga una adentro, también. */
@@ -3487,9 +3487,7 @@ function PracticeMatBody({
               key={shown.key}
               kind={shown.kind}
               cards={shown.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
-              // Repasando con el replay partido el paso ya se lee en el aviso de arriba: la carta va sin cartel, en el medio como siempre (en una franja de la mitad del rival quedaba arriba y su
-              // resplandor, cortado por los bordes de la franja: Gastón, 2026-10-30).
-              caption={splitReplay ? null : (steps[shown.step - 1] ?? null)}
+              // Sin cartel: repasando, el paso ya se lee en la barra o en el aviso de arriba, y jugando no hay texto de paso (Gastón, 2026-11-12: «evitemos información repetida o redundante»).
               flip={shown.flip}
               origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
               className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
@@ -3506,7 +3504,8 @@ function PracticeMatBody({
           cards={duel.rivalEffect.cards.map((card) => ({ id: card.id, name: card.name ?? '', art: card.art, back: card.art === null }))}
           flip={duel.rivalEffect.flip}
           linger={duel.rivalEffect.linger}
-          caption={duel.rivalEffect.caption}
+          // Con la imagen a la vista el nombre ya está impreso: el cartel dice sólo quién y qué hizo (con un efecto elegido entre varios queda su número y la carta: no tiene forma corta).
+          caption={!duel.rivalEffect.detail && duel.rivalEffect.cards.every((card) => card.art !== null) ? (duel.rivalEffect.brief ?? duel.rivalEffect.caption) : duel.rivalEffect.caption}
           detail={duel.rivalEffect.detail}
           origin={(id) => cardPose(sectionRef.current, duel.rivalFlights?.state ?? null, id, 'theirs')}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}

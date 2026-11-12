@@ -718,13 +718,17 @@ function RivalEffectSample() {
       layout="column"
       note={
         <>
-          Cuando el rival elige un efecto entre varios, el cartel del centro dice cuál (<Tag>Ana activa el efecto 2 de …</Tag>) y, debajo de la carta, lleva la frase del efecto tal cual el texto, con su número y cuándo se activa; se queda 7 s. Sin efecto elegido, sólo la carta y el cartel de siempre. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>Spotlight detail</Tag>)
+          Cuando el rival elige un efecto entre varios, el cartel del centro dice cuál (<Tag>Ana activa el efecto 2 de …</Tag>) y, al lado o debajo de la carta, lleva la frase del efecto tal cual el texto, con su número y cuándo se activa; se queda 7 s. Sin efecto elegido, la carta grande (la mitad del recuadro, como la de adelante de la cadena; en el celular, nunca menos del 38 %) y, arriba y recto, sólo quién hizo qué, sin repetir el nombre que la carta ya trae impreso: no lleva placa con el nombre (ésa queda para la carta sin imagen o de dorso). Donde el texto del paso ya está a la vista (el Replay, el combo) no lleva cartel. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>Spotlight detail</Tag>)
         </>
       }
     >
       <div className="relative isolate min-h-[30rem] overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
         <Spotlight key={shown} kind="activate" cards={[RIVAL_EFFECT.card]} caption={RIVAL_EFFECT.caption} detail={RIVAL_EFFECT.detail} className="absolute inset-0" />
+      </div>
+      <div data-testid="spotlight-alone" className="relative isolate min-h-[30rem] overflow-hidden rounded-card border border-border-subtle">
+        <MatScene className="absolute inset-0 -z-10" />
+        <Spotlight key={shown} kind="activate" cards={[RIVAL_EFFECT.card]} caption="Ana activa una carta" className="absolute inset-0" />
       </div>
       <Button variant="secondary" size="sm" icon="refresh" onClick={() => setShown((count) => count + 1)}>
         Volver a mostrar

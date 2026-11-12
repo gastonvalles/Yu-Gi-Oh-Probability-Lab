@@ -194,13 +194,13 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
           turn={frame.turn === bottom ? 'mine' : 'theirs'}
           className="[--cell:max(3rem,min(6.5rem,calc((100dvh-35rem)/5.2)))] max-[1101px]:mx-auto max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_35rem)/5.2)_+_1.5rem))]"
         >
-          <PhaseBand cue={banner} />
+          {/* La banda espera a que se vaya la carta grande (no se lee partida detrás), y la carta va sin cartel: el texto del paso está debajo. */}
+          <PhaseBand cue={banner} hold={activation !== null} />
           {activation ? (
             <Spotlight
               key={activation.key}
               kind="activate"
               cards={[{ id: activation.id, name: cardName(replay, frame, activation.side)(activation.id), art: view(activation.side).artOf(activation.id), back: realOf(replay, frame, activation.side, activation.id) === undefined }]}
-              caption={describe(activation.key)}
               className="absolute inset-0 z-[120]"
             />
           ) : null}

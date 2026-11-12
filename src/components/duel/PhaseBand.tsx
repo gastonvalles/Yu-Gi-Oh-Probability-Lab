@@ -48,7 +48,7 @@ const idOf = (cue: PhaseCue | null) => (cue ? `${cue.key}:${cue.side}:${cue.phas
  * de la cadena y de las preguntas, que son otra capa), no ataja toques y nadie la espera: lleva su propio reloj, así que quien la monta puede sacar `cue` cuando quiera. Con movimiento reducido, sólo
  * aparece y se va. Sólo `translate` y `opacity`.
  */
-export function PhaseBand({ cue }: { cue: PhaseCue | null }) {
+export function PhaseBand({ cue, hold = false }: { cue: PhaseCue | null; hold?: boolean }) {
   const [shown, setShown] = useState<PhaseCue | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [last, setLast] = useState<string | null>(null)
@@ -74,7 +74,8 @@ export function PhaseBand({ cue }: { cue: PhaseCue | null }) {
     }
   }, [shown])
 
-  if (!shown) return null
+  // Mientras una carta grande ocupa el centro (`hold`), la banda espera: no se dibuja, y su reloj sigue (si la carta se va antes, se ve lo que quede; si no, ya pasó).
+  if (!shown || hold) return null
   const fromLeft = shown.side === 'mine'
 
   return (

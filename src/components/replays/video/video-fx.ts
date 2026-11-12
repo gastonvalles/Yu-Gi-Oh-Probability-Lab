@@ -173,7 +173,7 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
       // Grande, la carta se ve entera: sin lo atenuado de una handtrap ya usada.
       return face ? [{ face: { ...face, dim: false }, from: (earlier ?? later)?.pose ?? null }] : []
     }).slice(0, 4)
-    if (cards.length > 0) out.push(stageOverlay(cards, stage.kind, stage.flip, after.stepText, field, assets, s, at(0), speed))
+    if (cards.length > 0) out.push(stageOverlay(cards, stage.kind, stage.flip, field, assets, s, at(0), speed))
   }
 
   // El destello de una invocación, cuando la carta toca la zona.
@@ -228,7 +228,7 @@ interface StageCard {
 
 const STAGE_WIDTH = [0, 0.42, 0.3, 0.22, 0.18]
 
-function stageOverlay(cards: readonly StageCard[], kind: SpotlightKind | ShowcaseKind, flip: boolean, caption: string, field: Rect, assets: VideoAssets, s: number, start: number, speed: VideoSpeed): Overlay {
+function stageOverlay(cards: readonly StageCard[], kind: SpotlightKind | ShowcaseKind, flip: boolean, field: Rect, assets: VideoAssets, s: number, start: number, speed: VideoSpeed): Overlay {
   const tone = FX_RGB[STAGE_TONE[kind]]
   const w = field.w * STAGE_WIDTH[cards.length]!
   const h = (w * 614) / 421
@@ -294,9 +294,9 @@ function stageOverlay(cards: readonly StageCard[], kind: SpotlightKind | Showcas
         frame(true)
         drawCard(ctx, { ...pose, w: wide }, cos < 0 ? { ...card.face, faceDown: true } : card.face, assets, s)
         frame(false)
-        // El nombre abajo, en la segunda mitad del viaje.
+        // El nombre abajo, en la segunda mitad del viaje, sólo en la carta sin imagen (con imagen ya está impreso; y lo que pasó se lee en el texto del paso, en el cuadro).
         const label = clamp((ms - MESA.travel / 2) / (MESA.travel / 2))
-        if (card.face.name && label > 0) {
+        if (card.face.name && !card.face.art && label > 0) {
           ctx.globalAlpha = (1 - out) * label * appear
           ctx.font = `700 ${16 * s}px ${FONT}`
           const lines = wrap(ctx, card.face.name, w, 2)
@@ -310,27 +310,6 @@ function stageOverlay(cards: readonly StageCard[], kind: SpotlightKind | Showcas
         }
         ctx.globalAlpha = 1
       })
-      // Arriba, lo que pasó en una línea, en una píldora del color (aparece con los nombres).
-      const label = clamp((ms - MESA.travel / 2) / (MESA.travel / 2))
-      if (caption && label > 0) {
-        ctx.font = `700 ${16 * s}px ${FONT}`
-        const text = wrap(ctx, caption, field.w * 0.88 - 28 * s, 1)[0]!
-        const pill = { w: ctx.measureText(text).width + 28 * s, h: 30 * s }
-        const top = cy - 14 * s - (h * grow) / 2 - 12 * s - pill.h
-        ctx.globalAlpha = (1 - out) * label
-        ctx.fillStyle = rgba(assets.theme.backgroundRgb, 0.9)
-        ctx.strokeStyle = rgba(tone, 0.9)
-        ctx.lineWidth = 2 * s
-        ctx.beginPath()
-        ctx.roundRect(cx - pill.w / 2, top, pill.w, pill.h, pill.h / 2)
-        ctx.fill()
-        ctx.stroke()
-        ctx.fillStyle = assets.theme.foreground
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(text, cx, top + pill.h / 2 + 1 * s)
-        ctx.globalAlpha = 1
-      }
     },
   }
 }

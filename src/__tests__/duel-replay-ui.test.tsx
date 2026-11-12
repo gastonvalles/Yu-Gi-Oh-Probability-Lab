@@ -120,13 +120,17 @@ describe('la pantalla del replay de un duelo', () => {
       expect(spotlight()).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
       fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
-      expect(spotlight()).toHaveTextContent('Ash Blossom')
+      // Grande, sin cartel ni placa: el texto del paso ya está debajo y la imagen trae el nombre.
+      expect(spotlight()?.querySelector('[data-stage-card]')).not.toBeNull()
+      expect(spotlight()).toHaveTextContent('')
+      expect(screen.getByTestId('replay-step-text')).toHaveTextContent('Ash Blossom')
       act(() => vi.advanceTimersByTime(1000))
       expect(spotlight()).toBeNull()
       // Reproduciendo, la del rival (se ve su carta, que mostró).
       fireEvent.click(screen.getByRole('button', { name: 'Reproducir' }))
       act(() => vi.advanceTimersByTime(900))
-      expect(spotlight()).toHaveTextContent('Pot of Greed')
+      expect(spotlight()?.querySelector('[data-stage-card]')).not.toBeNull()
+      expect(screen.getByTestId('replay-step-text')).toHaveTextContent('Pot of Greed')
       act(() => vi.advanceTimersByTime(1000))
       expect(spotlight()).toBeNull()
       // La línea de tiempo salta: ni una carta.
