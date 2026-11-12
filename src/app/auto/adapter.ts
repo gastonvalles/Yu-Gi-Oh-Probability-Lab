@@ -775,11 +775,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
         scatter(places[event.player as Seat].deck)
         return shuffleDeck(event.player as Seat)
       // Lo mío se vuelve a emparejar con el orden nuevo (el árbitro me da los códigos); lo del rival pasa a ser bolsa.
-      // Además la mesa lo ve: un `shuffle` (el deck y la mano se barajan a la vista; el orden de la mano no cambia).
       case 'shuffle_hand':
-        if (event.player === seat) reorder(places[seat].hand, event.cards)
-        else scatter(places[rival].hand)
-        return emit(event.player as Seat, { type: 'shuffle', seed: (++shuffles * 0x9e3779b1) >>> 0 })
+        return event.player === seat ? reorder(places[seat].hand, event.cards) : scatter(places[rival].hand)
       case 'shuffle_extra':
         return event.player === seat ? reorder(places[seat].extra, event.cards) : scatter(places[rival].extra)
 
