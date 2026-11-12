@@ -38,7 +38,7 @@ function rearm(fake: FakeSession, actions: MatAction[], ask: CoreAsk | null) {
 const phaseIs = (name: string) => expect(phaseButton()).toHaveAccessibleName(`Fases: ${name}`)
 const goTo = (name: string) => {
   fireEvent.click(phaseButton())
-  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a la ${name}` }))
+  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
 
@@ -50,8 +50,8 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     phaseIs('Main Phase 1')
     expect(phaseButton()).toBeEnabled()
     fireEvent.click(phaseButton())
-    // Ni vuelta atrás ni una Battle Phase que el núcleo no da (el turno 1 no ataca): sólo terminar el turno (M-04, sólo adónde se puede ir).
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Terminar el turno'])
+    // Las seis, como en el manual: ni vuelta atrás ni una Battle Phase que el núcleo no da (el turno 1 no ataca) se ofrecen (apagadas); sólo terminar el turno.
+    expect(screen.getAllByRole('menuitem').map((item) => item.getAttribute('aria-label'))).toEqual(['Draw Phase · Todavía no', 'Standby Phase · Todavía no', 'Fase actual: Main Phase 1', 'Battle Phase · Todavía no', 'Main Phase 2 · Todavía no', 'Ir a End Phase'])
     fireEvent.keyDown(window, { key: 'Escape' })
     tap(handCard('Ash Blossom'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
@@ -125,7 +125,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     }
     expect(seen).toEqual(['End Phase', 'Draw Phase', 'Draw Phase', 'Main Phase 1'].map((name) => `Fases: ${name}`))
     fireEvent.click(phaseButton())
-    expect(screen.queryByRole('menuitem', { name: /Battle Phase/ })).toBeNull()
+    expect(screen.getByRole('menuitem', { name: /^Battle Phase/ })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('la ventana de tu DP con una Rápida en la mano: brilla sin cartel, se activa con su menú y «Standby Phase» pasa; la de la SP, igual', () => {

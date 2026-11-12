@@ -303,10 +303,10 @@ export interface DuelMatLink {
   /** El duelo automático: las jugadas las decide el núcleo de reglas y la mesa sólo contesta sus preguntas (los menús, las casillas y las cartas que ofrece); nada se arrastra, se mantiene ni se despacha. */
   auto?: AutoLink
   /**
-   * El duelo automático: su ficha de una carta (todas las jugadas, sin submenús) y sus fases (`AutoPanel`), en lugar de `CardSheet`, `CardMenu` y `PhaseRow`, que siguen siendo los de la mesa manual. Los
+   * El duelo automático: su ficha de una carta (todas las jugadas, sin submenús; `AutoPanel`), en lugar de `CardSheet` y `CardMenu`, que siguen siendo los de la mesa manual. Las fases son `PhaseRow` en los dos. Los
    * trae la pantalla del automático: la mesa no importa sus piezas (el modo automático entra por `lazy`, `auto-isolation.test.ts`).
    */
-  menus?: { Card: ComponentType<AutoCardSheetProps>; Phases: ComponentType<{ items: MenuItem[]; onClose: () => void; /** El botón de la fase (`p2`) que la abrió: de ahí sale el menú. */ anchor?: DOMRect }> }
+  menus?: { Card: ComponentType<AutoCardSheetProps> }
   /** El duelo automático tiene una pregunta abierta en un cartel de abajo (`AutoPanel`): en el celular gana ella, y la ficha y el visor de una pila ceden sin cerrarse. */
   asking?: boolean
 }
@@ -374,7 +374,7 @@ const EMPTY_IDS: ReadonlySet<string> = new Set()
 /**
  * El borde de una casilla vacía: una línea fina **blanca** (`field-line`, como el campo de referencia: Gastón, 2026-10-19) y **sin relleno**: la casilla es transparente y se ve el fondo de la mesa
  * (Gastón, 2026-11-10: «el fondo del campo transparente»). Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: el dueño lo dice el color del conteo de una pila
- * (`PileBadge`) y el color queda para lo que pasa (elegir, soltar una carta).
+ * (el número de una pila, `PileBadge`, es sólo un número) y el color queda para lo que pasa (elegir, soltar una carta).
  */
 const CELL_LOOK = 'border border-solid border-field-line/50 min-[1101px]:border-field-line/55' // al 55 % en escritorio: 3:1 contra el punto más claro de su remolino (scripts/remolino/medir.mjs)
 /** Las zonas del centro no se dibujan con el borde de su casilla cuadrada sino con las líneas de la carta (`ZoneLines`, como el tapete): el borde queda invisible (y se enciende al elegir o soltar una carta). */
@@ -3043,10 +3043,11 @@ function PracticeMatBody({
               restricciones (el automático). Un solo lugar para las fases, en todos los anchos y los duelos. */}
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
           <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>{duel?.auto ? duel.limits : tokenButton}</div>
-          <div className="relative min-h-0 min-w-0" style={{ gridArea: 'p2' }}>
+          <div className="relative grid min-h-0 min-w-0 place-items-center [container-type:size]" style={{ gridArea: 'p2' }}>
               {/* Sólo la sigla de dos letras, en todos los anchos y en todos los duelos (Gastón, 2026-10-27: «está bien que sólo muestre 2 letras y se abra el menú al tocarlo»): el nombre completo lo
                   dicen las fases que abre y su `aria-label`. La caja de la mesa (`tile`): en lima cuando el turno es tuyo (es lo que se toca); en el del rival, la sigla en lila. Llena toda su casilla, con
-                  borde grueso y la sigla grande (C-01 y C-02 del kit: es lo que más se toca, Fitts); la casilla ya mide ≥ 54 × 54 px, así que el objetivo táctil de 44 px entra siempre. */}
+                  borde grueso y la sigla grande (C-01 y C-02 del kit: es lo que más se toca, Fitts). Cuadrado (Gastón, 2026-11-12: «ya no es cuadrado»): el lado es el menor de la casilla (el ancho de su columna en el celular), centrado,
+                  y con 44 px como piso; la fila `p2` no cambia de alto, manda la casilla (`[container-type:size]`: el botón no la estira). */}
               <IconButton
                 tone="tile"
                 size="sm"
@@ -3055,7 +3056,7 @@ function PracticeMatBody({
                 aria-expanded={menu?.kind === 'phases'}
                 data-active={myTurn}
                 disabled={!myTurn}
-                className="size-full! border-2! text-lead font-extrabold leading-none"
+                className="size-[100cqmin]! min-h-11 min-w-11 border-2! text-lead font-extrabold leading-none"
                 onClick={(event) => {
                   // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
                   if (!isDesktop && phaseNow === 'end') setEndingTurn(true)
@@ -3334,7 +3335,6 @@ function PracticeMatBody({
       {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera (y baja: `Presence` la deja montada mientras sale). */}
       {/* El duelo automático: la ficha con todas las jugadas que da el núcleo, la misma en el celular y en escritorio (la mesa manual sigue con `CardSheet` y `CardMenu`); en escritorio, una sola jugada sigue siendo su etiqueta (`PlayTag`). */}
       <Presence>{cardSheet}</Presence>
-      <Presence>{phasesOpen && autoMenus && !menuShelved ? <autoMenus.Phases items={menuItems} anchor={menu.rect} onClose={() => setMenu(null)} /> : null}</Presence>
       <Presence>{sheeted && menu && !autoMenus ? (
         <CardSheet
           name={menuTitle}
@@ -3384,7 +3384,7 @@ function PracticeMatBody({
       ) : null}
 
       {/* Las fases en una línea, con las mismas opciones que armaba el menú (`menuItems`): qué fase se puede elegir lo deciden la mesa manual o el núcleo, no la línea. */}
-      <PhaseRow anchor={phasesOpen && !autoMenus ? menu.rect : null} items={phasesOpen && !autoMenus ? menuItems : []} onClose={() => setMenu(null)} />
+      <PhaseRow anchor={phasesOpen && !menuShelved ? menu.rect : null} items={phasesOpen && !menuShelved ? menuItems : []} onClose={() => setMenu(null)} />
       <CardMenu
         anchor={covered || sheeted || lonePlay || phasesOpen || autoMenus ? null : (menu?.rect ?? null)}
         kicker={menuKicker}
@@ -3609,13 +3609,13 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
 
 /**
  * La cantidad, grande en el centro de la pila, y nada más (pieza P-05 del kit: qué pila es lo dice el dorso o la carta de arriba, y su nombre para el lector de pantalla). En una pila angosta
- * (menos de 2 rem) el número baja un paso. El conteo lleva el color del dueño (Gastón, 2026-11-10: las casillas ya no lo dicen): violeta con texto blanco lo tuyo y lima con texto carbón lo del
- * rival, cuya pila lleva `data-rival-drop` (`DuelTable`). Recto, como toda la mesa.
+ * (menos de 2 rem) el número baja un paso. Sólo el número, blanco y sin cuadro ni color de dueño (Gastón, 2026-11-12: «deberían ser sólo un número»; el dueño lo dice el lado del campo), con la
+ * sombra de texto de la casa para leerse sobre el dorso y sobre la casilla vacía.
  */
 export const PileBadge = memo(function PileBadge({ count }: { count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center text-center leading-none @container">
-      <span className={cx('px-1.5 py-0.5 text-lead font-extrabold tabular-nums min-[1101px]:text-title @max-[2rem]:px-0.5 @max-[2rem]:text-body', 'bg-primary text-primary-foreground', 'in-[[data-rival-drop]]:bg-info in-[[data-rival-drop]]:text-background')}>{count}</span>
+      <span className="text-lead font-extrabold tabular-nums text-foreground text-shadow-lg text-shadow-background min-[1101px]:text-title @max-[2rem]:text-body">{count}</span>
     </span>
   )
 })

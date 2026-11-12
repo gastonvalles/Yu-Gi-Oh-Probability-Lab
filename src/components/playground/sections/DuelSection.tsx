@@ -905,7 +905,7 @@ function ArenaSamples() {
       className="col-span-full"
       note={
         <>
-          El fondo (<Tag>MatScene</Tag>) se ve a través de las casillas, transparentes y con las líneas blancas de la carta (<Tag>CELL_MONSTER</Tag>, <Tag>CELL_SPELL</Tag> y <Tag>ZoneLines</Tag>); las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>) y el conteo de una pila con el color de su dueño (<Tag>PileBadge</Tag>: violeta lo tuyo, lima lo del rival, cuya pila lleva <Tag>data-rival-drop</Tag>). La mesa y sus hojas van con esquinas rectas (<Tag>mat-square</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag>, <Tag>probability/PracticeMat.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
+          El fondo (<Tag>MatScene</Tag>) se ve a través de las casillas, transparentes y con las líneas blancas de la carta (<Tag>CELL_MONSTER</Tag>, <Tag>CELL_SPELL</Tag> y <Tag>ZoneLines</Tag>); las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>) y el conteo de una pila, sólo el número en blanco con sombra y sin cuadro ni color de dueño (<Tag>PileBadge</Tag>). La mesa y sus hojas van con esquinas rectas (<Tag>mat-square</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag>, <Tag>probability/PracticeMat.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
         </>
       }
     >

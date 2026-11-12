@@ -266,10 +266,6 @@ export const auto: Translated<typeof es> = {
   'auto.pick.statRank': '{name}, Rank {rank}, ATK {atk}, DEF {def}, selectable',
   'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, selectable',
   'auto.phase.notYet': 'Not yet',
-  // The automatic duel's phase menu (`AutoPhases`): its name and where you can go.
-  'auto.phase.title': 'Select the phase to switch to',
-  'auto.phase.goTo': 'Go to the {phase}',
-  'auto.phase.endTurn': 'End the turn',
   // One sheet at the bottom on the phone: what the card sheet or a prompt covers and brings back.
   'auto.layer.card': '{name} card',
   'auto.layer.back': 'Back to {place}',

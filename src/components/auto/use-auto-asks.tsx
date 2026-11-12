@@ -47,7 +47,7 @@ import { FLIGHT_MS } from '../../app/use-card-flights'
 import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
-import { AutoCardSheet, AutoPhases } from './AutoPanel'
+import { AutoCardSheet } from './AutoPanel'
 import { BAND_MAX, CardPicker, PickBand, copyGroups, pickPlace, type PickCard, type PickFrom } from './CardPicker'
 import { ChainStage, outcomeLabel } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
@@ -1461,7 +1461,7 @@ const NO_RIVAL_HAND = <TheirHand count={0} />
 const NO_SHARED_ZONE = () => null
 const NO_TARGETS: DuelMatLink['attackTargets'] = []
 /** La ficha de una carta y las fases del automático (`AutoPanel`): la mesa las dibuja en lugar de las de la manual. */
-const AUTO_MENUS: DuelMatLink['menus'] = { Card: AutoCardSheet, Phases: AutoPhases }
+const AUTO_MENUS: DuelMatLink['menus'] = { Card: AutoCardSheet }
 
 /** La mesa del repaso: el lado del rival vacío y sin sus vuelos (al volver al duelo, sus cartas siguen donde estaban) y la fase del paso que se mira. */
 function reviewMat(mat: AutoAsks['mat'], phase: MatPhase): AutoAsks['mat'] {

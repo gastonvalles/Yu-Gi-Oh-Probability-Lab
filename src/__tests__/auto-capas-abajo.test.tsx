@@ -31,8 +31,8 @@ const EFFECT_YN: CoreAsk = { type: 'select_effectyn', player: 0, ...pos(400, L.G
 /** El visor a la vista (cediendo el lugar sigue montado, escondido: así vuelve como estaba). */
 const viewer = () => document.querySelector('[data-pile-sheet]:not([hidden])')
 const openGy = () => fireEvent.click(screen.getByRole('button', { name: 'GY: 1' }))
-/** La pregunta del núcleo (ni la ficha ni las fases). */
-const question = () => document.querySelector<HTMLElement>('[data-auto-panel]:not([data-prompt="card"]):not([data-prompt="phases"])')
+/** La pregunta del núcleo (ni la ficha). */
+const question = () => document.querySelector<HTMLElement>('[data-auto-panel]:not([data-prompt="card"])')
 /** Lo que sale con `Presence` termina de salir. */
 const settle = () => act(() => {})
 
@@ -80,9 +80,9 @@ describe('auto · una sola hoja abajo en el celular', () => {
 
     fireEvent.click(phaseButton())
     settle()
-    expect(document.querySelector('[data-prompt="phases"]')).not.toBeNull()
+    expect(document.querySelector('[data-phase-row]')).not.toBeNull()
     expect(viewer()).toBeNull()
-    // Las fases son un menú pegado a su botón (M-04): Escape lo cierra.
+    // Las fases son la línea pegada a su botón (`PhaseRow`): Escape la cierra.
     fireEvent.keyDown(window, { key: 'Escape' })
     settle()
 

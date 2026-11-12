@@ -11,7 +11,7 @@ import { t } from '../../../i18n'
 import type { ApiCardSearchResult } from '../../../ygoprodeck'
 import { AskOptions, type AskOption } from '../../auto/AskOptions'
 import { AskPrompt } from '../../auto/AskPrompt'
-import { AutoCardSheet, AutoPhases } from '../../auto/AutoPanel'
+import { AutoCardSheet } from '../../auto/AutoPanel'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
@@ -30,6 +30,7 @@ import { LifeScore } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext } from '../../probability/MatBarActions'
 import { CardMenu, type MenuItem } from '../../probability/MatDialogs'
+import { PhaseRow } from '../../probability/PhaseRow'
 import type { PracticeHandMatch } from '../../probability/practice'
 import { PracticeBoard } from '../../probability/PracticeBoard'
 import { RulesPill, type RulesSummary } from '../../probability/RulesPill'
@@ -306,7 +307,7 @@ function RivalSample() {
 
 /**
  * La familia del automático a 390 y a 1440 px (el mismo cartel; en escritorio, una ventana de 30 rem): la ficha de una carta con todas sus jugadas en filas de a dos (la principal al final, abajo a
- * la derecha; sin «Más» ni submenús: los dos efectos son dos botones) y el botón de fase con su menú pegado (sólo adónde se puede ir).
+ * la derecha; sin «Más» ni submenús: los dos efectos son dos botones) y el botón de fase con su menú pegado (las seis fases, `PhaseRow`).
  */
 function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const reply = (label: string) => () => onAnswer(label)
@@ -348,7 +349,7 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   )
 }
 
-/** M-04: el botón de fase de la mesa y su menú pegado (`AutoPhases` con `anchor`): sólo adónde se puede ir; elegir cierra. */
+/** El botón de fase de la mesa y su menú pegado (`PhaseRow`, el mismo del manual): las seis fases, la de ahora marcada y las que no se pueden, apagadas; elegir cierra. */
 function PhasesSample({ items }: { items: MenuItem[] }) {
   const [anchor, setAnchor] = useState<DOMRect | null>(null)
   const now = PHASES.find((phase) => items.some((item) => item.current && item.label === phase.name))
@@ -367,7 +368,7 @@ function PhasesSample({ items }: { items: MenuItem[] }) {
       >
         {now?.short}
       </IconButton>
-      <Presence>{anchor ? <AutoPhases items={items.map((item) => ({ ...item, onSelect: () => { setAnchor(null); item.onSelect() } }))} anchor={anchor} onClose={() => setAnchor(null)} /> : null}</Presence>
+      <PhaseRow items={items.map((item) => ({ ...item, onSelect: () => { setAnchor(null); item.onSelect() } }))} anchor={anchor} onClose={() => setAnchor(null)} />
     </div>
   )
 }

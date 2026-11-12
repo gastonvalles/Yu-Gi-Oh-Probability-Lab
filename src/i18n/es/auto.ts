@@ -282,10 +282,6 @@ export const auto = {
   'auto.pick.statRank': '{name}, rango {rank}, ATK {atk}, DEF {def}, elegible',
   'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, elegible',
   'auto.phase.notYet': 'Todavía no',
-  // El menú de fases del automático (`AutoPhases`): su nombre y adónde se puede ir.
-  'auto.phase.title': 'Elegí la fase a la que pasás',
-  'auto.phase.goTo': 'Ir a la {phase}',
-  'auto.phase.endTurn': 'Terminar el turno',
   // Una sola hoja abajo en el celular: lo que la ficha o una pregunta tapa y vuelve («‹ GY · 2», «‹ Ficha de «X»»).
   'auto.layer.card': 'Ficha de «{name}»',
   'auto.layer.back': 'Volver a {place}',
