@@ -343,6 +343,8 @@ export const auto: Translated<typeof es> = {
   'auto.chain.state.disabled': 'No effect',
   // Negated or no effect, with the link that did it (the core doesn't say: the adapter works it out).
   'auto.chain.by': '{state} · by CL{by}',
+  // The same with the name of the card that did it, where it fits (the phone line): it's read while the link holds still.
+  'auto.chain.byCard': '{state} by {card}',
   // Resolved: what its effect did, when the core says so without doubt (`chainOutcome`). Replaces «Resolved» in its chip.
   'auto.chain.outcome.add': { one: 'Adds {count} card', other: 'Adds {count} cards' },
   'auto.chain.outcome.draw': { one: 'Draws {count} card', other: 'Draws {count} cards' },

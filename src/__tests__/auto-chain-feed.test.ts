@@ -1,5 +1,6 @@
 import { createAdapter } from '../app/auto/adapter'
-import { CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainDwell, chainFeed, chainOutcome, linkPhrase, stepsUpTo, type ChainStep } from '../app/auto/chain-feed'
+import { CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, chainDwell, chainFeed, chainOutcome, linkPhrase, stepsUpTo, type ChainStep } from '../app/auto/chain-feed'
+import { CLOSE_MS } from '../app/chain-motion'
 import { LOCATION as L, type WireEvent } from '../app/auto/protocol'
 
 const link = (index: number, mine: boolean, code: number, at: number): ChainStep => ({ kind: 'chain', at, index, link: { card: { side: mine ? 'mine' : 'theirs', id: `x${code}` }, code, mine } })
@@ -49,12 +50,35 @@ describe('chainFeed: la cadena paso a paso', () => {
     expect(chainFeed(next, next.length)).toMatchObject({ key: ASH_CHAIN.length, resolving: true, rows: [{ number: 1, mine: false, state: 'solving' }] })
   })
 
-  it('el ritmo: un eslabón se ve un rato y cada uno se lee al resolverse; una activación suelta, breve', () => {
-    expect(ASH_CHAIN.map((_, i) => chainDwell(ASH_CHAIN, i))).toEqual([CHAIN_LINK_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, CHAIN_SOLVE_MS, 0, 0, 0, 0])
+  it('el ritmo: un eslabón se ve un rato y cada uno se lee al resolverse; lo que queda sin efecto, 1,6 s más; una activación suelta, breve', () => {
+    expect(ASH_CHAIN.map((_, i) => chainDwell(ASH_CHAIN, i))).toEqual([CHAIN_LINK_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, CHAIN_SOLVE_MS + CHAIN_READ_MS, 0, 0, 0, 0])
+    expect(CHAIN_READ_MS).toBe(1600)
     const single = [link(0, true, 5, 0), step('solving', 0, 0), step('solved', 0, 1), step('end', -1, 1)]
 
     expect(single.map((_, i) => chainDwell(single, i))).toEqual([0, CHAIN_LINK_MS, 0, 0])
     expect(chainDwell(single, -1)).toBe(0)
+  })
+
+  it('resolver tres eslabones lleva 2,25 s (2,45 con el cierre); si uno queda negado, 1,6 s más y sólo eso', () => {
+    const three = (negate: boolean): ChainStep[] => [
+      link(0, true, 1, 0),
+      link(1, false, 2, 0),
+      link(2, true, 3, 0),
+      step('solving', 2, 0),
+      ...(negate ? [{ ...step('negated', 1, 0), by: 3 }] : []),
+      step('solved', 2, 0),
+      step('solving', 1, 0),
+      // La negada: al llegarle el turno sigue negada (no se lee dos veces).
+      step('solved', 1, 0),
+      step('solving', 0, 0),
+      step('solved', 0, 0),
+      step('end', -1, 0),
+    ]
+    const resolving = (steps: ChainStep[]) => steps.slice(3).reduce((sum, _, i) => sum + chainDwell(steps, i + 3), 0)
+
+    expect(resolving(three(false))).toBe(3 * CHAIN_SOLVE_MS)
+    expect(resolving(three(false)) + CLOSE_MS).toBe(2450)
+    expect(resolving(three(true))).toBe(3 * CHAIN_SOLVE_MS + CHAIN_READ_MS)
   })
 
   it('stepsUpTo: los que llegaron hasta esa jugada de tu mesa', () => {

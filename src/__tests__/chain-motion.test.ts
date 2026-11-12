@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { ACT_AT, CLOSE_MS, cuesBetween, LINK_MS, play, RELEASE_AT, resolveSchedule, type Clock, type ScheduleStep } from '../app/chain-motion'
+import { ACT_AT, CLOSE_MS, cuesBetween, LINK_MS, play, READ_MS, RELEASE_AT, resolveSchedule, type Clock, type ScheduleStep } from '../app/chain-motion'
 
 // La cadena animada (Gastón, 2026-11-10: «las cadenas son justamente cadenas y cada efecto es un eslabón»): la secuencia es pura y se prueba con un reloj de mentira.
 
@@ -35,24 +35,29 @@ function fakeClock() {
 }
 
 describe('la cadena: la secuencia de resolver', () => {
-  it('tres eslabones se resuelven de atrás para adelante en 2,45 s: 750 ms cada uno y 200 de cierre', () => {
-    const { steps, total } = resolveSchedule(['solved', 'negated', 'solved'])
-    const time = fakeClock()
-    const seen: Array<[number, string]> = []
+  it('tres eslabones se resuelven de atrás para adelante en 2,45 s: 750 ms cada uno y 200 de cierre; uno negado suma 1,6 s para leerlo', () => {
+    const run = (fates: Parameters<typeof resolveSchedule>[0]) => {
+      const { steps, total } = resolveSchedule(fates)
+      const time = fakeClock()
+      const seen: Array<[number, string]> = []
 
-    play(steps, (step: ScheduleStep) => seen.push([time.now(), 'done' in step ? 'fin' : `CL${step.link} ${step.state}`]), time.clock)
-    time.advance(total)
+      play(steps, (step: ScheduleStep) => seen.push([time.now(), 'done' in step ? 'fin' : `CL${step.link} ${step.state}`]), time.clock)
+      time.advance(total)
+      return { total, seen }
+    }
 
-    expect(total).toBe(3 * LINK_MS + CLOSE_MS)
-    expect(total).toBeLessThanOrEqual(2450)
+    expect(run(['solved', 'solved', 'solved']).total).toBe(2450)
+    const { total, seen } = run(['solved', 'negated', 'solved'])
+
+    expect(total).toBe(3 * LINK_MS + READ_MS + CLOSE_MS)
     expect(seen).toEqual([
       [0, 'CL3 solving'],
       [ACT_AT, 'CL3 solved'],
       [LINK_MS, 'CL2 solving'],
       [LINK_MS + ACT_AT, 'CL2 negated'],
-      [2 * LINK_MS, 'CL1 solving'],
-      [2 * LINK_MS + ACT_AT, 'CL1 solved'],
-      [3 * LINK_MS, 'fin'],
+      [2 * LINK_MS + READ_MS, 'CL1 solving'],
+      [2 * LINK_MS + READ_MS + ACT_AT, 'CL1 solved'],
+      [3 * LINK_MS + READ_MS, 'fin'],
     ])
   })
 
@@ -61,13 +66,19 @@ describe('la cadena: la secuencia de resolver', () => {
 
     expect(at(cuesBetween([{ number: 1, state: 'chained' }], [{ number: 1, state: 'chained' }, { number: 2, state: 'chained' }]))).toEqual(['0 enter CL2', '300 entered CL2'])
     expect(at(cuesBetween([{ number: 1, state: 'chained' }], [{ number: 1, state: 'solving' }]))).toEqual(['120 pull CL1', '320 act CL1', '320 pulled CL1'])
-    // El estado final llega a los ACT_AT de empezar: se suelta a los RELEASE_AT y se va justo cuando empieza el siguiente.
-    const release = cuesBetween([{ number: 1, state: 'solving' }], [{ number: 1, state: 'negated' }]).map(({ at, cue }) => [ACT_AT + at, cue.kind])
+    // El estado final llega a los ACT_AT de empezar: se suelta a los RELEASE_AT y se va justo cuando empieza el siguiente; lo negado o sin efecto, READ_MS más tarde (se lee).
+    const release = (state: 'solved' | 'negated' | 'disabled') => cuesBetween([{ number: 1, state: 'solving' }], [{ number: 1, state }]).map(({ at, cue }) => [ACT_AT + at, cue.kind])
 
-    expect(release).toEqual([
+    expect(release('solved')).toEqual([
       [RELEASE_AT, 'release'],
       [LINK_MS, 'gone'],
     ])
+    for (const state of ['negated', 'disabled'] as const) {
+      expect(release(state)).toEqual([
+        [RELEASE_AT + READ_MS, 'release'],
+        [LINK_MS + READ_MS, 'gone'],
+      ])
+    }
     expect(at(cuesBetween([{ number: 1, state: 'solved' }], [{ number: 1, state: 'solved' }], true, false))).toEqual(['0 dissolve'])
     // Montada ya resuelta (abrir la pila después): lo resuelto no está y nada entra.
     expect(at(cuesBetween(null, [{ number: 1, state: 'solved' }, { number: 2, state: 'chained' }]))).toEqual(['0 gone CL1'])

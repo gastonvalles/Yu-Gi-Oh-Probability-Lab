@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { configureStore } from '@reduxjs/toolkit'
 import { cleanup, render as renderBare } from '@testing-library/react'
+import '@testing-library/jest-dom'
 import type { ReactElement } from 'react'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -16,6 +17,8 @@ let calls: Array<{ element: Element; keyframes: Keyframe[]; options: KeyframeAni
 /** El recuadro de la carta grande (400 × 800) y dónde termina la carta, al centro (200 × 292, con su centro en 200, 400). */
 const BOUNDS = { left: 0, top: 0, width: 400, height: 800 }
 const END = { left: 100, top: 254, width: 200, height: 292 }
+/** La fila del medio del campo (la Zona Extra), a 300 px del borde de arriba de la mesa. */
+const MIDDLE_ROW = { left: 0, top: 300, width: 400, height: 57 }
 const box = (rect: { left: number; top: number; width: number; height: number }) => ({ ...rect, right: rect.left + rect.width, bottom: rect.top + rect.height, x: rect.left, y: rect.top, toJSON: () => ({}) }) as DOMRect
 const reduced = (on: boolean) => ((query: string) => ({ matches: on && query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
 
@@ -27,7 +30,7 @@ beforeEach(() => {
     return { cancel: () => {} } as Animation
   }
   HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
-    return box(this.hasAttribute('data-activation') ? BOUNDS : this.hasAttribute('data-stage-card') ? END : { left: 0, top: 0, width: 0, height: 0 })
+    return box(this.hasAttribute('data-activation') ? BOUNDS : this.hasAttribute('data-stage-card') ? END : this.dataset.drop === 'emz:0' ? MIDDLE_ROW : { left: 0, top: 0, width: 0, height: 0 })
   }
   window.matchMedia = reduced(false)
 })
@@ -116,5 +119,27 @@ describe('la carta grande sale de su carta', () => {
 
     expect(calls).toHaveLength(0)
     expect(root().style.getPropertyValue('--stage-entered')).toBe('')
+  })
+})
+
+describe('en el celular la carta grande va arriba de la fila del medio (TI-172: la cadena siempre a la vista)', () => {
+  it('su caja termina donde empieza la fila del medio (`--stage-room`, sólo `max-sm:`), la carta mide 92 px y el efecto escrito, tres renglones al lado', () => {
+    render(
+      <div>
+        <div data-drop="emz:0" />
+        <Spotlight kind="activate" cards={[CARD]} caption="Activás" detail={{ lead: 'Cuando…', text: 'Efecto.' }} className="absolute inset-y-0 left-0 right-0" />
+      </div>,
+    )
+
+    expect(root().style.getPropertyValue('--stage-room')).toBe('300px')
+    expect(root()).toHaveClass('inset-y-0', 'max-sm:bottom-auto', 'max-sm:h-[var(--stage-room,100%)]', 'max-sm:items-end')
+    expect(root().querySelector('figure')).toHaveClass('max-sm:max-w-23')
+    expect(root().querySelector('p.max-sm\\:line-clamp-3')).toHaveTextContent('Efecto.')
+  })
+
+  it('sin campo (el catálogo) no hay medida: la caja es la mesa entera, como siempre', () => {
+    render(<Spotlight kind="activate" cards={[CARD]} caption={null} />)
+
+    expect(root().style.getPropertyValue('--stage-room')).toBe('')
   })
 })
