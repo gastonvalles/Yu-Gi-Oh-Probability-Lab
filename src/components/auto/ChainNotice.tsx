@@ -5,6 +5,7 @@ import { CHAIN_LEAVE_MS, type ChainOutcome, type ChainRowState } from '../../app
 // El catálogo corre la escena con el ritmo real: los valores del núcleo salen de acá (`auto-isolation.test.ts`).
 export { CHAIN_LEAVE_MS, CHAIN_LINGER_MS, chainDwell, chainFeed } from '../../app/auto/chain-feed'
 import { frameClass, type CardFrame } from '../../app/card-frame'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
@@ -39,33 +40,89 @@ export const whatHappened = (row: ChainNoticeRow, rows: readonly ChainNoticeRow[
 }
 
 /**
- * Dónde queda cada carta en la escena (de 3:4) cuando espera, por lo nueva que es (`DEPTH[0]`, la última que entró), como en Master Duel: la última, abajo a la izquierda, la más
- * grande, adelante y girada −8°; la anterior, arriba a la derecha, más chica y girada +5°; las de antes, cada vez más chicas y más arriba (en zigzag). Al entrar otra, todas se corren
- * un lugar (sólo `transform`). Se mueven con `translate` desde el centro (fracciones de la carta: un tercio del ancho). `BOND` es el centro de cada lugar en el `viewBox` de 300 × 400
- * de la cadena (la carta mide 100 × 146 y su centro sin correr es 150, 187).
+ * Dónde queda cada carta en la escena (de 3:4) cuando espera, por lo nueva que es (`[0]`, la última que entró), como en Master Duel: la última, abajo y adelante, la más grande; la
+ * anterior, arriba en la esquina opuesta, más chica, separadas para que la cadena cuelgue en el hueco; las de antes, cada vez más chicas y más arriba. **Alternan de lado** como en el
+ * video de Master Duel: un eslabón impar entra abajo a la izquierda (`left`) y uno par abajo a la derecha (`right`, el espejo). En escritorio se separan más (`wide`: la capa del
+ * campo tiene ancho de sobra). Al entrar otra, todas se corren un lugar (sólo `transform`). Se mueven con `translate` desde el centro (fracciones de la carta: un tercio del ancho).
+ * `bond` es el centro de cada lugar en el `viewBox` de 300 × 400 de la cadena (la carta mide 100 × 146 y su centro sin correr es 150, 187); `side`, de qué lado queda (el número va en
+ * la esquina de abajo de ese lado). La inclinación 3D, quieta, va en `chain-tilt-*` (`index.css`).
  */
-const DEPTH = [
-  'z-5 -translate-x-1/3 translate-y-1/2 -rotate-8 scale-150',
-  'translate-x-3/4 -translate-y-1/3 rotate-5 scale-100',
-  '-translate-x-4/5 -translate-y-3/5 -rotate-3 scale-75',
-  'translate-x-1/10 -translate-y-3/4 rotate-3 scale-60',
-]
-const BOND = [
-  [118, 260],
-  [225, 138],
-  [70, 100],
-  [160, 78],
-] as const
+const LAYOUT = {
+  narrow: {
+    left: {
+      depth: [
+        'z-5 -translate-x-2/5 translate-y-1/2 -rotate-8 scale-140 chain-tilt-front',
+        'translate-x-4/5 -translate-y-2/5 rotate-5 scale-95 chain-tilt-back',
+        '-translate-x-4/5 -translate-y-3/5 -rotate-3 scale-75 chain-tilt-back',
+        'translate-x-1/10 -translate-y-3/4 rotate-3 scale-60 chain-tilt-back',
+      ],
+      bond: [
+        [110, 260],
+        [230, 129],
+        [70, 100],
+        [160, 78],
+      ],
+    },
+    right: {
+      depth: [
+        'z-5 translate-x-2/5 translate-y-1/2 rotate-8 scale-140 chain-tilt-front-flip',
+        '-translate-x-4/5 -translate-y-2/5 -rotate-5 scale-95 chain-tilt-back-flip',
+        'translate-x-4/5 -translate-y-3/5 rotate-3 scale-75 chain-tilt-back-flip',
+        '-translate-x-1/10 -translate-y-3/4 -rotate-3 scale-60 chain-tilt-back-flip',
+      ],
+      bond: [
+        [190, 260],
+        [70, 129],
+        [230, 100],
+        [140, 78],
+      ],
+    },
+  },
+  wide: {
+    left: {
+      depth: [
+        'z-5 -translate-x-4/5 translate-y-1/2 -rotate-8 scale-150 chain-tilt-front',
+        'translate-x-6/5 -translate-y-1/3 rotate-5 scale-100 chain-tilt-back',
+        '-translate-x-1/5 -translate-y-2/3 -rotate-3 scale-75 chain-tilt-back',
+        'translate-x-2/5 -translate-y-full rotate-3 scale-60 chain-tilt-back',
+      ],
+      bond: [
+        [70, 260],
+        [270, 138],
+        [130, 90],
+        [190, 41],
+      ],
+    },
+    right: {
+      depth: [
+        'z-5 translate-x-4/5 translate-y-1/2 rotate-8 scale-150 chain-tilt-front-flip',
+        '-translate-x-6/5 -translate-y-1/3 -rotate-5 scale-100 chain-tilt-back-flip',
+        'translate-x-1/5 -translate-y-2/3 rotate-3 scale-75 chain-tilt-back-flip',
+        '-translate-x-2/5 -translate-y-full -rotate-3 scale-60 chain-tilt-back-flip',
+      ],
+      bond: [
+        [230, 260],
+        [30, 138],
+        [170, 90],
+        [110, 41],
+      ],
+    },
+  },
+} satisfies Record<string, Record<'left' | 'right', { depth: string[]; bond: Array<readonly [number, number]> }>>
+/** De qué lado queda cada lugar cuando la última entró a la izquierda (con la última a la derecha, al revés). */
+const SIDE_LEFT = ['left', 'right', 'left', 'right'] as const
+/** El número pisa la esquina de abajo del lado de afuera de su carta. */
+const NUMBER_CORNER = { left: 'bottom-0 left-0 -translate-x-1/3 translate-y-1/3', right: 'bottom-0 right-0 translate-x-1/3 translate-y-1/3' } as const
 /** Cuántas cartas se ven a la vez; las de antes se achican y se van hacia arriba, y vuelven cuando se resuelven las de adelante. */
-const SHOWN = DEPTH.length
-/** Cada cuánto va un eslabón a lo largo de la cadena y cuánto cuelga en el medio (en unidades del `viewBox`). */
-const LINK_STEP = 19
-const SAG = 34
+const SHOWN = LAYOUT.narrow.left.depth.length
+/** Cada cuánto va un eslabón a lo largo de la cadena y cuánto cuelga en el medio (en unidades del `viewBox`): eslabones chicos y apretados, como en Master Duel. */
+const LINK_STEP = 10.5
+const SAG = 30
 
 type Pose = 'slot' | 'back' | 'out'
 
 /** Cuánto se mete la cadena en cada carta desde su centro, por su lugar (las grandes, más): cruza de borde a borde y pisa un poco cada carta, como en Master Duel. */
-const BOND_TRIM = [34, 22, 18, 14]
+const BOND_TRIM = [44, 30, 22, 18]
 
 type Point = readonly [number, number]
 
@@ -92,104 +149,143 @@ export function hangingLinks(from: Point, to: Point, sag: number, step = LINK_ST
 }
 
 /**
- * Los eslabones de metal, dibujados por nosotros: alternan uno de frente (un aro) y uno de canto (una barra), cada uno con su sombra, su cuerpo plateado y su brillo arriba (el
- * volumen son tres trazos quietos, sin gradientes ni filtros). `size`: 1 en la escena, menos en las esquinas de las cartas.
+ * Los eslabones de metal, dibujados por nosotros: chicos y apretados, alternan uno de frente (un aro) y uno de canto (una barra). Cada uno con su sombra abajo, su cuerpo plateado y su
+ * brillo arriba (el volumen son trazos quietos corridos, sin gradientes ni filtros). `size`: 1 en la escena, menos en las esquinas de las cartas.
  */
-function Links({ links, size = 1 }: { links: ReadonlyArray<{ x: number; y: number; angle: number }>; size?: number }) {
-  const w = 26 * size
-  const h = 14 * size
+function Links({ links, size = 1, offset = 0 }: { links: ReadonlyArray<{ x: number; y: number; angle: number }>; size?: number; offset?: number }) {
+  const w = 16 * size
+  const h = 9 * size
+  const s = size
 
   return links.map(({ x, y, angle }, i) => (
     <g key={i} transform={`translate(${x} ${y}) rotate(${angle})`}>
-      {i % 2 === 0 ? (
+      {(i + offset) % 2 === 0 ? (
         <>
-          <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={h / 2} strokeWidth={6.5 * size} className="fill-none stroke-chain-metal-lo" />
-          <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={h / 2} strokeWidth={4.2 * size} className="fill-none stroke-chain-metal" />
-          <rect x={-w / 2 + 2 * size} y={-h / 2 - 0.8 * size} width={w - 4 * size} height={h - 2 * size} rx={(h - 2 * size) / 2} strokeWidth={1.4 * size} className="fill-none stroke-chain-metal-hi" />
+          <rect x={-w / 2} y={-h / 2 + 0.8 * s} width={w} height={h} rx={h / 2} strokeWidth={4.4 * s} className="fill-none stroke-chain-metal-lo" />
+          <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={h / 2} strokeWidth={3 * s} className="fill-none stroke-chain-metal" />
+          <rect x={-w / 2 + 2.2 * s} y={-h / 2 - 0.9 * s} width={w - 4.4 * s} height={1.4 * s} rx={0.7 * s} className="fill-chain-metal-hi" />
         </>
       ) : (
         <>
-          <rect x={-w / 2} y={-3.4 * size} width={w} height={6.8 * size} rx={3.4 * size} className="fill-chain-metal-lo" />
-          <rect x={-w / 2 + 1 * size} y={-2.4 * size} width={w - 2 * size} height={4.4 * size} rx={2.2 * size} className="fill-chain-metal" />
-          <rect x={-w / 2 + 3 * size} y={-2 * size} width={w - 6 * size} height={1.3 * size} rx={0.65 * size} className="fill-chain-metal-hi" />
+          <rect x={-w / 2} y={-2.6 * s} width={w} height={6 * s} rx={2.6 * s} className="fill-chain-metal-lo" />
+          <rect x={-w / 2 + 0.8 * s} y={-2.6 * s} width={w - 1.6 * s} height={4.2 * s} rx={2.1 * s} className="fill-chain-metal" />
+          <rect x={-w / 2 + 2.4 * s} y={-2.2 * s} width={w - 4.8 * s} height={1.2 * s} rx={0.6 * s} className="fill-chain-metal-hi" />
         </>
       )}
     </g>
   ))
 }
 
-/** La cadena entre dos cartas, colgando y por encima de ellas. Entra con opacidad. */
-function Bond({ number, from, to, fromAt, toAt }: { number: number; from: Point; to: Point; fromAt: number; toAt: number }) {
+/**
+ * La cadena entre dos cartas, colgando y por encima de ellas. Entra con opacidad. Al empezar a resolverse (`broken`) se corta en el medio: las dos mitades se separan y se apagan
+ * (sólo `translate`/`opacity`, en lo que dura la salida de la escena; con movimiento reducido, sólo se apagan).
+ */
+function Bond({ number, from, to, fromAt, toAt, broken = false }: { number: number; from: Point; to: Point; fromAt: number; toAt: number; broken?: boolean }) {
   const length = Math.hypot(to[0] - from[0], to[1] - from[1]) || 1
   const [ux, uy] = [(to[0] - from[0]) / length, (to[1] - from[1]) / length]
   const start: Point = [from[0] + ux * BOND_TRIM[fromAt]!, from[1] + uy * BOND_TRIM[fromAt]!]
   const end: Point = [to[0] - ux * BOND_TRIM[toAt]!, to[1] - uy * BOND_TRIM[toAt]!]
+  const links = hangingLinks(start, end, SAG)
+  const half = Math.ceil(links.length / 2)
 
   return (
-    <g data-chain-bond={number} className="opacity-100 transition-opacity duration-300 ease-snap starting:opacity-0 motion-reduce:transition-opacity">
-      <Links links={hangingLinks(start, end, SAG)} />
+    <g data-chain-bond={number} {...(broken ? { 'data-broken': '' } : {})} className="opacity-100 transition-opacity duration-300 ease-snap starting:opacity-0 motion-reduce:transition-opacity">
+      {[links.slice(0, half), links.slice(half)].map((piece, i) => (
+        <g key={i} className={cx('transition-[translate,opacity] duration-200 ease-out motion-reduce:transition-opacity', broken && (i === 0 ? '-translate-x-3 translate-y-2 opacity-0' : 'translate-x-3 translate-y-2 opacity-0'))}>
+          <Links links={piece} offset={i === 0 ? 0 : half} />
+        </g>
+      ))}
     </g>
   )
 }
 
-/** Los tramos de cadena que atan cada carta por dos esquinas (arriba a la izquierda y abajo a la derecha), en el `viewBox` de la carta (100 × 146): pasan por delante de ella. */
+/** Los tramos cortos de cadena (unos cinco eslabones) que abrazan dos esquinas de cada carta (arriba a la izquierda y abajo a la derecha), en el `viewBox` de la carta (100 × 146). */
 const CORNER_TIES: ReadonlyArray<readonly [Point, Point]> = [
   [
-    [-17, 30],
-    [30, -17],
+    [-11, 22],
+    [22, -11],
   ],
   [
-    [70, 163],
-    [117, 116],
+    [78, 157],
+    [111, 124],
   ],
 ]
 
-/** Los siete segmentos de cada dígito (a b c d e f g), cuadrados y encimados, en una caja de 40 × 68 con trazo de 11: el número «digital» de la escena, dibujado por nosotros. */
-const SEGMENTS: Record<string, string> = {
-  a: 'M0 0h40v11h-40z',
-  b: 'M29 0h11v40h-11z',
-  c: 'M29 28.5h11v39.5h-11z',
-  d: 'M0 57h40v11h-40z',
-  e: 'M0 28.5h11v39.5h-11z',
-  f: 'M0 0h11v40h-11z',
-  g: 'M0 28.5h40v11h-40z',
-}
-const DIGITS = ['abcdef', 'bc', 'abged', 'abgcd', 'fgbc', 'afgcd', 'afgedc', 'abc', 'abcdefg', 'abcdfg']
-/** Los segmentos de un número, dígito por dígito (cada uno 50 a la derecha del anterior). */
-const segmentsOf = (value: number) => [...String(value)].flatMap((digit, i) => (DIGITS[Number(digit)] ?? '').split('').map((segment) => ({ key: `${i}${segment}`, d: SEGMENTS[segment]!, x: 50 * i })))
+/**
+ * Los dígitos del número, en bloques (3 × 5 celdas de 14, gruesos y cuadrados como el número de Master Duel, dibujados por nosotros): el 1 con su banderita y su base. Cada fila
+ * dice qué celdas van llenas.
+ */
+const GLYPHS: readonly string[][] = [
+  ['###', '#.#', '#.#', '#.#', '###'],
+  ['##.', '.#.', '.#.', '.#.', '###'],
+  ['###', '..#', '###', '#..', '###'],
+  ['###', '..#', '###', '..#', '###'],
+  ['#.#', '#.#', '###', '..#', '..#'],
+  ['###', '#..', '###', '..#', '###'],
+  ['###', '#..', '###', '#.#', '###'],
+  ['###', '..#', '..#', '..#', '..#'],
+  ['###', '#.#', '###', '#.#', '###'],
+  ['###', '#.#', '###', '..#', '###'],
+]
+const CELL = 14
+const DIGIT_STEP = 3 * CELL + 10
+/** Las celdas de un número, dígito por dígito: cada una, un cuadrado. */
+export const glyphCells = (value: number) =>
+  [...String(value)].flatMap((digit, i) => (GLYPHS[Number(digit)] ?? []).flatMap((line, row) => [...line].flatMap((cell, col) => (cell === '#' ? [{ x: DIGIT_STEP * i + col * CELL, y: row * CELL }] : []))))
 
 /**
- * El número del eslabón como en Master Duel: blanco, de trazo cuadrado, con contorno y resplandor celestes, el mismo para los dos jugadores. Tres capas quietas, cada una con todos
- * los segmentos (así no se ven las uniones): el halo ancho y tenue, el contorno y el relleno blanco encima. `flash`: la copia amarilla que destella al entrar.
+ * El número del eslabón como en Master Duel: blanco, en bloques gruesos, con contorno y resplandor celestes bien marcados, el mismo para los dos jugadores. Tres capas quietas, cada
+ * una con todas las celdas (así no se ven las uniones): el halo ancho y tenue, el contorno y el relleno blanco encima. `flash`: la copia amarilla que destella al entrar.
  */
 function ChainNumber({ value, flash = false, className }: { value: number; flash?: boolean; className?: string }) {
-  const segments = segmentsOf(value)
-  const layer = (strokeWidth: number, tone: string, stroke = true) =>
-    segments.map(({ key, d, x }) => <path key={key} d={d} transform={`translate(${x} 0)`} {...(stroke ? { strokeWidth, strokeLinejoin: 'round' as const } : {})} className={tone} />)
+  // Todas las celdas en un solo camino: el relleno es la unión, sin costuras entre celdas.
+  const d = glyphCells(value)
+    .map(({ x, y }) => `M${x} ${y}h${CELL}v${CELL}h-${CELL}z`)
+    .join('')
+  const layer = (strokeWidth: number, tone: string) => <path d={d} {...(strokeWidth ? { strokeWidth, strokeLinejoin: 'miter' as const } : {})} className={tone} />
+
 
   return (
-    <svg aria-hidden="true" {...(flash ? { 'data-chain-flash': '' } : {})} viewBox={`-10 -10 ${50 * String(value).length + 10} 88`} className={cx('absolute h-1/2 overflow-visible', className)}>
+    <svg aria-hidden="true" {...(flash ? { 'data-chain-flash': '' } : {})} viewBox={`-12 -12 ${DIGIT_STEP * String(value).length + 14} ${5 * CELL + 24}`} className={cx('absolute h-1/2 overflow-visible', className)}>
       {flash ? (
-        layer(14, 'fill-chain-flash stroke-chain-flash/60')
+        layer(16, 'fill-chain-flash stroke-chain-flash/60')
       ) : (
         <>
-          <g>{layer(16, 'fill-chain-glow/30 stroke-chain-glow/25')}</g>
-          <g>{layer(6, 'fill-chain-glow stroke-chain-glow')}</g>
-          <g>{layer(0, 'fill-white', false)}</g>
+          <g>{layer(18, 'fill-chain-glow/30 stroke-chain-glow/25')}</g>
+          <g>{layer(8, 'fill-chain-glow stroke-chain-glow')}</g>
+          <g>{layer(0, 'fill-white')}</g>
         </>
       )}
     </svg>
   )
 }
 
+/** Los rayos del estallido de entrada (en un `viewBox` de −100 a 100): 18, de largo alternado, desde el centro. */
+const BURST_RAYS = Array.from({ length: 18 }, (_, i) => ({ angle: i * 20, reach: i % 2 === 0 ? 98 : 72 }))
+
+/** El estallido de rayos dorados que sale de atrás de la carta que entra (Master Duel): una capa quieta que escala y se apaga (`animate-fx-flash`); con movimiento reducido, no está. */
+function Burst() {
+  return (
+    <span aria-hidden="true" data-chain-burst="" className="absolute -inset-1/2 -z-1 animate-fx-flash motion-reduce:hidden">
+      <svg viewBox="-100 -100 200 200" preserveAspectRatio="none" className="block size-full overflow-visible">
+        {BURST_RAYS.map(({ angle, reach }) => (
+          <polygon key={angle} points={`-5,0 5,0 0,-${reach}`} transform={`rotate(${angle})`} className="fill-chain-burst/70" />
+        ))}
+        <circle r={34} className="fill-chain-flash/50" />
+      </svg>
+    </span>
+  )
+}
+
 /**
  * La cadena en grande del duelo automático, **sólo al encadenar**, igual a Master Duel (Gastón: «debemos clonar esto, debe quedar igual de ser posible»; todo dibujado por nosotros).
  * La pone la mesa en `duel.chain`, en la capa centrada sobre el campo: llena su alto (3:4; quien la usa le da un alto).
- * - **Armar:** cada activación entra grande y derecha desde el centro y cae inclinada a su lugar (`starting:`), con un destello amarillo alrededor de la carta y de su número. La
- *   última va adelante, abajo a la izquierda, la más grande; las anteriores, atrás, más chicas y más arriba (`DEPTH`); desde la quinta, las viejas se achican y se van hacia arriba.
- *   Cada carta entera, con su halo blanco (una sombra quieta) y atada por dos esquinas con cadena; entre carta y carta la cadena cuelga en curva por delante. El número, enorme,
- *   blanco con resplandor celeste y trazo digital (`ChainNumber`), pisa la esquina de abajo (la última, a la izquierda; las otras, a la derecha). Con dos o más, «CADENA» destella
- *   detrás de las cartas. El nombre va sólo en la carta sin imagen (con imagen ya está impreso).
+ * - **Armar:** cada activación entra grande y derecha desde el centro y cae inclinada a su lugar (`starting:`), con un estallido de rayos dorados detrás (`Burst`) y un destello
+ *   amarillo alrededor de la carta y de su número. La última va adelante y abajo, la más grande, alternando de lado (impar a la izquierda, par a la derecha); la anterior, arriba en la
+ *   esquina opuesta; las de antes, más chicas y más arriba (`LAYOUT`); desde la quinta, se van hacia arriba. Cada carta entera, con su halo blanco (una sombra quieta), una leve
+ *   inclinación 3D y atada por dos esquinas con cadena; entre carta y carta la cadena, de eslabones chicos, cuelga en curva por delante. El número, enorme, blanco en bloques con
+ *   contorno y resplandor celestes (`ChainNumber`), pisa la esquina de abajo del lado de afuera. Con dos o más, «CADENA» (itálica) aparece al medio, por delante, y se queda. El
+ *   nombre va sólo en la carta sin imagen (con imagen ya está impreso). Al empezar a resolver, la cadena se corta en el medio mientras la escena se va.
  * - **El velo:** mientras está, el campo de atrás baja y se azula (una capa al lado de la escena que llena la capa de la mesa, sólo `opacity`); no ataja toques.
  * - **Sin línea a la vista:** «Se resuelve del último al primero» (y, resolviendo, qué pasó con cada uno) va en un `role="status"` oculto, para el lector de pantalla.
  * - **Respondiendo** (`answering`, con la hoja o la ventana de «¿Respondés?» abierta): la escena se achica hacia arriba, así el número de la última carta no queda debajo del cartel.
@@ -226,6 +322,15 @@ export function ChainStage({
 
     return () => window.clearTimeout(timer)
   }, [over])
+  // En escritorio las cartas se separan más (la capa del campo tiene ancho de sobra).
+  // La última entra de un lado y la anterior queda arriba del otro, alternando (impar a la izquierda, par a la derecha).
+  const mirror = (rows[rows.length - 1]?.number ?? 1) % 2 === 0
+  const { depth: DEPTH, bond: BOND } = LAYOUT[useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) ? 'wide' : 'narrow'][mirror ? 'right' : 'left']
+  const sideOf = (at: number) => {
+    const side = SIDE_LEFT[Math.min(at, SHOWN - 1)]!
+
+    return mirror ? (side === 'left' ? 'right' : 'left') : side
+  }
   const row = rows[current >= 0 ? current : rows.length - 1]
   const depth = (index: number) => rows.length - 1 - index
   const pose = (index: number): Pose => (away ? 'out' : depth(index) >= SHOWN ? 'back' : 'slot')
@@ -254,17 +359,11 @@ export function ChainStage({
           over && 'opacity-0',
         )}
       >
-        {/* «CADENA», detrás de las cartas. */}
-        {rows.length > 1 && !hidden ? (
-          <span key={rows.length} aria-hidden="true" data-chain-word="" className="absolute inset-0 flex animate-fx-flash items-center justify-center text-display font-extrabold uppercase text-white text-shadow-lg text-shadow-chain-glow motion-reduce:hidden">
-            {t('auto.chain.title')}
-          </span>
-        ) : null}
         <svg aria-hidden="true" viewBox="0 0 300 400" className="absolute inset-0 z-6 size-full overflow-visible">
           {rows.map((link, index) =>
             // La cadena entre esta carta y la anterior, mientras las dos están en la escena; cada vez que se corren, vuelve a salir.
             index === 0 || pose(index - 1) !== 'slot' || pose(index) !== 'slot' ? null : (
-              <Bond key={`${link.number}-${depth(index)}`} number={link.number} from={BOND[depth(index - 1)]!} to={BOND[depth(index)]!} fromAt={depth(index - 1)} toAt={depth(index)} />
+              <Bond key={`${link.number}-${depth(index)}`} number={link.number} from={BOND[depth(index - 1)]!} to={BOND[depth(index)]!} fromAt={depth(index - 1)} toAt={depth(index)} broken={over} />
             ),
           )}
         </svg>
@@ -272,8 +371,8 @@ export function ChainStage({
           const at = pose(index)
           // La que acaba de entrar: adelante y más grande, con su destello alrededor y en su número.
           const newest = index === rows.length - 1 && !hidden
-          // El número pisa la esquina de abajo: la de adelante a la izquierda, las otras a la derecha (como en Master Duel).
-          const corner = depth(index) === 0 ? 'bottom-0 left-0 -translate-x-1/3 translate-y-1/3' : 'bottom-0 right-0 translate-x-1/3 translate-y-1/4'
+          // El número pisa la esquina de abajo del lado de afuera de su carta (como en Master Duel).
+          const corner = NUMBER_CORNER[sideOf(depth(index))]
 
           return (
             <div
@@ -283,17 +382,18 @@ export function ChainStage({
               data-chain-card={link.number}
               data-pose={at}
               className={cx(
-                'absolute left-1/3 top-2/7 aspect-[421/614] w-1/3 shadow-chain-halo transition-[translate,rotate,scale,opacity] duration-300 ease-snap starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0 motion-reduce:transition-opacity',
+                'absolute left-1/3 top-2/7 aspect-[421/614] w-1/3 shadow-chain-halo transition-[translate,rotate,scale,opacity,transform] duration-300 ease-snap starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0 motion-reduce:transition-opacity',
                 link.art ? 'bg-input' : link.frame ? frameClass(link.frame) : 'bg-input',
                 at === 'out' ? '-translate-y-1/4 scale-80 opacity-0' : at === 'back' ? '-translate-y-full scale-50 opacity-0' : DEPTH[depth(index)],
               )}
             >
+              {newest ? <Burst /> : null}
               <CardArt remoteUrl={link.art} name={link.name} {...(link.frame ? { frame: link.frame } : {})} className="block size-full object-cover" />
               {link.art ? null : <span data-chain-name="" className="absolute inset-x-1 top-1 truncate bg-background/85 px-1 text-micro font-semibold text-foreground">{link.name}</span>}
               {newest ? <span aria-hidden="true" data-chain-glow="" className="absolute -inset-2 animate-fx-flash border-4 border-chain-flash motion-reduce:hidden" /> : null}
               <svg aria-hidden="true" viewBox="0 0 100 146" preserveAspectRatio="none" data-chain-ties="" className="absolute inset-0 size-full overflow-visible">
                 {CORNER_TIES.map(([from, to], i) => (
-                  <Links key={i} links={hangingLinks(from, to, 3, 12)} size={0.8} />
+                  <Links key={i} links={hangingLinks(from, to, 2, 7.5)} size={0.7} />
                 ))}
               </svg>
               <span aria-hidden="true" data-chain-number={link.number} className="contents">
@@ -303,6 +403,12 @@ export function ChainStage({
             </div>
           )
         })}
+        {/* «CADENA» (con dos o más): grande, blanca e itálica, al medio, entre las cartas y por delante; aparece cuando la carta se asienta y se queda hasta que se va la escena. */}
+        {rows.length > 1 && !hidden ? (
+          <span key={rows.length} aria-hidden="true" data-chain-word="" className="absolute inset-x-0 top-2/5 z-7 flex animate-pop justify-center text-title font-extrabold min-[1101px]:text-display uppercase italic text-white text-shadow-lg text-shadow-chain-glow motion-reduce:animate-none">
+            {t('auto.chain.title')}
+          </span>
+        ) : null}
         {over ? null : status}
       </div>
       {over ? status : null}

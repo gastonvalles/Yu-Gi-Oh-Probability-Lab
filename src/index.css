@@ -99,6 +99,7 @@
   --shadow-chain-halo: 0 0 0 2px rgb(255 255 255 / 0.9), 0 0 14px 4px rgb(255 255 255 / 0.6), 0 0 32px 8px rgb(255 255 255 / 0.18);
   --color-chain-glow: #5fe4ff;
   --color-chain-flash: #fff3a6;
+  --color-chain-burst: #ffc23a;
   --color-chain-veil: #050b22;
   --color-chain-metal-hi: #f7f9fc;
   --color-chain-metal: #aeb7c4;
@@ -1366,6 +1367,27 @@
   75% {
     opacity: 1;
   }
+}
+
+/*
+ * La leve inclinación 3D de las cartas de la cadena en grande (`ChainNotice.tsx`, como Master Duel): la de adelante, un poco hacia atrás por arriba; las de atrás, al revés. Va en
+ * `transform`, aparte de `translate`/`rotate`/`scale` (que llevan la pose); quieta salvo cuando una carta pasa de adelante a atrás.
+ */
+@utility chain-tilt-front {
+  transform: perspective(56rem) rotateX(10deg) rotateY(-7deg);
+}
+
+@utility chain-tilt-back {
+  transform: perspective(56rem) rotateX(-8deg) rotateY(6deg);
+}
+
+/* Las mismas, en espejo: cuando la última entra a la derecha (un eslabón par). */
+@utility chain-tilt-front-flip {
+  transform: perspective(56rem) rotateX(10deg) rotateY(7deg);
+}
+
+@utility chain-tilt-back-flip {
+  transform: perspective(56rem) rotateX(-8deg) rotateY(-6deg);
 }
 
 /*
