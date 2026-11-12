@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
+import { endWaitMs, LETHAL_MS } from '../app/end-reveal'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
 import { THINKING_CANCEL_MS } from '../components/duel/DuelBar'
 import { loc } from './support/auto-session-fake'
@@ -152,9 +153,40 @@ describe('auto-screen · los estados', () => {
     fireEvent.click(within(cover).getByRole('button', { name: 'Jugar otra vez' }))
     expect(fake.restarts).toBe(1)
     expect(dispatches).toBe(0)
+  })
+
+  it('el fin por vidas: nada encima mientras la chapa cuenta hasta 0; el resultado sale después del 0 y una pausa', () => {
+    vi.useFakeTimers()
+    const fake = renderAuto()
+
     core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, lp: [0, 3000] } }))
     core(() => fake.end(1, 1))
+    // La cuenta de 8000 a 0 y la pausa del 0 (`endWaitMs`; el arnés pide movimiento reducido: la cuenta es instantánea y queda la pausa): mientras tanto, la mesa sin nada encima.
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    act(() => vi.advanceTimersByTime(endWaitMs(8000, true) - 50))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    act(() => vi.advanceTimersByTime(60))
     expect(screen.getByRole('alertdialog', { name: 'Perdiste' })).toHaveTextContent('Te quedaste sin puntos de vida.')
+  })
+
+  it('el golpe letal en cámara lenta: primero el golpe (tus vidas esperan), después la chapa baja a 0 y, tras la pausa, el resultado', () => {
+    vi.useFakeTimers()
+    const fake = renderAuto()
+    const mine = () => screen.getAllByRole('group', { name: /^Puntos de vida de Vos/ })[0]!
+
+    // Sin movimiento reducido (el arnés lo pide): la cámara lenta corre.
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, lp: [0, 3000] } }))
+    core(() => fake.end(1, 1))
+    expect(screen.getByTestId('lethal-blow')).toHaveAttribute('data-side', 'mine')
+    expect(screen.getByTestId('lethal-blow')).toHaveTextContent('−8000')
+    expect(mine()).toHaveAccessibleName('Puntos de vida de Vos: 8000')
+    act(() => vi.advanceTimersByTime(LETHAL_MS + 10))
+    expect(mine()).toHaveAccessibleName('Puntos de vida de Vos: 0')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    act(() => vi.advanceTimersByTime(endWaitMs(8000, false) - LETHAL_MS))
+    expect(screen.getByRole('alertdialog', { name: 'Perdiste' })).toBeInTheDocument()
+    expect(screen.queryByTestId('lethal-blow')).toBeNull()
   })
 
   it('«Más opciones» ofrece «Reiniciar el mismo duelo»; lo que la mesa no puede mostrar va a la línea', () => {

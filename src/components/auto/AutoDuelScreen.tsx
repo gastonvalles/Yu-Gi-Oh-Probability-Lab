@@ -27,6 +27,7 @@ import { DuelBar, DuelChatToggle, DuelLife, DuelLine, DuelLogTicker, RivalLife, 
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { DuelChatPanel } from '../duel/DuelChat'
 import { DuelPause } from '../duel/DuelPause'
+import { LethalBlow } from '../duel/LethalBlow'
 import { ResultCard } from '../duel/DuelResult'
 import type { FeedEntry } from '../duel/use-duel-feed'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNotice, useSignals } from '../duel/use-duel-table'
@@ -507,7 +508,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     <FaultCover fault={fault} {...(faultTitle ? { title: faultTitle } : {})} rematch={{ snapshot, rival: rivalName, onRematch }} onExit={onLeave} />
   ) : paused ? (
     <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
-  ) : resultOpen ? (
+  ) : resultOpen && (snap.status !== 'ended' || asks.endShown) ? (
+    // Un final del núcleo espera a que la mesa lo muestre (la chapa en 0); rendirse o el tiempo, ya.
     <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} onSaveReplay={() => setSaving(true)} {...(reason ? { reason } : {})} />
   ) : snap.status === 'loading' || online.phase === 'starting' ? (
     <LoadingCover progress={snap.progress} note={null} />
@@ -642,6 +644,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         </PileGroupContext>
       </LifeHold>
       {asks.pieces}
+      {asks.lethal ? <LethalBlow key={asks.lethal.key} damage={asks.lethal.damage} mine={asks.lethal.side === seat} /> : null}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
       {banner ? <TurnOrderBanner first={seat === 0} rival={rivalName} onDone={hideBanner} /> : null}
       {docked ? <RivalEmoji burst={signals.burst} name={rivalName} onDismiss={signals.dismissBurst} /> : null}

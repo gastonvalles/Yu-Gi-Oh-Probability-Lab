@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import { seatOf, setAutoPref } from '../app/auto-prefs'
+import { endWaitMs } from '../app/end-reveal'
 import { AutoSoloScreen } from '../components/auto/AutoSoloScreen'
 import { CARDS, fakeSession, type FakeSession } from './support/auto-session-fake'
 import { core } from './support/auto-screen-harness'
@@ -59,6 +60,9 @@ describe('auto-screen · quién empieza', () => {
 
     core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, lp: [0, 6500] } }))
     core(() => fake.end(1, 1))
+    // Por vidas: sale cuando la chapa del rival terminó de contar hasta 0 y se vio el 0 (`useEndReveal`).
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    act(() => vi.advanceTimersByTime(endWaitMs(8000, true)))
     const cover = screen.getByRole('alertdialog', { name: '¡Ganaste!' })
 
     expect(cover).toHaveTextContent('Vos 6500 a Rival 0')

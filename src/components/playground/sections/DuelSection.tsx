@@ -18,6 +18,7 @@ import { ArenaPanel } from '../../duel/ArenaPanel'
 import { DuelOffline } from '../../duel/DuelOffline'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
+import { LethalBlow } from '../../duel/LethalBlow'
 import { Button } from '../../ui/Button'
 import { BAR_SEAT, DuelLine, DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { LifeBadge } from '../../duel/LifeScore'
@@ -971,18 +972,84 @@ function TurnDialSamples() {
   )
 }
 
-const MEDALS: Array<{ tone: MedalTone; label: string; numeral?: string; icon?: 'trophy' | 'flag' | 'swap' }> = [
+const MEDALS: Array<{ tone: MedalTone; label: string; numeral?: string }> = [
   { tone: 'first', label: 'first · vas primero', numeral: '1' },
   { tone: 'second', label: 'second · vas segundo', numeral: '2' },
-  { tone: 'win', label: 'win · ganaste', icon: 'trophy' },
-  { tone: 'lose', label: 'lose · perdiste', icon: 'flag' },
-  { tone: 'draw', label: 'draw · empate', icon: 'swap' },
 ]
+
+/** Los finales, con las acciones de cada pantalla: el automático solo (`solo`), un duelo con otro (`room`, con lo que dice el botón de seguir) y quien mira (`watch`). */
+const RESULTS: Array<{ label: string; tone: 'win' | 'lose' | 'draw'; title: string; reason: string; score?: [number, number]; note?: string; kind: 'solo' | 'room' | 'watch'; next?: string }> = [
+  { label: 'ganar por vidas', tone: 'win', title: '¡Ganaste!', reason: 'Rival se quedó sin puntos de vida.', score: [7700, 0], kind: 'solo' },
+  { label: 'perder por vidas', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida.', score: [0, 3100], kind: 'solo' },
+  { label: 'empate', tone: 'draw', title: 'Empate', reason: 'Los dos se quedaron sin puntos de vida a la vez.', score: [0, 0], kind: 'solo' },
+  { label: 'te rendiste', tone: 'lose', title: 'Perdiste', reason: 'Te rendiste.', score: [2400, 5600], kind: 'solo' },
+  { label: 'sin cartas', tone: 'win', title: '¡Ganaste!', reason: 'El rival no pudo robar.', score: [5200, 1800], kind: 'solo' },
+  { label: 'se rindió el rival', tone: 'win', title: '¡Ganaste!', reason: 'Beto se rindió.', score: [6100, 4000], kind: 'room', next: 'Revancha' },
+  { label: 'por tiempo', tone: 'lose', title: 'Perdiste', reason: 'Se te acabó el tiempo.', score: [3000, 2500], kind: 'room', next: 'Revancha' },
+  { label: 'serie: partida 1 de 3', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida. Match 0–1.', score: [0, 1200], note: 'Beto quiere la revancha.', kind: 'room', next: 'Siguiente duelo' },
+  { label: 'espectador', tone: 'win', title: 'Ganó Ana', reason: 'Beto se quedó sin puntos de vida.', note: 'Volvés al inicio en unos segundos.', kind: 'watch' },
+]
+
+function ResultSample({ sample }: { sample: (typeof RESULTS)[number] }) {
+  const { kind, score } = sample
+  const actions =
+    kind === 'solo' ? (
+      <>
+        <Button variant="secondary" icon="save" fullWidth>
+          Guardar replay
+        </Button>
+        <Button variant="secondary" icon="hand" fullWidth>
+          Seguir en modo manual
+        </Button>
+        <Button variant="secondary" icon="chat" fullWidth>
+          Qué hizo el bot
+        </Button>
+      </>
+    ) : kind === 'room' ? (
+      <>
+        <Button variant="secondary" icon="eye" fullWidth>
+          Ver la mesa
+        </Button>
+        <Button variant="secondary" icon="save" fullWidth>
+          Guardar replay
+        </Button>
+      </>
+    ) : undefined
+  const primary =
+    kind === 'watch' ? (
+      <Button variant="secondary" size="lg" fullWidth>
+        Volver al inicio
+      </Button>
+    ) : (
+      <Button variant="primary" size="lg" icon="refresh" fullWidth>
+        {kind === 'solo' ? 'Jugar otra vez' : sample.next}
+      </Button>
+    )
+
+  return (
+    <div className="grid w-full max-w-[24.375rem] gap-2">
+      <Tag>{sample.label}</Tag>
+      <div className="relative h-[36rem] overflow-hidden border border-border-subtle bg-background">
+        <ResultHero
+          tone={sample.tone}
+          title={sample.title}
+          reason={sample.reason}
+          {...(sample.note ? { note: sample.note } : {})}
+          {...(score ? { score: { mine: score[0], theirs: score[1], rival: kind === 'solo' ? 'Rival' : 'Beto' } } : {})}
+          {...(kind === 'watch' ? {} : { onLeave: () => {} })}
+          {...(actions ? { actions } : {})}
+          primary={primary}
+        />
+      </div>
+    </div>
+  )
+}
 
 /** Los carteles del duelo: la placa en sus cinco colores, el final (con las vidas en grande) y el cartel del comienzo, que se ve dos segundos y se va. */
 function BannerSamples() {
   const [run, setRun] = useState(0)
   const [first, setFirst] = useState<boolean | null>(null)
+  const [lethal, setLethal] = useState<{ n: number; mine: boolean } | null>(null)
 
   return (
     <Specimen
@@ -991,7 +1058,7 @@ function BannerSamples() {
       className="col-span-full"
       note={
         <>
-          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, de esquinas rectas como la mesa, sin degradados ni brillos) y los carteles que la usan: el del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos) y el del final (<Tag>ResultHero</Tag>, con cómo te fue en la placa y las vidas, «3100 a 0», en grande; en la tarjeta del resultado, en el final del automático y, sin vidas, para quien mira). El color dice qué pasó; entra una vez (700 ms) y nada gira sin fin; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
+          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, sin degradados ni brillos) del cartel del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos). El final (<Tag>ResultHero</Tag>) es una hoja opaca y recta apoyada abajo (en escritorio, al centro) sobre la mesa con un velo: el título en el color del resultado (lo único que resalta), el porqué pegado, las vidas «7700 a 0» en grande, las secundarias del mismo ancho y la principal grande abajo; la ✕ va dentro. Antes, el golpe letal en cámara lenta (<Tag>LethalBlow</Tag>: destello, rayos y el daño en grande, 1,5 s); después la chapa del que perdió cuenta hasta 0, una pausa y recién ahí el final (<Tag>app/end-reveal.ts</Tag>). Entra subiendo; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
         </>
       }
     >
@@ -1005,20 +1072,30 @@ function BannerSamples() {
         <Button variant="secondary" onClick={() => setFirst(false)}>
           Cartel: vas segundo
         </Button>
+        <Button variant="secondary" onClick={() => setLethal((hit) => ({ n: (hit?.n ?? 0) + 1, mine: false }))}>
+          Golpe letal: ganás
+        </Button>
+        <Button variant="secondary" onClick={() => setLethal((hit) => ({ n: (hit?.n ?? 0) + 1, mine: true }))}>
+          Golpe letal: perdés
+        </Button>
+      </div>
+      {/* El golpe letal (`LethalBlow`, 1,5 s en cámara lenta) en un marco de 390 px: arriba cae el rival, abajo vos. */}
+      <div className="relative h-80 w-full max-w-[24.375rem] overflow-hidden border border-border-subtle bg-background">
+        {lethal ? <LethalBlow key={lethal.n} inline damage={lethal.mine ? 2400 : 3100} mine={lethal.mine} /> : null}
       </div>
       <div key={run} className="grid gap-8 py-4">
         <div className="flex flex-wrap items-start justify-center gap-10">
           {MEDALS.map((medal) => (
             <div key={medal.tone} className="grid justify-items-center gap-4">
-              <DuelMedal tone={medal.tone} size="md" numeral={medal.numeral} icon={medal.icon} />
+              <DuelMedal tone={medal.tone} size="md" numeral={medal.numeral} />
               <Tag>{medal.label}</Tag>
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] justify-items-center gap-6">
-          <ResultHero tone="win" icon="trophy" title="¡Ganaste!" reason="Beto se quedó sin puntos de vida." score={{ mine: 3100, theirs: 0, rival: 'Beto' }} />
-          <ResultHero tone="lose" icon="flag" title="Perdiste" reason="Te rendiste." score={{ mine: 2400, theirs: 5600, rival: 'Beto' }} />
-          <ResultHero tone="draw" icon="swap" title="Empate" reason="Los dos se quedaron sin puntos de vida." />
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] justify-items-center gap-6">
+          {RESULTS.map((sample) => (
+            <ResultSample key={sample.label} sample={sample} />
+          ))}
         </div>
       </div>
       {first !== null ? <TurnOrderBanner key={String(first)} first={first} rival="Beto" onDone={() => setFirst(null)} /> : null}

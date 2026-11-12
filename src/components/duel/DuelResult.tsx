@@ -1,12 +1,9 @@
-import { useId } from 'react'
-
 import type { DuelResult } from '../../app/duel-games'
 import type { DuelSnapshot } from '../../app/duel-session'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
-import { CloseButton } from '../ui/IconButton'
 import { ResultHero } from './DuelBanner'
 
 type Tone = 'win' | 'lose' | 'draw'
@@ -90,29 +87,37 @@ interface ResultProps {
  */
 export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClose, onSaveReplay, reason }: ResultProps & { onLeave: () => void; onClose: () => void; /** «Guardar replay» (el automático y el manual por enlace). */ onSaveReplay?: () => void }) {
   const view = viewOf(result, snapshot, rival, reason)
-  const titleId = useId()
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative grid h-full place-items-center overflow-hidden bg-background/90 p-5">
-      <CloseButton size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-2 top-2" onClick={onLeave} />
-      <ResultHero tone={view.tone} icon={view.icon} title={view.title} reason={view.reason} note={view.note} titleId={titleId} score={{ mine: snapshot.life.lp[snapshot.me], theirs: snapshot.life.lp[snapshot.me === 0 ? 1 : 0], rival }}>
-        <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
-          <Button variant="tertiary" onClick={onClose}>
+    <ResultHero
+      tone={view.tone}
+      title={view.title}
+      reason={view.reason}
+      note={view.note}
+      score={{ mine: snapshot.life.lp[snapshot.me], theirs: snapshot.life.lp[snapshot.me === 0 ? 1 : 0], rival }}
+      onLeave={onLeave}
+      actions={
+        <>
+          <Button variant="secondary" icon="eye" fullWidth onClick={onClose}>
             {t('duel.result.viewTable')}
           </Button>
           {onSaveReplay ? (
-            <Button variant="tertiary" icon="save" aria-haspopup="dialog" onClick={onSaveReplay}>
+            <Button variant="secondary" icon="save" fullWidth aria-haspopup="dialog" onClick={onSaveReplay}>
               {t('meta.duels.save.button')}
             </Button>
           ) : null}
-          {snapshot.rematch.mine ? null : (
-            <Button variant="primary" disabled={!snapshot.peerPresent} onClick={onRematch}>
-              {rematchLabel(snapshot)}
-            </Button>
-          )}
-        </div>
-      </ResultHero>
-    </div>
+        </>
+      }
+      {...(snapshot.rematch.mine
+        ? {}
+        : {
+            primary: (
+              <Button variant="primary" size="lg" icon="refresh" fullWidth disabled={!snapshot.peerPresent} onClick={onRematch}>
+                {rematchLabel(snapshot)}
+              </Button>
+            ),
+          })}
+    />
   )
 }
 

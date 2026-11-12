@@ -17,6 +17,7 @@ import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { useAutoPrefs } from '../../app/auto-prefs'
+import { useEndReveal, type LethalHit } from '../../app/end-reveal'
 import { useHeldValue } from '../../app/life-effects'
 import { prefersReducedMotion } from '../../app/motion'
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -264,6 +265,10 @@ export interface AutoAsks {
   rivalViewer: ReactNode
   /** Las vidas que se ven esperan al golpe de un ataque, tuyo (`useStrikeHold`) o del rival (`useRivalStrike`): va en `LifeHold` alrededor de la mesa. */
   lifeHeld: boolean
+  /** El duelo terminó y ya se puede decir: la mesa mostró todo y, si fue por vidas, la chapa contó hasta 0 y se vio el 0 (`useEndReveal`). */
+  endShown: boolean
+  /** El golpe que dejó a alguien en 0 (`side`, su asiento), en cámara lenta hasta el resultado (`LethalBlow`). */
+  lethal: LethalHit | null
   /** Online: lo que el rival tiene que saber de tu mesa (`autoPhase`): tu fase como se ve, en el turno del núcleo, y si estás contestando algo que no es tu turno libre. Null rearmando. */
   told: PhaseView | null
 }
@@ -473,11 +478,15 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     if (now.some((points, at) => points < before[at]!)) playSfx('lpDown')
     else if (now.some((points, at) => points > before[at]!)) playSfx('lpUp')
   })
+  // El fin se dice (el sonido y, en cada pantalla, el resultado) recién cuando la mesa lo mostró todo: el golpe letal en cámara lenta, la chapa del que perdió hasta 0 y una pausa (`useEndReveal`).
+  const reveal = useEndReveal(snap.status === 'ended' && snap.overlay.end !== null && settled && !lifeHeld, useHeldValue(lp, lifeHeld))
+  const endShown = reveal.shown
+
   useEffect(() => {
-    const end = snap.status === 'ended' ? snap.overlay.end : null
+    const end = endShown ? snap.overlay.end : null
 
     if (end) playSfx(end.winner === 2 ? 'turn' : end.winner === seat ? 'win' : 'lose')
-  }, [snap.status, snap.overlay.end, seat])
+  }, [endShown, snap.overlay.end, seat])
 
   // ── Las cartas: el nombre, el arte y el tipo por código (lo que el núcleo nombra y la mesa no tiene). ──
   const byCode = useMemo(() => {
@@ -1401,7 +1410,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   )
   return {
     rivalViewer,
-    lifeHeld,
+    lifeHeld: lifeHeld || reveal.holding,
+    endShown,
+    lethal: reveal.lethal,
     state: reviewState ?? state,
     matSession: review?.session ?? matSession,
     settled,

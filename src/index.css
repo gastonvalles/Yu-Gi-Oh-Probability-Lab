@@ -201,6 +201,10 @@
   --animate-plate-in: plate-in 700ms var(--ease-snap) both;
   --animate-banner-veil: banner-veil 2.8s var(--ease-out) both;
   --animate-banner-rise: banner-rise 600ms var(--ease-out) 350ms both;
+  /* El golpe letal en cámara lenta (`LethalBlow`, 1500 ms = `LETHAL_MS`): el destello, los rayos desde el punto del golpe y el daño en grande. */
+  --animate-lethal-flash: lethal-flash 1500ms var(--ease-out) both;
+  --animate-lethal-ray: lethal-ray 1500ms var(--ease-out) both;
+  --animate-lethal-number: lethal-number 1500ms var(--ease-out) both;
   /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida); el «−N» chico de la chapa usa `animate-linger`. */
   --animate-life-bump: life-bump 240ms var(--ease-out);
   /* La carta que un ataque saca del campo se parte en dos (`AttackFx`): las mitades del eslabón, más lentas. */
@@ -910,6 +914,62 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes lethal-flash {
+    0% {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+
+    14% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scale(1.7);
+    }
+  }
+
+  @keyframes lethal-ray {
+    0% {
+      opacity: 1;
+      transform: scaleY(0);
+    }
+
+    35% {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scaleY(1.15);
+    }
+  }
+
+  @keyframes lethal-number {
+    0% {
+      opacity: 0;
+      transform: scale(2.4);
+    }
+
+    16% {
+      opacity: 1;
+      transform: scale(1.6);
+    }
+
+    82% {
+      opacity: 1;
+      transform: scale(1.45);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scale(1.4);
     }
   }
 

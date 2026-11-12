@@ -75,7 +75,9 @@ describe('el cartel del final para quien mira', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Ganó Ana' })
     expect(within(dialog).getByText('Beto se rindió.')).toBeInTheDocument()
-    expect(dialog.querySelector('[data-medal="win"]')).not.toBeNull()
+    // Sin placa: el color del resultado va en el título.
+    expect(dialog).toHaveAttribute('data-tone', 'win')
+    expect(dialog.querySelector('[data-medal]')).toBeNull()
 
     act(() => {
       vi.advanceTimersByTime(WATCH_RETURN_MS - 1)
@@ -95,7 +97,7 @@ describe('el cartel del final para quien mira', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Empate' })
     expect(within(dialog).getByText('Los dos se quedaron sin puntos de vida a la vez.')).toBeInTheDocument()
-    expect(dialog.querySelector('[data-medal="draw"]')).not.toBeNull()
+    expect(dialog).toHaveAttribute('data-tone', 'draw')
   })
 
   it('un duelo de un Match que sigue: dice el marcador, no vuelve al inicio y se cierra solo para seguir mirando', () => {
