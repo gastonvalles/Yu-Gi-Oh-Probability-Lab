@@ -208,8 +208,8 @@ function publicAssetsList(): Plugin {
 
 /** De `/assets`, lo que el service worker no precachea (queda en el caché HTTP, como siempre): el núcleo del duelo automático, la planilla en PDF, el catálogo y el video. */
 const SW_HEAVY = /^assets\/(?:ocgcore\.|core-host\.worker-|kde-decklist|Playground-|video-encode-)/
-/** De `public/`, lo que el service worker precachea: las páginas sueltas, el script de arranque, el manifest, los íconos, el dorso y los foil. */
-const SW_PUBLIC = /^(?:404\.html|privacidad\.html|privacy\.html|recover\.js|site\.webmanifest|favicon\.(?:ico|png)|apple-touch-icon\.png|icon-\d+\.png|card-back[\w-]*\.webp|foil\/[\w-]+\.webp)$/
+/** De `public/`, lo que el service worker precachea: las páginas sueltas, los scripts de arranque, el manifest, los íconos, el dorso y los foil. */
+const SW_PUBLIC = /^(?:404\.html|privacidad\.html|privacy\.html|recover\.js|palette\.js|site\.webmanifest|favicon\.(?:ico|png)|apple-touch-icon\.png|icon-\d+\.png|card-back[\w-]*\.webp|foil\/[\w-]+\.webp)$/
 
 /** Emite `dist/sw.js` (ver `src/sw.js`) con el `index.html`, los `/assets` livianos y lo precacheable de `public/`. Sólo en el build: `npm run dev` no tiene service worker. */
 function serviceWorker(): Plugin {

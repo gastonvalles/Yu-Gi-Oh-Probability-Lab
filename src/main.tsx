@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 
 import App from './App'
 import { UI_ANIMATION_MS } from './app/motion'
+import { applyPalette } from './app/palette'
 import { getLocale, loadLocale, syncSiteMeta } from './i18n'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import './index.css'
@@ -14,6 +15,8 @@ if (!appRoot) {
 }
 
 document.documentElement.style.setProperty('--motion-duration', `${UI_ANIMATION_MS}ms`)
+
+applyPalette()
 
 const root = createRoot(appRoot)
 

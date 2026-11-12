@@ -1689,6 +1689,57 @@
     --zone-side-background: rgb(var(--success-rgb) / 0.09);
     --zone-side-border: transparent;
   }
+
+  /* Índigo: la paleta de antes de `85dc26c0` (índigo, violeta y ámbar), a elección en el menú (`app/palette.ts`, `ui/PaletteSwitcher`). Sólo los valores que cambian, con los mismos nombres. Va después de Carbón (la de fábrica, la que leen los tests). */
+  :root[data-palette='indigo'] {
+    --color-lavender-light: #eee9ff;
+    --background: #150a24;
+    --background-rgb: 21 10 36;
+    --secondary: #231238;
+    --card-background: #231238;
+    --card-background-rgb: 35 18 56;
+    --border: #3a2459;
+    --input: #2b1745;
+    --input-hover: #352052;
+    --primary: #8000cb;
+    --primary-rgb: 128 0 203;
+    --primary-hover: #9a26e0;
+    --primary-hover-rgb: 154 38 224;
+    --accent: #c77dff;
+    --accent-rgb: 199 125 255;
+    --accent-foreground: #150a24;
+    --destructive: #da0000;
+    --destructive-rgb: 218 0 0;
+    --surface-raised: #2b1745;
+    --surface-hover: #352052;
+    --border-subtle: #2e1c4a;
+    --primary-soft: #c77dff;
+    --primary-soft-rgb: 199 125 255;
+    --lavender: #2b1745;
+    --lavender-hover: #352052;
+    --info: #ffc100;
+    --info-rgb: 255 193 0;
+    --success-soft: #6bf55c;
+    --warning-soft: #ffd84d;
+    --danger-soft: #ff4d4d;
+    --danger-soft-rgb: 255 77 77;
+    --info-soft: #ffd84d;
+    --success: #1aef06;
+    --success-rgb: 26 239 6;
+    --success-solid: color-mix(in srgb, #1aef06 55%, black);
+    --warning: #ffc100;
+    --warning-rgb: 255 193 0;
+    --danger: #da0000;
+    --danger-rgb: 218 0 0;
+    --nav: #400065;
+    --nav-raised: #5a2a80;
+    --nav-active: #ffc100;
+    --text-muted: #b4a2d4;
+    --text-soft: #9b86c4;
+    --app-scrollbar-track: #1c0f30;
+    --app-scrollbar-thumb: #45296b;
+    --app-scrollbar-thumb-hover: #6a4b96;
+  }
 }
 
 @layer theme {

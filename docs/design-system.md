@@ -5,9 +5,9 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 ## 1. Idea general
 
 - **Plano y sin brillos de adorno;** las excepciones son la mesa (regla 9) y el foil de rareza (`RarityFoil`, sólo en la carta grande: dice la rareza).
-- **Carbón con matiz frío:** superficies de carbón y velos violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre una foto, el negro sí).
+- **Carbón con matiz frío:** superficies de carbón y velos violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre una foto, el negro sí). Segunda paleta, Índigo (la de antes), a elección en el ☰ (`PaletteSwitcher`; `:root[data-palette]` en `index.css`, tras Carbón); no la siguen la imagen exportada, `theme-color`, `foil.css` ni los colores por tipo.
 - **Dos niveles de caja, no tres:** lienzo → tarjeta (`Card`) y nada más; adentro, espacio y líneas finas (`border-t border-border-subtle`). Un aviso dentro de una tarjeta es un fondo teñido sin borde.
-- **Cada dato se dice una sola vez,** también entre pestaña, encabezado y contenido: el resumen de una sección sólo se ve plegada.
+- **Cada dato se dice una sola vez:** el resumen de una sección sólo se ve plegada.
 - **Los porcentajes son anillos** (`ProgressRing` un valor, `SegmentedRing` un reparto); no hay barras de progreso. Las vidas: la chapa `LifeBadge` (de 640 a 1100 px, `LifeScore` plano); `LifeTile`, sólo catálogo.
 - **Cifras con `tabular-nums`.**
 
@@ -22,7 +22,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 | `info` (lima) | lo elegido y el énfasis, la navegación, el rival, la build B y los hipervínculos (`textLink`) |
 | `neutral` | sin énfasis: un número o una etiqueta de adorno |
 
-**Quién lleva qué color.** El violeta es el primario y la lima, la secundaria (lo elegido, el hover y el foco de lo que se toca); menta, naranja y rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en lima y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste (`--playable-rgb`), lo que puede atacar suma la espada (`AttackMark`), el tuyo que ataca mientras elegís a quién lleva el aro rojo del ataque (`aim`) y lo que se activa o resuelve, ámbar con la luz que gira (`card-glow.ts`); todo quieto, sin brillo en la mesa manual ni los replays. La estela de chevrones rojos (`AttackTrail`) une atacante y objetivo.
+**Quién lleva qué color.** El violeta es el primario y la lima, la secundaria (lo elegido, el hover y el foco de lo que se toca); menta, naranja y rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en lima y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste (`--playable-rgb`), lo que puede atacar suma la espada (`AttackMark`), el tuyo que ataca mientras elegís a quién lleva el aro rojo del ataque (`aim`) y lo que se activa o resuelve, ámbar con la luz que gira (`card-glow.ts`); todo quieto, sin brillo en la mesa manual ni los replays.
 
 **Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): por eso el verde lleno es `success-solid` y el verde claro queda para texto, anillos y puntos; lo elegido y lo del rival van en violeta (sobre la lima, el texto es carbón). Excepción: «Qué es» de una regla, lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en lima (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
 
@@ -44,7 +44,7 @@ Los de `ui/` (los estilos sueltos de las superficies, en `ui/surfaces.ts`; los t
 - **Todo diálogo es `Modal`** (tamaños, regla 10); una confirmación, `ConfirmDialog`, con el texto como la muestra «Confirmación».
 - **Toda hoja de abajo del celular es `BottomSheet`** (la cadena, las preguntas, el visor de pila), opaca de borde a borde (regla 11): una sola a la vez (`SheetHost`; en el automático gana la pregunta, luego la ficha, luego el visor; lo tapado vuelve con «‹»), se arrastra y lo que se decide va en su pie. Si la mesa la sabe, la pregunta dice arriba la fase y el turno (`PromptTurnContext`). En escritorio, todo cartel, diálogo y visor de la mesa se arrastra por la cabeza (`useDraggableOffset`).
 - **`Switch disabled`:** el porqué va en el texto de al lado.
-- **`Icon` es el único set:** nada de SVG suelto. El $ de los precios va sin círculo (el del círculo no está en el registro).
+- **`Icon` es el único set:** nada de SVG suelto.
 - **Las cartas enteras, de a varias, se inclinan** hacia el mouse (`TiltCard`, `CardArt tilt`) y no llevan hovers propios; nada que se toque va adentro del elemento con `TILT_ART` (se inclinaría con la carta).
 - **Todo texto de efecto va por `CardEffectText`**, nunca en un `<p>` suelto (`docs/motor-de-cartas.md`).
 - **La mesa:** sus reglas, en `docs/duelo.md` y `docs/duelos-automaticos.md`; acá, las reglas 7 a 9.

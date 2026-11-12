@@ -9,6 +9,7 @@ import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
+import { PaletteSwitcher } from '../ui/PaletteSwitcher'
 import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
 import { AppBrand } from './AppBrand'
 import { BackupActions } from './BackupActions'
@@ -78,6 +79,12 @@ export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
             {t('shell.settings.language')}
           </h2>
           <LanguageSwitcher variant="segmented" />
+        </section>
+        <section aria-labelledby={`${id}-palette`} className="grid gap-2">
+          <h2 id={`${id}-palette`} className={cx(NAV_OVERLINE, 'm-0')}>
+            {t('common.palette')}
+          </h2>
+          <PaletteSwitcher variant="segmented" />
         </section>
         <section aria-labelledby={`${id}-backup`} className="grid gap-2">
           <h2 id={`${id}-backup`} className={cx(NAV_OVERLINE, 'm-0')}>

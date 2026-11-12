@@ -14,6 +14,10 @@ export const common = {
   'common.delete': 'Borrar',
   'common.save': 'Guardar',
   'common.language': 'Idioma',
+  // Las paletas (`ui/PaletteSwitcher`): Carbón es la de fábrica; Índigo, la de antes.
+  'common.palette': 'Colores',
+  'common.palette.carbon': 'Carbón',
+  'common.palette.indigo': 'Índigo',
   'common.selectPlaceholder': 'Elegir',
   'common.selectCount': { one: '{count} elegido', other: '{count} elegidos' },
   'common.siteDescription': 'Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!: armá tu deck, clasificá cartas y medí su consistencia.',
