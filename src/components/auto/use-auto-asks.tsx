@@ -549,10 +549,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     [snap.overlay.limits, seat, effectLabel, nameOf],
   )
   // De dónde es (el chip y el grupo de `CardPicker`): lo que sólo se nombra por código, de ningún lado.
+  // La carta sin imagen, sobre el color de su tipo: el de tu carta (o de una igual a las tuyas) o, del rival, su tipo del `.cdb` si llegó (`cards`).
   const pickCardOf = (card: AskCard, key: string): PickCard => {
     const from = card.place === 'pile' ? card.pile : card.place === 'none' ? undefined : card.place
+    const code = card.ref ? codeOf(card.ref) || card.code : card.code
+    const api = (card.ref?.side === 'mine' ? cardsById.get(card.ref.id)?.apiCard : undefined) ?? byCode.get(code)?.apiCard
+    const frame = api ? frameKindOf(api.frameType, api.cardType) : frameOfType(cards?.get(code)?.type ?? 0)
 
-    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(from && card.ref ? pickPlace(from, card.ref.side === 'theirs') : {}) }
+    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(frame.kind === 'neutral' ? {} : { frame }), ...(from && card.ref ? pickPlace(from, card.ref.side === 'theirs') : {}) }
   }
 
   // ── La pregunta pendiente: se abre con la mesa del núcleo (`session.adapter`) en el mismo render en que llega (un rearme con pregunta es un solo commit); lo que se contesta solo, se
@@ -1200,8 +1204,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     phase: turnMine ? state.phase : (rival?.phase ?? theirs.phase),
     // Cambiás de fase en tus jugadas del turno y en la ventana de una fase tuya.
     myTurn: shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
-    // De quién es el turno, para que las preguntas digan la fase: sólo si el núcleo ya empezó uno (antes, no se dice).
-    ...(snap.overlay.turnPlayer !== null && turnNumber > 0 ? { turnMine } : {}),
     respond,
     attack,
     ...(aim ? { aim } : {}),
@@ -1278,8 +1280,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ...(desktop ? { detail } : {}),
     onPeek: dock.lock,
     onHover: dock.hover,
-    // Lo que se tocó y quedó fijo en el detalle (una carta, un eslabón, una del rival): la columna de escritorio pasa a «Carta».
-    peekLock: dock.locked ? dock.shown : null,
     onRivalHover,
     rivalViewing: rivalPile !== null,
     onActivity,

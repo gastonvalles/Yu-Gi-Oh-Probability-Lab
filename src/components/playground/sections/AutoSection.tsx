@@ -696,7 +696,7 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     >
       <div className="relative isolate h-128 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
-        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
+        <div className="pointer-events-none absolute inset-x-0 top-3 flex h-80 justify-center px-4">
           <ChainStage rows={[{ number: 1, mine: false, ...ASH, state: 'chained' }]} current={-1} />
         </div>
         <Presence>

@@ -74,7 +74,7 @@ interface BottomSheetProps extends Omit<HTMLAttributes<HTMLDivElement>, 'childre
 }
 
 /**
- * La hoja de abajo del celular, una sola para todo (Gastón, 2026-11-02: «uno estandarizado que se use siempre», sin espacios vacíos y que se arrastre): la cadena (`ChainSheet`), las preguntas de la
+ * La hoja de abajo del celular, una sola para todo (Gastón, 2026-11-02: «uno estandarizado que se use siempre», sin espacios vacíos y que se arrastre): las preguntas de la
  * mesa (`MatPrompt` hasta 1101 px) y el visor de una pila (`PileViewer`). Muestras: «Hoja de abajo» en Diálogos y la hoja de la cadena en Auto.
  * - **Se arrastra siempre** desde su franja de arriba (el asa y `head`/`peek`: `useSheetDrag`, sigue al dedo y decide un tirón o 64 px) o se toca; el asa es un `button` con `aria-expanded`.
  * - **Dos alturas:** subida, todo; bajada, la fila `peek` (o la tira del asa, 44 px, con el título). `footer` va debajo en las dos. Arranca subida y `raiseKey` la vuelve a subir.

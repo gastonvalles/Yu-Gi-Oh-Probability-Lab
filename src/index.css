@@ -118,8 +118,6 @@
   --animate-side-drawer: side-drawer 200ms var(--ease-out) both;
   --animate-nav-scrim: nav-scrim 200ms var(--ease-out) both;
   --animate-pop: pop var(--motion-duration) var(--ease-snap) both;
-  /* Un eslabón nuevo en la cinta de la cadena: entra desde el borde por donde crece la cadena (sólo opacidad y transform). */
-  --animate-chain-link-in: chain-link-in 360ms var(--ease-snap) both;
   /* Lo pasajero (el −N de las vidas, el globo de una señal, el emoji del rival): entra como un pop, se queda y se funde al final. La duración la pone cada uso con `style` (animationDuration). */
   --animate-linger: linger 1600ms var(--ease-out) both;
   /* Una carta que se suma a una zona del deck: sube un poco y se asienta (sin relleno hacia adelante: no deja un contexto de apilado detrás). */
@@ -189,35 +187,6 @@
   --animate-plate-in: plate-in 700ms var(--ease-snap) both;
   --animate-banner-veil: banner-veil 2.8s var(--ease-out) both;
   --animate-banner-rise: banner-rise 600ms var(--ease-out) 350ms both;
-  /* La cadena animada (prototipo de TI-138): sólo transform y opacity; cada uso, con `motion-reduce:animate-none`. Las curvas, las de docs/movimiento.md. */
-  /* Un eslabón nuevo encaja: entra de 40 px, se pasa 3 y se traba. */
-  --animate-link-in: link-in 300ms var(--ease-snap) both;
-  /* La carta que se encadena se levanta 10 px y vuelve. */
-  --animate-lift: lift 320ms var(--ease-out);
-  /* La carta que resuelve ejecuta su efecto: sube 8 px y vuelve. */
-  --animate-act: act 160ms var(--ease-out);
-  /* El trazo recto que une las cartas de la cadena crece desde su punta (scaleX). */
-  --animate-seg-in: seg-in 280ms var(--ease-out) both;
-  /* El número del trazo aparece cuando el trazo ya creció. */
-  --animate-seg-num-in: fade-in 200ms var(--ease-out) 160ms both;
-  /* Una capa ya dibujada se enciende: la lima del que resuelve, la menta de lo resuelto, el rojo de lo negado. */
-  --animate-glow-in: fade-in 120ms var(--ease-out) both;
-  /* El eslabón que resuelve sube 4 px. */
-  --animate-rise: rise 120ms var(--ease-out) forwards;
-  /* La cadena se tensa: los eslabones de cada lado tiran 7 px hacia el que resuelve. */
-  --animate-pull-l: pull-l 200ms var(--ease-in-out);
-  --animate-pull-r: pull-r 200ms var(--ease-in-out);
-  /* El eslabón resuelto o negado se parte en dos mitades que se separan y se funden. */
-  --animate-split-a: split-a 260ms var(--ease-out) forwards;
-  --animate-split-b: split-b 260ms var(--ease-out) forwards;
-  /* El rótulo de un eslabón que se parte se apaga antes que sus mitades. */
-  --animate-split-fade: fade-out 140ms var(--ease-out) forwards;
-  /* «Sin efecto»: el eslabón se apaga deslizándose 26 px hacia abajo. */
-  --animate-slide-off: slide-off 260ms var(--ease-out) forwards;
-  /* Lo negado: el tajo rojo se dibuja de punta a punta. */
-  --animate-slash-in: slash-in 120ms var(--ease-out) forwards;
-  /* Se apaga: el trazo de un eslabón que se fue y lo que queda de la cadena al final. */
-  --animate-fade-out: fade-out 200ms var(--ease-out) forwards;
   /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida); el «−N» chico de la chapa usa `animate-linger`. */
   --animate-life-bump: life-bump 240ms var(--ease-out);
   /* La carta que un ataque saca del campo se parte en dos (`AttackFx`): las mitades del eslabón, más lentas. */
@@ -281,18 +250,6 @@
     from {
       opacity: 0;
       transform: translateY(6px) scale(0.9);
-    }
-  }
-
-  @keyframes chain-link-in {
-    from {
-      opacity: 0;
-      transform: translateX(1rem) scale(0.85);
-    }
-
-    to {
-      opacity: 1;
-      transform: none;
     }
   }
 
@@ -1053,103 +1010,6 @@
     }
   }
 
-  @keyframes link-in {
-    from {
-      opacity: 0;
-      transform: translateX(40px);
-    }
-
-    70% {
-      opacity: 1;
-      transform: translateX(-3px);
-    }
-
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-
-  @keyframes lift {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    40% {
-      transform: translateY(-10px);
-    }
-  }
-
-  @keyframes act {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    50% {
-      transform: translateY(-8px);
-    }
-  }
-
-  @keyframes seg-in {
-    from {
-      transform: scaleX(0);
-    }
-
-    to {
-      transform: scaleX(1);
-    }
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes fade-out {
-    from {
-      opacity: 1;
-    }
-
-    to {
-      opacity: 0;
-    }
-  }
-
-  @keyframes rise {
-    to {
-      transform: translateY(-4px);
-    }
-  }
-
-  @keyframes pull-l {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    50% {
-      transform: translateX(7px);
-    }
-  }
-
-  @keyframes pull-r {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    50% {
-      transform: translateX(-7px);
-    }
-  }
-
   @keyframes split-a {
     to {
       opacity: 0;
@@ -1161,23 +1021,6 @@
     to {
       opacity: 0;
       transform: translate(22px, 6px) rotate(10deg);
-    }
-  }
-
-  @keyframes slide-off {
-    to {
-      opacity: 0;
-      transform: translateY(26px);
-    }
-  }
-
-  @keyframes slash-in {
-    from {
-      transform: rotate(-18deg) scaleX(0);
-    }
-
-    to {
-      transform: rotate(-18deg) scaleX(1);
     }
   }
 

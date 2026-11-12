@@ -22,7 +22,7 @@ import { Button } from '../../ui/Button'
 import { BAR_SEAT, DuelLine, DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { LifeBadge } from '../../duel/LifeScore'
 import { OptionsGear } from '../../auto/AutoBar'
-import { ChainLine, type ChainNoticeRow } from '../../auto/ChainNotice'
+import { ChainStage, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { IconButton } from '../../ui/IconButton'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
 import type { FeedEntry } from '../../duel/use-duel-feed'
@@ -144,7 +144,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
   const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
   const mineTurn = turn !== 'rival'
   const lane: LaneNotice | null = line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : line === 'moment' ? { kind: 'ask', text: 'Gene-Warped Warwolf ataca a Sky Striker Ace - Zeke', actions: [] } : null
-  const content = line === 'chain' ? <ChainLine rows={SEAT_CHAIN} focus={1} onPick={() => {}} /> : lane ? <DuelLine lane={lane} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} /> : null
+  const content = line === 'chain' ? <ChainStage rows={SEAT_CHAIN} current={-1} /> : lane ? <DuelLine lane={lane} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} /> : null
   const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} compact active={!mineTurn} />
   const mine = <LifeBadge name="Vos" label="Vos" life={life.mine} mine active={mineTurn} />
   const buttons = (

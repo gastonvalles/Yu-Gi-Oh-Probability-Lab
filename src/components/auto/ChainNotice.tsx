@@ -51,7 +51,7 @@ type Pose = 'slot' | 'center' | 'out'
 const slotOf = (number: number) => (number - 1) % SHOWN
 
 /**
- * La cadena en grande del duelo automático (K-01 a K-03 del kit; las referencias son Master Duel). La pone la mesa en `duel.chain`, en la capa centrada sobre el campo.
+ * La cadena en grande del duelo automático (K-01 a K-03 del kit; las referencias son Master Duel). La pone la mesa en `duel.chain`, en la capa centrada sobre el campo: llena su alto (3:4; quien la usa le da un alto).
  * - **Armar:** cada activación entra grande y se acomoda inclinada en su lugar (`starting:`), con su número enorme (`text-hit`, del color de su dueño) y el borde del color de su tipo; un
  *   eslabón la une con la anterior. Una activación sola entra igual, con su «1».
  * - **Resolver**, del último al primero (`current`): la carta va al centro, crece y, cuando empieza la siguiente, se va hacia arriba; su eslabón se corta. La negada o sin efecto se tacha antes.
@@ -67,7 +67,7 @@ export function ChainStage({ rows, current, done = false }: { rows: readonly Cha
 
   if (!row) return null
   return (
-    <div data-testid="chain-notice" data-chain-stage="" className="pointer-events-none relative mx-auto aspect-3/4 w-full max-w-md select-none">
+    <div data-testid="chain-notice" data-chain-stage="" className="pointer-events-none relative aspect-3/4 h-full max-w-full select-none">
       <svg aria-hidden="true" viewBox="0 0 300 400" preserveAspectRatio="none" className="absolute inset-0 size-full">
         {rows.slice(1).map((link) => {
           const [x1, y1] = BOND[slotOf(link.number - 1)]!
@@ -131,5 +131,3 @@ export function ChainStage({ rows, current, done = false }: { rows: readonly Cha
   )
 }
 
-/** ponytail: el nombre viejo, sólo para la muestra de la línea del celular del catálogo (`DuelSection.tsx`, de TI-193); se borra cuando esa muestra deje de usarla. */
-export const ChainLine = ({ rows }: { rows: readonly ChainNoticeRow[]; focus?: number; onPick?: unknown }) => <ChainStage rows={rows} current={-1} />

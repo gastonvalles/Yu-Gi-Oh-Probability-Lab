@@ -1,10 +1,8 @@
-import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
-import { createPortal } from 'react-dom'
+import { useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import type { ChainBadgeData } from '../../app/card-glow'
 import { printedBadge, statShift } from '../../app/field-stats'
-import { cuesBetween, fated, play, type Cue, type LinkLook } from '../../app/chain-motion'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { PHASES, type MatPhase, type MatSpot } from '../../app/practice-mat'
@@ -187,7 +185,7 @@ export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
 
 /**
  * La insignia del eslabón de la cadena («CL1», «CL1·3» si la carta tiene dos), pegada arriba a la izquierda de la carta o de la pila (`className` la ubica), montada sobre el borde de arriba para
- * no tapar el nombre. Recta y naranja, el color de lo que se activa (el mismo del trazo que une las cartas de la cadena, `ChainTrace`), con el texto carbón; de quién es lo dice su eslabón en la línea.
+ * no tapar el nombre. Recta y naranja, el color de lo que se activa, con el texto carbón; de quién es lo dice la cadena en grande.
  * Sólo se mira: `aria-hidden`, y el eslabón va en el nombre de la carta (`chainLinkLabel`). Se va con el aviso de la cadena.
  * Negado o sin efecto (`voided`): la insignia va tachada y el arte de la carta, gris y latiendo (`VOIDED_ART`).
  */
@@ -202,165 +200,6 @@ export function ChainBadge({ link, className }: { link: ChainBadgeData; classNam
     >
       {t('auto.link.badge', { numbers: link.numbers.join('·') })}
     </span>
-  )
-}
-
-/**
- * Los pasos de la cadena animada (`cuesBetween`, `app/chain-motion.ts`) en su momento: cada cambio de los eslabones (número y estado) o el final (`done`) da los suyos y `onCue` los aplica.
- * Un cambio que llega antes de que terminen los del anterior los adelanta (quedan secos, en su lugar). Con movimiento reducido o `still`, nada: el estado lo dicen el color y el texto.
- */
-export function useChainCues(rows: readonly LinkLook[], done: boolean, onCue: (cue: Cue) => void, still = false) {
-  const before = useRef<{ rows: readonly LinkLook[]; done: boolean } | null>(null)
-  const apply = useRef(onCue)
-  const signature = `${rows.map((row) => `${row.number}:${row.state}`).join('|')}${done ? '|fin' : ''}`
-
-  useLayoutEffect(() => {
-    apply.current = onCue
-  })
-  useLayoutEffect(() => {
-    const prev = before.current
-
-    before.current = { rows, done }
-    if (still || prefersReducedMotion()) return
-    const run = play(cuesBetween(prev?.rows ?? null, rows, done, prev?.done ?? false), ({ cue }) => apply.current(cue))
-
-    return run.finish
-    // `signature` resume `rows` y `done`: un dibujo con la misma cadena no da pasos.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, still])
-}
-
-/** El centro de `element` en el plano de `root` (su caja sin transformar: en la vista 3D, el campo antes de inclinarse), sumando `offsetLeft`/`offsetTop` hasta llegar a él. */
-function centerIn(element: HTMLElement, root: HTMLElement): [number, number] {
-  let x = element.offsetWidth / 2
-  let y = element.offsetHeight / 2
-
-  for (let node: HTMLElement | null = element; node && node !== root; node = node.offsetParent as HTMLElement | null) {
-    x += node.offsetLeft
-    y += node.offsetTop
-  }
-  return [x, y]
-}
-
-interface TraceSegment {
-  /** Une CL`from` con CL`from + 1`. */
-  from: number
-  x: number
-  y: number
-  length: number
-  angle: number
-}
-
-/** Dónde está cada eslabón en el campo: la casilla de la carta (o la pila) que lleva su insignia. */
-const anchorsIn = (field: HTMLElement) => {
-  const anchors = new Map<number, HTMLElement>()
-
-  for (const badge of field.querySelectorAll<HTMLElement>('[data-chain-link]')) for (const n of (badge.dataset.chainLink ?? '').split(',')) if (badge.parentElement) anchors.set(Number(n), badge.parentElement)
-  return anchors
-}
-
-function segmentsIn(field: HTMLElement, count: number): TraceSegment[] {
-  const anchors = anchorsIn(field)
-  const segments: TraceSegment[] = []
-
-  for (let from = 1; from < count; from += 1) {
-    const a = anchors.get(from)
-    const b = anchors.get(from + 1)
-
-    if (!a || !b || a === b) continue
-    const [x, y] = centerIn(a, field)
-    const [x2, y2] = centerIn(b, field)
-
-    segments.push({ from, x, y, length: Math.hypot(x2 - x, y2 - y), angle: (Math.atan2(y2 - y, x2 - x) * 180) / Math.PI })
-  }
-  return segments
-}
-
-const sameSegments = (a: readonly TraceSegment[], b: readonly TraceSegment[]) => a.length === b.length && a.every((seg, i) => (Object.keys(seg) as Array<keyof TraceSegment>).every((key) => Math.abs(seg[key] - b[i]![key]) < 0.5))
-
-/** Le da a la casilla de la carta del eslabón `n` una animación de una vez (se levanta al encadenarse, ejecuta al resolverse) y se la saca al terminar. */
-function bump(field: HTMLElement | null | undefined, n: number, classes: readonly string[], ms: number) {
-  const cell = field ? anchorsIn(field).get(n) : undefined
-
-  if (!cell) return
-  cell.classList.remove(...classes)
-  cell.classList.add(...classes)
-  window.setTimeout(() => cell.classList.remove(...classes), ms)
-}
-
-/**
- * El trazo de la cadena en la mesa: las cartas de la cadena unidas en orden por un trazo recto naranja numerado («1–2», «2–3»), de casilla a casilla de las insignias `CL#`. Cada trazo es un
- * `span` rotado que crece con `scaleX` (`animate-seg-in`, el número después); el de un eslabón que se resolvió (o toda la cadena al terminar) se apaga (`animate-fade-out`). Al encadenarse, la carta
- * se levanta (`animate-lift`); al resolverse, ejecuta (`animate-act`). Se dibuja adentro del campo (`data-chain-trace`, el lugar que le deja la mesa; `slot` en el catálogo) y se mide con
- * `offsetLeft`/`offsetTop` en su plano, así en la vista 3D se inclina con él (la caja de `getBoundingClientRect` sería la proyectada). Decorativo: lo que pasa lo dicen la línea y las insignias.
- */
-export function ChainTrace({ rows, done = false, slot, still = false }: { rows: readonly LinkLook[]; done?: boolean; slot?: HTMLElement | null; still?: boolean }) {
-  const [host, setHost] = useState<HTMLElement | null>(null)
-  const [segments, setSegments] = useState<TraceSegment[]>([])
-  const count = rows.length
-
-  useLayoutEffect(() => {
-    setHost(slot ?? document.querySelector<HTMLElement>('[data-chain-trace]'))
-  }, [slot])
-  useLayoutEffect(() => {
-    const field = host?.parentElement
-
-    if (!field) return
-    let frame = 0
-    const measure = () => {
-      frame = 0
-      const next = segmentsIn(field, count)
-
-      setSegments((prev) => (sameSegments(prev, next) ? prev : next))
-    }
-    const soon = () => {
-      if (!frame) frame = requestAnimationFrame(measure)
-    }
-    // Las cartas cambian de lugar (un costo, una Invocación) y el campo de tamaño: se vuelve a medir, una vez por cuadro.
-    const moved = new MutationObserver(soon)
-    const resized = typeof ResizeObserver === 'function' ? new ResizeObserver(soon) : null
-
-    measure()
-    moved.observe(field, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-chain-link'] })
-    resized?.observe(field)
-    return () => {
-      cancelAnimationFrame(frame)
-      moved.disconnect()
-      resized?.disconnect()
-    }
-  }, [host, count])
-  useChainCues(
-    rows,
-    done,
-    (cue) => {
-      if (cue.kind === 'enter') bump(host?.parentElement, cue.link, ['animate-lift', 'motion-reduce:animate-none'], 360)
-      if (cue.kind === 'act') bump(host?.parentElement, cue.link, ['animate-act', 'motion-reduce:animate-none'], 200)
-    },
-    still,
-  )
-
-  if (!host) return null
-  const off = (from: number) => done || fated(rows.find((row) => row.number === from + 1)?.state ?? 'chained')
-  // Sin movimiento (el catálogo; la preferencia del sistema la toma `motion-reduce:`): aparece y se va seco.
-  const look = (from: number, grow: string) => (off(from) ? (still ? 'invisible' : 'animate-fade-out motion-reduce:invisible motion-reduce:animate-none') : still ? null : grow)
-
-  return createPortal(
-    segments.map((seg) => (
-      <Fragment key={seg.from}>
-        <span
-          data-chain-segment={`${seg.from}-${seg.from + 1}`}
-          className={cx('absolute h-0.75 origin-left bg-warning', look(seg.from, 'animate-seg-in motion-reduce:animate-none'))}
-          style={{ left: seg.x, top: seg.y - 1.5, width: seg.length, rotate: `${seg.angle}deg` }}
-        />
-        <span
-          className={cx('absolute -translate-x-1/2 -translate-y-1/2 bg-background px-1 text-micro font-extrabold leading-tight tabular-nums text-warning ring-1 ring-warning', look(seg.from, 'animate-seg-num-in motion-reduce:animate-none'))}
-          style={{ left: seg.x + (Math.cos((seg.angle * Math.PI) / 180) * seg.length) / 2, top: seg.y + (Math.sin((seg.angle * Math.PI) / 180) * seg.length) / 2 }}
-        >
-          {`${seg.from}–${seg.from + 1}`}
-        </span>
-      </Fragment>
-    )),
-    host,
   )
 }
 

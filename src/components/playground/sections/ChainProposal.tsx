@@ -91,7 +91,7 @@ function ChainStageSample() {
         </Button>
         {took !== null ? <Tag>{`Duró ${(took / 1000).toFixed(1)} s, con la salida`}</Tag> : null}
       </div>
-      <div className="relative grid min-h-128 place-items-center overflow-hidden border border-border-subtle bg-card-background p-4">
+      <div className="relative flex h-128 items-center justify-center overflow-hidden border border-border-subtle bg-card-background p-4">
         {feed && rows.length > 0 ? <ChainStage key={run?.started} rows={rows} current={feed.current} done={feed.done} /> : <p className="m-0 text-micro text-muted">Sin cadena: tocá un botón.</p>}
       </div>
     </Specimen>

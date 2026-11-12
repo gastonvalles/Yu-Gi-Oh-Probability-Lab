@@ -172,10 +172,6 @@ const onResize = (listener: () => void) => {
 }
 const screenSize = () => `${window.innerWidth}x${window.innerHeight}`
 
-/** Lo que baja el aviso de la cadena desde el borde de la barra: el aviso de la línea (44 px) va justo debajo de ella, y el de la cadena, debajo de ese. */
-const CHAIN_BELOW_BAR_PX = 52
-/** Lo que mide un eslabón de la lista de la cadena (con el aire de la lista): con menos lugar que eso, la pila queda en su resumen mientras se pregunta. */
-const CHAIN_ROW_PX = 56
 /** Lo menos que mide de alto una carta del cartel de la pregunta (`--prompt-art`): antes que cortarla se achica hasta acá (con menos lugar que eso, recién ahí su cuerpo se desplaza). */
 const PROMPT_ART_MIN_PX = 32
 
@@ -213,8 +209,6 @@ export interface DuelMatLink {
   /** La fase del duelo, igual para los dos (la de quien tiene el turno), y si el turno es tuyo: sólo quien tiene el turno cambia de fase. */
   phase: MatPhase
   myTurn: boolean
-  /** De quién es el turno (el duelo automático, ya empezado). La mesa ya no lo lee (ningún cartel lo dice: la fase es su botón y el turno, la chapa); lo da `use-auto-asks`. */
-  turnMine?: boolean
   /**
    * Lo que el rival acaba de hacer y se avisa (su ataque): un cartel arriba con `caption` y la espada de su monstruo (`attackerId`, el id que él le dio) a tu carta
    * (`targetId`, tu id real) o, sin `targetId`, a tu barra de vida; cambiar `key` lo vuelve a mostrar.
@@ -241,14 +235,10 @@ export interface DuelMatLink {
   links?: ReadonlyMap<string, ChainBadgeData>
   /** Lo que hay que contestar ahora (la pregunta del rival de pasar de fase): va en el medio de la mesa, centrado en su columna y encima del campo, sin fondo que la tape ni empujar nada. */
   prompt?: ReactNode
-  /** La cadena (duelo automático: `ChainNotice`), en todos los anchos una capa centrada sobre el campo (en escritorio, sobre la columna del medio) que deja pasar los toques; la llena la cadena en grande. */
+  /** La cadena en grande (duelo automático: `ChainStage`), en todos los anchos una capa centrada sobre el campo (en escritorio, sobre la columna del medio) que deja pasar los toques. */
   chain?: ReactNode
   /** Lo de la línea en el celular (`DuelLine`): un aviso o un pedido del rival, que flota sobre tu mano sólo mientras está. Sin nada, no se pasa. */
   line?: ReactNode
-  /** Ya no se lee (la columna con pestañas se fue): lo arma `use-auto-asks`, que lo saca con la cadena en grande. */
-  chainList?: ReactNode
-  /** Ya no se lee (ídem). */
-  peekLock?: unknown
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
   pointed?: { card?: string; pile?: MatPile } | null
   /** Señalar una carta mía a la vista en el campo (se ve en las dos pantallas un rato; no es una jugada). */
@@ -2578,9 +2568,8 @@ function PracticeMatBody({
       const left = Math.min(Math.max((first.left + last.right) / 2 - width / 2, from), to - width)
       const right = left + width
       const bar = rails ? null : column.firstElementChild?.getBoundingClientRect().bottom
-      // La píldora o la pila de la cadena (arriba, al medio de la mesa) no se pisa con la ventana: ésta empieza debajo; sólo si no le queda lugar para dos renglones (`STRIP_MIN_REM`), la pisa.
-      const chain = chainRef.current?.querySelector('[data-testid="chain-notice"]')?.getBoundingClientRect()
-      const top = Math.max(area.top + 8, Math.min(Math.max(Math.max(area.top, bar ?? area.top) + 8, chain ? chain.bottom + 8 : 0), row.bottom - STRIP_MIN_REM * rem))
+      // Debajo de la barra; sólo si no le queda lugar para dos renglones (`STRIP_MIN_REM`), la pisa. La cadena en grande no ataja toques: no se esquiva.
+      const top = Math.max(area.top + 8, Math.min(Math.max(area.top, bar ?? area.top) + 8, row.bottom - STRIP_MIN_REM * rem))
 
       slot.style.setProperty('--strip-top', `${Math.round(top - box.top)}px`)
       slot.style.setProperty('--strip-left', `${Math.round(left - box.left)}px`)
@@ -2636,8 +2625,7 @@ function PracticeMatBody({
   // lo minimizado apoyan su borde de abajo sobre la fila de las Zonas Extra y crecen hacia el campo del rival (tu campo y la fila Extra se ven siempre); las hojas del duelo (`Modal anchor="mat"`) van
   // al centro de esa fila. No esquivan nada ni se corren: se mide la fila (una sola fase de lectura y una de escritura) con la ventana, el scroll de la columna y el tamaño de la mesa, y se escribe
   // en la capa de la pregunta (`top`/`bottom`) y en variables de la página (`--mat-x`, `--mat-y`, `--mat-extra`, `--mat-room`, `--mat-w`), porque las hojas van en un portal.
-  // La pila de la cadena (arriba) comparte con la pregunta la franja del campo del rival: si no entran las dos, en el celular la pila sube al lugar del aviso de la línea (vacío mientras se pregunta),
-  // su lista se acorta a lo que queda (se desplaza) y, sin lugar ni para un eslabón, queda en su resumen (`data-squeezed`, con su flecha); la pregunta nunca se achica por ella.
+  // La cadena en grande va en su capa, sobre el campo: no se corre por la pregunta ni la corre.
   const promptLayerRef = useRef<HTMLDivElement | null>(null)
   const promptRef = useRef<HTMLDivElement | null>(null)
   const hasPrompt = Boolean(duel?.prompt)
@@ -2652,25 +2640,13 @@ function PracticeMatBody({
     const page = document.documentElement.style
     const vars = ['--mat-x', '--mat-y', '--mat-extra', '--mat-room', '--mat-w']
     let frame = 0
-    const unband = () => {
-      const chain = chainRef.current
-
-      if (!chain) return
-      delete chain.dataset.squeezed
-      chain.style.translate = ''
-      chain.querySelector<HTMLElement>('[data-chain-list]')?.style.removeProperty('max-height')
-    }
     const set = (style: CSSStyleDeclaration, name: string, value: string) => {
       if (style.getPropertyValue(name) !== value) style.setProperty(name, value)
     }
     const place = () => {
-      const chain = chainRef.current
-      const notice = chain?.querySelector('[data-testid="chain-notice"]') ?? null
       const box = promptRef.current
       const open = Boolean(box && !box.querySelector('[data-minimized]'))
 
-      // Lo que dejó la vez anterior en la pila, borrado antes de medir (sólo con una cadena).
-      if (notice) unband()
       // Las lecturas, todas juntas.
       const area = section.getBoundingClientRect()
       const col = column.getBoundingClientRect()
@@ -2678,12 +2654,7 @@ function PracticeMatBody({
       // Nunca sobre la barra de arriba (sin laterales, en un duelo, es lo primero de la columna).
       const bar = Math.max(col.top, (isDuel && !rails ? column.firstElementChild?.getBoundingClientRect().bottom : null) ?? col.top)
       const spot = matSpot(extra, { top: col.top, bottom: Math.min(col.bottom, window.innerHeight), left: col.left, right: col.right }, bar)
-      const list = notice ? chain!.querySelector<HTMLElement>('[data-chain-list]') : null
-      const listBox = list?.getBoundingClientRect()
-      // Sube lo justo, nunca por encima de la barra (con la mesa más alta que la ventana, la píldora ya está arriba de todo).
-      const lift = notice && !section.querySelector('[data-lane]') ? Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - bar))) : 0
       const boxHeight = box?.getBoundingClientRect().height ?? 0
-      const promptTop = spot && open && box ? Math.max(bar, spot.top - boxHeight) : null
       // Las cartas del cartel (escritorio): lo que mide todo lo demás (el cartel entero, con lo que se desplaza, menos una carta) y lo que queda para la carta, del alto de la capa.
       const body = isDesktop && open ? box?.querySelector('[data-prompt-body]') : null
       const art = body?.querySelector('[data-pick-art]')
@@ -2708,14 +2679,6 @@ function PracticeMatBody({
         if (!isDesktop || !box) layer.style.removeProperty('--prompt-art')
         else if (rest !== null) set(layer.style, '--prompt-art', `${Math.max(PROMPT_ART_MIN_PX, Math.floor(spot.top - bar - rest))}px`)
       }
-      if (!chain || !notice) return
-      if (lift > 0 && promptTop !== null) chain.style.translate = `0 ${-lift}px`
-      if (!list || !listBox || promptTop === null) return
-      // La hoja de la cadena, lo que queda.
-      const room = Math.min(listBox.height, promptTop - 8 - (listBox.top - lift))
-
-      if (room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
-      else if (room < listBox.height) list.style.maxHeight = `${Math.floor(room)}px`
     }
     const later = () => {
       cancelAnimationFrame(frame)
@@ -2736,7 +2699,6 @@ function PracticeMatBody({
       column.removeEventListener('scroll', later)
       section.removeEventListener('cardmove', later)
       cancelAnimationFrame(frame)
-      unband()
       for (const name of vars) page.removeProperty(name)
     }
   }, [fieldNode, hasPrompt, hasChain, view, rails, isDesktop, isDuel])
@@ -2850,7 +2812,6 @@ function PracticeMatBody({
       )}
       role="status"
       aria-label={t('practice.mat.currentStep')}
-      // Eligiendo, la hoja de la cadena del celular (`ChainSheet`) sube sobre esta línea.
       data-mat-choosing={choosing ? '' : undefined}
     >
       {pickingText ? (
@@ -3156,8 +3117,6 @@ function PracticeMatBody({
             </span>
           ) : null}
           {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
-          {/* El lugar del trazo de la cadena (`ChainTrace`, por portal): adentro del campo, así en 3D se inclina con él. */}
-          {duel?.auto ? <span data-chain-trace="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-12" /> : null}
         </div>
         </div>
 
@@ -3547,8 +3506,7 @@ function PracticeMatBody({
           deja pasar los toques; sólo lo suyo los recibe. */}
       {duel?.chain ? (
         <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute inset-x-0 top-0 z-[125] flex items-center justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
-          {/* La pila de la cadena (`ChainLine`) en una franja de 96 px, hasta que la reemplace la cadena en grande. */}
-          {phone || isDesktop ? <div className="pointer-events-auto relative h-24 w-full max-w-160">{duel.chain}</div> : duel.chain}
+          {duel.chain}
         </div>
       ) : null}
 
