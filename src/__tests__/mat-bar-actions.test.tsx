@@ -214,9 +214,9 @@ describe('la barra de la mesa es una sola', () => {
     expect(after(rival)).toBe(false)
     expect(after(mine)).toBe(true)
     expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-    // La fase, una sola vez: sin píldora en la barra; el botón del campo, sólo con su sigla (el nombre, en su `aria-label`).
+    // La fase, una sola vez: sin píldora en la barra; en el automático de escritorio, la pista de la línea de abajo del campo (el campo ya no lleva la ficha).
     expect(screen.queryByTestId('auto-phase')).toBeNull()
-    expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ })).toHaveTextContent(/^(DP|SP|M1|BP|M2|EP)$/)
+    expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ }).closest('[data-duel-line]')).not.toBeNull()
   })
 
   it('en el celular en vertical las vidas salen de la barra: las chapas van junto a cada lado (la tuya abajo con el turno y «Pasos y combos» en la botonera, la del rival junto a su mano) y el ⋯ no repite «Pasos y combos»', () => {
