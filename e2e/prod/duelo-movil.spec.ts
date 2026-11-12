@@ -1033,9 +1033,15 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     expect(await roundCorners(page), 'el final: esquinas rectas').toEqual([])
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'desborde horizontal del documento').toBeLessThanOrEqual(0)
 
+    // Sólo el bloque ataja toques: ⚙ (Opciones, con el registro del bot) se alcanza con el final abierto y con el campo solo.
+    expect(await onTop(page.locator('[data-mat-gear]')), '⚙ se toca con el final abierto').toBe(true)
     // «Ver el campo» deja la mesa sola; «Ver el resultado» lo reabre.
     await press(close, isMobile)
     await expect(hero, 'la ✕ deja el campo solo').toHaveCount(0)
+    expect(await onTop(page.locator('[data-mat-gear]')), '⚙ se toca con el campo solo').toBe(true)
+    await press(page.locator('[data-mat-gear]'), isMobile)
+    await expect(page.locator('[data-auto-panel]').getByText(/Qué hizo el bot/).first(), 'el registro «Qué hizo el bot y por qué» sigue en ⚙').toBeVisible()
+    await page.keyboard.press('Escape')
     await press(page.getByRole('button', { name: 'Ver el resultado' }), isMobile)
     await expect(hero, '«Ver el resultado» lo reabre').toBeVisible()
 
