@@ -566,7 +566,7 @@ describe('auto-screen · mantener apretado', () => {
 
 describe('auto-screen · el visor de las pilas en escritorio', () => {
   beforeEach(() => {
-    // Desde 1101 px (sin el detalle fijo, que llega a los 1440): el de la mesa del duelo.
+    // Desde 1101 px: la columna «Carta · Cadena · Pasos» a la derecha (el detalle de la carta va en «Carta»).
     const media = window.matchMedia
 
     window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
@@ -584,13 +584,14 @@ describe('auto-screen · el visor de las pilas en escritorio', () => {
     expect(slot.className).toContain('top-[var(--strip-top,0.5rem)]')
     expect(slot.className).not.toContain('col-[')
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: /^Zeus/ }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    // Una sola jugada: su etiqueta pegada a la carta.
+    fireEvent.click(screen.getByRole('button', { name: 'Invocación Especial · Zeus' }))
     expect(fake.answers.at(-1)).toEqual({ type: 'select_idlecmd', action: 1, index: 0 })
     expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()
     expect(dispatches).toBe(0)
   })
 
-  it('la ficha de una carta es la misma que en el celular: la principal primero y destacada, «Ver carta» aparte (no es una jugada) y ni el menú pegado a la carta ni la hoja de la manual', () => {
+  it('la ficha de una carta va al pie de la pestaña «Carta», debajo del detalle: la principal primero y destacada, sin «Ver carta» (el detalle ya la muestra) y ni el menú pegado a la carta ni la hoja de la manual', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -598,9 +599,13 @@ describe('auto-screen · el visor de las pilas en escritorio', () => {
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
     const plays = within(sheet).getAllByRole('menuitem')
 
+    expect(sheet).toHaveAttribute('data-auto-panel', 'column')
+    expect(screen.getByRole('tab', { name: 'Carta' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Carta' })).toContainElement(sheet)
+    expect(within(screen.getByRole('tabpanel', { name: 'Carta' })).getByRole('region', { name: 'Detalle de la carta' })).toHaveTextContent('Ash Blossom')
     expect(plays.map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
     expect(plays[0]).toHaveClass('col-span-2')
-    expect(within(sheet).getByRole('button', { name: 'Ver carta' })).not.toHaveAttribute('role', 'menuitem')
+    expect(within(sheet).queryByRole('button', { name: 'Ver carta' })).toBeNull()
     expect(screen.queryByRole('menu', { name: 'Ash Blossom' })?.closest('[data-auto-panel]')).toBe(sheet)
   })
 })

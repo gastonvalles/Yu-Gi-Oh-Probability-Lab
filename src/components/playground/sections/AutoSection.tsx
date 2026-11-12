@@ -16,12 +16,14 @@ import { AutoCardSheet, AutoPhases } from '../../auto/AutoPanel'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
+import { ChainListRows } from '../../auto/chain-parts'
 import { ChainNotice } from '../../auto/ChainNotice'
 import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { AskWhy } from '../../duel/AskWhy'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
+import { DuelCardDock } from '../../duel/DuelCardDock'
 import { TheirHand } from '../../duel/DuelTable'
 import { PromptTurnContext } from '../../duel/MatPrompt'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
@@ -39,6 +41,7 @@ import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probab
 import { SheetHost, type SheetYield } from '../../ui/BottomSheet'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
+import { Tabs } from '../../ui/Tabs'
 import { cx } from '../../ui/cx'
 import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
@@ -344,9 +347,53 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
         <div className="flex flex-wrap items-start gap-4">
           {frame('w-full max-w-[24.375rem]', '390 px')}
           {frame('min-w-0 flex-1 basis-[38.75rem]', '1440 px: la ventana (arrastrala de la barra violeta, estirala del borde o la esquina; doble clic, a su lugar)', 'floating')}
+          <ColumnSample card={card} plays={plays} onAnswer={onAnswer} />
         </div>
       </SheetHost>
     </Specimen>
+  )
+}
+
+/**
+ * Desde 1101 px, sólo en el automático: la columna de la derecha con pestañas (`PracticeMat`). «Carta», el detalle de la carta tocada y su ficha al pie (`AutoCardSheet variant="column"`); «Cadena», la pila
+ * entera (`ChainListRows`); «Pasos», los pasos y combos de siempre (acá, vacío). Las flechas cambian de pestaña. Las preguntas siguen siendo ventanas.
+ */
+function ColumnSample({ card, plays, onAnswer }: { card: ApiCardSearchResult; plays: MenuItem[]; onAnswer: (answer: string) => void }) {
+  const [tab, setTab] = useState<'card' | 'chain' | 'side'>('card')
+  const rows = (['solved', 'solving', 'chained'] as const).map((state, index) => ({ number: index + 1, who: index === 1 ? 'Rival' : t('duel.bar.you'), mine: index !== 1, name: ASH.name, art: ASH.art, state }))
+
+  return (
+    <div className="grid w-80 content-start gap-2">
+      <p className="m-0 text-micro text-muted">Escritorio, sólo el automático: la columna</p>
+      <div className="mat-square flex h-[36rem] flex-col border border-border-subtle bg-background **:rounded-none! **:normal-case! **:tracking-normal!">
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          label={t('practice.panel.label')}
+          fullWidth
+          className="shrink-0 px-1"
+          options={[
+            { value: 'card', label: t('practice.column.card') },
+            { value: 'chain', label: t('auto.chain.title') },
+            { value: 'side', label: t('practice.panel.steps') },
+          ]}
+        />
+        {tab === 'card' ? (
+          <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3">
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <DuelCardDock peek={{ name: ASH.name, card }} />
+            </section>
+            <AutoCardSheet name={ASH.name} art={ASH.art} apiCard={card} items={plays} onClose={() => onAnswer('Cerrar')} variant="column" />
+          </div>
+        ) : tab === 'chain' ? (
+          <ol className="m-0 grid min-h-0 flex-1 list-none content-start gap-1 overflow-y-auto p-3">
+            <ChainListRows rows={rows} onPick={(index) => onAnswer(`CL${index + 1}`)} />
+          </ol>
+        ) : (
+          <p className="m-0 p-3 text-micro text-muted">{t('auto.steps.empty')}</p>
+        )}
+      </div>
+    </div>
   )
 }
 
