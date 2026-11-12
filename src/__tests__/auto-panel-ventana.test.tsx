@@ -78,7 +78,7 @@ describe('la ventana del escritorio', () => {
 
     expect(dialog).toBe(win())
     expect(dialog).toHaveAttribute('data-auto-panel', 'floating')
-    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(38.75rem,var(--mat-w,100vw))]', 'mat-square', 'bg-card-background/92')
+    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(38.75rem,var(--mat-w,100vw))]', 'mat-square', 'bg-card-background')
     expect(dialog.className).not.toMatch(/backdrop-|rounded-/)
     expect(fixedRadii(dialog)).toEqual([])
     expect(drag(dialog)).toEqual({ x: 0, y: 0 })

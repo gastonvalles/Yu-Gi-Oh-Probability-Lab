@@ -288,6 +288,10 @@ export const auto = {
   // El selector de fases del automático (`AutoPhases`): el título y la palabra debajo de la fase de ahora.
   'auto.phase.title': 'Elegí la fase a la que pasás',
   'auto.phase.now': 'ahora',
+  // Una sola hoja abajo en el celular: lo que la ficha o una pregunta tapa y vuelve («‹ GY · 2», «‹ Ficha de «X»»).
+  'auto.layer.card': 'Ficha de «{name}»',
+  'auto.layer.back': 'Volver a {place}',
+  'auto.layer.after': 'Al contestar, volvés a',
 
   // La ventana de los carteles en escritorio: la barra de título es el asa; el borde y la esquina, los agarres para estirarla.
   'auto.window.move': 'Mover la ventana',

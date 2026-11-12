@@ -98,7 +98,7 @@ import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from './compact-field'
 import { stepTone } from './step-tone'
-import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { CardBack, CardMenu, LayerBackContext, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
@@ -153,11 +153,6 @@ const REVIEW_LIFT = '-translate-y-11'
 const PHONE_BAR = 58
 const PHONE_RIVAL = THEIR_HAND.mobile.room + MOBILE_HAND_GAP
 const PHONE_BOTTOM = 68
-/**
- * Debajo de un cartel del automático apoyado abajo (la ficha, las fases, una pregunta: `AutoPanel` va en un portal, hijo de `body`), tu mano y tu fila se atenúan mientras está abierto: a través de su fondo al 92 %
- * se leían «Vos 8000» y los textos de las cartas y competían con sus botones. Sólo `opacity` (nada se corre); minimizado, vuelven.
- */
-const UNDER_PANEL = 'transition-opacity motion-reduce:transition-none in-[body:has(>[data-auto-panel=docked]:not([data-minimized]))]:opacity-30'
 const onResize = (listener: () => void) => {
   window.addEventListener('resize', listener)
   return () => window.removeEventListener('resize', listener)
@@ -302,6 +297,8 @@ export interface DuelMatLink {
    * trae la pantalla del automático: la mesa no importa sus piezas (el modo automático entra por `lazy`, `auto-isolation.test.ts`).
    */
   menus?: { Card: ComponentType<AutoCardSheetProps>; Phases: ComponentType<{ items: MenuItem[]; onClose: () => void }> }
+  /** El duelo automático tiene una pregunta abierta en un cartel de abajo (`AutoPanel`): en el celular gana ella, y la ficha y el visor de una pila ceden sin cerrarse. */
+  asking?: boolean
 }
 
 interface PracticeMatProps {
@@ -833,6 +830,9 @@ function PracticeMatBody({
     | null
   >(null)
   const [viewer, setViewer] = useState<MatPile | null>(null)
+  // Lo que estaba abierto cuando llegó una pregunta del núcleo (celular, automático): queda guardado debajo de ella hasta contestarla (`menuShelved`, `pileShelved`).
+  const [shelf, setShelf] = useState<{ menu: typeof menu; pile: MatPile | null } | null>(null)
+  const [lastAsking, setLastAsking] = useState(false)
   const [inspected, setInspected] = useState<{ id: string; rect: DOMRect } | null>(null)
   // La pausa y el final del duelo tapan la mesa: un menú o el detalle de una carta que estaba abierto se cierra, y el visor de una pila se esconde (sigue abierto: al cerrar el deck se baraja, y eso no es de la pausa).
   const covered = Boolean(duel?.cover)
@@ -1280,6 +1280,8 @@ function PracticeMatBody({
     (pile: MatPile) => {
       if (viewer === 'deck' && pile !== 'deck') closeViewer()
       setViewer(pile)
+      // Guardado debajo de una pregunta del núcleo, tocar su pila lo trae encima.
+      setShelf((current) => (current?.pile === pile ? { ...current, pile: null } : current))
     },
     [viewer, closeViewer],
   )
@@ -2800,6 +2802,20 @@ function PracticeMatBody({
   // El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos).
   // Eligiendo se apoya sobre la fila de abajo que ese momento no se usa (`absolute inset-0`): no suma ni quita alto. En un duelo de escritorio es una cápsula centrada que sí recibe toques (la barra de abajo no los ataja: el medio es de la mano).
   const pileSheet = !isDesktop && !covered && (viewerPile !== null || rivalViewing)
+  // En el celular, una sola hoja abajo (duelo automático): la pregunta del núcleo que llega gana a lo que estaba abierto (la ficha o las fases, `menu`, y el visor de una pila), que queda guardado
+  // (`shelf`) y vuelve como estaba al contestarla; lo que abrís con la pregunta ya abierta va encima de ella (la esconde `AutoPanel`) hasta que lo cerrás. La ficha gana al visor. La cabeza de lo que
+  // gana dice qué tapa («‹ GY · 2», «‹ Ficha de X»). Una búsqueda del núcleo en el visor es la pregunta misma: ésa no cede.
+  const asking = !isDesktop && Boolean(autoMenus) && !covered && Boolean(duel?.asking)
+
+  if (asking !== lastAsking) {
+    setLastAsking(asking)
+    setShelf(asking && (menu !== null || viewerPile !== null) ? { menu, pile: viewerPile } : null)
+  }
+  const menuShelved = asking && menu !== null && shelf?.menu === menu
+  const pileShelved = asking && viewerPile !== null && shelf?.pile === viewerPile && !autoViewer
+  const pileYield = !isDesktop && Boolean(autoMenus) && !covered && (menu !== null || pileShelved)
+  const pileTitle = viewerPile !== null ? `${PILE_TITLES[viewerPile]} · ${viewerList.length}` : null
+  const layerBack = menuShelved && menu.kind === 'card' ? t('auto.layer.card', { name: menuTitle }) : pileShelved ? pileTitle : null
   const status = (
     <div
       className={cx(
@@ -3120,7 +3136,6 @@ function PracticeMatBody({
             sizeSlots={Math.max(session.initial.hand.length, 1)}
             maxCardWidth={phone ? phone.handCard : isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
-            className={duel?.auto ? UNDER_PANEL : undefined}
             glowOf={glowKindOf}
             {...(duel?.links?.size ? { links: duel.links } : {})}
             dimUnlit={dimUnlit}
@@ -3166,7 +3181,7 @@ function PracticeMatBody({
           <div className={cx('pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55', phone && !splitReplay ? 'h-15' : 'h-11')} data-mat-float="">
             {/* El celular: tu fila de abajo (60 px), tu chapa a la izquierda y la botonera cuadrada a la derecha; lo que falta elegir se apoya encima (`status`). */}
             {phone && !splitReplay ? (
-              <div inert={choosing} data-mat-seat="" className={cx('absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto', duel?.auto && UNDER_PANEL)}>
+              <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto">
                 {duel?.life}
                 <span className="flex items-center gap-2">
                   {duel?.steps ? stepsButton : null}
@@ -3272,7 +3287,7 @@ function PracticeMatBody({
 
       {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera (y baja: `Presence` la deja montada mientras sale). */}
       {/* El duelo automático: la ficha con todas las jugadas que da el núcleo, la misma en el celular y en escritorio (la mesa manual sigue con `CardSheet` y `CardMenu`); en escritorio, una sola jugada sigue siendo su etiqueta (`PlayTag`). */}
-      <Presence>{autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay ? (
+      <Presence>{autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay && !menuShelved ? (
         <autoMenus.Card
           key={menu.kind === 'card' ? menu.id : menu.kind}
           name={menuTitle}
@@ -3285,9 +3300,11 @@ function PracticeMatBody({
           // «Ver carta», salvo con el detalle fijo a la izquierda (desde 1440 px tocar la carta ya la muestra ahí).
           onInspect={isDesktop ? menuInspect : menu.kind === 'card' && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
           onClose={() => setMenu(null)}
+          // Tapa el visor de una pila (celular): «‹ GY · 2» la cierra y el visor vuelve como estaba (si la carta ya no está ahí, igual).
+          {...(pileYield && pileTitle !== null ? { crumb: { label: pileTitle, onBack: () => setMenu(null) } } : {})}
         />
       ) : null}</Presence>
-      <Presence>{phasesOpen && autoMenus ? <autoMenus.Phases items={menuItems} onClose={() => setMenu(null)} /> : null}</Presence>
+      <Presence>{phasesOpen && autoMenus && !menuShelved ? <autoMenus.Phases items={menuItems} onClose={() => setMenu(null)} /> : null}</Presence>
       <Presence>{sheeted && menu && !autoMenus ? (
         <CardSheet
           name={menuTitle}
@@ -3368,8 +3385,8 @@ function PracticeMatBody({
         {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
         {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede (o termina, si se puede terminar sin elegir más). */}
         <PileStripContext.Provider value={pileStrip}>
-        {/* En el celular la ficha de una carta y las fases del automático esconden los visores (el tuyo y el del rival) sin cerrarlos: su tira bajada tapaba las jugadas (una sola capa abajo). */}
-        <PileYieldContext.Provider value={!isDesktop && Boolean(autoMenus) && menu !== null && !covered}>
+        {/* En el celular una pregunta del núcleo, la ficha de una carta y las fases del automático esconden los visores (el tuyo y el del rival) sin cerrarlos (`pileYield`). */}
+        <PileYieldContext.Provider value={pileYield}>
         <PileViewer
           pile={viewerPile}
           hidden={covered || stripHidden}
@@ -3476,7 +3493,7 @@ function PracticeMatBody({
 
       {/* En el celular la cadena y las preguntas son la hoja de abajo (`BottomSheet`): una sola (la cadena presta su pie a la pregunta); mientras se elige en la mesa o la mano se reduce a su asa y,
           con el visor de una pila abierto (otra hoja), se esconde. */}
-      <SheetHost yieldTo={pileSheet ? 'hide' : choosing ? 'grip' : null}>
+      <SheetHost yieldTo={pileSheet && !pileShelved ? 'hide' : choosing ? 'grip' : null}>
       {/* La cadena (duelo automático): arriba de la columna de la mesa; sólo la píldora y su lista reciben toques. */}
       {duel?.chain && !phone ? (
         <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
@@ -3492,7 +3509,9 @@ function PracticeMatBody({
           <div ref={promptLayerRef} data-testid="duel-prompt-layer" data-spot="extra" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] flex flex-col items-center justify-end px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
             <div ref={promptRef} className="pointer-events-auto flex min-h-0 w-[min(24rem,100%)] max-w-full flex-col has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
-              <PromptTurnContext value={duel.turnMine === undefined ? null : { phase: duel.phase, mine: duel.turnMine }}>{duel.prompt}</PromptTurnContext>
+              <PromptTurnContext value={duel.turnMine === undefined ? null : { phase: duel.phase, mine: duel.turnMine }}>
+                <LayerBackContext value={layerBack}>{duel.prompt}</LayerBackContext>
+              </PromptTurnContext>
             </div>
           </div>
         ) : null}

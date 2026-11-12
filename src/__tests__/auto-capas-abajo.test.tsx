@@ -9,8 +9,8 @@ import { core, handCard, phaseButton, renderAuto } from './support/auto-screen-h
 import { tap } from './support/practice-mat-harness'
 
 /**
- * En el celular, una sola capa abajo (Gastón, 2026-11-11: «al intentar activar un efecto en el gy, los menús se tapan»): la tira bajada del visor de una pila (z 180) quedaba encima de la fila de
- * jugadas de la ficha del automático (z 130). Ahora la ficha y las fases esconden el visor sin cerrarlo (vuelve como estaba al cerrarlas) y el visor esconde las preguntas, como la hoja de la cadena.
+ * En el celular, una sola hoja abajo y opaca (Gastón, 2026-11-11: «al intentar activar un efecto en el gy, los menús se tapan», y «Las 7»): gana la pregunta del núcleo, después la ficha de una carta
+ * (o las fases) y después el visor de una pila. Lo que pierde se esconde sin cerrarse y vuelve como estaba; la cabeza de lo que gana lo dice con su flecha («‹ GY · 1», «‹ Ficha de «X»»).
  */
 
 const IDLE: CoreAsk = {
@@ -26,14 +26,18 @@ const IDLE: CoreAsk = {
   to_ep: true,
   shuffle: false,
 }
+const EFFECT_YN: CoreAsk = { type: 'select_effectyn', player: 0, ...pos(400, L.GRAVE, 0, 5), description: '6400' }
 
-const viewer = () => document.querySelector('[data-pile-sheet]')
+/** El visor a la vista (cediendo el lugar sigue montado, escondido: así vuelve como estaba). */
+const viewer = () => document.querySelector('[data-pile-sheet]:not([hidden])')
 const openGy = () => fireEvent.click(screen.getByRole('button', { name: 'GY: 1' }))
+/** La pregunta del núcleo (ni la ficha ni las fases). */
+const question = () => document.querySelector<HTMLElement>('[data-auto-panel]:not([data-prompt="card"]):not([data-prompt="phases"])')
 /** Lo que sale con `Presence` termina de salir. */
 const settle = () => act(() => {})
 
-describe('auto · capas de abajo en el celular', () => {
-  it('la ficha de una carta del GY esconde el visor (sus jugadas quedan solas abajo) y al cerrarla el visor vuelve con la misma pila', () => {
+describe('auto · una sola hoja abajo en el celular', () => {
+  it('la ficha de una carta del GY reemplaza al visor y lleva «‹ GY · 1»: volver la cierra y el visor vuelve con la misma pila (la X, igual)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -45,8 +49,14 @@ describe('auto · capas de abajo en el celular', () => {
 
     expect(viewer()).toBeNull()
     expect(within(sheet).getAllByRole('menuitem')).toHaveLength(1)
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Volver a GY · 1' }))
+    settle()
+    expect(screen.queryByRole('region', { name: 'Nibiru' })).toBeNull()
+    expect(viewer()).toHaveAccessibleName('GY · 1')
 
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Cerrar' }))
+    fireEvent.click(within(viewer() as HTMLElement).getByRole('button', { name: /^Nibiru/ }))
+    settle()
+    fireEvent.click(within(screen.getByRole('region', { name: 'Nibiru' })).getByRole('button', { name: 'Cerrar' }))
     settle()
     expect(viewer()).toHaveAccessibleName('GY · 1')
   })
@@ -65,13 +75,12 @@ describe('auto · capas de abajo en el celular', () => {
     expect(viewer()).toBeNull()
     fireEvent.click(within(screen.getByRole('region', { name: 'Ash Blossom' })).getByRole('button', { name: 'Cerrar' }))
     settle()
-    expect(viewer()).not.toBeNull()
+    // Vuelve como estaba: bajado.
+    expect(viewer()).toHaveAttribute('data-lowered')
 
     fireEvent.click(phaseButton())
     settle()
     expect(document.querySelector('[data-prompt="phases"]')).not.toBeNull()
-    // Debajo del cartel, tu mano y tu fila se atenúan (sólo `opacity`): su texto no compite con el del cartel a través del fondo al 92 %.
-    expect(screen.getByRole('list', { name: 'Mano' })).toHaveClass('in-[body:has(>[data-auto-panel=docked]:not([data-minimized]))]:opacity-30')
     expect(viewer()).toBeNull()
     fireEvent.click(within(document.querySelector<HTMLElement>('[data-prompt="phases"]')!).getByRole('button', { name: 'Cancelar' }))
     settle()
@@ -85,36 +94,71 @@ describe('auto · capas de abajo en el celular', () => {
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 5, index: 0 }])
   })
 
-  it('con un cartel acoplado abierto, tu mano lleva la atenuación y su regla se cumple; minimizado o sin cartel, no', () => {
+  it('la pregunta que llega gana al visor abierto: el visor cede sin cerrarse, la pregunta dice «‹ GY · 1» y, contestada, el visor vuelve', () => {
     const fake = renderAuto()
-    const dim = 'in-[body:has(>[data-auto-panel=docked]:not([data-minimized]))]:opacity-30'
-    // La regla de la clase (`body:has(…)`): lo que el navegador evalúa para atenuar.
-    const under = () => document.body.matches('body:has(>[data-auto-panel=docked]:not([data-minimized]))')
 
     core(() => fake.ask(IDLE))
-    expect(screen.getByRole('list', { name: 'Mano' })).toHaveClass(dim)
-    expect(under()).toBe(false)
+    openGy()
+    core(() => fake.ask(EFFECT_YN))
+    settle()
+    expect(viewer()).toBeNull()
+    expect(question()).not.toBeNull()
+    expect(question()!.querySelector('[data-layer-back]')).toHaveTextContent('GY · 1')
 
-    fireEvent.click(phaseButton())
+    core(() => fake.ask(IDLE))
     settle()
-    expect(under()).toBe(true)
-    fireEvent.click(within(document.querySelector<HTMLElement>('[data-prompt="phases"]')!).getByRole('button', { name: 'Minimizar' }))
-    settle()
-    expect(under()).toBe(false)
-    fireEvent.click(within(document.querySelector<HTMLElement>('[data-prompt="phases"]')!).getByRole('button', { name: 'Cancelar' }))
-    settle()
-    expect(document.querySelector('[data-prompt="phases"]')).toBeNull()
-    expect(under()).toBe(false)
+    expect(question()).toBeNull()
+    expect(viewer()).toHaveAccessibleName('GY · 1')
   })
 
-  it('una pregunta del núcleo se esconde mientras el visor de una pila está abierto (la regla va en el cartel; el visor lleva la marca)', () => {
+  it('lo que abrís con la pregunta ya abierta va encima: el visor se ve y la pregunta se esconde sin cerrarse (la regla va en el cartel) hasta cerrarlo', () => {
+    const fake = renderAuto()
+    // La regla de la clase (`body:has(…)`): lo que el navegador evalúa para esconder la pregunta.
+    const covered = () => document.body.matches('body:has(>[data-auto-panel=docked][data-prompt=card],>[data-auto-panel=docked][data-prompt=phases],[data-pile-sheet]:not([hidden]))')
+
+    core(() => fake.ask(EFFECT_YN))
+    expect(question()).toHaveClass('in-[body:has(>[data-auto-panel=docked][data-prompt=card],>[data-auto-panel=docked][data-prompt=phases],[data-pile-sheet]:not([hidden]))]:hidden')
+    expect(question()!.querySelector('[data-layer-back]')).toBeNull()
+    expect(covered()).toBe(false)
+    openGy()
+    expect(viewer()).toHaveAccessibleName('GY · 1')
+    expect(covered()).toBe(true)
+    fireEvent.click(within(viewer() as HTMLElement).getByRole('button', { name: 'Cerrar' }))
+    settle()
+    expect(covered()).toBe(false)
+    expect(question()).not.toBeNull()
+  })
+
+  it('una pregunta que llega con la ficha abierta la guarda (no la cierra): dice «‹ Ficha de «X»» y, contestada, la ficha vuelve', () => {
     const fake = renderAuto()
 
-    core(() => fake.ask({ type: 'select_effectyn', player: 0, ...pos(400, L.GRAVE, 0, 5), description: '6400' }))
-    const ask = document.querySelector<HTMLElement>('[data-prompt]:not([data-prompt="card"]):not([data-prompt="phases"])')!
+    core(() => fake.ask(IDLE))
+    tap(handCard('Ash Blossom'))
+    settle()
+    expect(screen.getByRole('region', { name: 'Ash Blossom' })).toBeInTheDocument()
 
-    expect(ask).toHaveClass('in-[body:has([data-pile-sheet])]:hidden')
+    core(() => fake.ask(EFFECT_YN))
+    settle()
+    expect(screen.queryByRole('region', { name: 'Ash Blossom' })).toBeNull()
+    expect(question()!.querySelector('[data-layer-back]')).toHaveTextContent('Ficha de «Ash Blossom»')
+
+    core(() => fake.ask(IDLE))
+    settle()
+    expect(screen.getByRole('region', { name: 'Ash Blossom' })).toBeInTheDocument()
+  })
+
+  it('las hojas de abajo son opacas: la pregunta, la ficha y el visor (nada de la mano se lee a través)', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(EFFECT_YN))
+    expect(question()).toHaveClass('bg-card-background')
+    core(() => fake.ask(IDLE))
+    settle()
     openGy()
-    expect(viewer()).not.toBeNull()
+    expect(viewer()!.querySelector('.bg-card-background')).not.toBeNull()
+    tap(handCard('Ash Blossom'))
+    settle()
+    expect(screen.getByRole('region', { name: 'Ash Blossom' })).toHaveClass('bg-card-background')
+    expect(document.querySelector('[class*="bg-card-background/"]')).toBeNull()
   })
 })

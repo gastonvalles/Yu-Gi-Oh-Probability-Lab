@@ -1294,6 +1294,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     auto,
     limits,
     menus: AUTO_MENUS,
+    // Un cartel de abajo con una pregunta (el de `prompt` o uno de `pieces`): en el celular la ficha y el visor de una pila le ceden el lugar.
+    asking: Boolean(prompt || offer || (forced && forcedFirst && lane === null) || list || options || sub?.children || shown?.sort || shown?.counters),
   }
 
   const pieces = (
