@@ -104,6 +104,26 @@ export function frameKindOf(frameType: string | null | undefined, cardType?: str
   }
 }
 
+/** Los bits de tipo del `.cdb` (lo que el núcleo sabe de una carta del rival) que deciden el marco, con el nombre que lee `frameKindOf`. */
+const TYPE_BITS: [number, string][] = [
+  [0x4000000, 'link'],
+  [0x800000, 'xyz'],
+  [0x2000, 'synchro'],
+  [0x40, 'fusion'],
+  [0x80, 'ritual'],
+  [0x4000, 'token'],
+  [0x20, 'effect'],
+  [0x10, 'normal'],
+  [0x1000000, 'pendulum'],
+]
+
+/**
+ * El marco por la máscara de tipo del `.cdb` (`type`): la carta que no es tuya, de la que sólo se sabe el código. 0 (no se sabe): neutro. Una Mágica o una Trampa es eso aunque lleve
+ * otro bit (la Magia de Ritual es verde).
+ */
+export const frameOfType = (type: number): CardFrame =>
+  frameKindOf(null, type & 0x2 ? 'spell' : type & 0x4 ? 'trap' : TYPE_BITS.filter(([bit]) => (type & bit) !== 0).map(([, name]) => name).join(' '))
+
 /** Relleno + texto + aro (+ el corte del Péndulo, que pide `relative` o `absolute` en el mismo elemento) en un solo string de clases. */
 export function frameClass(frame: CardFrame): string {
   return [

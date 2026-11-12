@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react'
 
 import type { AskWhyView } from '../../../app/auto/ask-why'
-import type { ChainRowState } from '../../../app/auto/chain-feed'
 import { ELFNOTE, ELFNOTE_DECK, SKY_STRIKER_DECK } from '../../../app/bot-deck-lists'
 import { DuelRailsContext } from '../../../app/duel-rails'
 import { BOT_DECK_MENU, DEFAULT_HANDTRAP_CONFIG, rivalKindOf, withRival, type BotDeckInfo } from '../../../app/handtraps'
@@ -16,7 +15,7 @@ import { AutoCardSheet, AutoPhases } from '../../auto/AutoPanel'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
-import { ChainNotice } from '../../auto/ChainNotice'
+import { ChainStage } from '../../auto/ChainNotice'
 import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
@@ -35,7 +34,7 @@ import type { PracticeHandMatch } from '../../probability/practice'
 import { PracticeBoard } from '../../probability/PracticeBoard'
 import { RulesPill, type RulesSummary } from '../../probability/RulesPill'
 import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probability/UndoChip'
-import { SheetHost, type SheetYield } from '../../ui/BottomSheet'
+import { SheetHost } from '../../ui/BottomSheet'
 import { Button } from '../../ui/Button'
 import { IconButton } from '../../ui/IconButton'
 import { Segmented } from '../../ui/Segmented'
@@ -191,7 +190,6 @@ export function AutoSection() {
         <Tag>{answer}</Tag>
       </Specimen>
 
-      <ChainSample />
       <ChainProposalSamples />
       <BarActionsSample />
       <RulesPillSample />
@@ -683,7 +681,6 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const [shown, setShown] = useState(true)
   const [chosen, setChosen] = useState<string | null>(null)
   const [mode, setMode] = useState<AutoChainMode>('ask')
-  const [chainOpen, setChainOpen] = useState(true)
   const picked = cards.find((card) => card.key === chosen)
   const reply = (answer: string) => {
     setShown(false)
@@ -700,7 +697,7 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       <div className="relative isolate h-128 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
-          <ChainNotice rows={[{ number: 1, who: t('duel.bar.rival'), mine: false, ...ASH, state: 'chained' }]} focus={0} resolving={false} open={chainOpen} onOpenChange={setChainOpen} onPick={() => {}} />
+          <ChainStage rows={[{ number: 1, mine: false, ...ASH, state: 'chained' }]} current={-1} />
         </div>
         <Presence>
           {shown ? (
@@ -1074,105 +1071,6 @@ function RulesPillSample() {
           </div>
         ))}
       </div>
-    </Specimen>
-  )
-}
-
-/** Una cadena de tres de muestra (Branded Fusion, Ash del rival, PSY-Framegear Gamma): Gamma niega a Ash mientras se resuelve, como lo cuenta el núcleo («Negada · por CL3»). */
-const CHAIN_CARDS = [
-  { name: 'Branded Fusion', art: art(44362883), mine: true },
-  { name: 'Ash Blossom & Joyous Spring', art: art(14558127), mine: false },
-  { name: 'PSY-Framegear Gamma', art: art(38814750), mine: true },
-]
-/** Cómo se ve después de cada paso (lo que arma `chainFeed` en la mesa; el catálogo no importa la lógica del núcleo): el estado de cada eslabón, del que habla la píldora y si ya se resuelve. */
-const CHAIN_FRAMES: Array<{ states: ChainRowState[]; focus: number; resolving?: true }> = [
-  { states: ['chained'], focus: 0 },
-  { states: ['chained', 'chained'], focus: 1 },
-  { states: ['chained', 'chained', 'chained'], focus: 2 },
-  { states: ['chained', 'chained', 'solving'], focus: 2, resolving: true },
-  { states: ['chained', 'negated', 'solving'], focus: 1, resolving: true },
-  { states: ['chained', 'negated', 'solved'], focus: 1, resolving: true },
-  { states: ['solving', 'negated', 'solved'], focus: 0, resolving: true },
-  { states: ['solved', 'negated', 'solved'], focus: 0, resolving: true },
-]
-
-/** El aviso de la cadena, paso a paso con un botón (en la mesa los pasa el ritmo: `use-auto-asks.tsx`), sobre un pedazo de mesa: desplegado (como abre) y plegado. */
-function ChainSample() {
-  const [count, setCount] = useState(3)
-  const [open, setOpen] = useState(true)
-  const [picked, setPicked] = useState<number | null>(null)
-  const [phone, setPhone] = useState(true)
-  const [squeezed, setSqueezed] = useState(false)
-  const [decision, setDecision] = useState<'none' | 'one' | 'several' | 'effect'>('none')
-  const [chosen, setChosen] = useState<string | null>(null)
-  const [yieldTo, setYieldTo] = useState<SheetYield>(null)
-  const frame = CHAIN_FRAMES[count - 1]!
-  const decisionCards: PickCard[] = [
-    { key: 'veiler', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', false) },
-    { key: 'albaz', name: 'Fallen of Albaz', art: art(68468459), ...pickPlace('gy', false) },
-    { key: 'ponix', name: PONIX.name, art: PONIX.art, ...pickPlace('field', false) },
-  ].slice(0, decision === 'one' ? 1 : 3)
-  const close = () => setDecision('none')
-  // Lo que pregunta la mesa con la cadena abierta: en el celular va en el pie de la hoja de la cadena (`SheetHost`), como en la mesa.
-  const ask =
-    decision === 'none' ? null : decision === 'effect' ? (
-      <AskPrompt key="effect" kicker={t('auto.ask.afterEvent', { event: t('auto.ask.event.special') })} text={t('auto.ask.effect')} card={PONIX} place={t('practice.mat.field')} yes={{ label: t('practice.menu.activateEffect'), onSelect: close }} no={{ label: t('auto.ask.skipEffect'), onSelect: close }} />
-    ) : (
-      <RespondBand key={decision} title={t('auto.respond.title')} link={frame.states.length + 1} cards={decisionCards} chosen={decision === 'one' ? 'veiler' : chosen} onToggle={setChosen} onChain={close} onPass={close} />
-    )
-
-  return (
-    <Specimen
-      title="ChainNotice · la pila de la cadena"
-      layout="column"
-      className="col-span-full"
-      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): cada cadena abre desplegada (sólo la pliega la persona), en un solo cartel: el título («Cadena · 3») y debajo, tras una línea fina, la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Plegada, la píldora resume el eslabón del que habla («Cadena · CL3 · Vos»; la cuenta, sólo si no es ese número) y, debajo en ámbar, qué le pasa, corto y sin nombres («En espera», «Negada · por CL3»): la carta la marca su insignia en la mesa. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo el cartel recibe toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) es otra cosa, <Tag>ChainSheet</Tag> en la hoja de abajo estándar (<Tag>ui/BottomSheet.tsx</Tag>): cada eslabón que se suma la abre entera, con la pila en el orden en que se resuelve (cada dato una vez; el dueño, por el color). Arrastrala o tocá su asa y queda bajada: una cinta con un chip por eslabón (su número en el color de su dueño, el arte y cómo va: el aro ámbar el que se resuelve, un tilde el resuelto, una cruz con «CL2» el negado; «Nuevo» un momento el que se suma). Lo que pregunta la mesa («Responder», «¿Activás el efecto?») va en su pie, debajo de la pila y a la vista en las dos alturas: una sola hoja, con una sola asa. «Elegir en la mano» es lo que pasa al pagar un costo: la hoja se reduce a su asa sobre la línea de estado (la mano queda libre) y, al terminar, vuelve como estaba. Probala con «Ver en el celular» y los botones. Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" disabled={count >= CHAIN_FRAMES.length} onClick={() => setCount((value) => Math.min(CHAIN_FRAMES.length, value + 1))}>
-          Mostrar el paso siguiente
-        </Button>
-        <Button variant="tertiary" size="sm" onClick={() => setCount(1)}>
-          Empezar de nuevo
-        </Button>
-        <Tag>{`Paso ${count} de ${CHAIN_FRAMES.length}`}</Tag>
-        <Button variant="tertiary" size="sm" aria-pressed={phone} onClick={() => setPhone((value) => !value)}>
-          Ver en el celular
-        </Button>
-        <Button variant="tertiary" size="sm" aria-pressed={squeezed} onClick={() => setSqueezed((value) => !value)}>
-          Simular una pregunta sin lugar
-        </Button>
-        <Button variant="tertiary" size="sm" aria-pressed={decision === 'one'} onClick={() => setDecision((value) => (value === 'one' ? 'none' : 'one'))}>
-          Responder con una carta
-        </Button>
-        <Button variant="tertiary" size="sm" aria-pressed={decision === 'several'} onClick={() => (setChosen(null), setDecision((value) => (value === 'several' ? 'none' : 'several')))}>
-          Responder con tres
-        </Button>
-        <Button variant="tertiary" size="sm" aria-pressed={decision === 'effect'} onClick={() => setDecision((value) => (value === 'effect' ? 'none' : 'effect'))}>
-          ¿Activás el efecto?
-        </Button>
-        <Button variant="tertiary" size="sm" aria-pressed={yieldTo === 'grip'} onClick={() => setYieldTo((value) => (value === 'grip' ? null : 'grip'))}>
-          Elegir en la mano
-        </Button>
-        {picked ? <Tag>{`Tocaste el CL${picked}: en la mesa se lee en el detalle`}</Tag> : null}
-      </div>
-      {/* El marco hace de celular (`SheetHost phone`): la hoja va adentro y, como en la mesa, la pregunta va en su pie. «Elegir en la mano» es lo que pide la mesa mientras se paga un costo (`yieldTo`). */}
-      <SheetHost phone={phone} yieldTo={yieldTo}>
-      <div {...(squeezed ? { 'data-squeezed': '' } : {})} className={cx('group/chain relative isolate flex justify-center overflow-hidden rounded-card border border-border-subtle p-3', phone ? 'h-[40rem] max-w-[24.375rem]' : 'min-h-80')}>
-        <MatScene className="absolute inset-0 -z-10" />
-        {phone && yieldTo === 'grip' ? <p className="absolute inset-x-1.5 bottom-2 z-[136] m-0 flex h-11 items-center rounded-control bg-background px-2 text-micro text-muted">Elegí 1 carta para descartar · Costo de Angelechy Problem</p> : null}
-        {phone ? ask : null}
-        <ChainNotice
-          rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: CHAIN_CARDS[index]!.mine, name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state, ...(state === 'negated' ? { by: 3 } : {}) }))}
-          focus={frame.focus}
-          resolving={frame.resolving === true}
-          open={open}
-          compact={phone}
-          onOpenChange={setOpen}
-          onPick={(index) => setPicked(index + 1)}
-        />
-      </div>
-      </SheetHost>
     </Specimen>
   )
 }

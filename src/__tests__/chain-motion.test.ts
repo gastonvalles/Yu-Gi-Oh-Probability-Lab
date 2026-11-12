@@ -100,8 +100,9 @@ describe('la cadena: la secuencia de resolver', () => {
 describe('la cadena anima sólo `transform` y `opacity`', () => {
   const SRC = path.resolve(__dirname, '..')
   const css = readFileSync(path.join(SRC, 'index.css'), 'utf8')
-  const files = ['components/auto/chain-parts.tsx', 'components/auto/ChainNotice.tsx', 'components/probability/MatFx.tsx', 'components/playground/sections/ChainProposal.tsx']
-  const CHAIN = ['link-in', 'lift', 'act', 'seg-in', 'seg-num-in', 'glow-in', 'rise', 'pull-l', 'pull-r', 'split-a', 'split-b', 'split-fade', 'slide-off', 'slash-in', 'fade-out']
+  // El trazo de la mesa (`MatFx.tsx`); la cadena en grande anima con transiciones (`chain-stage.test.tsx`).
+  const files = ['components/probability/MatFx.tsx']
+  const CHAIN = ['lift', 'act', 'seg-in', 'seg-num-in', 'fade-out']
 
   it('cada `animate-*` de la cadena existe en `@theme` y su `@keyframes` sólo toca transform y opacity; cada uso lleva `motion-reduce:animate-none`', () => {
     const used = new Set(files.flatMap((file) => [...readFileSync(path.join(SRC, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').matchAll(/(?<![\w:-])animate-([a-z][a-z0-9-]*)/g)].map((match) => match[1]!)).filter((name) => CHAIN.includes(name)))
@@ -116,12 +117,6 @@ describe('la cadena anima sólo `transform` y `opacity`', () => {
 
       expect(props.size, name).toBeGreaterThan(0)
       for (const prop of props) expect(['transform', 'opacity'], `${name}: ${prop}`).toContain(prop)
-    }
-    // Cada clase de la cadena va con su apagado: sin movimiento, nada se mueve.
-    for (const file of files.slice(0, 2)) {
-      const code = readFileSync(path.join(SRC, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-
-      for (const match of code.matchAll(/'([^'\n]*\banimate-(?:link-in|rise|pull-l|pull-r|split-a|split-b|split-fade|slide-off|slash-in|glow-in|fade-out)\b[^'\n]*)'/g)) expect(match[1], file).toContain('motion-reduce:animate-none')
     }
   })
 })

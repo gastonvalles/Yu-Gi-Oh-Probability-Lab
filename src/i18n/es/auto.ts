@@ -353,14 +353,10 @@ export const auto = {
   'auto.lane.rejected': 'El núcleo no aceptó esa respuesta: elegí de nuevo.',
   'auto.lane.stuck': 'El automático todavía no sabe contestar esta pregunta del núcleo.',
 
-  // El aviso de la cadena (la píldora de arriba de la mesa y su lista): cómo va y el estado de cada eslabón.
+  // La cadena en grande (`ChainStage`): la línea de abajo, armando y resolviendo («Ash Blossom: Sin efecto por Called by the Grave»), y el estado de cada eslabón.
   'auto.chain.title': 'Cadena',
-  'auto.chain.show': 'Ver la cadena',
-  'auto.chain.hide': 'Ocultar la cadena',
-  'auto.chain.list': 'Eslabones de la cadena, en el orden en que se resuelven',
-  // La cinta del celular: del primero al último (el que se resuelve lleva el aro); «Nuevo» un momento en el eslabón que se suma.
-  'auto.chain.strip': 'Eslabones de la cadena, del primero al último',
-  'auto.chain.fresh': 'Nuevo',
+  'auto.chain.order': 'Se resuelve del último al primero',
+  'auto.chain.say': '{card}: {what}',
   'auto.chain.state.chained': 'En espera',
   'auto.chain.state.solving': 'Resolviendo',
   'auto.chain.state.solved': 'Resuelta',
@@ -368,7 +364,7 @@ export const auto = {
   'auto.chain.state.disabled': 'Sin efecto',
   // Negada o sin efecto, con el eslabón que lo hizo (el núcleo no lo dice: lo deduce el adaptador).
   'auto.chain.by': '{state} · por CL{by}',
-  // Lo mismo con el nombre de la carta que lo negó, donde entra (la línea del celular): se lee mientras el eslabón se queda quieto.
+  // Lo mismo con el nombre de la carta que lo negó (la escena de la cadena): se lee mientras la carta tachada queda en el centro.
   'auto.chain.byCard': '{state} por {card}',
   // Resuelta, lo que hizo su efecto si el núcleo lo dice sin duda (`chainOutcome`): reemplaza a «Resuelta» en su chip.
   'auto.chain.outcome.add': { one: 'Añade {count} carta', other: 'Añade {count} cartas' },
@@ -376,37 +372,9 @@ export const auto = {
   'auto.chain.outcome.summon': { one: 'Invoca {count} monstruo', other: 'Invoca {count} monstruos' },
   'auto.chain.outcome.grave': 'Manda {count} al Cementerio',
   'auto.chain.outcome.banish': { one: 'Destierra {count} carta', other: 'Destierra {count} cartas' },
-  // El celular: arriba en la píldora, «Cadena · 2 · Resuelve CL2».
-  'auto.chain.count': 'Cadena · {count}',
-  'auto.chain.resolves': 'Resuelve',
-  // Cada eslabón se toca para leerlo en el detalle: lo que lee el lector de pantalla.
+  // Lo que lee el lector de pantalla de cada carta de la cadena.
   'auto.chain.linkMine': 'Eslabón {number}: {card}, tuyo. {state}',
   'auto.chain.linkTheirs': 'Eslabón {number}: {card}, del rival. {state}',
-  // Dos órdenes de una misma cadena, comparados (`ChainOrderCompare`): el veredicto de cada uno, escrito además del color.
-  'auto.chainOrder.good': 'Sale bien',
-  'auto.chainOrder.bad': 'Sale mal',
-  'auto.chainOrder.scenario': '{letter} · {title}. {verdict}',
-  'auto.chainOrder.replay': 'Repetir',
-  // La hoja «Cómo se resuelve» (el ⓘ de la cadena): la línea clave, dos pares de órdenes con cartas reales y el cierre. Los nombres de cartas no se traducen.
-  'auto.chainLesson.open': 'Cómo se resuelve una cadena',
-  'auto.chainLesson.title': 'Cómo se resuelve',
-  'auto.chainLesson.key': 'La cadena se resuelve de arriba hacia abajo: el último eslabón que se suma es el primero que resuelve.',
-  'auto.chainLesson.wait.title': 'Respondé a su efecto, no te adelantes',
-  'auto.chainLesson.wait.a': 'Esperá',
-  'auto.chainLesson.wait.aNote': 'Dejá que active su efecto y respondé con Veiler: resuelve antes y lo deja sin efecto.',
-  'auto.chainLesson.wait.b': 'No dispares primero',
-  'auto.chainLesson.wait.bNote': 'Si activás Veiler antes, te responde con su efecto, que resuelve primero: destierra igual.',
-  'auto.chainLesson.late': 'Llega tarde',
-  'auto.chainLesson.now.title': 'Respondé en la cadena, no después',
-  'auto.chainLesson.now.a': 'Respondé ya',
-  'auto.chainLesson.now.aNote': 'Called by the Grave encadenada a Maxx "C" resuelve primero y lo deja sin efecto: el rival no roba.',
-  'auto.chainLesson.now.b': 'Después es tarde',
-  'auto.chainLesson.now.bNote': 'Si lo dejás resolver, aplica todo el turno: desterrarlo después no frena lo que roba.',
-  'auto.chainLesson.effect.veiler': 'En la Main Phase del rival: niega los efectos de 1 monstruo suyo hasta el final del turno',
-  'auto.chainLesson.effect.mirrorjade': 'Efecto Rápido: destierra 1 monstruo del campo',
-  'auto.chainLesson.effect.maxx': 'Este turno, el rival roba 1 carta cada vez que invocás de modo especial',
-  'auto.chainLesson.effect.called': 'Destierra 1 monstruo del Cementerio del rival y niega sus efectos hasta el final del próximo turno',
-  'auto.chainLesson.closing': 'En resumen: esperá a que el rival active y respondé en esa misma cadena.',
 
   // Los pasos y los combos (el panel de la práctica): la lista vacía (acá no se arrastra ni se mantiene) y el repaso de un combo o de tus jugadas en la misma mesa, con la salida.
   'auto.steps.empty': 'Tocá una carta o el botón de fases para ver qué podés hacer. Cada jugada queda anotada acá.',

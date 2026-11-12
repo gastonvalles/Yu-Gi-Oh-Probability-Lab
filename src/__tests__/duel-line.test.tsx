@@ -6,12 +6,11 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 
 import type { DuelConnect } from '../app/use-duel'
-import { ChainNotice } from '../components/auto/ChainNotice'
 import { LifeBadge } from '../components/duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY, phoneDuelLayout } from '../components/probability/compact-field'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 import { t } from '../i18n'
-import { asSocket, createDuelHarness, phaseChip, render } from './support/duel-screen-harness'
+import { asSocket, createDuelHarness, phaseChip } from './support/duel-screen-harness'
 
 /**
  * La mesa del duelo en el celular (Gastón, 2026-11-12: «evitar espacio vacío entre campo y mano»): las vidas en chapas (la del rival en la barra) y, entre el campo y tu mano, nada: la línea es una
@@ -79,27 +78,6 @@ describe('la línea del celular', () => {
     expect(line().querySelector('[data-lane="passAsking"]')).not.toBeNull()
     expect(line().firstElementChild).toHaveClass('absolute', 'top-0', 'h-11', 'pointer-events-none')
     expect(geometry()).toEqual(before)
-  })
-
-  it('la cadena va en su capa, sobre el campo: sus filas en una franja, no una hoja aparte', () => {
-    const rows = [
-      { number: 1, who: 'Vos', mine: true, name: 'Engage', art: null, state: 'chained' as const },
-      { number: 2, who: 'Rival', mine: false, name: 'Ash Blossom', art: null, state: 'chained' as const },
-    ]
-    // La franja de la capa (`PracticeMat`, 96 px), como la arma la mesa.
-    render(
-      <div data-testid="duel-chain-layer">
-        <div className="h-24">
-          <ChainNotice rows={rows} focus={1} resolving={false} open compact onOpenChange={() => {}} onPick={() => {}} />
-        </div>
-      </div>,
-    )
-    const chain = screen.getByTestId('chain-notice')
-
-    expect(screen.getByTestId('duel-chain-layer')).toContainElement(chain)
-    expect(chain).toHaveClass('h-full', 'bg-card-background/88')
-    expect(within(chain).getAllByRole('listitem')).toHaveLength(2)
-    expect(document.querySelector('[data-lowered]')).toBeNull()
   })
 })
 

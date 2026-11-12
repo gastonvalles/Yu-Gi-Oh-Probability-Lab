@@ -1,6 +1,5 @@
 import { createAdapter } from '../app/auto/adapter'
-import { CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, chainDwell, chainFeed, chainOutcome, linkPhrase, stepsUpTo, type ChainStep } from '../app/auto/chain-feed'
-import { CLOSE_MS } from '../app/chain-motion'
+import { CHAIN_ALONE_MS, CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, chainDwell, chainFeed, chainOutcome, linkPhrase, stepsUpTo, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION as L, type WireEvent } from '../app/auto/protocol'
 
 const link = (index: number, mine: boolean, code: number, at: number): ChainStep => ({ kind: 'chain', at, index, link: { card: { side: mine ? 'mine' : 'theirs', id: `x${code}` }, code, mine } })
@@ -23,10 +22,13 @@ describe('chainFeed: la cadena paso a paso', () => {
     expect(chainFeed(ASH_CHAIN, 0)).toBeNull()
     expect(chainFeed(ASH_CHAIN, 1)).toMatchObject({ key: 0, resolving: false, done: false, focus: 0, rows: [{ number: 1, mine: true, state: 'chained' }] })
     expect(chainFeed(ASH_CHAIN, 2)).toMatchObject({ resolving: false, focus: 1, rows: [{ state: 'chained' }, { number: 2, mine: false, code: 14558127, state: 'chained' }] })
-    expect(chainFeed(ASH_CHAIN, 3)).toMatchObject({ resolving: true, focus: 1, rows: [{ state: 'chained' }, { state: 'solving' }] })
-    expect(chainFeed(ASH_CHAIN, 4)).toMatchObject({ focus: 0, rows: [{ state: 'disabled' }, { state: 'solving' }] })
+    expect(chainFeed(ASH_CHAIN, 2)).toMatchObject({ current: -1 })
+    expect(chainFeed(ASH_CHAIN, 3)).toMatchObject({ resolving: true, focus: 1, current: 1, rows: [{ state: 'chained' }, { state: 'solving' }] })
+    // Negarla mientras Ash se resuelve no la lleva al centro: sigue Ash (`current`), también resuelta.
+    expect(chainFeed(ASH_CHAIN, 4)).toMatchObject({ focus: 0, current: 1, rows: [{ state: 'disabled' }, { state: 'solving' }] })
+    expect(chainFeed(ASH_CHAIN, 5)).toMatchObject({ current: 1, rows: [{ state: 'disabled' }, { state: 'solved' }] })
     // Le llega el turno y se resuelve: sigue sin efecto.
-    expect(chainFeed(ASH_CHAIN, 6)).toMatchObject({ focus: 0, rows: [{ state: 'disabled' }, { state: 'solved' }] })
+    expect(chainFeed(ASH_CHAIN, 6)).toMatchObject({ focus: 0, current: 0, rows: [{ state: 'disabled' }, { state: 'solved' }] })
     expect(chainFeed(ASH_CHAIN, 7)).toMatchObject({ done: false, rows: [{ state: 'disabled' }, { state: 'solved' }] })
     expect(chainFeed(ASH_CHAIN, 8)).toMatchObject({ done: true, rows: [{ state: 'disabled' }, { state: 'solved' }] })
     // Los primeros en resolverse son los últimos que se sumaron.
@@ -50,16 +52,19 @@ describe('chainFeed: la cadena paso a paso', () => {
     expect(chainFeed(next, next.length)).toMatchObject({ key: ASH_CHAIN.length, resolving: true, rows: [{ number: 1, mine: false, state: 'solving' }] })
   })
 
-  it('el ritmo: un eslabón se ve un rato y cada uno se lee al resolverse; lo que queda sin efecto, 1,6 s más; una activación suelta, breve', () => {
-    expect(ASH_CHAIN.map((_, i) => chainDwell(ASH_CHAIN, i))).toEqual([CHAIN_LINK_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, CHAIN_SOLVE_MS + CHAIN_READ_MS, 0, 0, 0, 0])
-    expect(CHAIN_READ_MS).toBe(1600)
+  it('el ritmo (decisión 9): 0,7 s por eslabón que entra y 0,9 s por cada uno en el centro, con lo que hizo; lo que queda sin efecto, 1,6 s más; una activación sola, 1,2 s', () => {
+    // El tiempo de cada uno va en su `solved` (su `solving` y la negación de otro salen con él).
+    expect(ASH_CHAIN.map((_, i) => chainDwell(ASH_CHAIN, i))).toEqual([CHAIN_LINK_MS, CHAIN_LINK_MS, 0, 0, CHAIN_SOLVE_MS, 0, CHAIN_SOLVE_MS + CHAIN_READ_MS, 0])
+    expect([CHAIN_LINK_MS, CHAIN_SOLVE_MS, CHAIN_READ_MS, CHAIN_ALONE_MS]).toEqual([700, 900, 1600, 1200])
     const single = [link(0, true, 5, 0), step('solving', 0, 0), step('solved', 0, 1), step('end', -1, 1)]
 
-    expect(single.map((_, i) => chainDwell(single, i))).toEqual([0, CHAIN_LINK_MS, 0, 0])
+    // Sola, aunque nadie pueda responder: entra con su «1» y se resuelve, 1,2 s en total.
+    expect(single.map((_, i) => chainDwell(single, i))).toEqual([CHAIN_LINK_MS, 0, CHAIN_ALONE_MS - CHAIN_LINK_MS, 0])
+    expect(single.reduce((sum, _, i) => sum + chainDwell(single, i), 0)).toBe(1200)
     expect(chainDwell(single, -1)).toBe(0)
   })
 
-  it('resolver tres eslabones lleva 2,25 s (2,45 con el cierre); si uno queda negado, 1,6 s más y sólo eso', () => {
+  it('una cadena de tres lleva 4,8 s; si uno queda negado, 1,6 s más y sólo eso', () => {
     const three = (negate: boolean): ChainStep[] => [
       link(0, true, 1, 0),
       link(1, false, 2, 0),
@@ -74,11 +79,10 @@ describe('chainFeed: la cadena paso a paso', () => {
       step('solved', 0, 0),
       step('end', -1, 0),
     ]
-    const resolving = (steps: ChainStep[]) => steps.slice(3).reduce((sum, _, i) => sum + chainDwell(steps, i + 3), 0)
+    const total = (steps: ChainStep[]) => steps.reduce((sum, _, i) => sum + chainDwell(steps, i), 0)
 
-    expect(resolving(three(false))).toBe(3 * CHAIN_SOLVE_MS)
-    expect(resolving(three(false)) + CLOSE_MS).toBe(2450)
-    expect(resolving(three(true))).toBe(3 * CHAIN_SOLVE_MS + CHAIN_READ_MS)
+    expect(total(three(false))).toBe(4800)
+    expect(total(three(true))).toBe(4800 + CHAIN_READ_MS)
   })
 
   it('stepsUpTo: los que llegaron hasta esa jugada de tu mesa', () => {

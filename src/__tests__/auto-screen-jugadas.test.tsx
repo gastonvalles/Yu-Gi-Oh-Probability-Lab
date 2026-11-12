@@ -162,7 +162,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('con una cadena a la vista, responder va en el pie de la hoja de la cadena (una sola hoja, abierta entera con la pila), con «Pasar» y la principal; la única candidata ya viene elegida', () => {
+  it('con una cadena a la vista, responder es su propia hoja, fuera de la escena de la cadena (que no tiene botones), con «Pasar» y la principal; la única candidata ya viene elegida', () => {
     const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, top: 0, left: 0, bottom: 800, right: 400, width: 400, height: 800, toJSON: () => ({}) })
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
@@ -172,13 +172,12 @@ describe('auto-screen · las jugadas', () => {
     core(() => vi.advanceTimersByTime(0))
     core(() => fake.ask(CHAIN))
     const notice = screen.getByTestId('chain-notice')
+    const ask = screen.getByRole('group', { name: 'Se activó «Maxx C». ¿Respondés?' })
 
-    expect(notice).toContainElement(screen.getByRole('group', { name: 'Se activó «Maxx C». ¿Respondés?' }))
-    expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
-    expect(within(notice).getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).toBeInTheDocument()
-    expect(within(notice).getByRole('button', { name: 'Bajar la hoja' })).toHaveAttribute('aria-expanded', 'true')
-    expect(within(notice).getByRole('button', { name: 'Activar' })).toBeEnabled()
-    fireEvent.click(within(notice).getByRole('button', { name: 'Activar' }))
+    expect(notice).not.toContainElement(ask)
+    expect(within(notice).queryAllByRole('button')).toHaveLength(0)
+    expect(within(ask).getByRole('button', { name: 'Activar' })).toBeEnabled()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
     spy.mockRestore()
   })

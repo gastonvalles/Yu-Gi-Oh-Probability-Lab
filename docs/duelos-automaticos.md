@@ -24,7 +24,7 @@ Capa 4 del motor de cartas (`docs/motor-de-cartas.md`). Corre `ocgcore` con los 
 ## La mesa y las preguntas
 
 - **Una carta sin jugadas dice por qué** (`no-plays.ts`): sólo hechos; si no se sabe, «el automático no la ofrece». Aparte y después, las restricciones del núcleo (`overlay.limits`, de los `player_hint` 6 y 7): rigen, pero pueden no ser la causa.
-- **La cadena se resuelve de una:** `ChainNotice` cuenta los eslabones de a uno (`chain-feed.ts`). Se mira la cadena, no la jugada `activate`: una Trampa activada desde la mano llega como colocada. Un efecto que queda niega en su turno, sin «por CLn».
+- **La cadena se resuelve de una:** `ChainStage` la cuenta de a un paso (`chain-feed.ts`). Se mira la cadena, no la jugada `activate`: una Trampa activada desde la mano llega como colocada. Un efecto que queda niega en su turno, sin «por CLn».
 - **Del rival, sólo lo público** (`rivalPeekOf`): boca abajo es dorso aunque el adaptador sepa el código; nunca su Deck ni su Extra boca abajo; de su mano, sólo lo mostrado o venido de una zona a la vista (`publicInHand`; barajarla lo borra).
 - **Las vidas esperan al golpe** (`useStrikeHold`, `useRivalStrike`): el núcleo las baja al declarar el ataque y la mesa lo muestra a su ritmo; saltar, repasar o el movimiento reducido no esperan, y el resultado, la sala y la calculadora usan siempre las reales. En Jugar solo lo del rival va de a una por `order` y tu mesa espera a «Tu turno».
 - **Tu DP y tu SP pasan solas** (Gastón, 2026-11-04): la mesa las cuenta a su ritmo hasta la M1 y frena sólo si el núcleo pregunta; desde la M1 las cambiás vos. El botón ofrece sólo las fases que el núcleo deja (una saltada, no).

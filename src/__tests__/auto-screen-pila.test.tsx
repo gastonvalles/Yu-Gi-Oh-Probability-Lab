@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
-import { act, fireEvent, screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CHAIN_LINK_MS, type ChainStep } from '../app/auto/chain-feed'
 import { AutoSoloScreen } from '../components/auto/AutoSoloScreen'
+import { PLAYER_COLOR } from '../components/duel/player-color'
 import type { MatCard } from '../components/probability/PracticeMat'
 import { CARDS, fakeSession } from './support/auto-session-fake'
 import { core } from './support/auto-screen-harness'
 import { card, render } from './support/practice-mat-harness'
 
-// La pila de la cadena en escritorio con el detalle fijo: cada eslabón con el color de su dueño y, al tocarlo, su carta en el detalle con la frase de su efecto resaltada.
+// La cadena en grande en escritorio con el detalle fijo: cada carta con el número del color de su dueño y, en el detalle, la del eslabón con la frase de su efecto resaltada.
 
 const { fetchCardsByIds } = vi.hoisted(() => ({ fetchCardsByIds: vi.fn() }))
 
@@ -37,11 +38,7 @@ function mountChain() {
 
   render(<AutoSoloScreen mainIds={[...WITH_TEXT.keys()].filter((id) => id !== 'card-500-1')} extraIds={['card-500-1']} cardsById={WITH_TEXT} deckName="Test" onExit={() => {}} connect={() => fake} />)
   core(() => fake.set({ chainSteps: [link(0, true), link(1, false)] }))
-  // Los eslabones se muestran de a uno, con su ritmo.
   act(() => vi.advanceTimersByTime(0))
-  act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-  // La cinta, con un chip por eslabón.
-  expect(within(within(screen.getByTestId('chain-notice')).getByRole('list', { name: /Eslabones de la cadena/ })).getAllByRole('listitem')).toHaveLength(2)
   // En escritorio va en su capa, sobre la columna del medio (sin el detalle ni los pasos) y sin atajar toques: no hay línea bajo el campo.
   const layer = screen.getByTestId('duel-chain-layer')
 
@@ -51,31 +48,32 @@ function mountChain() {
   return fake
 }
 
-const dock = () => screen.getByRole('region', { name: 'Detalle de la carta' })
+// Con o sin pestañas (la columna de escritorio lo esconde detrás de «Carta»), el detalle es el mismo.
+const dock = () => screen.getByRole('region', { name: 'Detalle de la carta', hidden: true })
 /** Lo resaltado en el detalle (la frase puede venir partida: la condición, la velocidad y el costo llevan su marca). */
 const marked = () => [...dock().querySelectorAll('[data-highlight]')].map((mark) => mark.textContent).join('')
+const number = (name: string) => screen.getByRole('img', { name }).querySelector('.text-hit')
 
-describe('auto-screen · la pila de la cadena', () => {
-  it('cada eslabón lleva el color de su dueño (el de las vidas) en su número y un nombre que dice de quién es', () => {
+describe('auto-screen · la cadena en grande, en escritorio', () => {
+  it('cada carta lleva su número en el color de su dueño (el de las vidas), un nombre que dice de quién es y el borde de su tipo (la del rival, por YGOPRODeck)', async () => {
     mountChain()
-    const mine = screen.getByRole('button', { name: 'Eslabón 1: Ash Blossom, tuyo. En espera' })
-    const theirs = screen.getByRole('button', { name: 'Eslabón 2: Blue-Eyes White Dragon, del rival. En espera' })
+    act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
+    await act(async () => {})
 
-    expect(within(mine).getByText('CL1')).toHaveClass('bg-accent/20')
-    expect(within(theirs).getByText('CL2')).toHaveClass('bg-info/20')
-    // La pila va del último al primero: el de arriba se resuelve primero.
-    expect(within(screen.getByRole('list', { name: /^Eslabones de la cadena/ })).getAllByRole('button').map((row) => row.getAttribute('aria-label'))).toEqual([theirs.getAttribute('aria-label'), mine.getAttribute('aria-label')])
+    expect(number('Eslabón 1: Ash Blossom, tuyo. En espera')).toHaveClass(PLAYER_COLOR.mine.text)
+    expect(number('Eslabón 2: Blue-Eyes White Dragon, del rival. En espera')).toHaveClass(PLAYER_COLOR.theirs.text)
+    expect(screen.getByRole('img', { name: /^Eslabón 1:/ })).toHaveClass('bg-frame-effect')
+    expect(screen.getByRole('img', { name: /^Eslabón 2:/ })).toHaveClass('bg-frame-effect')
   })
 
-  it('tocar tu eslabón lo fija en el detalle con la frase de su efecto resaltada; el del rival, por su número, también', async () => {
+  it('el detalle de la izquierda muestra el eslabón del que habla la escena, con la frase de su efecto resaltada: el tuyo y el del rival, por su número', async () => {
     mountChain()
-    fireEvent.click(screen.getByRole('button', { name: /^Eslabón 1:/ }))
-    expect(within(dock()).getByRole('heading', { name: 'Ash Blossom' })).toBeInTheDocument()
+    expect(within(dock()).getByRole('heading', { name: 'Ash Blossom', hidden: true })).toBeInTheDocument()
     expect(marked()).toBe(ASH_EFFECT)
 
-    fireEvent.click(screen.getByRole('button', { name: /^Eslabón 2:/ }))
+    act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
     await act(async () => {})
-    expect(within(dock()).getByRole('heading', { name: 'Blue-Eyes White Dragon' })).toBeInTheDocument()
+    expect(within(dock()).getByRole('heading', { name: 'Blue-Eyes White Dragon', hidden: true })).toBeInTheDocument()
     expect(marked()).toBe(BLUE_EYES_EFFECT)
   })
 })

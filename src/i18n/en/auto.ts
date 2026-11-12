@@ -333,13 +333,10 @@ export const auto: Translated<typeof es> = {
   'auto.lane.rejected': "The rules engine didn't accept that answer: choose again.",
   'auto.lane.stuck': "Automatic mode can't answer this rules engine question yet.",
 
-  // The chain notice (the pill above the mat and its list): how it goes and the state of each link.
+  // The big chain (`ChainStage`): the line at the bottom, while building and while resolving ("Ash Blossom: No effect by Called by the Grave"), and each link's state.
   'auto.chain.title': 'Chain',
-  'auto.chain.show': 'Show the chain',
-  'auto.chain.hide': 'Hide the chain',
-  'auto.chain.list': 'Chain links, in resolution order',
-  'auto.chain.strip': 'Chain links, first to last',
-  'auto.chain.fresh': 'New',
+  'auto.chain.order': 'Resolves from the last to the first',
+  'auto.chain.say': '{card}: {what}',
   'auto.chain.state.chained': 'Waiting',
   'auto.chain.state.solving': 'Resolving',
   'auto.chain.state.solved': 'Resolved',
@@ -347,7 +344,7 @@ export const auto: Translated<typeof es> = {
   'auto.chain.state.disabled': 'No effect',
   // Negated or no effect, with the link that did it (the core doesn't say: the adapter works it out).
   'auto.chain.by': '{state} · by CL{by}',
-  // The same with the name of the card that did it, where it fits (the phone line): it's read while the link holds still.
+  // The same with the name of the card that did it (the chain scene): read while the crossed-out card stays in the middle.
   'auto.chain.byCard': '{state} by {card}',
   // Resolved: what its effect did, when the core says so without doubt (`chainOutcome`). Replaces «Resolved» in its chip.
   'auto.chain.outcome.add': { one: 'Adds {count} card', other: 'Adds {count} cards' },
@@ -355,37 +352,9 @@ export const auto: Translated<typeof es> = {
   'auto.chain.outcome.summon': { one: 'Summons {count} monster', other: 'Summons {count} monsters' },
   'auto.chain.outcome.grave': 'Sends {count} to the GY',
   'auto.chain.outcome.banish': { one: 'Banishes {count} card', other: 'Banishes {count} cards' },
-  // Phones: on top of the pill, «Chain · 2 · Resolves CL2».
-  'auto.chain.count': 'Chain · {count}',
-  'auto.chain.resolves': 'Resolves',
-  // Each link is tapped to read it in the detail: what the screen reader says.
+  // What the screen reader says for each card of the chain.
   'auto.chain.linkMine': 'Chain Link {number}: {card}, yours. {state}',
   'auto.chain.linkTheirs': 'Chain Link {number}: {card}, your opponent’s. {state}',
-  // Two orders of the same chain, side by side (`ChainOrderCompare`): each verdict, in words as well as color.
-  'auto.chainOrder.good': 'Works',
-  'auto.chainOrder.bad': 'Backfires',
-  'auto.chainOrder.scenario': '{letter} · {title}. {verdict}',
-  'auto.chainOrder.replay': 'Replay',
-  // The "How it resolves" sheet (the chain's ⓘ): the key line, two pairs of orders with real cards and the wrap-up. Card names aren't translated.
-  'auto.chainLesson.open': 'How a chain resolves',
-  'auto.chainLesson.title': 'How it resolves',
-  'auto.chainLesson.key': 'A chain resolves from the top down: the last link added is the first to resolve.',
-  'auto.chainLesson.wait.title': "Respond to the effect, don't jump the gun",
-  'auto.chainLesson.wait.a': 'Wait',
-  'auto.chainLesson.wait.aNote': 'Let them activate the effect and chain Veiler: it resolves first and the effect does nothing.',
-  'auto.chainLesson.wait.b': "Don't fire first",
-  'auto.chainLesson.wait.bNote': 'If you activate Veiler first, they chain the effect and it resolves first: the banish still happens.',
-  'auto.chainLesson.late': 'Too late',
-  'auto.chainLesson.now.title': 'Respond in the chain, not after',
-  'auto.chainLesson.now.a': 'Respond now',
-  'auto.chainLesson.now.aNote': 'Called by the Grave chained to Maxx "C" resolves first and leaves it without effect: no draws.',
-  'auto.chainLesson.now.b': 'Later is too late',
-  'auto.chainLesson.now.bNote': "Once it resolves it applies all turn: banishing it later doesn't stop the draws.",
-  'auto.chainLesson.effect.veiler': "During your opponent's Main Phase: negates the effects of 1 of their monsters until the end of the turn",
-  'auto.chainLesson.effect.mirrorjade': 'Quick Effect: banishes 1 monster on the field',
-  'auto.chainLesson.effect.maxx': 'This turn, your opponent draws 1 card each time you Special Summon',
-  'auto.chainLesson.effect.called': "Banishes 1 monster from your opponent's GY and negates its effects until the end of the next turn",
-  'auto.chainLesson.closing': 'In short: wait for your opponent to activate, then respond in that same chain.',
 
   // Steps and combos (the practice panel): the empty list (no dragging or holding here) and reviewing a combo or your plays on the same mat, with the way back.
   'auto.steps.empty': 'Tap a card or the phase button to see what you can do. Every play is noted here.',
