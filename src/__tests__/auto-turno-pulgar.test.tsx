@@ -67,6 +67,22 @@ describe('auto · el turno en el pulgar (celular)', () => {
     expect(fake.answers.at(-1)).toMatchObject({ type: 'select_idlecmd', action: 7 })
   })
 
+  it('el botón no se recorta nunca: mide al menos lo de su texto y lo que falta lo cede tu chapa, que recorta su turno («Turno de Rival · 12»)', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(idle(false)))
+    const seat = document.querySelector<HTMLElement>('[data-mat-seat]')!
+    const badge = seat.querySelector<HTMLElement>('[data-life-badge]')!
+    const turn = [...badge.querySelectorAll('.truncate')].at(-1)!
+
+    // jsdom no mide: se fija el contrato (el navegador real lo mide el caso diario a 360, 390 y 430).
+    expect(screen.getByRole('button', { name: 'Terminar turno' })).toHaveClass('min-w-max', 'flex-1', 'px-2!')
+    expect(badge.parentElement).toBe(seat)
+    expect(seat).toHaveClass('[&>[data-life-badge]]:min-w-0', '[&>[data-life-badge]]:shrink')
+    expect(turn.parentElement).toHaveClass('min-w-0', 'max-w-full')
+    expect(turn).toHaveClass('min-w-0', 'truncate')
+  })
+
   it('la chapa del que juega lleva su aro y la del otro se apaga', () => {
     const fake = renderAuto()
 

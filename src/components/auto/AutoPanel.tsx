@@ -397,6 +397,8 @@ export interface AutoCardSheetProps {
   items: readonly MenuItem[]
   /** Sin jugadas: por qué (`NoPlays`). */
   empty?: ReactNode
+  /** Sin jugadas: «Seguir en modo manual», en el pie junto a «Ver carta» (siempre a la vista, aunque lo de arriba no entre). */
+  onManual?: () => void
   /** «Ver carta»: el texto entero. */
   onInspect?: () => void
   onClose: () => void
@@ -411,12 +413,30 @@ export interface AutoCardSheetProps {
  * jugadas que ofrece el núcleo como botones cuadrados con ícono y rótulo (`menuitem`): la principal primero, violeta y de doble ancho; las demás en una grilla de 5 columnas (8 desde 576 px de cartel: en escritorio). Sin «Más»,
  * sin «⋯» y sin submenús (`flatPlays`). Se cierra con la X, Escape o tocando afuera; el foco vuelve a la carta. Reemplaza a `CardSheet`/`CardMenu` sólo con `duel.auto` (la mesa manual no cambia).
  */
-export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null, items, empty, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
+export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null, items, empty, onManual, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
   const nameId = useId()
   const [armed, setArmed] = useState(false)
   const plays = flatPlays(items)
   const first = plays.findIndex((item) => !item.disabled)
   const stats = apiCard?.atk != null ? [`${t('duel.dock.atk')} ${apiCard.atk}`, ...(apiCard.def != null ? [`${t('duel.dock.def')} ${apiCard.def}`] : [])].join(' / ') : null
+  const inspect = onInspect ? (
+    <Button variant="tertiary" size="sm" iconEnd="chevron-right" className="min-h-8! justify-self-start px-0! text-info pointer-coarse:min-h-11!" onClick={onInspect}>
+      {t('practice.dialog.viewCard')}
+    </Button>
+  ) : null
+  // Sin jugadas (a 360×740, desde el Cementerio, la cabeza se comía la hoja): «Ver carta» y «Seguir en modo manual» van al pie, siempre a la vista; el porqué queda solo en el cuerpo.
+  const bare = plays.length === 0
+  const foot =
+    bare && (inspect || onManual) ? (
+      <>
+        {inspect}
+        {onManual ? (
+          <Button variant="secondary" size="sm" className="ml-auto" onClick={onManual}>
+            {t('auto.bar.manual')}
+          </Button>
+        ) : null}
+      </>
+    ) : undefined
 
   // La ficha sale al levantar el dedo de la carta: el clic que el celular manda después caería en una jugada. Un instante no atiende toques.
   useEffect(() => {
@@ -446,21 +466,19 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
       {...(crumb ? { crumb } : {})}
       variant={variant}
       className={armed ? undefined : 'pointer-events-none'}
+      actions={foot}
       head={
         <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2">
           <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden bg-input">{back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} className="block h-full w-full object-cover" />}</figure>
           <div className="grid min-w-0 gap-0.5">
-            {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
+            {/* Con «‹ GY · 2» arriba, el lugar ya está dicho. */}
+            {kicker && !crumb ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
             <h2 id={nameId} className="m-0 line-clamp-2 text-body font-bold text-foreground">
               {name}
             </h2>
             {apiCard ? <p className="m-0 truncate text-micro text-muted">{[apiCard.cardType, levelText(apiCard), stats].filter(Boolean).join(' · ')}</p> : null}
             {apiCard?.description ? <p className="m-0 line-clamp-3 text-micro text-muted">{apiCard.description}</p> : null}
-            {onInspect ? (
-              <Button variant="tertiary" size="sm" iconEnd="chevron-right" className="min-h-8! justify-self-start px-0! text-info pointer-coarse:min-h-11!" onClick={onInspect}>
-                {t('practice.dialog.viewCard')}
-              </Button>
-            ) : null}
+            {bare ? null : inspect}
           </div>
         </div>
       }

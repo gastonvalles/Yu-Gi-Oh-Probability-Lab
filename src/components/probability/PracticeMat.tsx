@@ -2817,7 +2817,8 @@ function PracticeMatBody({
   // Una carta tuya sin jugadas en automático: por qué (lo que se sabe) y el atajo a la mesa manual, en lugar de «No hay nada para hacer desde acá».
   const whyNot = duel?.auto?.whyNot && menu?.kind === 'card' && !menu.drop ? duel.auto.whyNot(menu.id) : null
   const manual = duel?.auto?.manual
-  const noPlays = whyNot ? <NoPlays reasons={whyNot} {...(manual ? { onManual: () => { setMenu(null); manual() } } : {})} /> : undefined
+  const toManual = whyNot && manual ? { onManual: () => { setMenu(null); manual() } } : {}
+  const noPlays = whyNot ? <NoPlays reasons={whyNot} {...toManual} /> : undefined
 
   // La fase de ahora y de quién es el turno: el botón de las fases (`p3`, en el medio del campo) es el mismo en un duelo y en la práctica; al tocarlo muestra las seis y elegir una pasa a ella (la Draw Phase
   // después de la End Phase pasa el turno: ahí sube la cuenta de turnos). En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`). En un duelo la fase es la compartida, la de quien
@@ -2910,7 +2911,9 @@ function PracticeMatBody({
         back={menuCard === null}
         apiCard={menuCard?.apiCard ?? null}
         items={menuItems}
-        empty={noPlays}
+        // La ficha lleva «Seguir en modo manual» en su pie (siempre a la vista), no en el porqué.
+        empty={whyNot ? <NoPlays reasons={whyNot} /> : undefined}
+        {...toManual}
         // «Ver carta», salvo con el detalle fijo (tocar la carta ya la muestra ahí).
         onInspect={isDesktop ? menuInspect : menu.kind === 'card' && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
         onClose={() => setMenu(null)}
@@ -3248,7 +3251,8 @@ function PracticeMatBody({
           <div className={cx('pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55', phone && !splitReplay ? 'h-15' : 'h-11')} data-mat-float="">
             {/* El celular: tu fila de abajo (60 px), tu chapa a la izquierda y la botonera cuadrada a la derecha; lo que falta elegir se apoya encima (`status`). */}
             {phone && !splitReplay ? (
-              <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto">
+              // Tu chapa cede el ancho que le falta al botón del turno (recorta «Turno de Rival · 12» con «…»): el botón no se corta nunca.
+              <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto [&>[data-life-badge]]:min-w-0 [&>[data-life-badge]]:shrink">
                 {duel?.life}
                 {/* El automático: el botón del turno entre tu chapa y la botonera, al alcance del pulgar (lámina 4, «B» y «D»). */}
                 {duel?.auto ? <TurnAction items={duel.auto.phaseItems} endTurn={duel.auto.endTurn} live={myTurn && !duel.chain} /> : null}

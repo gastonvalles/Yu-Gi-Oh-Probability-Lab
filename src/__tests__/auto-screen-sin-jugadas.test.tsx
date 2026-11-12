@@ -40,8 +40,9 @@ describe('auto-screen · una carta sin jugadas dice por qué', () => {
     tap(handCard('Called by the Grave'))
     const sheet = screen.getByRole('region', { name: 'Called by the Grave' })
 
-    expect(within(sheet).getByTestId('no-plays')).toHaveTextContent('Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora.También rige (puede no ser la causa):Destroy a monster¿No coincide con lo que esperabas?Seguir en modo manual')
-    expect(within(sheet).getByRole('button', { name: 'Ver carta' })).toBeInTheDocument()
+    expect(within(sheet).getByTestId('no-plays')).toHaveTextContent(/^Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora\.También rige \(puede no ser la causa\):Destroy a monster$/)
+    // «Ver carta» y «Seguir en modo manual», en el pie de la ficha: a la vista aunque el porqué no entre (360×740).
+    expect(within(sheet).getAllByRole('button').slice(-2).map((button) => button.textContent)).toEqual(['Ver carta', 'Seguir en modo manual'])
     fireEvent.click(within(sheet).getByRole('button', { name: 'Seguir en modo manual' }))
     // Sin jugadas todavía no hay nada que volver atrás: pasa derecho a la mesa manual.
     expect(onManual).toHaveBeenCalledWith(null)
@@ -108,7 +109,7 @@ describe('auto-screen · una carta sin jugadas dice por qué', () => {
 
     expect(within(menu).getByTestId('no-plays')).toHaveTextContent('Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora.También rige (puede no ser la causa):Destroy a monster')
     expect(within(menu).queryByRole('menuitem', { name: 'Ver carta' })).toBeNull()
-    expect(within(menu).getByRole('button', { name: 'Seguir en modo manual' })).toBeInTheDocument()
+    expect(within(menu.closest<HTMLElement>('[data-prompt="card"]')!).getByRole('button', { name: 'Seguir en modo manual' })).toBeInTheDocument()
     expect(dispatches).toBe(0)
   })
 })

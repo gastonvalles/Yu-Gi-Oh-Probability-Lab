@@ -216,7 +216,8 @@ export const LifeBadge = memo(function LifeBadge({
   const lifeOf = `${t('duel.bar.lifeOf', { name })}: ${life}`
   const body = (
     <>
-      <span className={cx('flex min-w-0 items-center gap-1.5 text-micro font-bold leading-4', align === 'end' && 'flex-row-reverse')}>
+      {/* `max-w-full`: si la chapa cede ancho (la fila de abajo del celular), el turno se recorta con «…» en vez de salirse. */}
+      <span className={cx('flex min-w-0 max-w-full items-center gap-1.5 text-micro font-bold leading-4', align === 'end' && 'flex-row-reverse')}>
         <span aria-hidden="true" className={cx('shrink-0 px-1.5 uppercase tracking-wider', BADGE_TAG[owner])}>{label}</span>
         {turn ? <span className={cx('min-w-0 truncate', turnMine === false ? 'text-info-soft' : 'text-accent')}>{turn}</span> : null}
       </span>
