@@ -10,6 +10,10 @@ export const CRITICAL_LP = 2000
 
 export const isCritical = (life: number) => life > 0 && life <= CRITICAL_LP
 
+/** El golpe chico de la chapa (`LifeBadge`): el número crece a 1,08 y vuelve en 240 ms. Corre sobre el mismo elemento en cada cambio, sin volver a montarlo. */
+export const BUMP_FRAMES: Keyframe[] = [{ scale: '1' }, { scale: '1.08', offset: 0.5 }, { scale: '1' }]
+export const BUMP_MS = 240
+
 /** El número se infla y vuelve (en su propio elemento, no en el que cuenta el texto). */
 export const PUNCH_FRAMES: Keyframe[] = [{ scale: '1' }, { scale: '1.25', offset: 0.25 }, { scale: '0.96', offset: 0.6 }, { scale: '1' }]
 /** La capa del fogonazo (rojo al bajar, verde al subir): se enciende y se apaga. */

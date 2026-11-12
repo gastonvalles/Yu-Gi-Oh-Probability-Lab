@@ -125,6 +125,9 @@ export function ChevronTrail({ x, y, len, ang, still = false }: TrailGeometry & 
   )
 }
 
+/** Dos estelas iguales (al medio píxel y a la milésima de radián): medir de nuevo no debería dibujar de nuevo. */
+const sameTrail = (a: TrailGeometry | null, b: TrailGeometry | null) => a === b || (a !== null && b !== null && Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5 && Math.abs(a.len - b.len) < 0.5 && Math.abs(a.ang - b.ang) < 0.001)
+
 /**
  * Sale del borde del atacante (el 42 % de su alto, desde el centro) y entra un poco en la carta atacada, como la maqueta aprobada; a las vidas (un directo) llega hasta su borde, sin tapar el número.
  * Null si no queda camino.
@@ -157,7 +160,10 @@ export function AttackTrail({ from, to, direct, boundsRef }: Omit<StrikeSpec, 'b
       const found = strike && trailOf(strike)
       const origin = layerRef.current?.getBoundingClientRect()
 
-      setTrail(found && origin ? { ...found, x: found.x - origin.left, y: found.y - origin.top } : found)
+      const next = found && origin ? { ...found, x: found.x - origin.left, y: found.y - origin.top } : found
+
+      // Si no se movió nada (un scroll de otra cosa, un cambio de la mesa que no la corre), se queda el mismo objeto y no se vuelve a dibujar.
+      setTrail((now) => (sameTrail(now, next) ? now : next))
     }
     const later = () => {
       cancelAnimationFrame(frame)
@@ -328,7 +334,9 @@ const delayed: CSSProperties = { animationDelay: `${IMPACT_MS}ms` }
 /** La espada mirando a la derecha (+x): hoja blanca con filo rojo, guarda y empuñadura. Mide 56 × 22. */
 function Blade() {
   return (
-    <svg viewBox="0 0 56 22" aria-hidden="true" className="absolute -ml-7 -mt-[11px] h-[22px] w-14 animate-fx-blade overflow-visible drop-shadow-[0_0_6px_rgb(var(--fx-rgb))] motion-reduce:hidden">
+    <svg viewBox="0 0 56 22" aria-hidden="true" className="absolute -ml-7 -mt-[11px] h-[22px] w-14 animate-fx-blade overflow-visible motion-reduce:hidden">
+      {/* El halo, dibujado: la misma hoja, más gorda y tenue, detrás (un `filter` sobre lo que se mueve y escala se vuelve a pintar). */}
+      <path d="M23 8.2 L48.5 9.6 Q52 10.2 55 11 Q52 11.8 48.5 12.4 L23 13.8 Z" strokeWidth="7" strokeLinejoin="round" className="fill-[color:rgb(var(--fx-rgb)/0.3)] stroke-[color:rgb(var(--fx-rgb)/0.3)]" />
       <path d="M23 8.2 L48.5 9.6 Q52 10.2 55 11 Q52 11.8 48.5 12.4 L23 13.8 Z" strokeWidth="1" strokeLinejoin="round" className="fill-white stroke-[color:rgb(var(--fx-rgb))]" />
       <path d="M26 11 H47" strokeWidth="0.8" className="stroke-[color:rgb(var(--fx-rgb)/0.55)]" />
       <rect x="19" y="3" width="4.2" height="16" rx="2" strokeWidth="0.8" className="fill-[color:rgb(var(--fx-rgb))] stroke-white" />
@@ -407,11 +415,11 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
       {/* El impacto: un destello, una onda que se expande y chispas, cuando la espada llega. */}
       <div className="absolute size-0" style={{ left: strike.bx, top: strike.by }}>
         <span className="absolute -ml-10 -mt-10 size-20 animate-fx-flash rounded-full bg-[radial-gradient(circle,rgb(255_255_255/0.95),rgb(var(--fx-rgb)/0.75)_35%,transparent_72%)] opacity-0 motion-reduce:hidden" style={delayed} />
-        <span className="absolute -ml-9 -mt-9 size-[4.5rem] animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 shadow-[0_0_14px_rgb(var(--fx-rgb)/0.8)] motion-reduce:hidden" style={delayed} />
+        <span className="absolute -ml-9 -mt-9 size-[4.5rem] animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] bg-[radial-gradient(closest-side,transparent_60%,rgb(var(--fx-rgb)/0.4))] opacity-0 motion-reduce:hidden" style={delayed} />
         {SPARKS.map(([x, y]) => (
           <span
             key={`${x}:${y}`}
-            className="absolute -ml-[3px] -mt-[3px] size-1.5 animate-fx-spark bg-white opacity-0 shadow-[0_0_6px_2px_rgb(var(--fx-rgb))] motion-reduce:hidden"
+            className="absolute -ml-2 -mt-2 size-4 animate-fx-spark bg-[radial-gradient(circle,#fff_20%,rgb(var(--fx-rgb)/0.8)_40%,transparent_70%)] opacity-0 motion-reduce:hidden"
             style={{ ...delayed, '--dx': `${x}rem`, '--dy': `${y}rem` } as CSSProperties}
           />
         ))}

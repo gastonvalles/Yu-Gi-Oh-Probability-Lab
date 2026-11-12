@@ -127,6 +127,8 @@
   --animate-shine: shine 3.6s var(--ease-out) infinite;
   /* El pulso de Tailwind (`animate-pulse`: los puntos en vivo y los esqueletos de carga) trae su propia curva: se pasa a la palabra `ease-in-out`, como los demás bucles. */
   --animate-pulse: pulse 2s ease-in-out infinite;
+  /* Lo que se marca (una carta pública del rival): late dos veces y queda con su borde quieto; un bucle sin fin deja una capa animada por carta. */
+  --animate-pulse-twice: pulse 2s ease-in-out 2;
   --animate-dialog-enter: dialog-enter 150ms var(--ease-out);
   --animate-toast-in: toast-in var(--motion-duration) var(--ease-out) both;
   --animate-toast-out: toast-out var(--motion-duration) var(--ease-out) both;
@@ -181,7 +183,7 @@
   /* Las fichas de un monstruo que llega a su casilla (`StatTag`): el Nivel, Rango o LINK baja desde arriba y el ATK/DEF sube desde abajo, con un pop corto (la espera la pone cada uso). */
   --animate-chip-drop: chip-drop 380ms var(--ease-snap) backwards;
   --animate-chip-rise: chip-rise 380ms var(--ease-snap) backwards;
-  --animate-fx-orbit: fx-orbit 1.2s linear infinite;
+  --animate-fx-orbit: fx-orbit 1.2s linear 3;
   --animate-fx-shine: fx-shine 850ms var(--ease-out) 100ms both;
   --animate-fx-lock: fx-lock 480ms var(--ease-snap) both;
   --animate-fx-ping: fx-ping 750ms var(--ease-out) both;
@@ -216,8 +218,6 @@
   --animate-lethal-flash: lethal-flash 1500ms var(--ease-out) both;
   --animate-lethal-ray: lethal-ray 1500ms var(--ease-out) both;
   --animate-lethal-number: lethal-number 1500ms var(--ease-out) both;
-  /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida); el «−N» chico de la chapa usa `animate-linger`. */
-  --animate-life-bump: life-bump 240ms var(--ease-out);
   /* La carta que un ataque saca del campo se parte en dos (`AttackFx`): las mitades del eslabón, más lentas. */
   --animate-card-split-a: split-a 520ms var(--ease-out) forwards;
   --animate-card-split-b: split-b 520ms var(--ease-out) forwards;
@@ -1075,16 +1075,6 @@
     }
   }
 
-  @keyframes life-bump {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    50% {
-      transform: scale(1.08);
-    }
-  }
 }
 
 /*
@@ -1259,13 +1249,14 @@
     pointer-events: none;
   }
 
-  /* Una carta marcada como objetivo respira: el aro rojo de base y, encima, el pico (aro y resplandor grande) que aparece y se va cada 1,5 s. */
+  /* Una carta marcada como objetivo respira dos veces (3 s) y queda quieta: el aro rojo de base y, encima, el pico (aro y resplandor grande) que sube y baja cada 1,5 s hasta un resto de 0,3 de opacidad. Un bucle sin fin dejaba una capa con 28 px de desenfoque por carta marcada. */
   .fx-ring[data-targeted='true'] {
     box-shadow: var(--card-shadow), 0 0 0 2px rgb(var(--fx-rgb) / 0.95), 0 0 14px 1px rgb(var(--fx-rgb) / 0.5);
 
     &::after {
       box-shadow: 0 0 0 2px rgb(var(--fx-rgb)), 0 0 28px 7px rgb(var(--fx-rgb) / 0.7);
-      animation: fx-ring-breathe 1.5s ease-in-out infinite;
+      opacity: 0.3;
+      animation: fx-ring-breathe 1.5s ease-in-out 2;
     }
   }
 
@@ -1303,7 +1294,8 @@
 
   :is(.fx-ring, *)[data-attack-target='true']::after {
     box-shadow: 0 0 0 2px rgb(var(--playable-rgb) / 0.9), 0 0 18px 3px rgb(var(--playable-rgb) / 0.38);
-    animation: fx-ring-breathe 1.5s ease-in-out infinite;
+    opacity: 0.3;
+    animation: fx-ring-breathe 1.5s ease-in-out 2;
   }
 }
 
@@ -1322,7 +1314,7 @@
 @keyframes fx-ring-breathe {
   0%,
   100% {
-    opacity: 0;
+    opacity: 0.3;
   }
 
   50% {

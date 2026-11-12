@@ -1,4 +1,4 @@
-import { memo, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
 import { presenceNotice } from '../../app/duel-presence'
@@ -15,7 +15,7 @@ import { useSwipeAway } from '../../app/use-swipe-away'
 import { sacudir } from '../probability/AttackFx'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { MatMoreMenu, MatReplayContext, MatUndoContext } from '../probability/MatBarActions'
-import { DELTA_MS, LifeHold, useHeldValue, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
+import { DELTA_MS, LifeHold, useHeldValue, useLifeCount, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -736,7 +736,7 @@ export function LifeTile({ name, label, life: real, mine = false, color, bubble 
   const life = useHeldValue(real, useContext(LifeHold))
   // El número cuenta escribiendo su texto en cada cuadro, sin redibujar la placa (`useLifeNumber` con `into`).
   const number = useRef<HTMLSpanElement | null>(null)
-  const shown = useLifeNumber(life, number)
+  const { shown, ms: countMs } = useLifeCount(life, number)
   const flash = useLpFlash(life)
   const change = useLpDelta(life)
   // Al bajar, la casilla se sacude como en el impacto (`sacudir`: no se suma a la de un ataque que ya la sacude).
@@ -745,7 +745,8 @@ export function LifeTile({ name, label, life: real, mine = false, color, bubble 
     tile.current = node
   }
 
-  useEffect(() => {
+  // En layout: arranca en el mismo cuadro que la cuenta del número.
+  useLayoutEffect(() => {
     const shake = change && change.delta < 0 && tile.current ? sacudir(tile.current, 'life') : null
 
     return () => shake?.cancel()
@@ -783,7 +784,8 @@ export function LifeTile({ name, label, life: real, mine = false, color, bubble 
         </span>
         {/* La barra de 8000 (con más, llena): la excepción a los anillos, sólo para las vidas. La lee el lector de pantalla como un medidor; el número ya lo dice la placa. */}
         <span role="meter" aria-label={lifeOf} aria-valuemin={0} aria-valuemax={STARTING_LP} aria-valuenow={Math.min(life, STARTING_LP)} aria-valuetext={String(life)} className={cx('block h-1 overflow-hidden bg-tint/16', tall && 'min-[1101px]:h-1.5')}>
-          <span className={cx('block h-full transition-[width] duration-300 motion-reduce:transition-none', health === 'danger' ? 'bg-danger-soft' : tone.bar)} style={{ width: `${ratio * 100}%` }} />
+          {/* Ancho completo y `scaleX` desde la izquierda (compositor, sin layout), con la duración de la cuenta del número. */}
+          <span className={cx('block h-full origin-left transition-transform ease-out motion-reduce:transition-none', health === 'danger' ? 'bg-danger-soft' : tone.bar)} style={{ transform: `scaleX(${ratio})`, transitionDuration: `${countMs}ms` }} />
         </span>
       </span>
       {bubble ? (

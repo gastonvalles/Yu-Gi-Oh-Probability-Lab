@@ -1,4 +1,4 @@
-import { createContext, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { createContext, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
 import { STARTING_LP } from './life-calculator'
 import { prefersReducedMotion } from './motion'
@@ -103,6 +103,11 @@ export function lifeCountMs(delta: number): number {
  * (con `useState`, al cambiar el objetivo): un re-render a mitad del conteo no la vuelve a calcular ni reinicia el conteo. `maxMs` la acorta si hace falta (la chapa cuenta en 700 como mucho).
  */
 export function useLifeNumber(target: number, into?: RefObject<HTMLElement | null>, maxMs = LIFE_COUNT_MAX_MS): number {
+  return useLifeCount(target, into, maxMs).shown
+}
+
+/** Lo mismo que `useLifeNumber` y, además, cuánto dura la cuenta (`ms`): lo que una barra necesita para moverse a la par del número. */
+export function useLifeCount(target: number, into?: RefObject<HTMLElement | null>, maxMs = LIFE_COUNT_MAX_MS): { shown: number; ms: number } {
   const [count, setCount] = useState(() => ({ target, ms: LIFE_COUNT_MIN_MS }))
   let current = count
 
@@ -111,7 +116,7 @@ export function useLifeNumber(target: number, into?: RefObject<HTMLElement | nul
     setCount(current)
   }
 
-  return useAnimatedNumber(target, into ? { ms: current.ms, into } : { ms: current.ms })
+  return { shown: useAnimatedNumber(target, into ? { ms: current.ms, into } : { ms: current.ms }), ms: current.ms }
 }
 
 /** Al cambiar, el LP se pinta un momento de verde (subió) o rojo (bajó). */
@@ -119,7 +124,8 @@ export function useLpFlash(lp: number): 'up' | 'down' | null {
   const [flash, setFlash] = useState<'up' | 'down' | null>(null)
   const previous = useRef(lp)
 
-  useEffect(() => {
+  // Layout, no passive: el color arranca en el mismo cuadro que la cuenta del número (con `useEffect`, un cuadro después).
+  useLayoutEffect(() => {
     if (previous.current === lp) {
       return
     }
@@ -146,7 +152,8 @@ export function useLpDelta(lp: number): { delta: number; key: number } | null {
   const previous = useRef(lp)
   const count = useRef(0)
 
-  useEffect(() => {
+  // Layout, no passive: el «−N» y el golpe nacen en el mismo cuadro que la cuenta del número (con `useEffect`, un cuadro después).
+  useLayoutEffect(() => {
     const before = previous.current
 
     previous.current = lp

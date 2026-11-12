@@ -363,12 +363,12 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
     <span aria-hidden="true" data-fx="landing" data-tone={tone} className="pointer-events-none absolute inset-0 z-4 motion-reduce:hidden" style={fxVars(LANDING_TONE[tone])}>
       <span className="absolute inset-0 animate-fx-flash bg-[radial-gradient(circle,rgb(255_255_255/0.95),rgb(var(--fx-rgb)/0.75)_35%,transparent_72%)]" style={delay()} />
       {/* El golpe: un aro lima que se abre desde la casilla cuando la carta la toca, y detrás otro del color de cómo llegó. */}
-      <span className="absolute inset-0 animate-fx-shock border-[3px] border-info opacity-0 shadow-[0_0_14px_var(--color-info)]" style={delay()} />
-      <span className="absolute inset-0 animate-fx-shock border-2 opacity-0 border-[color:rgb(var(--fx-rgb))] shadow-[0_0_14px_rgb(var(--fx-rgb)/0.8)]" style={delay(110)} />
+      <span className="absolute inset-0 animate-fx-shock border-[3px] border-info bg-[radial-gradient(closest-side,transparent_60%,rgb(var(--info-rgb)/0.4))] opacity-0" style={delay()} />
+      <span className="absolute inset-0 animate-fx-shock border-2 opacity-0 border-[color:rgb(var(--fx-rgb))] bg-[radial-gradient(closest-side,transparent_60%,rgb(var(--fx-rgb)/0.4))]" style={delay(110)} />
       {SPARKS.map(([x, y]) => (
         <span
           key={`${x}:${y}`}
-          className="absolute left-1/2 top-1/2 -ml-[3px] -mt-[3px] size-1.5 animate-fx-spark bg-white opacity-0 shadow-[0_0_6px_2px_rgb(var(--fx-rgb))]"
+          className="absolute left-1/2 top-1/2 -ml-2 -mt-2 size-4 animate-fx-spark bg-[radial-gradient(circle,#fff_20%,rgb(var(--fx-rgb)/0.8)_40%,transparent_70%)] opacity-0"
           style={{ ...delay(), '--dx': `${x}rem`, '--dy': `${y}rem` } as CSSProperties}
         />
       ))}
