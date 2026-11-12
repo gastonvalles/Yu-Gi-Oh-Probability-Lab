@@ -1,6 +1,7 @@
 import { useId } from 'react'
 
 import type { AskWhyView } from '../../app/auto/ask-why'
+import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { AskWhy } from '../duel/AskWhy'
 import { Badge } from '../ui/Badge'
@@ -18,6 +19,8 @@ interface AskPromptProps {
   text: string
   /** La carta que pregunta (`select_effectyn`): centrada en la bandeja, debajo del texto. Sin ella (`select_yesno`), sólo el texto. */
   card?: { name: string; art: string | null }
+  /** La carta se toca y la abre en grande, con su detalle (nombre accesible «Ver carta»). Sin esto, es sólo el dibujo. */
+  onInspect?: () => void
   /** La principal, a la derecha: hacerlo («Activar efecto», «Pagar 1000 LP»). */
   yes: AskChoice
   /** Lo que no hace nada, sin caja y a la izquierda («No activar»). */
@@ -37,7 +40,7 @@ interface AskPromptProps {
  * por su arte y con la pestaña de su lugar, centrada en la bandeja (en escritorio, a la izquierda del texto); abajo «No activar» sin caja y la principal a la derecha, que nombra la jugada. Hay que
  * contestarla: Escape la minimiza y, al aparecer, el foco va a la principal. Una cadena que se puede pasar no va acá: va en `RespondBand`.
  */
-export function AskPrompt({ text, card, yes, no, kicker, place, manual, why }: AskPromptProps) {
+export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manual, why }: AskPromptProps) {
   const textId = useId()
   const whyId = useId()
 
@@ -85,6 +88,7 @@ export function AskPrompt({ text, card, yes, no, kicker, place, manual, why }: A
             ) : null}
             <span className="relative block aspect-[421/614] w-full overflow-hidden bg-input">
               <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
+              {onInspect ? <button type="button" aria-label={t('practice.dialog.viewCard')} title={t('practice.dialog.viewCard')} className="absolute inset-0 focus-visible:outline-none focus-visible:shadow-focus" onClick={onInspect} /> : null}
             </span>
           </span>
         </div>

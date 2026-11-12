@@ -1,15 +1,15 @@
 import { useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
-import type { ChainBadgeData } from '../../app/card-glow'
+import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
 import { printedBadge, statShift } from '../../app/field-stats'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
-import { PHASES, type MatPhase, type MatSpot } from '../../app/practice-mat'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
+import { PLAYER_COLOR } from '../duel/player-color'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { CARD_BACK, FX_RGB, type FxTone } from './practice-styles'
@@ -46,7 +46,7 @@ export const DUEL_GLOW = [
 
 /**
  * «Puede atacar»: la ficha celeste con la espada, en la esquina de arriba a la derecha de un monstruo tuyo que puede atacar en tu Battle Phase (además de su brillo `can`), medio afuera: no tapa
- * el arte (la de la izquierda es de la insignia de la cadena, `chainBadgeAt`). Va al lado de la carta (la carta recortaría lo que se sale) y mide el 26 % de la casilla (15 px a 390). Decorativa:
+ * el arte. Va al lado de la carta (la carta recortaría lo que se sale) y mide el 26 % de la casilla (15 px a 390). Decorativa:
  * lo dice la descripción de la carta (`practice.card.canAttack`). Quieta, como el brillo.
  */
 export function AttackMark() {
@@ -167,12 +167,6 @@ export function TargetMark() {
   )
 }
 
-/**
- * Dónde va la insignia de la cadena en una casilla del campo: en la esquina de arriba a la izquierda de la carta como se ve (parada, del alto de la casilla y centrada; acostada, del ancho y
- * centrada; en la zona de campo, la casilla entera). Va en la casilla y no en la carta, que recorta lo que se sale.
- */
-export const chainBadgeAt = (spot: MatSpot, sideways: boolean) => (spot === 'field' ? 'left-0 top-0' : sideways ? 'left-0 top-[15.71%]' : 'left-[15.71%] top-0')
-
 /** «Sin efecto · por CL2» (o «Negada»): el estado de un eslabón negado, con quién lo negó si se sabe. */
 const voidedText = ({ state, by }: NonNullable<ChainBadgeData['voided']>) => (by ? t('auto.chain.by', { state: t(`auto.chain.state.${state}`), by }) : t(`auto.chain.state.${state}`))
 
@@ -183,22 +177,45 @@ export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
   return link.voided ? t('auto.link.void', { label, state: voidedText(link.voided) }) : label
 }
 
+/** El aro de cadena del medallón: 12 eslabones alrededor, alternados de frente (huecos) y de canto (barras), en el `viewBox` de 40 × 40. */
+const MEDAL_RING = Array.from({ length: 12 }, (_, i) => i * 30)
+
 /**
- * La insignia del eslabón de la cadena («CL1», «CL1·3» si la carta tiene dos), pegada arriba a la izquierda de la carta o de la pila (`className` la ubica), montada sobre el borde de arriba para
- * no tapar el nombre. Recta y naranja, el color de lo que se activa, con el texto carbón; de quién es lo dice la cadena en grande.
- * Sólo se mira: `aria-hidden`, y el eslabón va en el nombre de la carta (`chainLinkLabel`). Se va con el aviso de la cadena.
- * Negado o sin efecto (`voided`): la insignia va tachada y el arte de la carta, gris y latiendo (`VOIDED_ART`).
+ * Los medallones de la cadena (Master Duel, al resolver): uno por eslabón, centrados en el lugar donde se activó (la casilla, aunque quede vacía; la pila; la mano: quien lo usa pone
+ * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, del color de su dueño
+ * (`PLAYER_COLOR`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira (`aria-hidden`): el eslabón va en el nombre de la
+ * carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
  */
-export function ChainBadge({ link, className }: { link: ChainBadgeData; className?: string }) {
+export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
   return (
     <span
       aria-hidden="true"
-      data-chain-link={link.numbers.join(',')}
-      data-chain-owner={link.mine ? 'mine' : 'theirs'}
-      data-chain-void={link.voided ? (link.voided.by ?? '') : undefined}
-      className={cx('pointer-events-none absolute z-11 -translate-y-1/2 whitespace-nowrap bg-warning px-1 py-px text-micro font-extrabold leading-tight tabular-nums text-background ring-1 ring-background', link.voided && 'line-through', className)}
+      data-chain-link={medals.map((medal) => medal.number).join(',')}
+      data-chain-owner={medals[0]?.mine ? 'mine' : 'theirs'}
+      className="pointer-events-none absolute inset-0 z-11 flex items-center justify-center -space-x-3"
     >
-      {t('auto.link.badge', { numbers: link.numbers.join('·') })}
+      {medals.map(({ number, mine, voided, resolving }) => (
+        <span
+          key={number}
+          data-chain-medal={number}
+          {...(resolving ? { 'data-resolving': '' } : {})}
+          {...(voided ? { 'data-voided': '' } : {})}
+          className={cx('relative grid size-9 shrink-0 place-items-center', resolving && 'animate-pulse motion-reduce:animate-none')}
+        >
+          <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
+            <circle cx={20} cy={20} r={18} className="fill-background" />
+            {MEDAL_RING.map((angle, i) =>
+              i % 2 === 0 ? (
+                <rect key={angle} x={16.5} y={0.5} width={7} height={4.5} rx={2.25} strokeWidth={2.4} transform={`rotate(${angle} 20 20)`} className="fill-none stroke-soft" />
+              ) : (
+                <rect key={angle} x={16.5} y={1.25} width={7} height={3} rx={1.5} transform={`rotate(${angle} 20 20)`} className="fill-muted" />
+              ),
+            )}
+            {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
+          </svg>
+          <span className={cx('relative text-lead font-extrabold leading-none tabular-nums', PLAYER_COLOR[mine ? 'mine' : 'theirs'].text)}>{number}</span>
+        </span>
+      ))}
     </span>
   )
 }
@@ -321,24 +338,6 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
         />
       ))}
     </span>
-  )
-}
-
-/**
- * El cartel de una fase nueva (y del turno, si empieza otro): una placa plana y recta de borde violeta, como las del comienzo y el final, con el nombre
- * de la fase en grande y el turno arriba en lavanda. Nada más: las seis fases ya están en los botones de la mesa. En un duelo, `label` cambia la frase grande
- * ("Tu turno") y `who` dice de quién es la fase cuando no es tuya. Con menos movimiento se ve igual, quieto, el mismo rato (lo saca quien lo monta).
- */
-export function PhaseBanner({ phase, turn, who, label, className }: { phase: MatPhase; turn: number | null; who?: string; label?: string; className?: string }) {
-  const name = label ?? PHASES.find((entry) => entry.id === phase)?.name ?? phase
-
-  return (
-    <div aria-hidden="true" data-fx="banner" className={cx('pointer-events-none grid place-items-center', className)}>
-      <div className="grid animate-fx-banner justify-items-center gap-1 border-2 border-primary bg-background/92 px-6 py-3 motion-reduce:animate-none min-[1101px]:px-8 min-[1101px]:py-4">
-        {turn !== null || who ? <span className="animate-fx-banner-text text-micro font-bold text-accent motion-reduce:animate-none">{turn !== null ? t('practice.mat.turn', { turn }) : who}</span> : null}
-        <span className="animate-fx-banner-text text-title font-extrabold leading-none text-foreground motion-reduce:animate-none min-[1101px]:text-stat">{name}</span>
-      </div>
-    </div>
   )
 }
 

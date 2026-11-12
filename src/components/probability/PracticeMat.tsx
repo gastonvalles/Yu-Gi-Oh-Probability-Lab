@@ -64,7 +64,7 @@ import { cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
-import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { Presence } from '../../app/use-presence'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -94,6 +94,7 @@ import { ResizeHandle } from '../ui/ResizeHandle'
 import { AttackFx, AttackTrail, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { AskWhy } from '../duel/AskWhy'
+import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND, TheirHandSize } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from './compact-field'
@@ -104,7 +105,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -117,7 +118,7 @@ import { UndoChip, useUndoPlay, type UndoPlay } from './UndoChip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
 import { CARD_BACK, CARD_BACK_URL, DECK_LAYERS, glowFrame } from './practice-styles'
-import { glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
+import { glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData, type ChainMedal } from '../../app/card-glow'
 
 export interface MatCard {
   name: string
@@ -233,6 +234,8 @@ export interface DuelMatLink {
   act?: ReadonlySet<string>
   /** Mis cartas que están en la cadena a la vista, con sus eslabones (`linksOf` de `app/card-glow.ts`): llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
   links?: ReadonlyMap<string, ChainBadgeData>
+  /** Los medallones de la cadena al resolver, por lugar (`medalsOf`: `mz:0`, `st:2`, `field`, `gy`, `deck`, `hand`…): van donde se activó cada eslabón, aunque la carta se haya ido. */
+  medals?: ReadonlyMap<string, readonly ChainMedal[]>
   /** Lo que hay que contestar ahora (la pregunta del rival de pasar de fase): va en el medio de la mesa, centrado en su columna y encima del campo, sin fondo que la tape ni empujar nada. */
   prompt?: ReactNode
   /** La cadena en grande (duelo automático: `ChainStage`), en todos los anchos una capa centrada sobre el campo (en escritorio, sobre la columna del medio) que deja pasar los toques. */
@@ -710,6 +713,8 @@ function PracticeMatBody({
   const sidePanel = stepsPanel || Boolean(duel?.aside)
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const compact = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
+  // El panel de detalle está a la vista sólo desde 1440 px (a la mesa le llega `detail` aunque esté oculto): ahí no hace falta abrir la carta en grande.
+  const dockShown = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY) && Boolean(detail)
   // «Jugar solo automático» hasta 1100 px: tus vidas y el turno van en el marcador de la barra (`scoreInHeader`) y la mesa no lleva fila de abajo.
   const bare = !isDesktop && Boolean(duel?.scoreInHeader)
   const screen = useSyncExternalStore(onResize, screenSize)
@@ -884,6 +889,16 @@ function PracticeMatBody({
   const [fxStep, setFxStep] = useState<FxStep>(() => ({ cursor: session.cursor, actions: session.actions, initial: session.initial, replay: session.replay, fx: NO_FX, step: null, shuffles: 0 }))
   const { fx } = fxStep
   const { flash, landing, banner, stage, handFlash } = fx
+  // La banda de la fase: la tuya en violeta y la del rival en lima. En un duelo tu mesa sólo trae tus fases, y su pase (turno nuevo) abre el del rival; sus fases llegan en `notice`, y la que
+  // te devuelve el turno («Tu turno», `label`) abre el tuyo. Si están las dos, la más nueva (las dos claves son `Date.now()`): una que todavía no se fue no tapa a la que llega.
+  const rivalNotice = duel?.notice
+  const dueling = Boolean(duel)
+  const phaseCue = useMemo<PhaseCue | null>(() => {
+    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: dueling && banner.turn !== null ? 'theirs' : 'mine' } : null
+    const rival: PhaseCue | null = rivalNotice ? { key: rivalNotice.key, phase: rivalNotice.phase, side: rivalNotice.label ? 'mine' : 'theirs' } : null
+
+    return own && rival ? (own.key >= rival.key ? own : rival) : (own ?? rival)
+  }, [banner, rivalNotice, dueling])
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
@@ -2173,10 +2188,10 @@ function PracticeMatBody({
   const phasesOpen = menu?.kind === 'phases' && !covered
   const sheeted = !isDesktop && menu !== null && menu.kind !== 'phases' && !covered
   // Con el detalle fijo a la izquierda (desde 1440 px) «Ver carta» no hace falta: tocar una carta ya lo muestra ahí. Con menos ancho, es la forma de verlo.
-  const menuInspect = menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !detail ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined
+  const menuInspect = menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !dockShown ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined
   // Una carta tocada con una sola jugada directa y nada más en el menú (sin «Ver carta», sin pregunta ni submenú): en escritorio, en vez del menú de un renglón, la etiqueta pegada a la carta
   // (`PlayTag`); otro toque la hace. En el celular sigue la hoja (también un toque más, y es donde se lee la carta).
-  const lonePlay = isDesktop && menu?.kind === 'card' && !menu.ask && !menu.drop && !menuInspect && menuItems.length === 1 && !menuItems[0]!.children && !menuItems[0]!.disabled ? menuItems[0]! : null
+  const lonePlay = isDesktop && menu?.kind === 'card' && !menu.ask && !menu.drop && (Boolean(detail) || isToken(menu.id)) && menuItems.length === 1 && !menuItems[0]!.children && !menuItems[0]!.disabled ? menuItems[0]! : null
   // La flecha de volver de la hoja: del segundo paso a las jugadas, y de la posición de la ficha a lo que agrega el +. No la lleva la pregunta con la que el menú abrió directo (la carta soltada en una
   // zona con una sola jugada, que pregunta): no hay a dónde volver.
   const menuBack =
@@ -2403,6 +2418,7 @@ function PracticeMatBody({
           </span>
         ) : null}
         {!shown && spot === 'emz' && duel ? duel.sharedZone(index) : null}
+        {duel?.medals?.get(drop) ? <ChainBadge medals={duel.medals.get(drop)!} /> : null}
         {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
       </div>
     )
@@ -2451,7 +2467,7 @@ function PracticeMatBody({
           {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
           {marked ? <TargetMark key={`mira:${shown}`} /> : null}
         </span>
-        {link ? <ChainBadge link={link} className="left-0 top-0" /> : null}
+        {duel?.medals?.get(pile) ? <ChainBadge medals={duel.medals.get(pile)!} /> : null}
       </button>
     )
   }
@@ -2871,7 +2887,8 @@ function PracticeMatBody({
   // El duelo automático: la ficha con todas las jugadas que da el núcleo, la misma en el celular y en escritorio (la mesa manual sigue con `CardSheet` y `CardMenu`); en escritorio, una sola jugada sigue
   // siendo su etiqueta (`PlayTag`).
   const cardSheet =
-    autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay && !menuShelved ? (
+    // Con la carta en grande a la vista (`inspected`), la ficha se esconde sin cerrarse: al cerrar el visor, vuelve.
+    autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay && !menuShelved && !inspected ? (
       <autoMenus.Card
         key={menu.kind === 'card' ? menu.id : menu.kind}
         name={menuTitle}
@@ -2884,7 +2901,7 @@ function PracticeMatBody({
         empty={whyNot ? <NoPlays reasons={whyNot} /> : undefined}
         {...toManual}
         // «Ver carta», salvo con el detalle fijo (tocar la carta ya la muestra ahí).
-        onInspect={isDesktop ? menuInspect : menu.kind === 'card' && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        onInspect={menu.kind === 'card' && !menu.drop && !isToken(menu.id) && (!isDesktop || menuInspect) ? () => setInspected({ id: menu.id, rect: menu.rect }) : undefined}
         onClose={() => setMenu(null)}
         // Tapa el visor de una pila (celular): «‹ GY · 2» la cierra y el visor vuelve como estaba (si la carta ya no está ahí, igual).
         {...(pileYield && pileTitle !== null ? { crumb: { label: pileTitle, onBack: () => setMenu(null) } } : {})}
@@ -3047,7 +3064,8 @@ function PracticeMatBody({
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
               </IconButton>
-              {duel && !session.replay ? <PhasePulse pulse={duel.notice?.key ?? banner?.key ?? null} text={phaseSaid(duel.notice ?? (banner ? { phase: banner.phase, ...(banner.turn !== null && duel.rivalTurnLabel ? { label: duel.rivalTurnLabel } : {}) } : null))} /> : null}
+              {/* Sin el aro del botón: la banda de la fase ya lo cruza (no son dos avisos); queda el `status` para el lector de pantalla. */}
+              {duel && !session.replay ? <PhasePulse pulse={null} text={phaseSaid(duel.notice ?? (banner ? { phase: banner.phase, ...(banner.turn !== null && duel.rivalTurnLabel ? { label: duel.rivalTurnLabel } : {}) } : null))} /> : null}
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
               {isDesktop && !isAuto && myTurn && phaseNow === 'end' ? (
                 <Button
@@ -3102,18 +3120,14 @@ function PracticeMatBody({
             ) : null}
             <PileBadge count={state.deck.length} />
             {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
-            {deckLink ? <ChainBadge link={deckLink} className="left-0 top-0" /> : null}
+            {duel?.medals?.get('deck') ? <ChainBadge medals={duel.medals.get('deck')!} /> : null}
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
           {pileCell('banished', 'ban')}
 
-          {/* Cambio de fase: en la práctica y repasando un combo, el cartel se asoma en el medio del campo y se va agrandándose. En un duelo no hay cartel (la fase vive en su botón, que pulsa). */}
-          {duel && !session.replay ? null : (
-            <Deferred value={banner}>
-              {(shown) => (shown ? <PhaseBanner key={shown.key} phase={shown.phase} turn={shown.turn} className="absolute inset-0 z-30" /> : null)}
-            </Deferred>
-          )}
+          {/* Cambio de fase: la banda cruza el campo por la fila del medio, del color de quien juega (`PhaseBand`), en la práctica, repasando un combo y en los duelos. */}
+          <Deferred value={phaseCue}>{(cue) => <PhaseBand cue={cue} />}</Deferred>
           {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
           {announcement ? (
             <span
@@ -3162,6 +3176,7 @@ function PracticeMatBody({
             fanDegrees={2.2}
             glowOf={glowKindOf}
             {...(duel?.links?.size ? { links: duel.links } : {})}
+            {...(duel?.medals?.get('hand') ? { medals: duel.medals.get('hand')! } : {})}
             dimUnlit={dimUnlit}
             muted={muted}
             flash={flash}
@@ -3724,7 +3739,6 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
       </div>
-      {link && !dragging ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
       {canAttack && !dragging ? <AttackMark /> : null}
       {/* Parada, la carta llega al pie de la casilla: la etiqueta de elegida va ahí, y el ATK/DEF, encima. */}
       {spot === 'mz' || spot === 'emz' ? <StatTag stat={dragging ? null : (pickStat ?? stat)} className={cx(chosen && !sideways && 'bottom-4.5')} /> : null}

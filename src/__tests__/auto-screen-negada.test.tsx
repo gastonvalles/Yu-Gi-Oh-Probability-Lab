@@ -4,20 +4,20 @@ import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { CardRef } from '../app/auto/adapter'
-import { CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
+import { CHAIN_LEAVE_MS, CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { pos } from './support/auto-session-fake'
 import { core, handCard, lane, renderAuto } from './support/auto-screen-harness'
 
 // La negación (la carta tachada en la escena de la cadena; en la mesa, «Sin efecto · por CL2» en su nombre y gris y latiendo) y varias obligatorias a la vez (se elige cuál va primero).
 
-const link = (index: number, card: CardRef, from: number = L.MZONE): ChainStep => ({ kind: 'chain', at: 0, index, link: { card, code: 1, mine: card.side === 'mine', from } })
+const link = (index: number, card: CardRef, from: number = L.MZONE): ChainStep => ({ kind: 'chain', at: 0, index, link: { card, code: 1, mine: card.side === 'mine', from, place: { side: card.side, location: from, sequence: 0 } } })
 const step = (kind: ChainStep['kind'], index: number, by?: number): ChainStep => ({ kind, at: 0, index, ...(by ? { by } : {}) })
 /** Lo gris en la mesa (la pila de la cadena, `chain-notice`, se mira aparte). */
 const grayed = () => [...document.querySelectorAll('.grayscale')].filter((element) => !element.closest('[data-testid="chain-notice"]'))
 
 describe('auto-screen · la cadena negada', () => {
-  it('Maxx C (CL1) queda sin efecto por el CL2 del rival: en la escena se tacha, en la mesa su nombre dice «Sin efecto · por CL2» y se ve gris y latiendo, sin moverla', () => {
+  it('Maxx C (CL1) queda sin efecto por el CL2 del rival: su medallón se tacha en rojo, en la mesa su nombre dice «Sin efecto · por CL2» y se ve gris y latiendo, sin moverla', () => {
     const fake = renderAuto()
     const cell = () => document.querySelector('[data-card-id="card-200-1"]')!.parentElement!
     const chain = [link(0, { side: 'mine', id: 'card-200-1' }), link(1, { side: 'theirs', id: 'c1' }), step('solving', 1), step('disabled', 0, 2)]
@@ -31,14 +31,15 @@ describe('auto-screen · la cadena negada', () => {
 
     // Armada, se resuelve: lo que pasa mientras resuelve el del rival (negar la tuya) sale con él.
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    // En la escena: el del rival resuelve en el centro y tu carta, en su lugar, ya va tachada; quién la dejó sin efecto, por su nombre.
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent(/: Resolviendo$/)
-    const linked = screen.getByRole('img', { name: 'Eslabón 1: Carta, tuyo. Sin efecto por Carta' })
-    expect(linked).toHaveAttribute('data-pose', 'slot')
-    expect(linked).toHaveAttribute('data-voided')
-    // Sobre la carta: la insignia tachada y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
-    expect(cell().querySelector('[data-chain-link]')).toHaveClass('line-through')
-    expect(cell().querySelector('[data-chain-link]')).toHaveAttribute('data-chain-void', '2')
+    // Se va con un fundido corto.
+    act(() => vi.advanceTimersByTime(CHAIN_LEAVE_MS))
+    // Resolviendo, la escena en grande no está: lo que pasa lo dice una línea oculta (para el lector de pantalla).
+    expect(document.querySelector('[data-chain-stage]')).toBeNull()
+    expect(screen.getByTestId('chain-notice')).toHaveTextContent(/: Resolviendo$/)
+    // Sobre la carta: el medallón tachado en rojo y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
+    const medal = cell().closest('[data-drop]')!.querySelector('[data-chain-medal="1"]')
+    expect(medal).toHaveAttribute('data-voided')
+    expect(medal!.querySelector('line')).toHaveClass('stroke-danger')
     const art = cell().querySelector('[data-card-id] > .grayscale')
 
     expect(art).toHaveClass('grayscale', 'motion-safe:animate-fx-void')

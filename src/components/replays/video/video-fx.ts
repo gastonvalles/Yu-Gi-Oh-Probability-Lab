@@ -377,7 +377,7 @@ function bannerOverlay(name: string, lead: string, field: Rect, width: number, t
     start,
     duration: MESA.banner / speed,
     draw: (ctx, p) => {
-      // La banda: se abre de una línea, se queda y se cierra (`fx-banner`); el texto entra de la izquierda y sale por la derecha (`fx-banner-text`).
+      // La banda: se abre de una línea, se queda y se cierra; el texto entra de la izquierda y sale por la derecha.
       const sx = keyed(p, [[0, 1.12], [0.14, 1], [0.76, 1], [1, 1.06]])
       const sy = keyed(p, [[0, 0.08], [0.14, 1.06], [0.26, 1], [0.76, 1], [1, 0.2]])
       const alpha = keyed(p, [[0, 0], [0.14, 1], [0.76, 1], [1, 0]])

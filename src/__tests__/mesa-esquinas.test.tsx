@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { TurnClock } from '../app/duel-clock'
 import { AutoDock } from '../components/auto/AutoBar'
+import { ResultHero } from '../components/duel/DuelBanner'
 import { LifeBadge } from '../components/duel/LifeScore'
 import { TurnDial } from '../components/duel/TurnDial'
 import { Icon } from '../components/ui/Icon'
@@ -264,5 +265,14 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
     expect(table.innerHTML).not.toMatch(/rounded-full|stroke-dash|<circle/)
     expect(screen.getByTestId('turn-dial-bar')).toHaveClass('origin-left', 'motion-reduce:transition-none')
     expect(screen.getByTestId('turn-dial-bar').style.transform).toMatch(/^scaleX\(0\.\d+\)$/)
+  })
+
+  it('el final del duelo (`ResultHero`, también fuera de la mesa: quien mira) es una hoja recta, con su X y sus botones', () => {
+    render(<ResultHero fixed tone="win" title="¡Ganaste!" reason="Rival se quedó sin puntos de vida." score={{ mine: 7700, theirs: 0, rival: 'Rival' }} onLeave={() => {}} actions={<Button fullWidth>Guardar replay</Button>} primary={<Button variant="primary" size="lg" fullWidth>Jugar otra vez</Button>} />)
+    const sheet = screen.getByRole('dialog', { name: '¡Ganaste!' })
+
+    expect(sheet).toHaveClass('mat-square')
+    expect(within(sheet).getByRole('button', { name: 'Salir del duelo' })).toBeInTheDocument()
+    expect(roundCorners(sheet)).toEqual([])
   })
 })

@@ -3,7 +3,7 @@ import { act, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { CHAIN_ALONE_MS, CHAIN_LINGER_MS, CHAIN_LINK_MS, type ChainStep } from '../app/auto/chain-feed'
+import { CHAIN_ALONE_MS, CHAIN_LEAVE_MS, CHAIN_LINGER_MS, CHAIN_LINK_MS, type ChainStep } from '../app/auto/chain-feed'
 import { core, renderAuto } from './support/auto-screen-harness'
 import { fakeSession } from './support/auto-session-fake'
 
@@ -18,7 +18,7 @@ const stage = () => screen.queryByTestId('chain-notice')
 const pose = () => [...document.querySelectorAll<HTMLElement>('[data-chain-card]')].map((card) => `${card.dataset.chainCard}:${card.dataset.pose}`)
 
 describe('auto-screen · una activación sola', () => {
-  it('entra con su «1», se resuelve en el centro, se va a los 1,2 s y la escena se cierra', () => {
+  it('entra con su «1» y, apenas empieza a resolverse, la escena se va (lo que pasó, en una línea oculta) y se cierra', () => {
     const fake = renderAuto(fakeSession())
     const mine = { card: { side: 'mine' as const, id: 'card-200-1' }, code: 200 }
     const steps: ChainStep[] = [
@@ -34,12 +34,16 @@ describe('auto-screen · una activación sola', () => {
     expect(within(stage()!).getByRole('status')).toHaveTextContent('Se resuelve del último al primero')
     expect(within(screen.getByRole('region', { name: 'Detalle de la carta', hidden: true })).getByRole('heading', { name: 'Maxx C', hidden: true })).toBeInTheDocument()
 
+    // Empieza a resolverse: la escena en grande se va entera con un fundido corto (resolver no la muestra: Gastón); lo que pasó queda en una línea oculta, para el lector de pantalla.
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS + 1))
-    expect(pose()).toEqual(['1:center'])
-    expect(within(stage()!).getByRole('status')).toHaveTextContent('Maxx C: Resuelta')
+    expect(document.querySelector('[data-chain-stage]')).toHaveAttribute('data-leaving')
+    act(() => vi.advanceTimersByTime(CHAIN_LEAVE_MS))
+    expect(pose()).toEqual([])
+    expect(document.querySelector('[data-chain-stage]')).toBeNull()
+    expect(stage()).toHaveClass('sr-only')
+    expect(stage()).toHaveTextContent('Maxx C: Resuelta')
 
-    act(() => vi.advanceTimersByTime(CHAIN_ALONE_MS - CHAIN_LINK_MS))
-    expect(pose()).toEqual(['1:out'])
+    act(() => vi.advanceTimersByTime(CHAIN_ALONE_MS - CHAIN_LINK_MS - CHAIN_LEAVE_MS))
     act(() => vi.advanceTimersByTime(CHAIN_LINGER_MS - 100))
     expect(stage()).not.toBeNull()
     act(() => vi.advanceTimersByTime(200))

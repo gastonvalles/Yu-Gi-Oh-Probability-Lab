@@ -57,7 +57,7 @@ describe('la pantalla del replay de un duelo', () => {
     expect(screen.getByText('Vista de espectador')).toBeInTheDocument()
   })
 
-  it('cada cambio de fase sale con el cartel de la mesa y el nombre de quien la pasa, al reproducir o con «Siguiente»; saltar con la línea de tiempo no lo repite', () => {
+  it('cada cambio de fase sale con la banda de la mesa, del color de quien la pasa (Ana, violeta; Beto, lima), al reproducir o con «Siguiente»; saltar con la línea de tiempo no lo repite', () => {
     vi.useFakeTimers()
     const replay = buildDuelReplay({
       mode: 'link-auto',
@@ -78,11 +78,13 @@ describe('la pantalla del replay de un duelo', () => {
       expect(banner()).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
       fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
-      expect(banner()).toHaveTextContent('AnaMain Phase 1')
-      // Reproduciendo, la del rival con su nombre; y se va sola.
+      expect(banner()).toHaveTextContent(/^Main Phase 1$/)
+      expect(banner()).toHaveAttribute('data-side', 'mine')
+      // Reproduciendo, la del rival en su color; y se va sola.
       fireEvent.click(screen.getByRole('button', { name: 'Reproducir' }))
       act(() => vi.advanceTimersByTime(900))
-      expect(banner()).toHaveTextContent('BetoStandby Phase')
+      expect(banner()).toHaveTextContent(/^Standby Phase$/)
+      expect(banner()).toHaveAttribute('data-side', 'theirs')
       act(() => vi.advanceTimersByTime(1100))
       expect(banner()).toBeNull()
       // La línea de tiempo salta (tocarla o arrastrarla): ni un cartel.

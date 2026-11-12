@@ -16,17 +16,23 @@ const CARDS: Array<{ name: string; art: string; mine: boolean; frame: CardFrame;
   { name: 'Sky Striker Mobilize - Engage!', art: art(63166095), mine: true, frame: frameKindOf('spell'), outcome: { kind: 'add', count: 1 } },
   { name: 'Ash Blossom & Joyous Spring', art: art(14558127), mine: false, frame: frameKindOf('effect') },
   { name: 'Called by the Grave', art: art(24224830), mine: true, frame: frameKindOf('spell'), outcome: { kind: 'banish', count: 1 } },
+  { name: 'Infinite Impermanence', art: art(10045474), mine: false, frame: frameKindOf('trap') },
+  { name: 'Crossout Designator', art: art(65681983), mine: true, frame: frameKindOf('spell') },
 ]
 
 const link = (index: number): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: null, code: index + 1, mine: CARDS[index]!.mine } })
 const at = (kind: ChainStep['kind'], index: number, extra: Partial<ChainStep> = {}): ChainStep => ({ kind, at: 0, index, ...extra })
 const solve = (index: number): ChainStep[] => [at('solving', index), at('solved', index, CARDS[index]!.outcome ? { outcome: CARDS[index]!.outcome } : {})]
 
-/** Los pasos como los anota el adaptador: la cadena de tres (Called by deja a Ash sin efecto mientras se resuelve) y una activación sola, que nadie puede responder. */
+/** Los pasos como los anota el adaptador: una activación sola, que nadie puede responder; dos; tres (Called by deja a Ash sin efecto mientras se resuelve), cuatro y cinco. */
 const RUNS = {
-  three: [link(0), link(1), link(2), at('solving', 2), at('disabled', 1, { by: 3 }), at('solved', 2, { outcome: { kind: 'banish', count: 1 } }), ...solve(1), ...solve(0), at('end', -1)],
   alone: [link(0), ...solve(0), at('end', -1)],
+  two: [link(0), link(1), ...solve(1), ...solve(0), at('end', -1)],
+  three: [link(0), link(1), link(2), at('solving', 2), at('disabled', 1, { by: 3 }), at('solved', 2, { outcome: { kind: 'banish', count: 1 } }), ...solve(1), ...solve(0), at('end', -1)],
+  four: [link(0), link(1), link(2), link(3), ...solve(3), ...solve(2), ...solve(1), ...solve(0), at('end', -1)],
+  five: [link(0), link(1), link(2), link(3), link(4), ...solve(4), ...solve(3), ...solve(2), ...solve(1), ...solve(0), at('end', -1)],
 } satisfies Record<string, ChainStep[]>
+const RUN_LABELS: Record<keyof typeof RUNS, string> = { alone: 'Una activación sin respuesta', two: 'Cadena de dos', three: 'Cadena de tres', four: 'Cadena de cuatro', five: 'Cadena de cinco' }
 
 /** Hasta dónde se muestra de una vez (como `use-auto-asks.tsx`): lo que no se deja ver solo sale junto con el siguiente. */
 const nextCount = (steps: readonly ChainStep[], count: number) => {
@@ -39,6 +45,8 @@ const nextCount = (steps: readonly ChainStep[], count: number) => {
 function ChainStageSample() {
   const [run, setRun] = useState<{ steps: readonly ChainStep[]; count: number; started: number } | null>(null)
   const [took, setTook] = useState<number | null>(null)
+  // Una pregunta del núcleo que no es responder, abierta mientras se encadena: la escena se corre (`away`).
+  const [away, setAway] = useState(false)
   const feed = run ? chainFeed(run.steps, run.count) : null
 
   useEffect(() => {
@@ -75,25 +83,29 @@ function ChainStageSample() {
       className="col-span-full"
       note={
         <>
-          Como en Master Duel: cada activación entra grande y se acomoda inclinada (entre 3 y 7°), con su número enorme en el color de su dueño y el borde del color de su tipo; un eslabón la
-          une con la anterior. Se resuelve del último al primero: la carta va al centro y crece; cuando empieza la siguiente, se va hacia arriba y su eslabón se corta. La que quedó sin efecto
-          se tacha antes y se queda 1,6 s más en el centro. Abajo, una sola línea: armando, «Se resuelve del último al primero»; resolviendo, qué pasó. Una activación sola entra igual con su
-          «1». Ritmo (<Tag>chainDwell</Tag>): 0,7 s por eslabón que entra y 0,9 s por cada uno que se resuelve (tres, 4,8 s; sola, 1 s). Sólo <Tag>translate</Tag>, <Tag>rotate</Tag>,{' '}
-          <Tag>scale</Tag> y <Tag>opacity</Tag>; con movimiento reducido (la preferencia del sistema) aparece y se va sin moverse. No ataja toques. Archivo: <Tag>auto/ChainNotice.tsx</Tag>
+          Como en Master Duel, sólo al encadenar: cada activación entra grande y derecha con un borde de luz y cae inclinada a su lugar, con su número enorme en el color de su dueño (con
+          borde) saliéndose por la esquina de abajo y destellando; el campo de atrás baja (un velo, más fuerte mientras entra). La última va adelante y la más grande; las anteriores, atrás,
+          más chicas y más arriba; desde la quinta, las viejas se achican y se van hacia arriba. Una cadena de metal cruza de una a otra y, con dos o más, «CADENA» destella al medio. El
+          nombre va sólo en la carta sin imagen; «Se resuelve del último al primero», sólo para el lector de pantalla. Al empezar a resolverse la escena y el velo se van con un fundido de
+          0,2 s y no vuelven: quedan los medallones sobre la mesa (la muestra de la mesa, en Duelo). Con «¿Respondés?» abierto se achica hacia arriba (el número no queda bajo el cartel);
+          con una pregunta que no es responder (elegir casilla o cartas, sí o no) se corre y el campo se ve entero. Ritmo (<Tag>chainDwell</Tag>): 0,7 s por eslabón que entra y 0,9 s por cada uno que se resuelve (tres, 4,8 s; sola, 1 s). Sólo <Tag>translate</Tag>, <Tag>rotate</Tag>,{' '}
+          <Tag>scale</Tag> y <Tag>opacity</Tag>; con movimiento reducido (la preferencia del sistema) aparece y se va sin moverse ni destellar. No ataja toques. Archivo: <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" icon="link" onClick={() => start(RUNS.three)}>
-          Cadena de tres
-        </Button>
-        <Button variant="secondary" size="sm" icon="play" onClick={() => start(RUNS.alone)}>
-          Una activación sin respuesta
+        {(Object.keys(RUNS) as Array<keyof typeof RUNS>).map((name) => (
+          <Button key={name} variant="secondary" size="sm" icon={name === 'alone' ? 'play' : 'link'} onClick={() => start(RUNS[name])}>
+            {RUN_LABELS[name]}
+          </Button>
+        ))}
+        <Button variant="secondary" size="sm" aria-pressed={away} onClick={() => setAway(!away)}>
+          {away ? 'Cerrar la pregunta' : 'Abrir una pregunta'}
         </Button>
         {took !== null ? <Tag>{`Duró ${(took / 1000).toFixed(1)} s, con la salida`}</Tag> : null}
       </div>
       <div className="relative flex h-128 items-center justify-center overflow-hidden border border-border-subtle bg-card-background p-4">
-        {feed && rows.length > 0 ? <ChainStage key={run?.started} rows={rows} current={feed.current} done={feed.done} /> : <p className="m-0 text-micro text-muted">Sin cadena: tocá un botón.</p>}
+        {feed && rows.length > 0 ? <ChainStage key={run?.started} rows={rows} current={feed.current} done={feed.done} away={away} /> : <p className="m-0 text-micro text-muted">Sin cadena: tocá un botón.</p>}
       </div>
     </Specimen>
   )

@@ -8,6 +8,13 @@ import { LOCATION as L, splitDesc, type WireEvent } from './protocol'
  * momento (`at`): la pantalla los muestra de a uno con el ritmo de la mesa (`chainDwell`), sin adelantarse a las jugadas que todavía no contó ni dejar que la mesa se adelante.
  */
 
+/** Dónde se activó un eslabón (el `triggering_*` del núcleo): de qué lado, el lugar (`LOCATION`) y su secuencia. Ahí va su medallón, aunque la carta después se mueva. */
+export interface ChainPlace {
+  side: CardRef['side']
+  location: number
+  sequence: number
+}
+
 export type ChainStepKind = 'chain' | 'solving' | 'solved' | 'negated' | 'disabled' | 'end'
 
 export interface ChainStep {
@@ -19,7 +26,7 @@ export interface ChainStep {
   /** El eslabón (0 = CL1); en `end`, -1. */
   index: number
   /** Sólo `chain`: la carta que se activó, si es tuya, el `desc` del efecto (`aux.Stringid(carta, n)`: qué texto del `.cdb` lo nombra; ver `linkPhrase`) y desde dónde se activó (`from`: el `triggering_location` del núcleo, una máscara `LOCATION`). */
-  link?: { card: CardRef | null; code: number; mine: boolean; description?: string; from?: number }
+  link?: { card: CardRef | null; code: number; mine: boolean; description?: string; from?: number; place?: ChainPlace }
   /** Sólo `negated` y `disabled`: el eslabón que lo negó (1 = CL1), el que se estaba resolviendo (el núcleo no lo dice: lo deduce el adaptador). Sin él, no se sabe. */
   by?: number
   /** Sólo `solved`: qué hizo su efecto, si no hay duda (`chainOutcome`). Lo anotado antes no lo trae. */
@@ -88,6 +95,8 @@ export interface ChainRow {
   description?: string
   /** Desde dónde se activó (`LOCATION` del núcleo), si se sabe. */
   from?: number
+  /** El lugar exacto donde se activó, si se sabe. */
+  place?: ChainPlace
   state: ChainRowState
   /** Negada o sin efecto: el eslabón que lo hizo (1 = CL1), si se sabe (`ChainStep.by`). */
   by?: number
@@ -134,7 +143,7 @@ export function chainFeed(steps: readonly ChainStep[], count: number): ChainFeed
       continue
     }
     if (step.kind === 'chain') {
-      rows[step.index] = { number: step.index + 1, card: step.link?.card ?? null, code: step.link?.code ?? 0, mine: step.link?.mine ?? false, ...(step.link?.description ? { description: step.link.description } : {}), ...(step.link?.from === undefined ? {} : { from: step.link.from }), state: 'chained' }
+      rows[step.index] = { number: step.index + 1, card: step.link?.card ?? null, code: step.link?.code ?? 0, mine: step.link?.mine ?? false, ...(step.link?.description ? { description: step.link.description } : {}), ...(step.link?.from === undefined ? {} : { from: step.link.from }), ...(step.link?.place ? { place: step.link.place } : {}), state: 'chained' }
       focus = step.index
       continue
     }
@@ -198,6 +207,9 @@ export function linkPhrase(text: string, code: number, description: string | und
 
   return sentence ? { start: sentence.start, end: sentence.start + sentence.text.length } : null
 }
+
+/** Lo que tarda en irse la escena en grande (el fundido de la escena y del velo) cuando empieza a resolverse: entra en lo que se ve el primer resuelto (`chainDwell`, 0,3 s o más). */
+export const CHAIN_LEAVE_MS = 200
 
 /** Cuánto se queda la escena después de que la cadena terminó: lo que tarda en irse la última carta. */
 export const CHAIN_LINGER_MS = 400

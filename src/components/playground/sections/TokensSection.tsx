@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 
-import { frameKindOf } from '../../../app/card-frame'
+import { FRAME_FILL, FRAME_OUTLINE, frameKindOf, frameTextClass } from '../../../app/card-frame'
 import { CardArt } from '../../CardArt'
+import { cx } from '../../ui/cx'
 import { SearchField } from '../../ui/SearchField'
 import { Segmented } from '../../ui/Segmented'
 import { Specimen, SpecimenGrid } from '../Specimen'
@@ -111,12 +112,16 @@ export function TokensSection() {
       {tokens.length === 0 ? <p className="m-0 text-body text-muted">No se pudieron leer las hojas de estilo.</p> : null}
       <Specimen
         title="Marcos por tipo de carta"
-        note="frameKindOf(frameType, cardType) y CardArt frame: la carta sin imagen sobre el color de su marco. El texto, blanco o carbón según dé AA; Xyz, Enlace y Sincronía Oscura con aro; el Péndulo partido."
+        note="frameKindOf(frameType, cardType), frameTextClass y CardArt frame: lo que lleva texto va sobre el tono profundo del marco (el mismo matiz, oscurecido hasta que el blanco dé 4,5:1) y el texto es siempre blanco; la franja de abajo es el color oficial (frameClass), el de lo que no lleva texto. Xyz, Enlace, Sincronía y Sincronía Oscura con aro; el Péndulo partido."
       >
         {FRAME_SAMPLES.map(([frameType, label]) => (
           <span key={frameType} className="grid w-16 justify-items-center gap-1">
             <span className="block h-22 w-16">
               <CardArt remoteUrl={null} name={label} frame={frameKindOf(frameType)} className="h-full w-full" />
+            </span>
+            <span className="flex w-full items-center gap-1" title="Con texto (profundo) · oficial">
+              <span aria-hidden="true" className={cx('relative h-3 flex-1', frameTextClass(frameKindOf(frameType)))} />
+              <span aria-hidden="true" className={cx('h-3 flex-1', FRAME_FILL[frameKindOf(frameType).kind], frameKindOf(frameType).outlined && FRAME_OUTLINE)} />
             </span>
             <span className="text-center text-micro text-soft" title={frameType}>
               {label}

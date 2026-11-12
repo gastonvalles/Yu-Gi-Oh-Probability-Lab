@@ -869,7 +869,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         // Una Mágica o Trampa que esta tanda dio vuelta o puso boca arriba ya cuenta como activada (la jugada la anota y destella).
         if (card && !openedNow.has(card)) emit(event.controller, { type: 'activate', id: matId(card, event.controller) })
         // Después de su activación: la mesa la muestra y recién ahí se suma el eslabón.
-        out.chain.push({ kind: 'chain', at: out.mine.length, seq: out.order.length, index, link: { card: card ? ref(card, event.controller) : null, code: event.code, mine: event.controller === seat, description: event.description, from: event.triggering_location } })
+        out.chain.push({ kind: 'chain', at: out.mine.length, seq: out.order.length, index, link: { card: card ? ref(card, event.controller) : null, code: event.code, mine: event.controller === seat, description: event.description, from: event.triggering_location, place: { side: event.triggering_controller === seat ? 'mine' : 'theirs', location: event.triggering_location, sequence: event.triggering_sequence } } })
         if (!card) return note('chaining: nothing there')
         return
       }

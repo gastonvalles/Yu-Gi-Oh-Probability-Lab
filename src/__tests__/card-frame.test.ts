@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { contrastRatio, FRAME_HEX, FRAME_OUTLINE, frameClass, frameKindOf, type FrameKind } from '../app/card-frame'
+import { contrastRatio, FRAME_DEEP_FILL, FRAME_DEEP_HEX, FRAME_HEX, FRAME_OUTLINE, frameClass, frameKindOf, frameTextClass, type FrameKind } from '../app/card-frame'
 import { TYPE_SWATCH } from '../app/deck-image-export-render'
 import { ZONE_TYPE_SWATCH } from '../components/deck-zone-styles'
 
@@ -40,15 +40,36 @@ describe('colores por tipo de carta', () => {
     expect(frameKindOf('spell', 'Spell Card').kind).toBe('spell')
   })
 
-  it('el texto encima llega a 4,5:1 y el color, a 3:1 contra el carbón o lleva aro', () => {
-    for (const [kind, hex] of Object.entries(FRAME_HEX)) {
+  it('el texto encima es siempre blanco y llega a 4,5:1 sobre el tono profundo de los doce; el color, a 3:1 contra el carbón o lleva aro', () => {
+    for (const [kind, deep] of Object.entries(FRAME_DEEP_HEX)) {
       const frame = frameKindOf(kind)
 
       expect(frame.kind).toBe(kind as FrameKind)
-      expect(contrastRatio(hex, frame.text === 'light' ? WHITE : CARBON), kind).toBeGreaterThanOrEqual(4.5)
-      expect(contrastRatio(hex, CARBON) >= 3 || frameClass(frame).includes(FRAME_OUTLINE), kind).toBe(true)
+      expect(frame.text).toBe('light')
+      expect(frameTextClass(frame), kind).toContain('text-foreground')
+      expect(frameTextClass(frame), kind).toContain(FRAME_DEEP_FILL[frame.kind])
+      expect(contrastRatio(deep, WHITE), kind).toBeGreaterThanOrEqual(4.5)
+      expect(contrastRatio(deep, CARBON) >= 3 || frameTextClass(frame).includes(FRAME_OUTLINE), kind).toBe(true)
     }
+    // El Péndulo: la mitad de abajo es el verde profundo de la Mágica, también con blanco encima.
+    expect(contrastRatio(FRAME_DEEP_HEX.spell, WHITE)).toBeGreaterThanOrEqual(4.5)
+    expect(frameTextClass(frameKindOf('effect_pendulum'))).toContain('after:bg-frame-spell-deep')
     expect(['xyz', 'link', 'dark-synchro'].every((kind) => frameKindOf(kind).outlined)).toBe(true)
+    // Sincronía conserva el aro claro para no confundirse con la Ficha ni con Xyz.
+    expect(frameTextClass(frameKindOf('synchro'))).toContain(FRAME_OUTLINE)
+    expect(frameTextClass(frameKindOf('token'))).not.toContain(FRAME_OUTLINE)
+    // Lo oficial no cambia: lo que no lleva texto (el borde de la cadena) sigue en `FRAME_HEX`.
+    expect(frameClass(frameKindOf('effect'))).toContain('bg-frame-effect')
+    expect(frameClass(frameKindOf('effect'))).not.toContain('-deep')
+  })
+
+  it('cada tono profundo es del mismo matiz que el oficial (sólo más oscuro) y los que ya daban 4,5:1 no cambian', () => {
+    for (const [kind, hex] of Object.entries(FRAME_HEX)) {
+      const deep = FRAME_DEEP_HEX[kind as keyof typeof FRAME_DEEP_HEX]
+
+      if (contrastRatio(hex, WHITE) >= 4.5) expect(deep, kind).toBe(hex)
+      else expect(contrastRatio(deep, CARBON), kind).toBeLessThan(contrastRatio(hex, CARBON))
+    }
   })
 
   it('el Péndulo va partido con corte duro: mitad de abajo verde, sin degradado', () => {
@@ -62,6 +83,10 @@ describe('colores por tipo de carta', () => {
   it('una sola tabla: los tokens, los puntos del armador y la imagen exportada usan los mismos hex', () => {
     for (const [kind, hex] of Object.entries(FRAME_HEX)) {
       expect(css, kind).toContain(`--color-frame-${kind}: ${hex};`)
+    }
+
+    for (const [kind, hex] of Object.entries(FRAME_DEEP_HEX)) {
+      expect(css, kind).toContain(`--color-frame-${kind}-deep: ${hex};`)
     }
 
     for (const [type, classes] of Object.entries(ZONE_TYPE_SWATCH)) {

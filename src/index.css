@@ -81,6 +81,18 @@
   --color-frame-token: #c0c0c0;
   --color-frame-spell: #1d9e74;
   --color-frame-trap: #b65480;
+  /* El tono profundo de cada uno (`FRAME_DEEP_HEX`): lo que lleva texto blanco encima, 4,5:1 o más. */
+  --color-frame-effect-deep: #d04400;
+  --color-frame-normal-deep: #8d7102;
+  --color-frame-ritual-deep: #52789d;
+  --color-frame-fusion-deep: #8766a4;
+  --color-frame-synchro-deep: #737373;
+  --color-frame-dark-synchro-deep: #555555;
+  --color-frame-xyz-deep: #000000;
+  --color-frame-link-deep: #00008b;
+  --color-frame-token-deep: #666666;
+  --color-frame-spell-deep: #188461;
+  --color-frame-trap-deep: #b65480;
 
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;
@@ -174,10 +186,8 @@
   --animate-fx-blade: fx-blade 900ms var(--ease-out) both;
   /* La estela de un ataque (`ChevronTrail`): el renglón de chevrones avanza un dibujo (30 px, dos chevrones) por vuelta, en bucle; sólo `translate`. */
   --animate-chevrons: chevrons 700ms linear infinite;
-  --animate-fx-banner: fx-banner 1100ms var(--ease-out) both;
   /* El botón de fase al cambiar de fase o de turno (`PhasePulse`): un aro que sale de su caja y se apaga, sin texto. */
   --animate-phase-pulse: phase-pulse 640ms var(--ease-out) both;
-  --animate-fx-banner-text: fx-banner-text 1100ms var(--ease-out) both;
   --animate-fx-stage: fx-stage 950ms var(--ease-out) both;
   /* Una carta que sale del deck o del Extra aparece de dorso y se da vuelta en 3D. */
   --animate-fx-flip-in: fx-flip-in 520ms var(--ease-snap) 60ms both;
@@ -188,7 +198,13 @@
   /* La placa de los carteles del duelo (DuelMedal): entra una vez y se queda quieta (nada gira sin fin). */
   --animate-plate-in: plate-in 700ms var(--ease-snap) both;
   --animate-banner-veil: banner-veil 2.8s var(--ease-out) both;
+  /* La cadena en grande: el campo baja de más mientras entra un eslabón (lo que dura su `CHAIN_LINK_MS`). */
+  --animate-chain-veil: banner-veil 700ms var(--ease-out) both;
   --animate-banner-rise: banner-rise 600ms var(--ease-out) 350ms both;
+  /* El golpe letal en cámara lenta (`LethalBlow`, 1500 ms = `LETHAL_MS`): el destello, los rayos desde el punto del golpe y el daño en grande. */
+  --animate-lethal-flash: lethal-flash 1500ms var(--ease-out) both;
+  --animate-lethal-ray: lethal-ray 1500ms var(--ease-out) both;
+  --animate-lethal-number: lethal-number 1500ms var(--ease-out) both;
   /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida); el «−N» chico de la chapa usa `animate-linger`. */
   --animate-life-bump: life-bump 240ms var(--ease-out);
   /* La carta que un ataque saca del campo se parte en dos (`AttackFx`): las mitades del eslabón, más lentas. */
@@ -740,33 +756,6 @@
     }
   }
 
-  /* El cartel de la fase: la banda se abre desde una línea, se queda, y se cierra hacia el centro; el texto entra por la izquierda y sale por la derecha. */
-  @keyframes fx-banner {
-    0% {
-      opacity: 0;
-      transform: scale(1.12, 0.08);
-    }
-
-    14% {
-      opacity: 1;
-      transform: scale(1, 1.06);
-    }
-
-    26% {
-      transform: scale(1);
-    }
-
-    76% {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    100% {
-      opacity: 0;
-      transform: scale(1.06, 0.2);
-    }
-  }
-
   @keyframes phase-pulse {
     from {
       opacity: 0.95;
@@ -776,25 +765,6 @@
     to {
       opacity: 0;
       transform: scale(1.3);
-    }
-  }
-
-  @keyframes fx-banner-text {
-    0%,
-    6% {
-      opacity: 0;
-      transform: translateX(-1.75rem);
-    }
-
-    22%,
-    76% {
-      opacity: 1;
-      transform: translateX(0);
-    }
-
-    100% {
-      opacity: 0;
-      transform: translateX(1.75rem);
     }
   }
 
@@ -898,6 +868,62 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes lethal-flash {
+    0% {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+
+    14% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scale(1.7);
+    }
+  }
+
+  @keyframes lethal-ray {
+    0% {
+      opacity: 1;
+      transform: scaleY(0);
+    }
+
+    35% {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scaleY(1.15);
+    }
+  }
+
+  @keyframes lethal-number {
+    0% {
+      opacity: 0;
+      transform: scale(2.4);
+    }
+
+    16% {
+      opacity: 1;
+      transform: scale(1.6);
+    }
+
+    82% {
+      opacity: 1;
+      transform: scale(1.45);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scale(1.4);
     }
   }
 

@@ -33,24 +33,25 @@ export function actingOf(feed: ChainFeed | null): { mine: Set<string>; theirs: S
 /** `LOCATION.HAND` del núcleo (`auto/protocol.ts`; el test los compara): copiado para que la mesa de práctica, que importa este módulo, no cargue el protocolo. */
 export const FROM_HAND = 2
 
-/** La insignia de la cadena de una carta: sus eslabones (CL1 = 1; una carta con dos eslabones, «CL1·3»), si la activaste vos y si alguno se activó desde la mano. */
+/** Los eslabones de una carta de la cadena, para su nombre (`chainLinkLabel`) y su arte gris si quedó negada: sus números, si la activaste vos y si alguno se activó desde la mano. */
 export interface ChainBadgeData {
   numbers: number[]
   mine: boolean
   fromHand: boolean
-  /** Un eslabón de la carta quedó negado o sin efecto (la insignia va tachada, con la marca roja): su estado y quién lo negó (`ChainRow.by`), si se sabe. */
+  /** Un eslabón de la carta quedó negado o sin efecto (su carta se ve gris): su estado y quién lo negó (`ChainRow.by`), si se sabe. */
   voided?: { state: 'negated' | 'disabled'; by?: number }
 }
 
 /**
- * Las cartas de la cadena que se ve (`chainFeed`), por id y del lado de la mesa donde están, con sus eslabones: todos, también los ya resueltos o negados, mientras la cadena esté a la
- * vista. Quien la dibuja la busca por id en la mesa de ahora, así la insignia sigue a la carta si cambia de lugar (una carta descartada como costo pasa a la pila del Cementerio).
+ * Las cartas de la cadena que se ve (`chainFeed`), por id y del lado de la mesa donde están, con sus eslabones pendientes (para su nombre y el gris de la negada): armando, todos;
+ * resolviendo (del último al primero), el que se resuelve y los que esperan; los ya resueltos se van y, terminada, no queda ninguno. Los medallones, en cambio, van por lugar (`medalsOf`).
  */
 export function linksOf(feed: ChainFeed | null): { mine: Map<string, ChainBadgeData>; theirs: Map<string, ChainBadgeData> } {
   const links = { mine: new Map<string, ChainBadgeData>(), theirs: new Map<string, ChainBadgeData>() }
 
-  for (const row of feed?.rows ?? []) {
-    if (!row.card) continue
+  if (!feed || feed.done) return links
+  for (const row of feed.rows) {
+    if (!row.card || (feed.current >= 0 && row.number - 1 > feed.current)) continue
     const fromHand = row.from === FROM_HAND
     const seen = links[row.card.side].get(row.card.id)
     const voided = row.state === 'negated' || row.state === 'disabled' ? { voided: { state: row.state, ...(row.by ? { by: row.by } : {}) } } : {}
@@ -61,11 +62,57 @@ export function linksOf(feed: ChainFeed | null): { mine: Map<string, ChainBadgeD
   return links
 }
 
-/** La insignia de una pila: los eslabones de las cartas de adentro, juntos y en orden (del color de la primera), o null si no hay ninguna en la cadena. */
+/** Los eslabones de una pila, para su nombre y el gris: los de las cartas de adentro, juntos y en orden (del color de la primera), o null si no hay ninguna en la cadena. */
 export function pileLinksOf(ids: readonly string[], links: ReadonlyMap<string, ChainBadgeData> | undefined): ChainBadgeData | null {
   const found = links?.size ? ids.flatMap((id) => links.get(id) ?? []) : []
-
   const voided = found.find((link) => link.voided)?.voided
 
   return found[0] ? { numbers: found.flatMap((link) => link.numbers).sort((a, b) => a - b), mine: found[0].mine, fromHand: found.some((link) => link.fromHand), ...(voided ? { voided } : {}) } : null
+}
+
+/** Un medallón de la cadena: su eslabón, de quién es, si quedó negado o sin efecto (se tacha) y si es el que se resuelve (late). */
+export interface ChainMedal {
+  number: number
+  mine: boolean
+  voided: boolean
+  resolving: boolean
+}
+
+/** `LOCATION` del núcleo (`auto/protocol.ts`; el test los compara), copiados como `FROM_HAND`: la pila o la mano de cada lugar. */
+export const MEDAL_PILES: Readonly<Record<number, string>> = { 1: 'deck', 2: 'hand', 16: 'gy', 32: 'banished', 64: 'extra' }
+const MZONE = 4
+const SZONE = 8
+const OVERLAY = 128
+
+/**
+ * El lugar de la mesa donde va el medallón de un eslabón, con las claves de las casillas (`mz:0`, `emz:1`, `st:2`, `field`) y de las pilas (`gy`, `banished`, `deck`, `extra`, `hand`):
+ * Monstruos 0–4 y Extra 5–6; Mágicas y Trampas 0–4, Campo 5 y las escalas de Péndulo (6 y 7) en las puntas; un material, sobre su monstruo.
+ */
+export function medalPlaceOf(location: number, sequence: number): string | null {
+  const base = location & ~OVERLAY
+
+  if (base === MZONE) return sequence < 5 ? `mz:${sequence}` : sequence < 7 ? `emz:${sequence - 5}` : null
+  if (base === SZONE) return sequence < 5 ? `st:${sequence}` : sequence === 5 ? 'field' : sequence === 6 ? 'st:0' : sequence === 7 ? 'st:4' : null
+  return MEDAL_PILES[base] ?? null
+}
+
+/**
+ * Los medallones de la cadena al resolverse (Gastón: «se pone el número de eslabón de cadena en el lugar donde está activando el efecto de la carta»), de cada lado y por lugar
+ * (`medalPlaceOf`): se quedan donde se activó cada eslabón aunque la carta se mueva (la casilla, aunque quede vacía; la pila; la mano). Sólo al resolver: mientras se arma lo dice la
+ * escena. Del último al primero: el que se resuelve late y los resueltos se van; terminada, ninguno. Varios en un mismo lugar, en orden.
+ */
+export function medalsOf(feed: ChainFeed | null): { mine: Map<string, ChainMedal[]>; theirs: Map<string, ChainMedal[]> } {
+  const medals = { mine: new Map<string, ChainMedal[]>(), theirs: new Map<string, ChainMedal[]>() }
+
+  if (!feed || feed.done || !feed.resolving) return medals
+  for (const row of feed.rows) {
+    if (feed.current >= 0 && row.number - 1 > feed.current) continue
+    const at = row.place ? medalPlaceOf(row.place.location, row.place.sequence) : null
+
+    if (!row.place || !at) continue
+    const side = medals[row.place.side]
+
+    side.set(at, [...(side.get(at) ?? []), { number: row.number, mine: row.mine, voided: row.state === 'negated' || row.state === 'disabled', resolving: row.number - 1 === feed.current }])
+  }
+  return medals
 }

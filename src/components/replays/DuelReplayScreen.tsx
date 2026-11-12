@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { duelReplayAt, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
-import { isToken, type MatPhase } from '../../app/practice-mat'
+import { isToken } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { artOfDrawId } from '../duel/duel-art'
 import { DuelTable, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { LifeScore } from '../duel/LifeScore'
+import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { PLAYER_COLOR } from '../duel/player-color'
-import { PhaseBanner } from '../probability/MatFx'
 import { ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from '../probability/ReplayBar'
 import { stepTone } from '../probability/step-tone'
 import { Button } from '../ui/Button'
@@ -33,19 +33,14 @@ interface DuelReplayScreenProps {
 
 /** Cuánto dura cada jugada al reproducir, a velocidad normal. */
 const STEP_MS = 900
-/** Lo que dura el cartel de una fase (el de la mesa, `fx-banner`). */
-const BANNER_MS = 1100
-
-type Banner = { key: number; phase: MatPhase; who: string }
-
 /**
- * El cartel de la fase al avanzar un paso (reproducir o «Siguiente») que cambia de fase: la fase en grande y arriba quien la pasa, como en el video. Saltar (la línea de tiempo, volver al
+ * El cartel de la fase al avanzar un paso (reproducir o «Siguiente») que cambia de fase: la banda del color de quien la pasa (el de abajo al empezar, violeta; el otro, lima), como en la mesa. Saltar (la línea de tiempo, volver al
  * principio, anterior) no anuncia nada: arrastrando, cada paso era un cartel.
  */
-function bannerAt(replay: DuelReplay, from: number, to: number): Banner | null {
+function bannerAt(replay: DuelReplay, from: number, to: number): PhaseCue | null {
   const step = to === from + 1 ? replay.steps[to - 1] : undefined
 
-  return step && step[1].type === 'phase' ? { key: to, phase: step[1].phase, who: playerName(replay, step[0]) } : null
+  return step && step[1].type === 'phase' ? { key: to, phase: step[1].phase, side: step[0] === 0 ? 'mine' : 'theirs' } : null
 }
 
 export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelReplayScreenProps) {
@@ -54,7 +49,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
   const [flipped, setFlipped] = useState(false)
-  const [banner, setBanner] = useState<Banner | null>(null)
+  const [banner, setBanner] = useState<PhaseCue | null>(null)
   // Una sola pasada: las fotos para saltar y la marca de cada jugada (su color, si cambia de fase, si empieza un turno).
   const { shots, marks } = useMemo(() => {
     const marks: ReplayMark[] = []
@@ -92,13 +87,6 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
     }, STEP_MS / speed)
     return () => window.clearTimeout(timer)
   }, [playing, cursor, total, speed, replay])
-  // Se va solo (con menos movimiento queda quieto ese rato).
-  useEffect(() => {
-    if (!banner) return
-    // Sólo el que se ve: el de la jugada siguiente pudo salir antes.
-    const timer = window.setTimeout(() => setBanner((current) => (current === banner ? null : current)), BANNER_MS)
-    return () => window.clearTimeout(timer)
-  }, [banner])
   const jump = (at: number) => {
     setPlaying(false)
     setBanner(null)
@@ -160,16 +148,15 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
           <LifeScore name={names[top]} life={frame.lp[top]} color={top === 0 ? 'mine' : 'theirs'} />
         </div>
 
-        {/* El tamaño de la casilla, como la del espectador, con lugar para la jugada y los controles (unos 9 rem más que él). Encima, en el medio, el cartel de la fase. */}
-        <div className="relative">
-          <DuelTable
-            mine={bottomView}
-            theirs={topView}
-            turn={frame.turn === bottom ? 'mine' : 'theirs'}
-            className="[--cell:max(3rem,min(6.5rem,calc((100dvh-35rem)/5.2)))] max-[1101px]:mx-auto max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_35rem)/5.2)_+_1.5rem))]"
-          />
-          {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={null} who={banner.who} className="absolute inset-0 z-30" /> : null}
-        </div>
+        {/* El tamaño de la casilla, como la del espectador, con lugar para la jugada y los controles (unos 9 rem más que él). Adentro, en la fila del medio, la banda de la fase (se va sola). */}
+        <DuelTable
+          mine={bottomView}
+          theirs={topView}
+          turn={frame.turn === bottom ? 'mine' : 'theirs'}
+          className="[--cell:max(3rem,min(6.5rem,calc((100dvh-35rem)/5.2)))] max-[1101px]:mx-auto max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_35rem)/5.2)_+_1.5rem))]"
+        >
+          <PhaseBand cue={banner} />
+        </DuelTable>
         <TheirHand count={bottomView.handCount ?? 0} align="start" {...(openHand ? { cards: openHand } : {})} />
 
         {/* La jugada y los controles quedan pegados abajo: con una pantalla baja, la mesa scrollea por detrás y los botones siguen a mano. */}

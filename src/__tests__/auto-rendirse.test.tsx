@@ -31,6 +31,8 @@ describe('auto-screen · rendirse', () => {
     const cover = screen.getByRole('alertdialog', { name: 'Perdiste' })
 
     expect(cover).toHaveTextContent('Te rendiste.')
+    // Sin marcador: «8000 a 8000» se lee como un empate.
+    expect(cover.querySelector('[data-score]')).toBeNull()
     expect(dispatches).toBe(0)
     core(() => fake.set({ status: 'ready' }))
     fireEvent.click(within(cover).getByRole('button', { name: 'Jugar otra vez' }))

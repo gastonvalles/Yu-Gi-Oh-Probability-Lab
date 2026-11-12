@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { chainFeed, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION } from '../app/auto/protocol'
-import { FROM_HAND, actingOf, glowOf, linksOf, pileGlowOf, pileLinksOf } from '../app/card-glow'
+import { FROM_HAND, MEDAL_PILES, actingOf, glowOf, linksOf, medalPlaceOf, medalsOf, pileGlowOf, pileLinksOf, type ChainMedal } from '../app/card-glow'
 import { glowFrame } from '../components/probability/practice-styles'
 
 const sets = { can: new Set(['a', 'b']), act: new Set(['b', 'c']) }
@@ -56,15 +56,17 @@ describe('el brillo de una carta en un duelo', () => {
   })
 })
 
-describe('la insignia del eslabón (CL1, CL2…)', () => {
+describe('los eslabones de cada carta (su nombre y el gris de la negada)', () => {
   const link = (index: number, side: 'mine' | 'theirs', id: string, mine = side === 'mine', from?: number): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: { side, id }, code: 1, mine, ...(from === undefined ? {} : { from }) } })
 
-  it('cada carta de la cadena lleva su número, del lado donde está y con el color de quien la activó, también ya resuelta', () => {
-    const steps: ChainStep[] = [link(0, 'mine', 'm1'), link(1, 'theirs', 't1', false, FROM_HAND), link(2, 'mine', 't2', false), { kind: 'solving', at: 0, index: 2 }, { kind: 'solved', at: 0, index: 2 }]
-    const { mine, theirs } = linksOf(chainFeed(steps, steps.length))
+  it('cada carta de la cadena lleva su número, del lado donde está y con el color de quien la activó; se van del último al primero', () => {
+    const steps: ChainStep[] = [link(0, 'mine', 'm1'), link(1, 'theirs', 't1', false, FROM_HAND), link(2, 'mine', 't2', false), { kind: 'solving', at: 0, index: 2 }, { kind: 'solved', at: 0, index: 2 }, { kind: 'solving', at: 0, index: 1 }]
+    const at = (count: number) => linksOf(chainFeed(steps, count))
 
-    expect(Object.fromEntries(mine)).toEqual({ m1: { numbers: [1], mine: true, fromHand: false }, t2: { numbers: [3], mine: false, fromHand: false } })
-    expect(Object.fromEntries(theirs)).toEqual({ t1: { numbers: [2], mine: false, fromHand: true } })
+    expect(Object.fromEntries(at(3).mine)).toEqual({ m1: { numbers: [1], mine: true, fromHand: false }, t2: { numbers: [3], mine: false, fromHand: false } })
+    expect(Object.fromEntries(at(3).theirs)).toEqual({ t1: { numbers: [2], mine: false, fromHand: true } })
+    expect(Object.fromEntries(at(6).mine)).toEqual({ m1: { numbers: [1], mine: true, fromHand: false } })
+    expect(linksOf(chainFeed([...steps, { kind: 'end', at: 0, index: -1 }], 7))).toEqual({ mine: new Map(), theirs: new Map() })
     expect(linksOf(null)).toEqual({ mine: new Map(), theirs: new Map() })
   })
 
@@ -77,7 +79,7 @@ describe('la insignia del eslabón (CL1, CL2…)', () => {
     expect(pileLinksOf(['a'], undefined)).toBeNull()
   })
 
-  it('negada o sin efecto: la insignia lo lleva, con quién (si se sabe); la pila también', () => {
+  it('negada o sin efecto: lo lleva, con quién (si se sabe); la pila también', () => {
     const steps: ChainStep[] = [link(0, 'mine', 'a'), link(1, 'theirs', 't'), { kind: 'solving', at: 0, index: 1 }, { kind: 'disabled', at: 0, index: 0, by: 2 }]
     const { mine, theirs } = linksOf(chainFeed(steps, steps.length))
 
@@ -88,4 +90,39 @@ describe('la insignia del eslabón (CL1, CL2…)', () => {
   })
 
   it('«desde la mano» es la mano del núcleo', () => expect(FROM_HAND).toBe(LOCATION.HAND))
+})
+
+describe('los medallones de la cadena (al resolver, donde se activó)', () => {
+  const at = (index: number, side: 'mine' | 'theirs', location: number, sequence = 0, id = `c${index}`): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: { side, id }, code: 1, mine: side === 'mine', from: location, place: { side, location, sequence } } })
+  const step = (kind: ChainStep['kind'], index: number): ChainStep => ({ kind, at: 0, index })
+  const plain = (medals: Map<string, ChainMedal[]>) => Object.fromEntries([...medals].map(([place, list]) => [place, list.map((m) => `${m.number}${m.resolving ? '*' : ''}${m.voided ? 'x' : ''}`).join(' ')]))
+  // Foolish Burial tuya en tu Mágica 2, Ash del rival desde su mano y tu Called by the Grave en la Mágica 1; después, un efecto en tu Cementerio.
+  const steps: ChainStep[] = [at(0, 'mine', LOCATION.SZONE, 2), at(1, 'theirs', LOCATION.HAND), at(2, 'mine', LOCATION.SZONE, 1), at(3, 'mine', LOCATION.GRAVE)]
+
+  it('armando, ninguno (lo dice la escena); resolviendo, cada uno en su lugar, del último al primero: el que se resuelve late; terminada, ninguno', () => {
+    const run = [...steps, step('solving', 3), step('solved', 3), step('solving', 2), step('disabled', 1), step('solved', 2), step('solving', 1), step('solved', 1), step('solving', 0), step('solved', 0), step('end', -1)]
+    const medals = (count: number) => medalsOf(chainFeed(run, count))
+
+    expect(plain(medals(4).mine)).toEqual({})
+    expect(plain(medals(6).mine)).toEqual({ 'st:2': '1', 'st:1': '3', gy: '4*' })
+    expect(plain(medals(6).theirs)).toEqual({ hand: '2' })
+    // Resolviendo el 3 (Called deja a Ash sin efecto): el 4 se fue y sólo el 2 va tachado.
+    expect(plain(medals(9).mine)).toEqual({ 'st:2': '1', 'st:1': '3*' })
+    expect(plain(medals(9).theirs)).toEqual({ hand: '2x' })
+    expect(plain(medals(run.length).mine)).toEqual({})
+    expect(medalsOf(null)).toEqual({ mine: new Map(), theirs: new Map() })
+  })
+
+  it('se quedan donde se activó, aunque la carta después se mueva (es el lugar, no la carta); varios en un mismo lugar, en orden y sólo el negado tachado', () => {
+    const run = [at(0, 'mine', LOCATION.GRAVE, 0, 'a'), at(1, 'mine', LOCATION.GRAVE, 0, 'b'), step('solving', 1), step('negated', 0)]
+
+    expect(plain(medalsOf(chainFeed(run, run.length)).mine)).toEqual({ gy: '1x 2*' })
+  })
+
+  it('el lugar de cada eslabón: casillas, Zona de Campo, escalas, materiales y pilas', () => {
+    expect([medalPlaceOf(LOCATION.MZONE, 3), medalPlaceOf(LOCATION.MZONE, 6), medalPlaceOf(LOCATION.MZONE | LOCATION.OVERLAY, 2)]).toEqual(['mz:3', 'emz:1', 'mz:2'])
+    expect([medalPlaceOf(LOCATION.SZONE, 4), medalPlaceOf(LOCATION.SZONE, 5), medalPlaceOf(LOCATION.SZONE, 6), medalPlaceOf(LOCATION.SZONE, 7)]).toEqual(['st:4', 'field', 'st:0', 'st:4'])
+    expect([LOCATION.DECK, LOCATION.HAND, LOCATION.GRAVE, LOCATION.REMOVED, LOCATION.EXTRA].map((location) => medalPlaceOf(location, 0))).toEqual(['deck', 'hand', 'gy', 'banished', 'extra'])
+    expect(MEDAL_PILES).toEqual({ [LOCATION.DECK]: 'deck', [LOCATION.HAND]: 'hand', [LOCATION.GRAVE]: 'gy', [LOCATION.REMOVED]: 'banished', [LOCATION.EXTRA]: 'extra' })
+  })
 })

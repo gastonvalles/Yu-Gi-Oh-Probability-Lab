@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatScene, PickMarks } from '../../probability/MatArena'
-import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, fxVars } from '../../probability/MatFx'
+import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from '../../probability/MatFx'
 import { glowFrame } from '../../probability/practice-styles'
 import { AttackFx, ChevronTrail, measureStrike, type Strike } from '../../probability/AttackFx'
 import { t } from '../../../i18n'
@@ -13,11 +13,12 @@ import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
 import { RivalExtraDeck } from '../../duel/RivalExtraDeck'
 import { DEFAULT_RIVAL_EXTRA, HANDTRAP_CATALOG, type ExtraPick, type HandtrapConfig } from '../../../app/handtraps'
 import type { PickStat } from '../../../app/auto/ask-ui'
-import type { ChainBadgeData } from '../../../app/card-glow'
+import type { ChainMedal } from '../../../app/card-glow'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { DuelOffline } from '../../duel/DuelOffline'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
+import { LethalBlow } from '../../duel/LethalBlow'
 import { Button } from '../../ui/Button'
 import { BAR_SEAT, DuelLine, DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { LifeBadge } from '../../duel/LifeScore'
@@ -38,6 +39,7 @@ import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleDuel } from './duel-sample'
 import { ShuffleSamples } from './ShuffleSamples'
 import { FlightSample } from './FlightSample'
+import { PhaseBandSample } from './PhaseBandSample'
 import { Presence } from '../../../app/use-presence'
 import { PendulumPicker, type PendulumPickCard } from '../../probability/PendulumPicker'
 
@@ -100,6 +102,7 @@ export function DuelSection() {
       <HoldSample />
       <ShuffleSamples />
       <FlightSample />
+      <PhaseBandSample />
       <RingsSample />
       <GlowsSample />
       <TrailSample />
@@ -247,37 +250,46 @@ function PendulumPickerSample({ range, title, note }: { range: string; title: st
   )
 }
 
+/** Una cadena de seis resolviéndose (ya se fueron el 6 y el 5; el 4 late): cada eslabón donde se activó. Dos en tu Cementerio y sólo el 3 tachado. */
+const medal = (number: number, mine: boolean, extra: Partial<ChainMedal> = {}): ChainMedal => ({ number, mine, voided: false, resolving: false, ...extra })
+const SAMPLE_MEDALS = {
+  mine: new Map<string, ChainMedal[]>([
+    ['gy', [medal(3, true, { voided: true }), medal(4, true, { resolving: true })]],
+    ['st:3', [medal(1, true)]],
+  ]),
+  theirs: new Map<string, ChainMedal[]>([
+    ['mz:0', [medal(2, false)]],
+    ['hand', [medal(5, false)]],
+  ]),
+}
+
 /**
- * La insignia del eslabón: una cadena de cuatro sobre la mesa de muestra (CL1 un monstruo del rival en ataque, CL2 uno tuyo en defensa, CL3 tu Cementerio y CL4 tu Zona de campo). Las
- * pide `links` de cada lado (`linksOf` de `app/card-glow.ts`, por id).
+ * Los medallones de la cadena al resolver, sobre la mesa de muestra (`medalsOf` de `app/card-glow.ts`, por lugar): el 1 en una casilla tuya que quedó vacía (la carta se fue), el 2 en un
+ * monstruo del rival, el 3 (sin efecto, tachado) y el 4 (el que se resuelve, late) en tu Cementerio, y el 5, de la mano del rival, sobre su abanico.
  */
 function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
-  const [mode, setMode] = useState<'on' | 'void' | 'off'>('on')
-  const on = mode !== 'off'
+  const [mode, setMode] = useState<'solve' | 'off'>('solve')
   const sides = useMemo(() => {
-    // «Negada»: CL2 (tuyo) queda sin efecto por el CL1 del rival.
-    const voided = (n: number) => (mode === 'void' && n === 2 ? { voided: { state: 'disabled' as const, by: 1 } } : {})
-    const links = (ids: ReadonlyArray<string | undefined>, first: number, owner: boolean) =>
-      new Map<string, ChainBadgeData>(ids.flatMap((id, i) => (id ? [[id, { numbers: [first + i], mine: owner, fromHand: false, ...voided(first + i) }] as const] : [])))
-    const mine = links(['card-59438930-1', duel.mine.state.gy.at(-1), duel.mine.state.field?.id], 2, true)
-    const theirs = links([duel.theirs.state.mz[0]?.id], 1, false)
+    const on = mode === 'solve'
 
-    return { mine: { ...duel.mine, ...(on ? { links: mine } : {}) }, theirs: { ...duel.theirs, ...(on ? { links: theirs } : {}) } }
-  }, [duel, on, mode])
+    return { mine: { ...duel.mine, ...(on ? { medals: SAMPLE_MEDALS.mine } : {}) }, theirs: { ...duel.theirs, handCount: duel.theirs.handCount ?? 5, ...(on ? { medals: SAMPLE_MEDALS.theirs } : {}) } }
+  }, [duel, mode])
 
   return (
     <Specimen
-      title="La insignia del eslabón (CL1, CL2…)"
+      title="Los medallones de la cadena"
       layout="column"
       className="col-span-full"
       note={
         <>
-          Mientras se ve el aviso de la cadena, cada carta que está en ella lleva su número arriba a la izquierda, montado sobre el borde (no tapa el nombre), en la carta o en la pila donde esté ahora, con el
-          color de sus vidas: violeta claro lo tuyo, ámbar lo del rival (una etiqueta llena; el ámbar de lo que se activa es un aro). No se toca ni mueve nada: el eslabón también va en el nombre de la carta. Negada o sin efecto, la insignia va tachada y la carta se ve gris y latiendo (un pulso por segundo; con movimiento reducido, gris y quieta), sin moverse ni tapar el arte; su nombre suma «Sin efecto · por CL1» si se sabe quién fue. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>VOIDED_ART</Tag>)
+          Como en Master Duel, sólo al resolver (al encadenar lo dice la escena grande): un medallón por eslabón, un aro de cadena redondo (una ficha) con su número en el color de su dueño, de 36
+          px, en el lugar donde se activó, aunque la carta se haya ido: la casilla (aunque quede vacía), la pila (Cementerio, Desterradas, Deck, Extra) o la mano (la tuya o el abanico del rival).
+          Varios en un mismo lugar, corridos. Del último al primero: el que se resuelve late (con movimiento reducido, quieto) y, al empezar el siguiente, se va; sólo el negado o sin efecto se
+          tacha en rojo. No ataja toques: el eslabón también va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>ChainBadge</Tag>)
         </>
       }
     >
-      <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'on', label: 'Con cadena' }, { value: 'void', label: 'Negada' }, { value: 'off', label: 'Sin cadena' }]} />
+      <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'solve', label: 'Resolviendo' }, { value: 'off', label: 'Sin cadena' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
     </Specimen>
   )
@@ -524,7 +536,7 @@ const GLOWS: Array<{ key: string; label: string; kind: 'can' | 'act' | 'aim' | n
   { key: 'act', label: 'Se activa', kind: 'act' },
   { key: 'none', label: 'Sin brillo', kind: null },
 ]
-const CL1: ChainBadgeData = { numbers: [1], mine: false, fromHand: false }
+const CL1: ChainMedal[] = [{ number: 1, mine: false, voided: false, resolving: true }]
 
 function GlowsSample() {
   return (
@@ -557,7 +569,7 @@ function GlowsSample() {
                   {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />}
                   {frame ? <FxFrame {...frame} /> : null}
                 </div>
-                {kind === 'act' ? <ChainBadge link={CL1} className={chainBadgeAt('mz', false)} /> : null}
+                {kind === 'act' ? <ChainBadge medals={CL1} /> : null}
                 {attack ? <AttackMark /> : null}
               </div>
               <span className="text-micro text-muted">{label}</span>
@@ -971,18 +983,84 @@ function TurnDialSamples() {
   )
 }
 
-const MEDALS: Array<{ tone: MedalTone; label: string; numeral?: string; icon?: 'trophy' | 'flag' | 'swap' }> = [
+const MEDALS: Array<{ tone: MedalTone; label: string; numeral?: string }> = [
   { tone: 'first', label: 'first · vas primero', numeral: '1' },
   { tone: 'second', label: 'second · vas segundo', numeral: '2' },
-  { tone: 'win', label: 'win · ganaste', icon: 'trophy' },
-  { tone: 'lose', label: 'lose · perdiste', icon: 'flag' },
-  { tone: 'draw', label: 'draw · empate', icon: 'swap' },
 ]
+
+/** Los finales, con las acciones de cada pantalla: el automático solo (`solo`), un duelo con otro (`room`, con lo que dice el botón de seguir) y quien mira (`watch`). */
+const RESULTS: Array<{ label: string; tone: 'win' | 'lose' | 'draw'; title: string; reason: string; score?: [number, number]; note?: string; kind: 'solo' | 'room' | 'watch'; next?: string }> = [
+  { label: 'ganar por vidas', tone: 'win', title: '¡Ganaste!', reason: 'Rival se quedó sin puntos de vida.', score: [7700, 0], kind: 'solo' },
+  { label: 'perder por vidas', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida.', score: [0, 3100], kind: 'solo' },
+  { label: 'empate', tone: 'draw', title: 'Empate', reason: 'Los dos se quedaron sin puntos de vida a la vez.', score: [0, 0], kind: 'solo' },
+  { label: 'te rendiste', tone: 'lose', title: 'Perdiste', reason: 'Te rendiste.', kind: 'solo' },
+  { label: 'sin cartas', tone: 'win', title: '¡Ganaste!', reason: 'El rival no pudo robar.', score: [5200, 1800], kind: 'solo' },
+  { label: 'se rindió el rival', tone: 'win', title: '¡Ganaste!', reason: 'Beto se rindió.', kind: 'room', next: 'Revancha' },
+  { label: 'por tiempo', tone: 'lose', title: 'Perdiste', reason: 'Se te acabó el tiempo.', score: [3000, 2500], kind: 'room', next: 'Revancha' },
+  { label: 'serie: partida 1 de 3', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida. Match 0–1.', score: [0, 1200], note: 'Beto quiere la revancha.', kind: 'room', next: 'Siguiente duelo' },
+  { label: 'espectador', tone: 'win', title: 'Ganó Ana', reason: 'Beto se quedó sin puntos de vida.', note: 'Volvés al inicio en unos segundos.', kind: 'watch' },
+]
+
+function ResultSample({ sample }: { sample: (typeof RESULTS)[number] }) {
+  const { kind, score } = sample
+  const actions =
+    kind === 'solo' ? (
+      <>
+        <Button variant="secondary" icon="save" fullWidth>
+          Guardar replay
+        </Button>
+        <Button variant="secondary" icon="hand" fullWidth>
+          Seguir en modo manual
+        </Button>
+        <Button variant="secondary" icon="chat" fullWidth>
+          Qué hizo el bot
+        </Button>
+      </>
+    ) : kind === 'room' ? (
+      <>
+        <Button variant="secondary" icon="eye" fullWidth>
+          Ver la mesa
+        </Button>
+        <Button variant="secondary" icon="save" fullWidth>
+          Guardar replay
+        </Button>
+      </>
+    ) : undefined
+  const primary =
+    kind === 'watch' ? (
+      <Button variant="secondary" size="lg" fullWidth>
+        Volver al inicio
+      </Button>
+    ) : (
+      <Button variant="primary" size="lg" icon="refresh" fullWidth>
+        {kind === 'solo' ? 'Jugar otra vez' : sample.next}
+      </Button>
+    )
+
+  return (
+    <div className="grid w-full max-w-[24.375rem] gap-2">
+      <Tag>{sample.label}</Tag>
+      <div className="relative h-[36rem] overflow-hidden border border-border-subtle bg-background">
+        <ResultHero
+          tone={sample.tone}
+          title={sample.title}
+          reason={sample.reason}
+          {...(sample.note ? { note: sample.note } : {})}
+          {...(score ? { score: { mine: score[0], theirs: score[1], rival: kind === 'solo' ? 'Rival' : 'Beto' } } : {})}
+          {...(kind === 'watch' ? {} : { onLeave: () => {} })}
+          {...(actions ? { actions } : {})}
+          primary={primary}
+        />
+      </div>
+    </div>
+  )
+}
 
 /** Los carteles del duelo: la placa en sus cinco colores, el final (con las vidas en grande) y el cartel del comienzo, que se ve dos segundos y se va. */
 function BannerSamples() {
   const [run, setRun] = useState(0)
   const [first, setFirst] = useState<boolean | null>(null)
+  const [lethal, setLethal] = useState<{ n: number; mine: boolean } | null>(null)
 
   return (
     <Specimen
@@ -991,7 +1069,7 @@ function BannerSamples() {
       className="col-span-full"
       note={
         <>
-          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, de esquinas rectas como la mesa, sin degradados ni brillos) y los carteles que la usan: el del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos) y el del final (<Tag>ResultHero</Tag>, con cómo te fue en la placa y las vidas, «3100 a 0», en grande; en la tarjeta del resultado, en el final del automático y, sin vidas, para quien mira). El color dice qué pasó; entra una vez (700 ms) y nada gira sin fin; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
+          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, sin degradados ni brillos) del cartel del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos). El final (<Tag>ResultHero</Tag>) es una hoja opaca y recta apoyada abajo (en escritorio, al centro) sobre la mesa con un velo: el título en el color del resultado (lo único que resalta), el porqué pegado, las vidas «7700 a 0» en grande, las secundarias del mismo ancho y la principal grande abajo; la ✕ va dentro. Antes, el golpe letal en cámara lenta (<Tag>LethalBlow</Tag>: destello, rayos y el daño en grande, 1,5 s); después la chapa del que perdió cuenta hasta 0, una pausa y recién ahí el final (<Tag>app/end-reveal.ts</Tag>). Entra subiendo; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
         </>
       }
     >
@@ -1005,20 +1083,30 @@ function BannerSamples() {
         <Button variant="secondary" onClick={() => setFirst(false)}>
           Cartel: vas segundo
         </Button>
+        <Button variant="secondary" onClick={() => setLethal((hit) => ({ n: (hit?.n ?? 0) + 1, mine: false }))}>
+          Golpe letal: ganás
+        </Button>
+        <Button variant="secondary" onClick={() => setLethal((hit) => ({ n: (hit?.n ?? 0) + 1, mine: true }))}>
+          Golpe letal: perdés
+        </Button>
+      </div>
+      {/* El golpe letal (`LethalBlow`, 1,5 s en cámara lenta) en un marco de 390 px: arriba cae el rival, abajo vos. */}
+      <div className="relative h-80 w-full max-w-[24.375rem] overflow-hidden border border-border-subtle bg-background">
+        {lethal ? <LethalBlow key={lethal.n} inline damage={lethal.mine ? 2400 : 3100} mine={lethal.mine} /> : null}
       </div>
       <div key={run} className="grid gap-8 py-4">
         <div className="flex flex-wrap items-start justify-center gap-10">
           {MEDALS.map((medal) => (
             <div key={medal.tone} className="grid justify-items-center gap-4">
-              <DuelMedal tone={medal.tone} size="md" numeral={medal.numeral} icon={medal.icon} />
+              <DuelMedal tone={medal.tone} size="md" numeral={medal.numeral} />
               <Tag>{medal.label}</Tag>
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] justify-items-center gap-6">
-          <ResultHero tone="win" icon="trophy" title="¡Ganaste!" reason="Beto se quedó sin puntos de vida." score={{ mine: 3100, theirs: 0, rival: 'Beto' }} />
-          <ResultHero tone="lose" icon="flag" title="Perdiste" reason="Te rendiste." score={{ mine: 2400, theirs: 5600, rival: 'Beto' }} />
-          <ResultHero tone="draw" icon="swap" title="Empate" reason="Los dos se quedaron sin puntos de vida." />
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] justify-items-center gap-6">
+          {RESULTS.map((sample) => (
+            <ResultSample key={sample.label} sample={sample} />
+          ))}
         </div>
       </div>
       {first !== null ? <TurnOrderBanner key={String(first)} first={first} rival="Beto" onDone={() => setFirst(null)} /> : null}

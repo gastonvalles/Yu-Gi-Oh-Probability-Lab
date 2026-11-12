@@ -510,12 +510,12 @@ describe('la pantalla del duelo', () => {
     expect(bubble(hostChat, 'Primero')).not.toHaveClass('motion-safe:animate-message-in')
   })
 
-  it('las fases y el turno: los dos ven en qué fase va quien juega, el botón pulsa con cada fase del rival (sin cartel) y, al terminar el turno, con "Tu turno" para el lector', () => {
+  it('las fases y el turno: los dos ven en qué fase va quien juega, cada fase cruza el campo en una banda del color de quien juega (sin turno ni nombre) y, al terminar el turno, "Tu turno" para el lector', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
     const phase = (view: RenderResult) => phaseChip(view).getAttribute('aria-label')?.replace('Fases: ', '')
-    // Sin cartel en el duelo: la fase la dice su botón (que pulsa) y el lector de pantalla oye un status oculto, junto al botón.
+    // La fase la dicen su botón y la banda (sólo el nombre de la fase, en el color de quien juega); el lector de pantalla oye un status oculto, junto al botón.
     const banner = (view: RenderResult) => phaseChip(view).parentElement!.querySelector('[role="status"]')?.textContent ?? ''
     const visibleBanner = (view: RenderResult) => view.container.querySelector('[data-fx="banner"]')
 
@@ -529,7 +529,10 @@ describe('la pantalla del duelo', () => {
     expect(phase(guest)).toBe('Main Phase 1')
     expect(banner(guest)).toContain('Ana')
     expect(banner(guest)).toContain('Main Phase 1')
-    expect(visibleBanner(guest)).toBeNull()
+    expect(visibleBanner(guest)).toHaveTextContent(/^Main Phase 1$/)
+    expect(visibleBanner(guest)).toHaveAttribute('data-side', 'theirs')
+    expect(visibleBanner(host)).toHaveTextContent(/^Main Phase 1$/)
+    expect(visibleBanner(host)).toHaveAttribute('data-side', 'mine')
 
     // Las fases son una sola para los dos y sólo las toca quien tiene el turno: Beto las ve (encendidas igual que Ana) pero no puede cambiarlas.
     expect(phaseChip(guest)).toBeDisabled()
@@ -558,6 +561,10 @@ describe('la pantalla del duelo', () => {
     expect(phase(host)).toBe('Draw Phase')
     expect(banner(guest)).toContain('Tu turno')
     expect(banner(host)).toContain('Turno de Beto')
+    // El turno nuevo, en la banda de quien lo empieza: la Draw Phase de Beto, lima para Ana y violeta para él.
+    expect(visibleBanner(host)).toHaveAttribute('data-side', 'theirs')
+    expect(visibleBanner(guest)).toHaveTextContent(/^Draw Phase$/)
+    expect(visibleBanner(guest)).toHaveAttribute('data-side', 'mine')
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest + 1)
     expect(phaseChip(host)).toBeDisabled()
     expect(phaseChip(guest)).toBeEnabled()

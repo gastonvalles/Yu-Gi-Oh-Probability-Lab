@@ -41,8 +41,9 @@ describe('auto-screen · una carta sin jugadas dice por qué', () => {
     const sheet = screen.getByRole('region', { name: 'Called by the Grave' })
 
     expect(within(sheet).getByTestId('no-plays')).toHaveTextContent(/^Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora\.También rige \(puede no ser la causa\):Destroy a monster$/)
-    // «Ver carta» y «Seguir en modo manual», en el pie de la ficha: a la vista aunque el porqué no entre (360×740).
-    expect(within(sheet).getAllByRole('button').slice(-2).map((button) => button.textContent)).toEqual(['Ver carta', 'Seguir en modo manual'])
+    // «Seguir en modo manual», en el pie de la ficha: a la vista aunque el porqué no entre (360×740). Ya no hay «Ver carta» visible: la miniatura de la cabeza es el botón.
+    expect(within(sheet).getAllByRole('button').slice(-1).map((button) => button.textContent)).toEqual(['Seguir en modo manual'])
+    expect(within(sheet).getByRole('button', { name: 'Ver carta' })).toHaveTextContent('')
     fireEvent.click(within(sheet).getByRole('button', { name: 'Seguir en modo manual' }))
     // Sin jugadas todavía no hay nada que volver atrás: pasa derecho a la mesa manual.
     expect(onManual).toHaveBeenCalledWith(null)

@@ -196,7 +196,7 @@ describe('los menús de la mesa con submenús', () => {
 
       const menu = menuOf('Ash Blossom')
 
-      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Revelar', 'Target', 'Al deck', 'Descartar', 'Desterrar', 'Activar efecto', 'Invocación Especial', 'Colocar', 'Invocación Normal', 'Ver carta'])
+      expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Revelar', 'Target', 'Al deck', 'Descartar', 'Desterrar', 'Activar efecto', 'Invocación Especial', 'Colocar', 'Invocación Normal'])
       expect(['Al deck', 'Desterrar', 'Invocación Especial'].map((name) => within(menu).getByRole('menuitem', { name }).getAttribute('aria-haspopup'))).toEqual(['menu', 'menu', 'menu'])
 
       fireEvent.click(within(menu).getByRole('menuitem', { name: 'Invocación Especial' }))

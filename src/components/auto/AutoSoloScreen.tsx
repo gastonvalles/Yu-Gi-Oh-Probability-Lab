@@ -26,6 +26,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { t } from '../../i18n'
 import { ResultHero } from '../duel/DuelBanner'
 import { DuelLine, type LaneNotice } from '../duel/DuelBar'
+import { LethalBlow } from '../duel/LethalBlow'
 import { LifeBadge } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { HandtrapPicker } from '../duel/HandtrapPool'
@@ -35,7 +36,6 @@ import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/Prac
 import { cardIdOfDrawId } from '../probability/practice'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
 import { Button } from '../ui/Button'
-import { CloseButton } from '../ui/IconButton'
 import { SaveReplayDialog } from '../replays/SaveReplayDialog'
 import { AutoBar, AutoDock, type AutoOptions } from './AutoBar'
 import { BotLogSheet, botTurns } from './BotLog'
@@ -343,12 +343,12 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     () =>
       fault ? (
         <FaultCover fault={fault} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
-      ) : gaveUp || (status === 'ended' && end) ? (
+      ) : gaveUp || (asks.endShown && end) ? (
         <EndCover end={gaveUp || !end ? { winner: 1 - seat, reason: 0 } : end} conceded={gaveUp} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} onLog={openLog} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'loading' ? (
         <LoadingCover progress={progress} note={rivalLine(handtraps)} />
       ) : undefined,
-    [fault, restart, recoverable, undo, openManual, onExit, status, end, gaveUp, lp, seat, rivalName, progress, handtraps, openSave, openLog],
+    [fault, restart, recoverable, undo, openManual, onExit, status, end, asks.endShown, gaveUp, lp, seat, rivalName, progress, handtraps, openSave, openLog],
   )
 
   // Las vidas van por asiento (las tuyas son las de `seat`): las de lo que la mesa ya contó (`asks.lp`).
@@ -495,6 +495,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
           : {})}
       />
       {asks.pieces}
+      {asks.lethal && !reviewing ? <LethalBlow key={asks.lethal.key} damage={asks.lethal.damage} mine={asks.lethal.side === seat} /> : null}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
       <BotLogSheet isOpen={logOpen} onClose={() => setLogOpen(false)} turns={botLog} deciding={rivalOn} loading={snap.replaying} nameOf={codeName} artOf={codeArt} frameOf={frameOf} onPick={pickNote} />
       <ManualDialog
@@ -542,7 +543,10 @@ function useMoment(session: MatSession, initial: unknown, reviewing: boolean, ca
   return reviewing ? null : moment
 }
 
-/** El final: quién ganó y por qué, «Qué hizo el bot», «Guardar replay» y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */
+/**
+ * El final (sale cuando la mesa lo mostró todo y la chapa contó hasta 0: `asks.endShown`): quién ganó y por qué, «Guardar replay», seguir la partida en la mesa manual (con `onManual`)
+ * y «Qué hizo el bot», del mismo ancho, y abajo «Jugar otra vez» (la misma semilla: el mismo duelo).
+ */
 function EndCover({ end, conceded = false, lp, seat, rival, onAgain, onSave, onLog, onManual, onExit }: { end: { winner: number; reason: number }; /** Te rendiste (Opciones): la derrota dice eso y no las vidas. */ conceded?: boolean; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onLog: () => void; onManual?: () => void; onExit: () => void }) {
   const won = end.winner === seat
   const [mine, theirs] = [lp[seat], lp[1 - seat]!]
@@ -563,26 +567,34 @@ function EndCover({ end, conceded = false, lp, seat, rival, onAgain, onSave, onL
           : t(won ? 'auto.end.effectWin' : 'auto.end.effectLose')
 
   return (
-    <div role="alertdialog" aria-modal="true" aria-label={title} className="relative grid h-full place-items-center bg-background/90 p-6">
-      <CloseButton size="md" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-3 top-3" onClick={onExit} />
-      <ResultHero tone={end.winner === 2 ? 'draw' : won ? 'win' : 'lose'} icon={end.winner === 2 ? 'swap' : won ? 'trophy' : byLife && !conceded ? 'heart' : 'flag'} title={title} reason={reason} score={{ mine, theirs, rival }}>
-        <Button variant="tertiary" icon="chat" aria-haspopup="dialog" onClick={onLog}>
-          {t('auto.bot.log.open')}
-        </Button>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button variant="secondary" icon="save" aria-haspopup="dialog" onClick={onSave}>
+    <ResultHero
+      role="alertdialog"
+      tone={end.winner === 2 ? 'draw' : won ? 'win' : 'lose'}
+      title={title}
+      reason={reason}
+      // Rendirse no es un marcador: «8000 a 8000» se lee como un empate. Quedan el título y el motivo.
+      {...(conceded ? {} : { score: { mine, theirs, rival } })}
+      onLeave={onExit}
+      actions={
+        <>
+          <Button variant="secondary" icon="save" fullWidth aria-haspopup="dialog" onClick={onSave}>
             {t('meta.duels.save.button')}
           </Button>
           {onManual ? (
-            <Button variant="secondary" icon="hand" onClick={onManual}>
+            <Button variant="secondary" icon="hand" fullWidth onClick={onManual}>
               {t('auto.bar.manual')}
             </Button>
           ) : null}
-          <Button variant="primary" icon="refresh" onClick={onAgain}>
-            {t('auto.end.again')}
+          <Button variant="secondary" icon="chat" fullWidth aria-haspopup="dialog" onClick={onLog}>
+            {t('auto.bot.log.open')}
           </Button>
-        </div>
-      </ResultHero>
-    </div>
+        </>
+      }
+      primary={
+        <Button variant="primary" size="lg" icon="refresh" fullWidth onClick={onAgain}>
+          {t('auto.end.again')}
+        </Button>
+      }
+    />
   )
 }

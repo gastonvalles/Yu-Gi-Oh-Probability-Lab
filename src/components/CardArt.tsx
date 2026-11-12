@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-import { frameClass, type CardFrame } from '../app/card-frame'
+import { frameTextClass, type CardFrame } from '../app/card-frame'
 import { cardImageSrc } from '../app/card-image-source'
 import { buildInitials } from '../app/utils'
 import type { ApiCardReference } from '../types'
@@ -123,7 +123,7 @@ export const CardArt = memo(function CardArt({
         data-card-frame={cardFrame?.kind}
         className={[
           'rounded-none! grid place-items-center font-bold',
-          cardFrame ? frameClass(cardFrame) : 'bg-input text-warning',
+          cardFrame ? frameTextClass(cardFrame) : 'bg-input text-warning',
           className,
         ].join(' ')}
         aria-hidden="true"

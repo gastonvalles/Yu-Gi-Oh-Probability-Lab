@@ -85,7 +85,7 @@ interface CardMenuProps {
   /** Sin título (vacío) el menú sólo lleva el sobretítulo: las fases no repiten el nombre de la de ahora. */
   title: string
   items: MenuItem[]
-  /** "Ver carta": abre el detalle (va al final, aparte de las jugadas). Con el detalle fijo a la izquierda de la mesa no hace falta: la mesa no lo pasa. */
+  /** Abre el detalle de la carta en grande al tocar su título (el nombre accesible es «Ver carta»; no hay fila aparte). Con el detalle fijo a la izquierda de la mesa no hace falta: la mesa no lo pasa. */
   onInspect?: () => void
   /** Más ancho (la lista de efectos de «Activar efecto»: cada opción es la frase entera de un efecto, sin recortar). */
   wide?: boolean
@@ -382,6 +382,17 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
     )
   }
 
+  const heading = (
+    <span className="grid min-w-0 flex-1 gap-0.5">
+      <span className={cx('block', overline)}>{kicker}</span>
+      {title ? (
+        <span className="block truncate text-body font-semibold text-foreground" title={title}>
+          {title}
+        </span>
+      ) : null}
+    </span>
+  )
+
   // Al cerrarse sigue montado mientras vuelve a la carta (`usePresence`): sin atajar el toque siguiente.
   return usePresence(open, open && typeof document !== 'undefined' ? createPortal(
     <div ref={rootRef} className={cx('mat-square fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop}>
@@ -400,15 +411,24 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
         // Si el panel scrollea, el submenú quedaría lejos de su fila: se cierra.
         onScroll={() => (expanded ? collapse(false) : undefined)}
       >
-        <div className="grid gap-0.5 px-2 pb-1.5 pt-1.5">
-          <p className={cx('m-0', overline)}>{kicker}</p>
-          {title ? (
-            <p className="m-0 truncate text-body font-semibold text-foreground" title={title}>
-              {title}
-            </p>
-          ) : null}
-          {note ? <p className="m-0 text-micro text-soft">{note}</p> : null}
-        </div>
+        {/* Con `onInspect`, la carta del menú se toca (el encabezado): abre el detalle en grande; ya no hay una fila «Ver carta». */}
+        {onInspect ? (
+          <button
+            type="button"
+            aria-label={t('practice.dialog.viewCard')}
+            title={t('practice.dialog.viewCard')}
+            data-initial-focus={items.length === 0 ? '' : undefined}
+            className="flex min-h-11 w-full items-center gap-2 px-2 text-left hover:bg-tint/10 focus-visible:outline-none focus-visible:shadow-focus"
+            onClick={onInspect}
+            onMouseEnter={() => hover(null)}
+          >
+            {heading}
+            <Icon name="search" size={14} className="shrink-0 text-muted" />
+          </button>
+        ) : (
+          <div className="px-2 pb-1.5 pt-1.5">{heading}</div>
+        )}
+        {note ? <p className="m-0 px-2 pb-1.5 text-micro text-soft">{note}</p> : null}
         {items.map((item, index) => (
           <Fragment key={`${index}|${item.label}`}>
             {/* Entre bloques (apoyo, envíos, jugadas), una línea fina. */}
@@ -417,22 +437,6 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
           </Fragment>
         ))}
         {items.length === 0 ? (empty ?? <p className="m-0 px-2 py-1.5 text-micro text-muted">{t('practice.dialog.empty')}</p>) : null}
-        {onInspect ? (
-          <>
-            <div aria-hidden="true" className="my-1 border-t border-border-subtle" />
-            <button
-              type="button"
-              role="menuitem"
-              className={cx(MENU_ROW, 'flex items-center justify-center gap-2 px-2 text-muted')}
-              data-initial-focus={items.length === 0 ? '' : undefined}
-              onClick={onInspect}
-              onMouseEnter={() => hover(null)}
-            >
-              <Icon name="search" size={14} />
-              {t('practice.dialog.viewCard')}
-            </button>
-          </>
-        ) : null}
       </div>
       {sub ? (
         <div

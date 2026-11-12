@@ -76,6 +76,19 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
 
   const toggle = (id: string) => setChosen((current) => (current.includes(id) ? current.filter((key) => key !== id) : count === 1 ? [id] : current.length < count ? [...current, id] : current))
 
+  // M-05: la posición son dos dibujos; tocar uno contesta, sin confirmar. Son los botones del cartel (no una lista): van en su fila de abajo.
+  const pinned = mode === 'one' && of === 'position' && !onCancel
+  const positions = (
+    <div role="menu" aria-label={title} data-positions="" className="flex w-full min-w-0 justify-center gap-4">
+      {options.map((option) => (
+        <Button key={option.id} role="menuitem" variant="secondary" aria-disabled={option.disabled || undefined} className={cx('min-h-28 min-w-24 flex-col gap-2 px-3!', option.disabled && 'cursor-default opacity-40')} onClick={option.disabled ? undefined : () => onPick([option.id])}>
+          <PositionDrawing value={Number(option.id)} />
+          <span className="whitespace-nowrap">{option.label}</span>
+        </Button>
+      ))}
+    </div>
+  )
+
   return (
     <AutoPanel
       kind="options"
@@ -85,7 +98,10 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
       top={why ? <AskWhy id={whyId} why={why} /> : kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
       actions={
         mode === 'one' ? (
-          onCancel ? (
+          pinned ? (
+            // M-05: los dos dibujos son los botones: la fila de abajo, que no se desplaza.
+            positions
+          ) : onCancel ? (
             <Button variant="tertiary" onClick={onCancel}>
               {t('common.cancel')}
             </Button>
@@ -98,16 +114,8 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
       }
       {...(mode === 'one' ? {} : { aside: <PickCount chosen={chosen.length} max={count} /> })}
     >
-      {mode === 'one' && of === 'position' ? (
-        // M-05: dos dibujos; tocar uno contesta, sin confirmar.
-        <div role="menu" aria-label={title} data-positions="" className="flex justify-center gap-4">
-          {options.map((option) => (
-            <Button key={option.id} role="menuitem" variant="secondary" aria-disabled={option.disabled || undefined} className={cx('min-h-28 min-w-24 flex-col gap-2 px-3!', option.disabled && 'cursor-default opacity-40')} onClick={option.disabled ? undefined : () => onPick([option.id])}>
-              <PositionDrawing value={Number(option.id)} />
-              <span className="whitespace-nowrap">{option.label}</span>
-            </Button>
-          ))}
-        </div>
+      {pinned ? null : mode === 'one' && of === 'position' ? (
+        positions
       ) : mode === 'one' ? (
         <div role="menu" aria-label={title}>
           <Options items={options.map((option) => ({ label: option.label, lead: option.lead, disabled: option.disabled, onSelect: () => onPick([option.id]) }))} stacked={stacked ?? options.some((option) => option.label.length > LONG_LABEL)} />

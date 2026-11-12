@@ -1,4 +1,6 @@
 // QA de SÓLO LECTURA contra el sitio publicado (`npm run test:prod`): la mesa del duelo con el kit aprobado (TI-190 a TI-198; QA del conjunto, TI-199) y la práctica manual, en celular (390×844, con toque) y en escritorio (1440×900).
+// Ronda `fase-duelo-4` (TI-205 a TI-208; QA del conjunto, TI-209): la cadena en grande sólo al encadenar y los medallones al resolver, los botones de los menús pegados abajo y sin «Ver carta» (la miniatura se toca), las letras blancas sobre el
+// color del tipo (contraste ≥ 4,5:1), la banda de fases del color de quien juega y el cartel de resultado nuevo (una sola principal abajo, esquinas rectas).
 // Nunca crea una sala ni envía un formulario: las rutas con # son locales al navegador y el deck se siembra en el `localStorage` de la prueba. El catálogo de YGOPRODeck se responde vacío y las imágenes de cartas se cortan.
 // Dos grupos: la práctica MANUAL (`ygo-lab:auto-duel` en «off»: «Solo» → «Jugar contra las handtraps» abre la mesa sin núcleo ni relay) y el duelo AUTOMÁTICO (necesita `/auto-data/*` y el núcleo: el sitio publicado o un dev server,
 // p. ej. `BASE_URL=http://ti199.localhost:5299`; contra `127.0.0.1`/`localhost` se saltea).
@@ -234,7 +236,8 @@ test.describe('práctica manual', () => {
     expect(color, 'el color de respaldo es el carbón').toBe(charcoal)
     expect(charcoal).not.toBe('rgba(0, 0, 0, 0)')
     await expect.poll(() => avifs.size, 'un solo AVIF de fondo por ancho').toBe(1)
-    expect([...avifs][0]).toMatch(isMobile ? /^remolino-medio-movil-.*\.avif$/ : /^remolino-medio-escritorio-.*\.avif$/)
+    // Con hash en el sitio publicado; sin él en un dev server.
+    expect([...avifs][0]).toMatch(isMobile ? /^remolino-medio-movil(-.*)?\.avif$/ : /^remolino-medio-escritorio(-.*)?\.avif$/)
   })
 
   test('el menú manual no cambió: conserva «Al deck ›» con su submenú y no aparece ningún cartel del automático', async ({ page, isMobile }) => {
@@ -343,6 +346,35 @@ const alphaOf = (locator: Locator) =>
       if (a > 0) return a
     }
     return 0
+  })
+
+/** El contraste (WCAG) entre el color del texto de `locator` y el de su fondo. */
+const contrastOf = (locator: Locator) =>
+  locator.evaluate((node) => {
+    const channels = (css: string) => (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number)
+    const luminance = (rgb: number[]) => {
+      const [r, g, b] = rgb.map((value) => {
+        const unit = value / 255
+        return unit <= 0.03928 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
+    }
+    const style = getComputedStyle(node)
+    const [hi, lo] = [luminance(channels(style.color)), luminance(channels(style.backgroundColor))].sort((a, b) => b - a)
+    return (hi! + 0.05) / (lo! + 0.05)
+  })
+
+/** TI-206: los botones de acción son el borde de abajo del menú: ninguno dentro de un contenedor que se desplaza y a no más que su relleno del borde (≤ 32 px; en la hoja acoplada, 0). */
+const actionsAtBottom = (panel: Locator) =>
+  panel.evaluate((root) => {
+    const buttons = Array.from(root.querySelectorAll('[role=menu] button'))
+    if (!buttons.length) return false
+    const inScroller = buttons.some((button) => {
+      for (let node = button.parentElement; node && node !== root; node = node.parentElement) if (/auto|scroll/.test(getComputedStyle(node).overflowY)) return true
+      return false
+    })
+    const gap = root.getBoundingClientRect().bottom - Math.max(...buttons.map((button) => button.getBoundingClientRect().bottom))
+    return !inScroller && gap >= -0.5 && gap <= 32
   })
 
 const press = (locator: Locator, isMobile: boolean) => (isMobile ? locator.tap() : locator.click())
@@ -457,9 +489,28 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       await expect(page.locator('[data-prompt-turn], [data-panel-fold]')).toHaveCount(0)
       await expectReachable(sheet.getByRole('menuitem'), 'jugadas')
       await expectActionRow(page, 'ficha del monstruo', !isMobile)
+      // TI-206: no existe «Ver carta» (ni botón ni fila); los botones son el borde de abajo del menú; el chip del tipo lleva letra blanca con ≥ 4,5:1 y no repite el dato.
+      await expect(sheet.getByText('Ver carta', { exact: true }), 'sin «Ver carta» visible').toHaveCount(0)
+      await expect(sheet.getByRole('menuitem', { name: /Ver carta/ }), 'sin «Ver carta» entre las jugadas').toHaveCount(0)
+      expect(await contrastOf(sheet.locator('[data-type-chip]').first()), 'contraste de la letra del chip del tipo sobre su fondo').toBeGreaterThanOrEqual(4.5)
+      expect(await sheet.locator('[data-type-chip]').first().evaluate((node) => getComputedStyle(node).color), 'la letra del chip es blanca').toMatch(/^rgb\(25[0-5], 25[0-5], 25[0-5]\)$/)
+      await expect(sheet.locator('[data-type-chip]').first(), 'el chip dice «Normal»').toHaveText('Normal')
+      expect(((await sheet.locator('[data-type-chip]').first().locator('xpath=../..').innerText()).match(/\bNormal\b/g) ?? []).length, 'el tipo se dice una sola vez en la cabeza').toBe(1)
+      expect(await actionsAtBottom(sheet), 'los botones son el borde de abajo del menú: fuera de lo que se desplaza y a no más que su relleno del borde').toBe(true)
       if (isMobile) {
         expect(await alphaOf(sheet), 'alfa del fondo de la ficha').toBe(1)
         await expect(sheet.getByRole('button', { name: /^Minimizar/ })).toBeVisible()
+        // La miniatura de la cabeza es el botón que abre la carta en grande (≥ 44 px, con su nombre accesible), y cerrar el visor deja la ficha.
+        const thumb = sheet.getByRole('button', { name: 'Ver carta', exact: true })
+        const thumbBox = (await thumb.boundingBox())!
+        expect(Math.min(thumbBox.width, thumbBox.height), 'la miniatura se toca con el dedo (≥ 44 px)').toBeGreaterThanOrEqual(43.5)
+        await press(thumb, isMobile)
+        const detail = page.getByRole('dialog', { name: `Detalle de ${name}` })
+        await expect(detail, 'tocar la miniatura abre la carta en grande').toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(detail, 'Escape cierra el visor').toHaveCount(0)
+        // El visor reemplaza a la ficha (nunca dos hojas) y al cerrarlo se vuelve a la ficha, para seguir con la Invocación Normal.
+        await expect(sheet, 'cerrar el visor vuelve a la ficha').toBeVisible()
       } else {
         expect((await boxOf(page, '[data-auto-panel="floating"]'))!.w, 'la ventana de escritorio, apaisada y de ≤ 480 px').toBeLessThanOrEqual(482)
         await expect(page.locator('[data-card-dock]'), 'el detalle de la carta tocada, en su panel de la izquierda').toContainText(name)
@@ -497,19 +548,28 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       await expect(phaseButton(page)).toBeEnabled({ timeout: 30_000 })
     })
 
-    await test.step('M-02 / K-01 / F-05: una Mágica que nadie responde dice «Activar» y entra igual como una carta grande inclinada, con su «1», se resuelve y se va; las vidas del rival bajan contando dentro de su chapa', async () => {
+    await test.step('M-02 / K-01 / F-05 / TI-205: una Mágica que nadie responde dice «Activar» y entra igual como una carta grande inclinada, con su «1»; al resolver la escena se va y queda el medallón «1»; las vidas del rival bajan contando dentro de su chapa', async () => {
       // El observador: la escena de la cadena (carta, pose, inclinación), los carteles de «Activar» y todo número de daño fuera de una chapa.
       await page.evaluate(`(() => {
-        const seen = { stage: [], status: [], spot: 0, outside: [], life: [], t0: 0 }
+        const seen = { stage: [], status: [], spot: 0, outside: [], life: [], t0: 0, medals: [], overlap: 0, armed: 0, statusW: 99 }
         window.__k = seen
         const side = () => document.querySelector('[data-life-badge][data-lp=theirs] .text-stat, [data-life-badge][data-lp=theirs] .text-lead')?.textContent ?? ''
         const tick = () => {
           const now = performance.now()
-          const stage = document.querySelector('[data-chain-stage]')
+          // La escena que se está yendo (data-leaving, un fundido corto) ya no cuenta: es el momento de resolver.
+          const stage = document.querySelector('[data-chain-stage]:not([data-leaving])')
+          // Armando (escena a la vista) no hay ningún medallón: duplicarían a las cartas.
+          if (stage && document.querySelector('[data-chain-medal]')) seen.armed += 1
+          // Al resolver, la escena ya se fue y quedan los medallones (uno por eslabón); si hay escena y un medallón resolviéndose a la vez, se superponen.
+          for (const medal of document.querySelectorAll('[data-chain-medal]')) {
+            if (!stage && !seen.medals.includes(medal.dataset.chainMedal)) seen.medals.push(medal.dataset.chainMedal)
+            if (stage && 'resolving' in medal.dataset) seen.overlap += 1
+          }
           if (stage) {
             for (const card of stage.querySelectorAll('[data-chain-card]')) seen.stage.push({ n: card.dataset.chainCard, pose: card.dataset.pose, rotate: getComputedStyle(card).rotate, t: now, w: card.offsetWidth, layer: stage.offsetWidth, label: card.getAttribute('aria-label') })
             const status = stage.querySelector('[role=status]')
             if (status && !seen.status.includes(status.textContent)) seen.status.push(status.textContent)
+            if (status) seen.statusW = Math.min(seen.statusW, status.getBoundingClientRect().width)
             seen.pe = getComputedStyle(document.querySelector('[data-testid=duel-chain-layer]')).pointerEvents
           }
           if (document.querySelector('[data-spot]')) seen.spot += 1
@@ -540,10 +600,18 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
         outside: string[]
         pe: string
         life: { v: string; t: number }[]
+        medals: string[]
+        overlap: number
+        armed: number
+        statusW: number
       }
       const cards = new Set(k.stage.map((frame) => frame.n))
       expect([...cards], 'una activación sola: un solo eslabón, el 1').toEqual(['1'])
-      expect(k.stage.some((frame) => frame.pose === 'center'), 'la carta pasa al centro a resolverse').toBe(true)
+      // TI-205: la escena en grande es sólo del momento de encadenar. Al resolver se va entera (nunca una carta grande con un efecto resolviéndose) y queda el medallón del eslabón.
+      expect(k.medals, 'al resolver queda el medallón «1» (ya no la insignia «CL1»)').toEqual(['1'])
+      expect(k.overlap, 'ningún medallón «resolviendo» con la escena en grande a la vez').toBe(0)
+      expect(k.armed, 'armando no hay medallones: duplicarían a las cartas de la escena').toBe(0)
+      expect(k.statusW, 'la línea «Se resuelve del último al primero» no se ve (va oculta, para el lector de pantalla)').toBeLessThanOrEqual(2)
       const tilts = k.stage.filter((frame) => frame.pose === 'slot').map((frame) => Math.abs(parseFloat(frame.rotate)))
       expect(tilts.length, 'la carta se ve en su lugar, inclinada').toBeGreaterThan(0)
       expect(tilts.some((angle) => angle >= 3 && angle <= 7), `inclinación de la carta (${tilts.slice(0, 3).join(', ')}°)`).toBe(true)
@@ -627,15 +695,20 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     })
 
     await test.step('F-01 / V-01: terminar el turno desde el botón de fase enciende la chapa del rival (borde de 3 px) y apaga la tuya', async () => {
-      // El observador: todo texto de fase o de turno a la vista dentro de la mesa (fuera de las chapas y de los pasos), el pulso del botón de fase y los anuncios ocultos (`role="status"`).
+      // El observador: todo texto de fase o de turno a la vista dentro de la mesa (fuera de la banda, las chapas y los pasos), cada banda de fase (TI-208: lado, texto, si ataja toques, el fondo, la fila que ocupa) y los anuncios ocultos (`role="status"`).
       await page.evaluate(`(() => {
-        const seen = { texts: [], pulses: 0, status: [] }
+        const seen = { texts: [], bands: [], status: [] }
         window.__phase = seen
-        const pulses = new Set()
         const tick = () => {
-          for (const node of document.querySelectorAll('[data-fx="phase-pulse"]')) if (!pulses.has(node)) { pulses.add(node); seen.pulses += 1 }
+          for (const band of document.querySelectorAll('[data-fx="banner"]')) {
+            const id = band.dataset.side + '|' + band.textContent
+            if (seen.bands.some((entry) => entry.id === id)) continue
+            const box = band.getBoundingClientRect()
+            const button = document.querySelector('button[aria-label^="Fases: "]').getBoundingClientRect()
+            seen.bands.push({ id, side: band.dataset.side, text: band.textContent, pe: getComputedStyle(band).pointerEvents, hidden: band.getAttribute('aria-hidden'), image: getComputedStyle(band.firstElementChild).backgroundImage, color: getComputedStyle(band.firstElementChild).color, mid: Math.abs(box.top + box.height / 2 - (button.top + button.height / 2)), height: box.height })
+          }
           for (const node of document.querySelectorAll('[aria-label="Mesa de práctica"] *')) {
-            if (node.children.length || node.closest('.sr-only, [data-life-badge], [role=status], ol, li')) continue
+            if (node.children.length || node.closest('.sr-only, [data-life-badge], [data-fx=banner], [role=status], ol, li')) continue
             const text = node.textContent.trim()
             if (/^(Turno de |Tu turno|Empezó tu turno|.*· (Draw|Standby|Main|Battle|End) Phase)/.test(text) && node.getBoundingClientRect().width && !seen.texts.includes(text)) seen.texts.push(text)
           }
@@ -648,10 +721,31 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       await press(page.getByRole('menu', { name: 'Elegí la fase a la que pasás' }).getByRole('menuitem', { name: 'Terminar el turno' }), isMobile)
       await expect.poll(() => page.locator('[data-life-badge][data-lp=theirs]').evaluate((node) => getComputedStyle(node).borderTopWidth), { timeout: 60_000, message: 'la chapa del rival en su turno' }).toBe('3px')
       expect(await page.locator('[data-life-badge][data-lp=mine]').evaluate((node) => getComputedStyle(node).borderTopWidth), 'tu chapa en el turno del rival').not.toBe('3px')
-      // Cada dato una vez: la fase vive sólo en su botón y el turno lo dice la chapa; el cambio se nota con un pulso y se anuncia en un `role="status"` oculto.
-      await expect.poll(() => page.evaluate(() => (window as unknown as { __phase: { pulses: number } }).__phase.pulses), { message: 'el pulso del botón de fase al cambiar de fase' }).toBeGreaterThan(0)
-      const phaseSeen = (await page.evaluate(() => (window as unknown as { __phase: unknown }).__phase)) as { texts: string[]; pulses: number; status: string[] }
-      expect(phaseSeen.texts, 'ningún cartel escribe la fase ni de quién es el turno').toEqual([])
+      // TI-208: la fase se anuncia con una banda que cruza el campo por la fila del botón de fase, del color de quien juega (la tuya violeta, la del rival lima), sólo con el nombre de la fase, sin atajar toques; el turno lo dice
+      // el color y la chapa (ningún otro texto escribe la fase ni «Turno de…»), y se anuncia además en un `role="status"` oculto.
+      await expect.poll(() => page.evaluate(() => (window as unknown as { __phase: { bands: { side: string }[] } }).__phase.bands.filter((band) => band.side === 'theirs').length), { message: 'la banda de fase del rival' }).toBeGreaterThan(0)
+      const phaseSeen = (await page.evaluate(() => (window as unknown as { __phase: unknown }).__phase)) as { texts: string[]; bands: { side: string; text: string; pe: string; hidden: string | null; image: string; color: string; mid: number; height: number }[]; status: string[] }
+      expect(phaseSeen.texts, 'ningún texto suelto escribe la fase ni de quién es el turno').toEqual([])
+      const colorOf = (token: string) =>
+        page.evaluate((name) => {
+          const probe = document.createElement('i')
+          probe.style.backgroundColor = `var(${name})`
+          document.body.append(probe)
+          const color = getComputedStyle(probe).backgroundColor
+          probe.remove()
+          return color
+        }, token)
+      const lime = await colorOf('--color-info')
+      const violet = await colorOf('--color-primary')
+      for (const band of phaseSeen.bands) {
+        expect(band.text, `la banda dice sólo el nombre de la fase («${band.text}»)`).toMatch(/^(Draw|Standby|Battle|End) Phase$|^Main Phase [12]$/)
+        expect(band.pe, 'la banda no ataja toques').toBe('none')
+        expect(band.hidden, 'la banda es decorativa: el anuncio va en el role="status" oculto').toBe('true')
+        expect(band.mid, 'la banda cruza por la fila del botón de fase').toBeLessThanOrEqual(2)
+        expect(band.height, 'alto de la banda').toBeGreaterThanOrEqual(isMobile ? 44 : 56)
+        expect(band.image, `la banda del lado «${band.side}» es del color de quien juega`).toContain(band.side === 'theirs' ? lime : violet)
+      }
+      expect(phaseSeen.bands.find((band) => band.side === 'theirs')!.color, 'sobre el lima, texto oscuro').not.toBe('rgb(253, 255, 255)')
       expect(phaseSeen.status.length, 'el anuncio de la fase va en un role="status" oculto a la vista').toBeGreaterThan(0)
     })
 
@@ -761,7 +855,133 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     expect(Math.abs((await boxOf(page, PHASE))!.cx - phaseBefore.cx), 'el botón de fase con Opciones cerrada').toBeLessThanOrEqual(1)
     expectStill(await readYs(page), 'al abrir y cerrar Opciones y su confirmación')
   })
+
+  // TI-207: el cartel de resultado nuevo. Rendirse no es un final por vidas: no hay golpe letal ni cuenta y el cartel sale ya. (El orden golpe → chapa en 0 → cartel necesita un duelo ganado: se midió por script.)
+  test('TI-207, el cartel de resultado al rendirte: hoja recta con el título y el porqué (sin marcador); tres secundarias del mismo ancho y una sola principal abajo, la ✕ dentro de la hoja', async ({ page, isMobile }) => {
+    test.setTimeout(180_000)
+    await startAuto(page)
+    await press(page.locator('[data-mat-gear]'), isMobile)
+    const options = page.locator('[data-auto-panel]').filter({ hasText: 'Vista 3D' })
+    await expect(options).toBeVisible()
+    const rendirse = options.getByRole('button', { name: 'Rendirse', exact: true })
+    await rendirse.scrollIntoViewIfNeeded()
+    await press(rendirse, isMobile)
+    const confirm = page.getByRole('alertdialog', { name: '¿Rendirte en este duelo?' })
+    await expect(confirm).toBeVisible()
+    await press(confirm.getByRole('button', { name: 'Rendirse', exact: true }), isMobile)
+
+    const hero = page.getByTestId('result-hero')
+    await expect(hero, 'el cartel de resultado, ya').toBeVisible({ timeout: 10_000 })
+    await expect(hero).toHaveAttribute('role', 'alertdialog')
+    await expect(hero).toHaveAttribute('data-tone', 'lose')
+    await expect(hero.getByRole('heading', { name: 'Perdiste' }), 'el título manda').toBeVisible()
+    await expect(hero).toContainText('Te rendiste.')
+    await expect(hero.locator('[data-score]'), 'rendirse no muestra el marcador (8000 a 8000 se leería como empate)').toHaveCount(0)
+    await expect(page.getByTestId('lethal-blow'), 'rendirse no es un golpe letal').toHaveCount(0)
+
+    // Las acciones: tres secundarias iguales y una sola principal, grande y abajo de todo (lo último de la hoja).
+    const names = ['Guardar replay', 'Seguir en modo manual', 'Qué hizo el bot', 'Jugar otra vez']
+    const boxes = await Promise.all(names.map(async (name) => (await hero.getByRole('button', { name, exact: true }).boundingBox())!))
+    const [save, manual, log, again] = boxes as [Box2, Box2, Box2, Box2]
+    for (const secondary of [save, manual, log]) {
+      expect(secondary.width, 'las secundarias miden lo mismo').toBeCloseTo(save.width, 0)
+      expect(secondary.height, 'alto de una secundaria').toBeGreaterThanOrEqual(44)
+    }
+    expect(again.width, 'la principal va de lado a lado, como las demás').toBeGreaterThanOrEqual(save.width - 1)
+    expect(again.height, 'la principal es la más grande').toBeGreaterThan(save.height)
+    expect(again.y, 'la principal, abajo de todo').toBeGreaterThan(log.y)
+    expect(again.y + again.height, 'al alcance del pulgar: pegada al borde de abajo de la hoja').toBeGreaterThan(page.viewportSize()!.height - (isMobile ? 40 : 360))
+    await expect.poll(() => onTop(hero.getByRole('button', { name: 'Jugar otra vez', exact: true })), { message: 'lo que hay arriba de «Jugar otra vez» es el botón' }).toBe(true)
+    // La ✕ va dentro de la hoja: no queda encimada con la barra de arriba (las vidas del rival y el ⋯).
+    const close = (await hero.getByRole('button', { name: 'Salir del duelo' }).boundingBox())!
+    const rival = (await boxOf(page, '[data-lp=theirs]'))!
+    expect(close.y, 'la ✕ no pisa la barra de arriba').toBeGreaterThan(rival.y + rival.h)
+    if (isMobile) expect(close.height, 'la ✕ se toca con el dedo').toBeGreaterThanOrEqual(43.5)
+    expect(await roundCorners(page), 'el cartel de resultado: esquinas rectas').toEqual([])
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'desborde horizontal del documento').toBeLessThanOrEqual(0)
+  })
+
+  // TI-207 / TI-209: el final por vidas en orden. Un deck de 40 Ookazi (800 de daño cada una, sin objetivo ni respuesta): se activan todas las de la mano turno a turno hasta que el rival llega a 0. La última pasa por la escena de la cadena:
+  // primero se va la escena, después el golpe letal en cámara lenta (la chapa espera), después la chapa cuenta hasta 0 y, tras una pausa, el cartel. Sin esperas fijas cortas: producción es más lenta, se afirma el orden y las pausas mínimas.
+  test('TI-207, ganar por vidas: la escena de la cadena se va, después el golpe letal lento, la chapa cuenta hasta 0 y recién ahí el cartel', async ({ page, isMobile }) => {
+    test.setTimeout(540_000)
+    const ookazi = stateOf(Array.from({ length: 40 }, () => card(19523799, 'Ookazi', SPELL)))
+    await page.addInitScript((deck) => {
+      localStorage.setItem('ygo-probability-lab:v2', deck)
+      localStorage.setItem('ygo-lab:auto-place', 'auto')
+      localStorage.setItem('ygo-lab:auto-chain', 'never')
+    }, ookazi)
+    await page.goto('/#solo')
+    await page.getByRole('button', { name: /^Jugar contra las handtraps/ }).click()
+    await expect(mat(page)).toBeVisible({ timeout: 60_000 })
+    await expect(phaseButton(page)).toBeEnabled({ timeout: 90_000 })
+    // El observador por cuadro: golpe, escena (la que se va no cuenta), cartel y el número de la chapa del rival.
+    await page.evaluate(`(() => {
+      const rec = []
+      window.__end = rec
+      let last = ''
+      const tick = () => {
+        const frame = {
+          blow: Boolean(document.querySelector('[data-testid="lethal-blow"]')),
+          stage: Boolean(document.querySelector('[data-chain-stage]:not([data-leaving])')),
+          hero: Boolean(document.querySelector('[data-testid="result-hero"]')),
+          lp: document.querySelector('[data-life-badge][data-lp=theirs] .text-stat, [data-life-badge][data-lp=theirs] .text-lead')?.textContent ?? '',
+        }
+        const key = JSON.stringify(frame)
+        if (key !== last) { last = key; rec.push({ t: performance.now(), ...frame }) }
+        requestAnimationFrame(tick)
+      }
+      tick()
+    })()`)
+    const hero = page.getByTestId('result-hero')
+    const deadline = Date.now() + 480_000
+    while (Date.now() < deadline && !(await hero.count())) {
+      if (await phaseButton(page).isEnabled().catch(() => false)) {
+        const card = handList(page).getByRole('listitem', { name: 'Ookazi', exact: true })
+        const activate = page.locator('[data-auto-panel]').getByRole('menuitem', { name: 'Activar', exact: true })
+        if ((await card.count()) > 0) {
+          await press(card.first(), isMobile)
+          if (await activate.waitFor({ timeout: 4000 }).then(() => true, () => false)) {
+            await press(activate, isMobile)
+            await page.waitForTimeout(700)
+            continue
+          }
+          await page.keyboard.press('Escape')
+        }
+        // Sin Ookazi en la mano (o sin poder activarla todavía): a la Main Phase 1 o a terminar el turno.
+        await press(phaseButton(page), isMobile)
+        const main = page.getByRole('menuitem', { name: /Main Phase 1/ })
+        if (await main.count()) await press(main.first(), isMobile)
+        else await press(page.getByRole('menuitem', { name: 'Terminar el turno' }), isMobile)
+        const confirm = page.getByRole('alertdialog').getByRole('button', { name: 'Terminar turno' })
+        if (await confirm.isVisible().catch(() => false)) await press(confirm, isMobile)
+        await page.waitForTimeout(1200)
+      } else await page.waitForTimeout(300)
+    }
+    await expect(hero, 'el duelo se ganó por vidas').toBeVisible({ timeout: 20_000 })
+    await expect(hero).toHaveAttribute('data-tone', 'win')
+    const rec = (await page.evaluate(() => (window as unknown as { __end: unknown }).__end)) as { t: number; blow: boolean; stage: boolean; hero: boolean; lp: string }[]
+    const blowAt = rec.findIndex((frame) => frame.blow)
+    expect(blowAt, 'hubo golpe letal').toBeGreaterThanOrEqual(0)
+    expect(rec.filter((frame) => frame.blow && frame.stage), 'el golpe letal nunca coincide con la escena de la cadena (primero termina la cadena)').toEqual([])
+    // La chapa espera mientras dura el golpe (cámara lenta: ~1,5 s) y recién después baja.
+    const blowStart = rec[blowAt]!.t
+    const counting = rec.findIndex((frame, index) => index > blowAt && frame.lp !== rec[blowAt]!.lp)
+    expect(counting, 'la chapa baja después del golpe').toBeGreaterThan(blowAt)
+    expect(rec[counting]!.t - blowStart, 'el golpe va en cámara lenta: la chapa espera ≥ 1,2 s').toBeGreaterThanOrEqual(1200)
+    // El cartel no aparece mientras la chapa cuenta: sólo con el 0 a la vista, y tras una pausa.
+    const zero = rec.findIndex((frame) => frame.lp === '0')
+    expect(zero, 'la chapa llega a 0').toBeGreaterThanOrEqual(0)
+    const shown = rec.findIndex((frame) => frame.hero)
+    expect(shown, 'el cartel sale después del 0').toBeGreaterThan(zero)
+    expect(rec[shown]!.lp, 'el cartel aparece con la chapa en 0').toBe('0')
+    expect(rec.slice(0, shown).some((frame) => frame.hero), 'ningún cuadro con cartel antes').toBe(false)
+    expect(rec[shown]!.t - rec[zero]!.t, 'una pausa para ver el 0 antes del cartel').toBeGreaterThanOrEqual(300)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'desborde horizontal del documento').toBeLessThanOrEqual(0)
+  })
 })
+
+type Box2 = { x: number; y: number; width: number; height: number }
 
 // M-02 / M-07 / M-08 con una respuesta real: el deck son Foolish Burial y Ash Blossom, y tu Ash puede responder a tu Foolish (el rival lleva sólo un Effect Veiler: no responde a una Mágica).
 const ASH = { cardType: 'Effect Monster', frameType: 'effect', race: 'Zombie', attribute: 'FIRE', level: 3, atk: '1700', def: '0' }
@@ -780,6 +1000,9 @@ test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-da
 
   test('el cartel de responder trae la carta elegida y «Activar» prendido (aun con copias agrupadas), la principal a la derecha, sin «Preguntarme» ni «CL»; minimizado queda una tira con la pregunta; y la cadena sigue', async ({ page, isMobile }) => {
     test.setTimeout(180_000)
+    // Las cartas llevan imagen (con el nombre impreso): la placa con el nombre de la escena de la cadena va sólo en la carta sin imagen.
+    const art = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 421 614"><rect width="421" height="614" fill="#7a4a1f"/><rect x="20" y="20" width="381" height="50" fill="#e8d9a8"/><rect x="50" y="90" width="320" height="320" fill="#3a5f8a"/></svg>'
+    for (const pattern of ['**/api/card-image/**', 'https://images.ygoprodeck.com/**']) await page.route(pattern, (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: art }))
     await startAuto(page)
     await watchYs(page)
     await press(handList(page).getByRole('listitem', { name: 'Foolish Burial', exact: true }).first(), isMobile)
@@ -804,6 +1027,19 @@ test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-da
       expect(Math.abs(option.x + option.width / 2 - page.viewportSize()!.width / 2), 'la carta, centrada en la bandeja').toBeLessThanOrEqual(2)
     }
     expect(await roundCorners(page), 'con el cartel de responder').toEqual([])
+    // TI-205: la escena se acomoda sobre el cartel: el número de la última carta queda entero, sin la hoja ni la ventana de «¿Respondés?» encima.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const panel = Array.from(document.querySelectorAll('[data-auto-panel]')).filter((node) => node.getClientRects().length > 0 && /¿Respondés?/.test(node.textContent ?? '')).pop()?.getBoundingClientRect()
+            const number = Array.from(document.querySelectorAll('[data-chain-stage] [data-chain-number]')).pop()?.getBoundingClientRect()
+            if (!panel || !number) return 'sin datos'
+            return number.bottom > panel.top + 1 && number.top < panel.bottom && number.right > panel.left && number.left < panel.right ? 'tapado' : 'entero'
+          }),
+        { message: 'el número de la última carta no queda debajo del cartel de «¿Respondés?»', timeout: 6000 },
+      )
+      .toBe('entero')
 
     // M-07: minimizado queda una tira con la pregunta (en un renglón; si no entra, se corta el nombre de la carta y nunca la pregunta) y tocarla la sube.
     await press(ask.getByRole('button', { name: /^Minimizar/ }), isMobile)
@@ -818,10 +1054,46 @@ test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-da
     await expect(ask, 'tocar la tira sube la pregunta').toBeVisible()
 
     // Responder: la cadena de dos (tu Ash niega tu Foolish) se arma y se resuelve del último al primero.
+    // TI-205: al resolver la escena se va entera y quedan los medallones, uno por eslabón, que se resuelven del último al primero (el «2», tu Ash, y después el «1», tu Foolish negado y tachado); al terminar no queda ninguno.
+    await page.evaluate(`(() => {
+      const seen = { order: [], overlap: 0, voided: [], armed: 0, plates: 0, withArt: 0, places: {} }
+      window.__res = seen
+      const tick = () => {
+        const stage = document.querySelector('[data-chain-stage]:not([data-leaving])')
+        if (stage && document.querySelector('[data-chain-medal]')) seen.armed += 1
+        for (const card of document.querySelectorAll('[data-chain-card]')) {
+          if (card.querySelector('img')) seen.withArt += 1
+          if (card.querySelector('img') && card.querySelector('[data-chain-name]')) seen.plates += 1
+        }
+        for (const medal of document.querySelectorAll('[data-chain-medal]')) {
+          const where = medal.closest('[data-hand-links]') ? 'mano' : (medal.closest('[data-drop]')?.getAttribute('data-drop') ?? medal.closest('[data-rival-drop]')?.getAttribute('data-rival-drop') ?? (medal.closest('[aria-label=Mano]') ? 'mano' : '?'))
+          const places = (seen.places[medal.dataset.chainMedal] ??= [])
+          if (!places.includes(where)) places.push(where)
+          if ('resolving' in medal.dataset) {
+            if (stage) seen.overlap += 1
+            if (seen.order.at(-1) !== medal.dataset.chainMedal) seen.order.push(medal.dataset.chainMedal)
+          }
+          if (medal.hasAttribute('data-voided') && !seen.voided.includes(medal.dataset.chainMedal)) seen.voided.push(medal.dataset.chainMedal)
+        }
+        requestAnimationFrame(tick)
+      }
+      tick()
+    })()`)
     await press(activate, isMobile)
     await expect(page.locator('[data-chain-card="2"]'), 'el segundo eslabón entra').toBeVisible({ timeout: 20_000 })
     await expect(page.locator('[data-chain-stage]')).toHaveCount(0, { timeout: 30_000 })
     await expect(phaseButton(page)).toBeEnabled({ timeout: 30_000 })
+    await expect(page.locator('[data-chain-medal]'), 'al terminar la cadena no queda ningún medallón').toHaveCount(0)
+    const resolved = (await page.evaluate(() => (window as unknown as { __res: unknown }).__res)) as { order: string[]; overlap: number; voided: string[]; armed: number; plates: number; withArt: number; places: Record<string, string[]> }
+    expect(resolved.order, 'los medallones se resuelven del último al primero').toEqual(['2', '1'])
+    expect(resolved.overlap, 'resolviendo no queda la escena en grande').toBe(0)
+    expect(resolved.voided, 'el eslabón negado se tacha, y sólo él (no el «2»)').toEqual(['1'])
+    expect(resolved.armed, 'armando no hay medallones').toBe(0)
+    expect(resolved.withArt, 'las cartas de la escena se vieron con imagen').toBeGreaterThan(0)
+    expect(resolved.plates, 'con imagen, la carta no lleva la placa con su nombre (ya está impreso)').toBe(0)
+    // El medallón se queda donde se activó el efecto: el «1» (tu Foolish negado, que se va al Cementerio) no sigue a la carta.
+    expect(resolved.places['1'], 'el medallón «1» no cambia de lugar ni sigue a la carta al Cementerio').toHaveLength(1)
+    expect(resolved.places['1']![0], 'el «1» queda en su casilla de Mágica/Trampa').toMatch(/^st:/)
     expectStill(await readYs(page), 'al responder, minimizar y la cadena')
   })
 })
