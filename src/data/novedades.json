@@ -1,6 +1,51 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-5-duelo-escritorio-suavidad",
+      "date": "2026-11-12",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El duelo en escritorio y el movimiento más suave",
+        "novedades": [
+          "En escritorio, el campo en 3D entra entero en su columna: ya no se cortan el Deck ni el Extra con los dos paneles abiertos.",
+          "Una sola chapa de vidas, la misma del celular, siempre en el mismo lugar: la del rival arriba a la derecha y la tuya abajo a la izquierda.",
+          "La pregunta («¿Respondés?») va escrita en la barra de su ventana, con las cartas más grandes y los botones al lado. La ventana sale abajo al centro, sin tapar el campo.",
+          "Tu mano crece cuando sobra lugar en pantallas grandes, y Opciones usa todo el alto de la columna.",
+          "En pantallas de menos de 1440 px, el panel de Pasos arranca plegado para que el campo tenga más alto; su botón muestra cuántos pasos hay y lo que elijas queda guardado.",
+          "Minimizar un cartel, arrastrarlo y soltarlo, o volver a abrirlo ya no pega saltos; la carta que se activa se funde antes de que entre la siguiente.",
+          "La banda de fases no se corta a mitad de camino, y las marcas de objetivo y de ataque laten dos veces y quedan quietas."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "El campo ya no baja unos píxeles cuando llega una pregunta en escritorio.",
+          "Los paneles de los costados son planos y opacos; el fondo del duelo termina donde termina el campo.",
+          "«Guardar combo» ya no desaparece de Opciones con el panel de Pasos plegado."
+        ],
+        "ojo": []
+      },
+      "en": {
+        "title": "The desktop duel and smoother movement",
+        "novedades": [
+          "On desktop, the 3D field now fits whole in its column: the Deck and the Extra are no longer cut off with both panels open.",
+          "A single life badge, the same as on mobile, always in the same place: the opponent's at the top right and yours at the bottom left.",
+          "The question (\"Respond?\") is written in its window's bar, with bigger cards and the buttons beside them. The window opens at the bottom center, without covering the field.",
+          "Your hand grows when there is room on large screens, and Options uses the full height of the column.",
+          "On screens under 1440 px, the Steps panel starts folded so the field gets more height; its button shows how many steps there are and what you choose is remembered.",
+          "Minimizing a notice, dragging and dropping it, or opening it again no longer jumps; the card being activated fades out before the next one enters.",
+          "The phase band no longer cuts off halfway, and the target and attack marks pulse twice and then stay still."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "The field no longer drops a few pixels when a question arrives on desktop.",
+          "The side panels are flat and opaque; the duel background ends where the field ends.",
+          "\"Save combo\" no longer disappears from Options when the Steps panel is folded."
+        ],
+        "ojo": []
+      }
+    },
+    {
       "id": "2026-11-12-4-duelo-cadena-final-turno-mesa",
       "date": "2026-11-12",
       "tags": [
