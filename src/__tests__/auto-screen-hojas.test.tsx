@@ -176,7 +176,7 @@ describe('auto-screen · las hojas', () => {
     expect(prompt).toHaveTextContent('Tras la Invocación Normal')
     expect(prompt).not.toHaveTextContent('Blue-Eyes')
     expect(prompt).toHaveTextContent(/¿Activás el efecto de «Nibiru/)
-    expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
+    expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['', '', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
   })
 
   it('una lista corta y mixta (cementerio y Extra) va en la banda del medio, sin velo: el título dice para qué, cada carta de dónde es, y «Cancelar» sin caja antes de la principal', () => {
