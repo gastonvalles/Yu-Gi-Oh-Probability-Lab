@@ -32,6 +32,10 @@ export interface VideoTheme {
   primaryRgb: string
   backgroundRgb: string
   accentRgb: string
+  infoRgb: string
+  /** El texto sobre un relleno violeta (la banda de fase tuya) y sobre uno lima (la del rival). */
+  primaryForeground: string
+  accentForeground: string
   primaryHoverRgb?: string
   cardRgb?: string
   foregroundRgb?: string
@@ -60,6 +64,9 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     primaryRgb: v('--primary-rgb'),
     backgroundRgb: v('--background-rgb'),
     accentRgb: v('--accent-rgb'),
+    infoRgb: v('--info-rgb'),
+    primaryForeground: v('--primary-foreground'),
+    accentForeground: v('--accent-foreground'),
     primaryHoverRgb: v('--primary-hover-rgb'),
     cardRgb: v('--card-background-rgb'),
     foregroundRgb: v('--foreground-rgb'),
@@ -369,29 +376,17 @@ function badge(ctx: Ctx, x: number, y: number, text: string, fill: string, color
   ctx.fillText(text, left + w / 2, top + h / 2 + 1 * s)
 }
 
-/** El número de una pila grande en el medio (en una píldora oscura si hay cartas) y su nombre chico abajo, como `PileBadge` de la mesa. */
+/** El número de una pila grande en el medio: sólo el número, blanco y con sombra para leerse sobre el dorso, como `PileBadge` de la mesa (sin píldora ni nombre). */
 function pileBadge(ctx: Ctx, slot: SceneSlot, theme: VideoTheme, s: number) {
-  const cx = slot.rect.x + slot.rect.w / 2
-  const cy = slot.rect.y + slot.rect.h / 2 - 6 * s
-  const count = String(slot.count ?? 0)
+  ctx.save()
   ctx.font = `800 ${26 * s}px ${FONT}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  if ((slot.count ?? 0) > 0) {
-    const w = ctx.measureText(count).width + 18 * s
-    ctx.fillStyle = rgba(theme.backgroundRgb, 0.7)
-    roundRect(ctx, { x: cx - w / 2, y: cy - 17 * s, w, h: 34 * s }, 17 * s)
-    ctx.fill()
-  }
+  ctx.shadowColor = rgba(theme.backgroundRgb, 0.9)
+  ctx.shadowBlur = 6 * s
   ctx.fillStyle = theme.foreground
-  ctx.fillText(count, cx, cy + 1 * s)
-  if (slot.label) {
-    ctx.font = `600 ${12 * s}px ${FONT}`
-    ctx.letterSpacing = `${0.6 * s}px`
-    ctx.fillStyle = theme.soft
-    ctx.fillText(slot.label.toUpperCase(), cx, cy + 30 * s)
-    ctx.letterSpacing = '0px'
-  }
+  ctx.fillText(String(slot.count ?? 0), slot.rect.x + slot.rect.w / 2, slot.rect.y + slot.rect.h / 2 + 1 * s)
+  ctx.restore()
 }
 
 function drawSlot(ctx: Ctx, slot: SceneSlot, assets: VideoAssets, s: number, hidePile = false) {

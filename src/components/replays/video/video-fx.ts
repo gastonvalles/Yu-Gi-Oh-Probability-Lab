@@ -1,7 +1,6 @@
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
-import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
 import { drawCard, FONT, wrap, type Ctx, type VideoAssets } from './video-draw'
 import { placesOf, poseOf, type Motion, type Pose } from './video-motion'
@@ -12,14 +11,14 @@ export { STAGE_TONE }
 
 /**
  * Lo que la mesa anima con cada jugada, para el video: cuándo y cuánto vuela cada carta (`flightsOf`) y lo que se dibuja encima un rato (`overlaysOf`): la carta grande del
- * centro al activar, mostrar o declarar (y, en un combo, lo que mueve cada paso, como al reproducirlo), el destello de una invocación, el cartel de la fase, el barajado, el
+ * centro al activar, mostrar o declarar (y, en un combo, lo que mueve cada paso, como al reproducirlo), el destello de una invocación, la banda de la fase, el barajado, el
  * ataque y las vidas que bajan. Los tiempos y las curvas son los de la mesa (`MESA`); cada efecto se pinta por cuadro en el lienzo, sin DOM. Todo en ms de video: a 2×, la mitad.
  */
 
 /**
  * Los tiempos de la mesa, copiados para no cargar la mesa (React) con el video: `FLIGHT_MS`, `FLIGHT_STAGGER_MS` y `LANDING_AT` de `use-card-flights.ts`, `SPOTLIGHT_TRAVEL_MS`
  * de `MatFx.tsx`, `DECK_SHUFFLE_MS` y `HAND_SHUFFLE_MS` de `shuffle-fx.ts`, `FIRST_DEAL_MS`, `NEXT_DEAL_MS` y `DEAL_LAND_AT` de `deal-flight.ts`, `IMPACT_MS` de `AttackFx.tsx`,
- * `DELTA_MS` de `life-effects.ts` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS`, `BANNER_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
+ * `DELTA_MS` de `life-effects.ts`, `PHASE_BAND_MS` de `PhaseBand.tsx` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
  * `PracticeHand.tsx` y `STRIKE_MS` de `AttackFx.tsx`.
  */
 export const MESA = {
@@ -28,7 +27,7 @@ export const MESA = {
   landingAt: 0.85,
   travel: 320,
   stage: 950,
-  banner: 1100,
+  banner: 850,
   handFlash: 900,
   flip: 380,
   shuffle: 620,
@@ -105,6 +104,9 @@ export interface Overlay {
   draw: (ctx: Ctx, p: number) => void
   /** Las cartas que este efecto anima en su lugar (`lado:id`, o `lado:pile:deck`): mientras dura, la mesa de abajo no las pinta. */
   hides?: readonly string[]
+  /** La banda de fase: de quién es (0 = tuya) y cómo sigue, sin volver a entrar, si llega otra fase mientras se ve (`carry`). */
+  side?: number
+  carry?: Overlay
 }
 
 const fieldOf = (scene: Scene): Rect => fieldRect(scene.cells)
@@ -182,11 +184,10 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     if (rect) out.push(landingOverlay(rect, FX_RGB[LANDING_TONE(effects.landing.tone)], s, start + (effects.landing.flies && id ? landingOf(id) : 0), speed))
   }
 
-  // El cartel de la fase: el nombre en grande y, si empieza otro turno, el turno arriba (en un duelo, si no, de quién es la fase).
+  // La banda de la fase: el nombre sobre el color de quien juega (violeta lo tuyo, lima lo del rival), como `PhaseBand` de la mesa.
   if (effects.banner) {
     const name = PHASES.find((phase) => phase.id === effects.banner!.phase)?.name ?? effects.banner.phase
-    const lead = kind === 'duel' ? after.sides[actor].name : effects.banner.turn !== null ? t('practice.mat.turn', { turn: effects.banner.turn }) : ''
-    out.push(bannerOverlay(name, lead, field, after.width, theme, s, at(0), speed))
+    out.push(bannerOverlay(name, actor === 0 ? 0 : 1, field, theme, after.layout.cell / 55, at(0), speed))
   }
 
   // Una carta entró a tu mano: la mano se enmarca un instante en celeste (`fx-zone` de la mesa; la del rival, no).
@@ -369,58 +370,56 @@ function landingOverlay(cell: Rect, tone: string, s: number, start: number, spee
   }
 }
 
-function bannerOverlay(name: string, lead: string, field: Rect, width: number, theme: VideoAssets['theme'], s: number, start: number, speed: VideoSpeed): Overlay {
-  const h = 110 * s
+/** Los tiempos de la banda de la mesa (`PhaseBand`): entra 200 ms desde el costado de quien juega, el nombre llega 100 ms después, se queda hasta los 600 ms y sale en otros 200 por el otro lado. */
+const BAND_IN = 200
+const BAND_HOLD = 600
+const BAND_OUT = 200
+const BAND_TEXT_AT = 100
+
+/** `k`: cuánto se agranda la mesa en el video (la casilla del video sobre la de 55 px del celular). */
+function bannerOverlay(name: string, side: 0 | 1, field: Rect, theme: VideoAssets['theme'], k: number, start: number, speed: VideoSpeed, resumed = false): Overlay {
+  const h = 52 * k
   const cy = field.y + field.h / 2
-  return {
+  const [rgb, ink] = side === 0 ? [theme.primaryRgb, theme.primaryForeground] : [theme.infoRgb, theme.accentForeground]
+  const dir = side === 0 ? 1 : -1
+  const overlay: Overlay = {
     kind: 'banner',
+    side,
     start,
     duration: MESA.banner / speed,
     draw: (ctx, p) => {
-      // La banda: se abre de una línea, se queda y se cierra; el texto entra de la izquierda y sale por la derecha.
-      const sx = keyed(p, [[0, 1.12], [0.14, 1], [0.76, 1], [1, 1.06]])
-      const sy = keyed(p, [[0, 0.08], [0.14, 1.06], [0.26, 1], [0.76, 1], [1, 0.2]])
-      const alpha = keyed(p, [[0, 0], [0.14, 1], [0.76, 1], [1, 0]])
+      const ms = p * MESA.banner
+      const entered = resumed ? 1 : easeOut(clamp(ms / BAND_IN))
+      const left = easeInOut(clamp((ms - BAND_HOLD) / BAND_OUT))
+      const alpha = entered * (1 - left)
+      if (alpha <= 0) return
+      const dx = field.w * dir * (left - (1 - entered))
       ctx.save()
-      ctx.translate(width / 2, cy)
-      ctx.scale(sx, sy)
+      ctx.beginPath()
+      ctx.rect(field.x, cy - h / 2, field.w, h)
+      ctx.clip()
       ctx.globalAlpha = alpha
-      const band = ctx.createLinearGradient(-width / 2, 0, width / 2, 0)
-      band.addColorStop(0, rgba(theme.primaryRgb, 0))
-      band.addColorStop(0.16, rgba(theme.primaryRgb, 0.5))
-      band.addColorStop(0.5, rgba(theme.backgroundRgb, 0.92))
-      band.addColorStop(0.84, rgba(theme.primaryRgb, 0.5))
-      band.addColorStop(1, rgba(theme.primaryRgb, 0))
+      const band = ctx.createLinearGradient(field.x + dx, 0, field.x + dx + field.w, 0)
+      band.addColorStop(0, rgba(rgb, 0))
+      band.addColorStop(0.14, rgba(rgb, 1))
+      band.addColorStop(0.86, rgba(rgb, 1))
+      band.addColorStop(1, rgba(rgb, 0))
       ctx.fillStyle = band
-      ctx.fillRect(-width / 2, -h / 2, width, h)
-      const line = ctx.createLinearGradient(-width / 2, 0, width / 2, 0)
-      line.addColorStop(0, rgba(theme.accentRgb, 0))
-      line.addColorStop(0.22, rgba(theme.accentRgb, 1))
-      line.addColorStop(0.78, rgba(theme.accentRgb, 1))
-      line.addColorStop(1, rgba(theme.accentRgb, 0))
-      ctx.fillStyle = line
-      ctx.fillRect(-width / 2, -h / 2, width, 2 * s)
-      ctx.fillRect(-width / 2, h / 2 - 2 * s, width, 2 * s)
-      ctx.restore()
-      const textAlpha = keyed(p, [[0, 0], [0.06, 0], [0.22, 1], [0.76, 1], [1, 0]])
-      const shift = keyed(p, [[0, -28], [0.06, -28], [0.22, 0], [0.76, 0], [1, 28]]) * s
-      ctx.globalAlpha = textAlpha
+      ctx.fillRect(field.x + dx, cy - h / 2, field.w, h)
+      // El nombre, en mayúsculas e itálica: llega un instante después desde el mismo costado.
+      const text = easeOut(clamp((ms - BAND_TEXT_AT) / 200))
+      ctx.globalAlpha = alpha * text
+      ctx.fillStyle = ink
+      ctx.font = `italic 800 ${24 * k}px ${FONT}`
+      ctx.letterSpacing = `${0.6 * k}px`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      if (lead) {
-        ctx.fillStyle = theme.accent
-        ctx.font = `700 ${16 * s}px ${FONT}`
-        ctx.letterSpacing = `${4 * s}px`
-        ctx.fillText(lead.toUpperCase(), width / 2 + shift, cy - 26 * s)
-      }
-      ctx.fillStyle = theme.foreground
-      ctx.font = `800 ${38 * s}px ${FONT}`
-      ctx.letterSpacing = `${8 * s}px`
-      ctx.fillText(name.toUpperCase(), width / 2 + shift, cy + (lead ? 14 : 0) * s)
+      ctx.fillText(name.toUpperCase(), field.x + field.w / 2 + dx - dir * 32 * k * (1 - text), cy + k, field.w * 0.72)
       ctx.letterSpacing = '0px'
-      ctx.globalAlpha = 1
+      ctx.restore()
     },
   }
+  return resumed ? overlay : { ...overlay, carry: bannerOverlay(name, side, field, theme, k, start, speed, true) }
 }
 
 /**
@@ -677,10 +676,10 @@ export function titleOverlay(draw: (ctx: Ctx, alpha: number) => void, start: num
   }
 }
 
-/** Para agregar lo de una jugada nueva: lo del mismo tipo que sigue en pantalla se va (otra carta grande, otro destello). Un cartel de fase que sigue abierto no vuelve a abrirse: cambia el texto. */
+/** Para agregar lo de una jugada nueva: lo del mismo tipo que sigue en pantalla se va (otra carta grande, otro destello). Una banda de fase que sigue a la vista, si es del mismo dueño, no vuelve a entrar: cambia el texto (`carry`). */
 export function replaceOverlays(live: readonly Overlay[], next: readonly Overlay[], now: number): Overlay[] {
   const kinds = new Set(next.map((overlay) => overlay.kind))
-  const open = live.find((overlay) => overlay.kind === 'banner' && (now - overlay.start) / overlay.duration < 0.76)
-  const added = next.map((overlay) => (overlay.kind === 'banner' && open ? { ...overlay, start: overlay.start - overlay.duration * 0.26 } : overlay))
+  const open = live.find((overlay) => overlay.kind === 'banner' && (now - overlay.start) / overlay.duration < 1)
+  const added = next.map((overlay) => (overlay.kind === 'banner' && open && open.side === overlay.side && overlay.carry ? overlay.carry : overlay))
   return [...live.filter((overlay) => overlay.start + overlay.duration > now && !(kinds.has(overlay.kind) && overlay.kind !== 'delta')), ...added]
 }
