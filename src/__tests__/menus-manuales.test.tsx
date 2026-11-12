@@ -45,7 +45,7 @@ describe('los menús de la mesa manual no cambian', () => {
     const menu = screen.getByRole('menu', { name: 'Ash Blossom' })
 
     expect(screen.queryByRole('region', { name: 'Ash Blossom' })).not.toBeInTheDocument()
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Revelar', 'Target', 'Al deck', 'Descartar', 'Desterrar', 'Activar efecto', 'Invocación Especial', 'Colocar', 'Invocación Normal', 'Ver carta'])
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Revelar', 'Target', 'Al deck', 'Descartar', 'Desterrar', 'Activar efecto', 'Invocación Especial', 'Colocar', 'Invocación Normal'])
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'Al deck' }))
     expect(screen.getByRole('menu', { name: 'Al deck' })).toBeInTheDocument()
     noAutoFamily()

@@ -276,7 +276,9 @@ describe('la práctica integrada en la mesa', () => {
       render(<Harness />)
 
       tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
-      expect(screen.getByRole('menuitem', { name: 'Ver carta' })).toBeInTheDocument()
+      // Ya no es una fila del menú: la carta (su encabezado) se toca.
+      expect(screen.queryByRole('menuitem', { name: 'Ver carta' })).not.toBeInTheDocument()
+      expect(within(screen.getByRole('menu', { name: 'Starter' })).getByRole('button', { name: 'Ver carta' })).toBeInTheDocument()
     })
 
     it('una carta elegida en el visor del Deck también se muestra en el detalle fijo (sin «Ver carta» tiene que verse ahí)', () => {

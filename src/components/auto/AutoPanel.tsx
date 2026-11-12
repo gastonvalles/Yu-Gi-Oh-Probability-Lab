@@ -45,8 +45,8 @@ const WINDOW_KEYS = 'ArrowUp ArrowDown ArrowLeft ArrowRight Alt+ArrowUp Alt+Arro
  * (`tertiary`) va sin esto, a su ancho y a la izquierda. Todos `size="md"` (44 px) y en un renglón (lo pone la fila).
  */
 export const PANEL_MAIN = 'flex-1 group-data-[auto-panel=floating]/panel:min-w-32 group-data-[auto-panel=floating]/panel:flex-none'
-/** La fila de abajo: un renglón, la principal al final (a la derecha); en la ventana, todo a la derecha. */
-const ACTIONS = 'flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap group-data-[auto-panel=floating]/panel:justify-end'
+/** La fila de abajo: un renglón, la principal al final (a la derecha); en la ventana, todo a la derecha y pegada al borde de abajo (`mt-auto`: estirada, el aire queda entre el contenido y ella). */
+const ACTIONS = 'flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap group-data-[auto-panel=floating]/panel:mt-auto group-data-[auto-panel=floating]/panel:justify-end'
 
 interface AutoPanelProps {
   /** `data-prompt`: qué cartel es (la mesa y las pruebas lo buscan por esto). */
@@ -423,24 +423,38 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
   // Sin imagen, la carta sobre el color de su tipo (lámina T), como el chip.
   const frame = apiCard ? frameKindOf(apiCard.frameType, apiCard.cardType) : null
   const stats = apiCard?.atk != null ? [`${t('duel.dock.atk')} ${apiCard.atk}`, ...(apiCard.def != null ? [`${t('duel.dock.def')} ${apiCard.def}`] : [])].join(' / ') : null
-  const inspect = onInspect ? (
-    <Button variant="tertiary" size="sm" iconEnd="chevron-right" className="min-h-8! justify-self-start px-0! text-info pointer-coarse:min-h-11!" onClick={onInspect}>
-      {t('practice.dialog.viewCard')}
-    </Button>
-  ) : null
-  // Sin jugadas (a 360×740, desde el Cementerio, la cabeza se comía la hoja): «Ver carta» y «Seguir en modo manual» van al pie, siempre a la vista; el porqué queda solo en el cuerpo.
+  // Sin jugadas (a 360×740, desde el Cementerio, la cabeza se comía la hoja): «Seguir en modo manual» va al pie, siempre a la vista; el porqué queda solo en el cuerpo.
   const bare = plays.length === 0
-  const foot =
-    bare && (inspect || onManual) ? (
-      <>
-        {inspect}
-        {onManual ? (
-          <Button variant="secondary" className={cx(PANEL_MAIN, 'ml-auto')} onClick={onManual}>
-            {t('auto.bar.manual')}
-          </Button>
-        ) : null}
-      </>
-    ) : undefined
+  const foot = bare && onManual ? (
+    <Button variant="secondary" className={cx(PANEL_MAIN, 'ml-auto')} onClick={onManual}>
+      {t('auto.bar.manual')}
+    </Button>
+  ) : undefined
+
+  // Las jugadas son los botones de la ficha: la fila de abajo, que no se desplaza. Filas de a dos (con una suelta, la primera ocupa su fila: la principal queda con pareja, abajo a la derecha); en la ventana, a su ancho y a la derecha.
+  const menu = (
+    <div role="menu" aria-label={name} className="w-full min-w-0">
+      <div className="grid grid-cols-2 gap-2 group-data-[auto-panel=floating]/panel:flex group-data-[auto-panel=floating]/panel:flex-wrap group-data-[auto-panel=floating]/panel:justify-end">
+        {ordered.map((item, index) => {
+          const main = index === ordered.length - 1 && first >= 0 && !item.disabled
+
+          return (
+            <Button
+              key={`${index}|${item.label}`}
+              role="menuitem"
+              variant={main ? 'primary' : 'secondary'}
+              aria-disabled={item.disabled || undefined}
+              title={item.hint ?? item.label}
+              className={cx('min-w-0 whitespace-nowrap px-3! group-data-[auto-panel=floating]/panel:min-w-32', ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
+              onClick={item.disabled ? undefined : item.onSelect}
+            >
+              <span className="min-w-0 truncate">{item.label}</span>
+            </Button>
+          )
+        })}
+      </div>
+    </div>
+  )
 
   // La ficha sale al levantar el dedo de la carta: el clic que el celular manda después caería en una jugada. Un instante no atiende toques.
   useEffect(() => {
@@ -470,10 +484,20 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
       {...(crumb ? { crumb } : {})}
       variant={variant}
       className={armed ? undefined : 'pointer-events-none'}
-      actions={foot}
+      actions={bare ? foot : menu}
       head={
         <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2">
-          <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden bg-input">{back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} {...(frame ? { frame } : {})} className="block h-full w-full object-cover" />}</figure>
+          <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden bg-input">
+            {back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} {...(frame ? { frame } : {})} className="block h-full w-full object-cover" />}
+            {/* La carta se toca: la abre en grande, con su detalle (sin botón «Ver carta»; con el panel de detalle a la vista, la mesa no pasa `onInspect`). */}
+            {onInspect ? (
+              <button type="button" aria-label={t('practice.dialog.viewCard')} title={t('practice.dialog.viewCard')} className="absolute inset-0 grid place-items-end justify-items-end p-0.5 text-white focus-visible:outline-none focus-visible:shadow-focus" onClick={onInspect}>
+                <span className="grid size-5 place-items-center border border-border-subtle bg-background/85">
+                  <Icon name="search" size={12} />
+                </span>
+              </button>
+            ) : null}
+          </figure>
           <div className="grid min-w-0 gap-0.5">
             <h2 id={nameId} className="m-0 line-clamp-2 text-body font-bold text-foreground">
               {name}
@@ -488,37 +512,11 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
               </p>
             ) : null}
             {apiCard?.description ? <p className="m-0 line-clamp-2 text-micro text-muted">{apiCard.description}</p> : null}
-            {bare ? null : inspect}
           </div>
         </div>
       }
     >
-      <div role="menu" aria-label={name}>
-        {plays.length === 0 ? (
-          (empty ?? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p>)
-        ) : (
-          // Filas de a dos (con una suelta, la primera ocupa su fila: la principal queda con pareja, abajo a la derecha); en la ventana, a su ancho y a la derecha.
-          <div className="grid grid-cols-2 gap-2 group-data-[auto-panel=floating]/panel:flex group-data-[auto-panel=floating]/panel:flex-wrap group-data-[auto-panel=floating]/panel:justify-end">
-            {ordered.map((item, index) => {
-              const main = index === ordered.length - 1 && first >= 0 && !item.disabled
-
-              return (
-                <Button
-                  key={`${index}|${item.label}`}
-                  role="menuitem"
-                  variant={main ? 'primary' : 'secondary'}
-                  aria-disabled={item.disabled || undefined}
-                  title={item.hint ?? item.label}
-                  className={cx('min-w-0 whitespace-nowrap px-3! group-data-[auto-panel=floating]/panel:min-w-32', ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
-                  onClick={item.disabled ? undefined : item.onSelect}
-                >
-                  <span className="min-w-0 truncate">{item.label}</span>
-                </Button>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      {bare ? <div role="menu" aria-label={name}>{empty ?? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p>}</div> : null}
     </AutoPanel>
   )
 }

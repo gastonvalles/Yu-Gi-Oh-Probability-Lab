@@ -64,7 +64,7 @@ import { cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
-import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { Presence } from '../../app/use-presence'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -710,6 +710,8 @@ function PracticeMatBody({
   const sidePanel = stepsPanel || Boolean(duel?.aside)
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const compact = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
+  // El panel de detalle está a la vista sólo desde 1440 px (a la mesa le llega `detail` aunque esté oculto): ahí no hace falta abrir la carta en grande.
+  const dockShown = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY) && Boolean(detail)
   // «Jugar solo automático» hasta 1100 px: tus vidas y el turno van en el marcador de la barra (`scoreInHeader`) y la mesa no lleva fila de abajo.
   const bare = !isDesktop && Boolean(duel?.scoreInHeader)
   const screen = useSyncExternalStore(onResize, screenSize)
@@ -2173,10 +2175,10 @@ function PracticeMatBody({
   const phasesOpen = menu?.kind === 'phases' && !covered
   const sheeted = !isDesktop && menu !== null && menu.kind !== 'phases' && !covered
   // Con el detalle fijo a la izquierda (desde 1440 px) «Ver carta» no hace falta: tocar una carta ya lo muestra ahí. Con menos ancho, es la forma de verlo.
-  const menuInspect = menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !detail ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined
+  const menuInspect = menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !dockShown ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined
   // Una carta tocada con una sola jugada directa y nada más en el menú (sin «Ver carta», sin pregunta ni submenú): en escritorio, en vez del menú de un renglón, la etiqueta pegada a la carta
   // (`PlayTag`); otro toque la hace. En el celular sigue la hoja (también un toque más, y es donde se lee la carta).
-  const lonePlay = isDesktop && menu?.kind === 'card' && !menu.ask && !menu.drop && !menuInspect && menuItems.length === 1 && !menuItems[0]!.children && !menuItems[0]!.disabled ? menuItems[0]! : null
+  const lonePlay = isDesktop && menu?.kind === 'card' && !menu.ask && !menu.drop && (Boolean(detail) || isToken(menu.id)) && menuItems.length === 1 && !menuItems[0]!.children && !menuItems[0]!.disabled ? menuItems[0]! : null
   // La flecha de volver de la hoja: del segundo paso a las jugadas, y de la posición de la ficha a lo que agrega el +. No la lleva la pregunta con la que el menú abrió directo (la carta soltada en una
   // zona con una sola jugada, que pregunta): no hay a dónde volver.
   const menuBack =

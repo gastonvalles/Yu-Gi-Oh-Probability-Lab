@@ -10,6 +10,7 @@ import { DuelRailsContext } from '../app/duel-rails'
 import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
 import { AutoBar, AutoDock } from '../components/auto/AutoBar'
+import { AutoCardSheet } from '../components/auto/AutoPanel'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../components/auto/CardPicker'
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
@@ -873,5 +874,38 @@ describe('AutoBar', () => {
     fireEvent.click(undo)
     expect(onUndo).toHaveBeenCalledTimes(1)
     css.remove()
+  })
+})
+
+describe('la carta del menú se toca (sin «Ver carta» visible)', () => {
+  const plays = [{ label: 'Colocar', onSelect: () => {} }, { label: 'Invocación Normal', onSelect: () => {} }]
+
+  it('ficha: la miniatura es un botón «Ver carta» de 44 px que llama a onInspect; no queda ningún botón con ese texto, y las jugadas son la fila de abajo', () => {
+    const onInspect = vi.fn()
+    render(<AutoCardSheet name="Ash Blossom" art={null} items={plays} onInspect={onInspect} onClose={() => {}} />)
+    const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
+    const thumb = within(sheet).getByRole('button', { name: 'Ver carta' })
+
+    expect(thumb).toHaveTextContent('')
+    expect(thumb.parentElement).toHaveClass('w-full', 'aspect-[421/614]')
+    fireEvent.click(thumb)
+    expect(onInspect).toHaveBeenCalledTimes(1)
+    expect(within(sheet).queryByText('Ver carta')).toBeNull()
+    const menu = within(sheet).getByRole('menu')
+
+    expect(menu.parentElement!.lastElementChild).toBe(menu)
+    expect(sheet.querySelector('[data-panel-body]')).toBeNull()
+  })
+
+  it('ficha sin onInspect (con el panel de detalle a la vista): la miniatura no es un botón', () => {
+    render(<AutoCardSheet name="Ash Blossom" art={null} items={plays} onClose={() => {}} />)
+    expect(screen.queryByRole('button', { name: 'Ver carta' })).toBeNull()
+  })
+
+  it('pregunta: la carta que muestra se toca si llega onInspect', () => {
+    const onInspect = vi.fn()
+    render(<AskPrompt text="¿Activás el efecto?" card={{ name: 'Ash Blossom', art: null }} onInspect={onInspect} yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Ver carta' }))
+    expect(onInspect).toHaveBeenCalledTimes(1)
   })
 })

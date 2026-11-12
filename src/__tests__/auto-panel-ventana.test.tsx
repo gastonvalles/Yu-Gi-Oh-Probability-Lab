@@ -250,3 +250,34 @@ describe('minimizar con el mouse', () => {
     expect(win()).not.toHaveAttribute('data-minimized')
   })
 })
+
+describe('los botones, siempre abajo (TI-206)', () => {
+  // jsdom no mide: lo que se comprueba es el lugar en el árbol (la fila es el borde de abajo, fuera de lo que se desplaza) y su `mt-auto`, que en la ventana estirada deja el aire entre el contenido y ella.
+  const row = () => screen.getByRole('button', { name: 'Activar efecto' }).parentElement!
+
+  it('ventana: la fila de acciones es el último hijo de la columna, fuera de la bandeja que se desplaza, y se pega al borde de abajo', () => {
+    ask()
+    const column = row().parentElement!
+
+    expect(column.lastElementChild).toBe(row())
+    expect(win().querySelector('[data-panel-body]')?.contains(row()) ?? false).toBe(false)
+    expect(row()).toHaveClass('group-data-[auto-panel=floating]/panel:mt-auto', 'shrink-0')
+  })
+
+  it('hoja de abajo (celular): lo mismo, la fila es lo último de la hoja', () => {
+    desktop = false
+    ask()
+    expect(win()).toHaveAttribute('data-auto-panel', 'docked')
+    expect(row().parentElement!.lastElementChild).toBe(row())
+    expect(win().querySelector('[data-panel-body]')?.contains(row()) ?? false).toBe(false)
+  })
+
+  it('la ventana flotante del celular («Menús flotantes») también', () => {
+    desktop = false
+    act(() => setMatMenus('floating'))
+    ask()
+    expect(win()).toHaveAttribute('data-auto-panel', 'floating')
+    expect(row().parentElement!.lastElementChild).toBe(row())
+    expect(row()).toHaveClass('group-data-[auto-panel=floating]/panel:mt-auto')
+  })
+})
