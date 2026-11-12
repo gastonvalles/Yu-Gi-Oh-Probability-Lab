@@ -67,6 +67,19 @@
   /* Lavanda clara del diseño: botón y anillo sobre una tarjeta violeta. */
   --color-lavender-light: #ece5ff;
 
+  /* El marco de cada tipo de carta (`bg-frame-effect`…): la fuente es `FRAME_HEX` en `app/card-frame.ts` y un test los mantiene iguales. */
+  --color-frame-effect: #ff8b53;
+  --color-frame-normal: #fde68a;
+  --color-frame-ritual: #9db5cc;
+  --color-frame-fusion: #a086b7;
+  --color-frame-synchro: #cccccc;
+  --color-frame-dark-synchro: #555555;
+  --color-frame-xyz: #000000;
+  --color-frame-link: #00008b;
+  --color-frame-token: #c0c0c0;
+  --color-frame-spell: #1d9e74;
+  --color-frame-trap: #b65480;
+
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;
 

@@ -1,3 +1,4 @@
+import { FRAME_FILL, FRAME_OUTLINE } from '../app/card-frame'
 import type { DeckZone as DeckZoneType } from '../app/model'
 import { cx } from './ui/cx'
 
@@ -46,17 +47,17 @@ export const DECK_CARD_CLASSIC = [
 ].join(' ')
 
 /**
- * Color del punto de cada tipo de carta en el encabezado de la zona: los del marco de la carta (Gastón, 2026-10-19: «la idea es respetar los colores de las cartas para los puntos»). Los del Extra Deck van cada uno
- * del suyo —Fusión violeta, Sincronía blanca, Xyz negra y Enlace azul—; la Xyz lleva un aro claro porque el negro solo se pierde en el fondo oscuro. El export a imagen usa los mismos (`TYPE_SWATCH` en `deck-image-export-render.ts`).
+ * Color del punto de cada tipo de carta en el encabezado de la zona: el del marco (`app/card-frame.ts`; el Monstruo del Main, el de Efecto). La Xyz y el Enlace llevan el aro
+ * claro porque solos se pierden en el fondo oscuro. El export a imagen lee los mismos hex (`FRAME_HEX`).
  */
 export const ZONE_TYPE_SWATCH: Record<string, string> = {
-  monster: 'bg-warning',
-  spell: 'bg-success',
-  trap: 'bg-[rgb(236_72_153)]',
-  fusion: 'bg-[rgb(167_110_205)]',
-  synchro: 'bg-[rgb(245_245_250)]',
-  xyz: 'bg-[rgb(12_10_18)] ring-1 ring-foreground/60',
-  link: 'bg-[rgb(37_99_235)]',
+  monster: FRAME_FILL.effect,
+  spell: FRAME_FILL.spell,
+  trap: FRAME_FILL.trap,
+  fusion: FRAME_FILL.fusion,
+  synchro: FRAME_FILL.synchro,
+  xyz: cx(FRAME_FILL.xyz, FRAME_OUTLINE),
+  link: cx(FRAME_FILL.link, FRAME_OUTLINE),
 }
 
 /** Superficie de una zona en la vista mobile (grilla de cartas con el color de la zona). */
