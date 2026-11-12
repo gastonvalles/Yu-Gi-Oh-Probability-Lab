@@ -106,7 +106,7 @@ interface CardMenuProps {
  */
 export function NoPlays({ reasons, onManual }: { reasons: readonly string[]; onManual?: () => void }) {
   return (
-    <div className="grid gap-1 px-2 py-1.5 text-left" data-testid="no-plays">
+    <div className="grid gap-1 text-left" data-testid="no-plays">
       <p className="m-0 text-body font-semibold text-foreground">{t('auto.why.title')}</p>
       {(reasons.length > 0 ? reasons : [t('auto.why.unknown')]).map((reason, index) => (
         <p key={index} className="m-0 text-micro text-muted">

@@ -77,7 +77,8 @@ export function TurnAction({ items, endTurn, live }: { items: readonly MenuItem[
       color={battle ? 'brand' : 'danger'}
       data-turn-action={kind}
       disabled={!ready}
-      className="h-full min-w-0 flex-1 whitespace-nowrap rounded-none px-2"
+      // `min-w-max`: nunca se corta; lo que falta lo cede tu chapa, que recorta su turno (`PracticeMat`, la fila de abajo).
+      className="h-full min-w-max flex-1 whitespace-nowrap rounded-none px-2!"
       onClick={action.onSelect ?? undefined}
       {...(battle ? { iconEnd: 'arrow-right' as const } : {})}
     >

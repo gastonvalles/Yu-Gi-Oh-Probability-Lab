@@ -1497,9 +1497,9 @@
 }
 
 /*
- * La mesa del duelo y sus hojas van con esquinas rectas (Gastón: «no me gustan los bordes redondeados»), no toda la app: los radios de los tokens valen 0 adentro de la raíz de la mesa y de cada
- * hoja o menú suyo que sale por un portal (`CardSheet`, `BottomSheet`, `CardMenu`, `PlayTag`), también los de la escala de Tailwind (`rounded-lg`). Los tokens globales no cambian. Lo que no sale de
- * un token (`rounded-full`, `rounded-[…]`) no lo apaga: `mesa-esquinas.test.tsx` lleva la cuenta.
+ * La mesa del duelo y sus hojas van con esquinas rectas (Gastón: «no me gustan los bordes redondeados»), no toda la app: en la raíz de la mesa y en la de cada hoja o menú suyo que sale por un
+ * portal (`CardSheet`, `BottomSheet` con el visor de una pila, `CardMenu`, `PlayTag`, `AutoPanel`), ningún elemento tiene radio, tampoco un `rounded-full` (el `CloseButton` del visor) ni un
+ * `rounded-[…]`; los tokens en 0 alcanzan también a los `before:`/`after:`. Los tokens globales no cambian. `mesa-esquinas.test.tsx` y el caso diario lo vigilan.
  */
 @utility mat-square {
   --radius-tag: 0px;
@@ -1515,6 +1515,11 @@
   --radius-2xl: 0px;
   --radius-3xl: 0px;
   --radius-4xl: 0px;
+
+  &,
+  & * {
+    border-radius: 0 !important;
+  }
 }
 
 /* La placa de vidas (`LifeTile`): flota sobre la mesa (la mesa es la excepción a «sin brillos»): degradado índigo de arriba abajo, un filo de luz de 1 px arriba, uno oscuro abajo y su sombra. El borde, del color del dueño. */

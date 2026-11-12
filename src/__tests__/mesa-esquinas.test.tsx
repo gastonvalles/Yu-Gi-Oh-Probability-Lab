@@ -11,7 +11,7 @@ import { LifeBadge } from '../components/duel/LifeScore'
 import { TurnDial } from '../components/duel/TurnDial'
 import { Icon } from '../components/ui/Icon'
 import { IconButton } from '../components/ui/IconButton'
-import { CardMenu, PlayTag, SaveComboDialog } from '../components/probability/MatDialogs'
+import { CardMenu, PileViewer, PlayTag, SaveComboDialog } from '../components/probability/MatDialogs'
 import { PhaseRow } from '../components/probability/PhaseRow'
 import { RulesPill } from '../components/probability/RulesPill'
 import { BottomSheet } from '../components/ui/BottomSheet'
@@ -22,14 +22,13 @@ import { Harness, hand, render, tap } from './support/practice-mat-harness'
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 
 /**
- * La mesa del duelo y sus hojas van con esquinas rectas (Gastón, 2026-11-10: «no me gustan los bordes redondeados»), sin tocar los tokens globales: `mat-square` (index.css) pone en 0 los radios de los
- * tokens en la raíz de la mesa y en la de cada hoja que sale por un portal. jsdom no corre Tailwind: se le cargan los radios globales y `mat-square` de `index.css` y, por cada elemento, el radio que le
- * darían sus clases (`rounded-*`, el reset de los controles) se lee con `getComputedStyle` (las variables se heredan como en el navegador; un portal no hereda de la mesa).
- * Lo que no sale de un token (`rounded-full`, `rounded-[…]`) no lo apaga `mat-square`: es el inventario de cada prueba, que sólo puede achicarse (los círculos pasan a cuadrados con las chapas, el
- * reloj y los menús de la mesa).
+ * La mesa del duelo y sus hojas van con esquinas rectas (Gastón, 2026-11-10: «no me gustan los bordes redondeados»), sin tocar los tokens globales: `mat-square` (index.css) pone en 0 el radio de su
+ * raíz y de todo lo que lleva adentro (también un `rounded-full`), en la mesa y en cada hoja que sale por un portal. jsdom no corre Tailwind: se le cargan los radios globales de `index.css` y, fuera
+ * de `mat-square`, el radio que le darían sus clases (`rounded-*`, el reset de los controles) se lee con `getComputedStyle`. Lo que importa en cada prueba es que la superficie lleve `mat-square`.
  */
 const CSS = readFileSync(path.resolve(__dirname, '..', 'index.css'), 'utf8')
-const SQUARE = /@utility mat-square \{([^}]*)\}/.exec(CSS)![1]!
+const MAT_SQUARE = /@utility mat-square \{([\s\S]*?)\n\}/.exec(CSS)![1]!
+const SQUARE = MAT_SQUARE.match(/--radius-[\w]+:\s*0px;/g)!.join('')
 const TOKENS = [...SQUARE.matchAll(/--radius-([\w]+):\s*0px;/g)].map(([, name]) => name!)
 const GLOBAL_RADII = [...CSS.matchAll(/^\s+(--radius-[a-z]+):\s*([^;]+);/gm)].map(([, name, value]) => `${name}:${value}`).join(';')
 /** Las utilidades propias que dan un radio fijo (no un token). */
@@ -66,10 +65,10 @@ function radiusOf(className: string): { token: string } | { fixed: string } | 'z
 /** `**:rounded-none!` (la raíz de la mesa, el panel de pasos, la hoja de las salidas) pone en 0, con `!important`, el radio de todo lo que lleva adentro (no el suyo). */
 const SQUARED = '[class~="**:rounded-none!"]'
 
-/** Los radios que no quedan en 0 dentro de `root` (incluido): el token que no vale 0, el estilo en línea o la clase de radio fijo. */
+/** Los radios que no quedan en 0 dentro de `root` (incluido): el token que no vale 0, el estilo en línea o la clase de radio fijo. Dentro de `mat-square` (ella incluida), ninguno. */
 function roundCorners(root: Element): string[] {
   return [root, ...root.querySelectorAll('*')].flatMap((element) => {
-    if (element.parentElement?.closest(SQUARED)) return []
+    if (element.closest('.mat-square') || element.parentElement?.closest(SQUARED)) return []
     const style = getComputedStyle(element)
     const radii = [...element.classList].map(radiusOf).filter((radius) => radius !== null)
     // El reset de la base le da a todo control el radio de `--radius-control`, si sus clases no dicen otro.
@@ -103,6 +102,21 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
     document.body.append(outside)
 
     expect(roundCorners(outside)).toEqual(['--radius-card: 1rem', '--radius-control: 0.75rem'])
+  })
+
+  it('`mat-square` endereza su raíz y todo lo de adentro, también lo que no sale de un token (`rounded-full`), con `!important`', () => {
+    expect(MAT_SQUARE).toMatch(/&,\s*& \* \{\s*border-radius: 0 !important;\s*\}/)
+  })
+
+  it('el visor de una pila del celular (`PileViewer` en un `BottomSheet`, un portal) es recto con su X redonda en el resto de la app (`CloseButton`)', () => {
+    render(<PileViewer pile="gy" ids={['a']} info={() => ({ name: 'Ookazi', art: null, faceDown: false, faceUp: false })} targeted={new Set()} onPick={() => {}} onClose={() => {}} />)
+    const sheet = document.querySelector('[data-pile-sheet]')!
+    const close = within(sheet as HTMLElement).getByRole('button', { name: 'Cerrar' })
+
+    // La X es un `IconButton` (`rounded-full`): la endereza la regla de `mat-square` de la hoja, no la X.
+    expect(close).toHaveClass('rounded-full')
+    expect(close.closest('.mat-square')).toBe(sheet)
+    expect(roundCorners(sheet)).toEqual([])
   })
 
   it('en la mesa ningún radio sale de un token: las casillas, las tarjetas, los botones y los paneles quedan rectos', () => {
