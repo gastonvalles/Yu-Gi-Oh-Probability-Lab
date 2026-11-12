@@ -80,11 +80,12 @@ export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave
   const closeLabel = onHide ? t('duel.result.hide') : t('duel.bar.leave')
 
   return (
-    <div role={role} aria-modal="true" aria-labelledby={titleId} data-testid="result-hero" data-tone={tone} className={cx('mat-square inset-0 z-65 grid place-items-center', fixed ? 'fixed' : 'absolute')}>
+    // En la mesa (no `fixed`) sólo el bloque ataja toques (`data-cover-pass`: la portada de `PracticeMat` los deja pasar): ⚙, Pasos y deshacer se siguen tocando con el final abierto.
+    <div role={role} aria-modal={fixed ? 'true' : undefined} aria-labelledby={titleId} data-testid="result-hero" data-tone={tone} {...(fixed ? {} : { 'data-cover-pass': '' })} className={cx('mat-square inset-0 z-65 grid place-items-center', fixed ? 'fixed' : 'pointer-events-none absolute')}>
       <h2 id={titleId} className="sr-only">
         {title}
       </h2>
-      <section data-result-block="" className="@container relative grid w-full justify-items-center gap-2 p-4">
+      <section data-result-block="" className="pointer-events-auto @container relative grid w-full justify-items-center gap-2 p-4">
         {/* La franja que deja leer el bloque: de lado a lado, oscura al medio y transparente en los bordes; aparece (`opacity`). */}
         <span aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-linear-to-r from-transparent via-background/85 to-transparent motion-reduce:animate-none" />
         {/* La palabra: su tamaño, por el ancho que tiene («Victoria» entra en un renglón desde 360 px). */}
@@ -124,7 +125,7 @@ export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave
 /** Con el final escondido (su ✕), el campo queda solo y al medio, chico, «Ver el resultado» lo vuelve a abrir. */
 export function ResultPeek({ onOpen }: { onOpen: () => void }) {
   return (
-    <div className="pointer-events-none absolute inset-0 z-65 grid place-items-center">
+    <div data-cover-pass="" className="pointer-events-none absolute inset-0 z-65 grid place-items-center">
       <span className="pointer-events-auto">
         <Button variant="secondary" size="sm" icon="trophy" onClick={onOpen}>
           {t('duel.result.show')}

@@ -3560,8 +3560,8 @@ function PracticeMatBody({
       </Presence>
       </SheetHost>
 
-      {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
-      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
+      {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). El final y su «Ver el resultado» (`data-cover-pass`) sólo atajan en su bloque: ⚙, Pasos y deshacer se siguen tocando. */}
+      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140] has-[[data-cover-pass]]:pointer-events-none', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
 
       {drag
         ? createPortal(
