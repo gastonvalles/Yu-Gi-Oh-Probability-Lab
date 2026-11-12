@@ -36,8 +36,8 @@ En orden de valor sobre costo.
 8. **Arranque de «Inicio»** (M): la visita nueva en `/` baja ~342 KB gz de JS (la app entera). Los textos en español viajan todos
    en el archivo principal (56 KB gz de sus 143): separarlos por área toca `i18n/index.ts`. Además `MainApp` pide reglas de
    cartas y tablas de Edison/Genesys también en `#inicio`: que esperen a que el paso no sea `inicio`.
-9. **`/playground` tarda 30 a 50 s** en mostrar su título en producción con un celular emulado (el smoke le da 90 s): medir en una
-   máquina libre (S). **Textos apagados con opacidad** bajo 4,5:1: insignia «Atacar» (4,33), inicial de una carta sin imagen
+9. **La sección «Duelo por enlace» de `/playground` tarda ~14 s de layout a 390 px** (sin freno; en escritorio, 1 s): falta hallar la muestra (S).
+   **Textos apagados con opacidad** bajo 4,5:1: insignia «Atacar» (4,33), inicial de una carta sin imagen
    (4,24), «Interacción y soporte externo» (3,81) y «Sin objetivo» del catálogo (S). `Segmented` sin flechas (S).
 
 ## Espera a Gastón

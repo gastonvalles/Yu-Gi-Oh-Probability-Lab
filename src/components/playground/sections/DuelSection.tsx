@@ -39,7 +39,6 @@ import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleDuel } from './duel-sample'
 import { ShuffleSamples } from './ShuffleSamples'
 import { FlightSample } from './FlightSample'
-import { GameFeelSamples } from './GameFeelSection'
 import { PhaseBandSample } from './PhaseBandSample'
 import { Presence } from '../../../app/use-presence'
 import { PendulumPicker, type PendulumPickCard } from '../../probability/PendulumPicker'
@@ -55,7 +54,6 @@ export function DuelSection() {
 
   return (
     <SpecimenGrid min="24rem">
-      <GameFeelSamples />
       <Specimen
         title="A · Todo junto"
         layout="column"
@@ -513,9 +511,10 @@ function RingsSample() {
       <Button variant="secondary" icon="refresh" onClick={() => setRun((count) => count + 1)}>
         Repetir las animaciones
       </Button>
+      {/* Cada aro, en bloque y no en grilla: la casilla con `aspect-ratio` en una grilla dentro de otra hacía que cada layout de la sección la rehiciera entera (dos minutos). */}
       <div className="grid grid-cols-4 gap-4">
         {RINGS.map(({ key, label, attrs }) => (
-          <div key={`${key}:${run}`} className="grid justify-items-center gap-2">
+          <div key={`${key}:${run}`} className="text-center">
             <div role="group" aria-label={label} data-pointed={key === 'point' ? 'true' : undefined} className={cx(CELL_MONSTER, 'w-full')}>
               <ZoneLines kind="monster" />
               <div {...attrs} style={fxVars(key === 'flash' ? SPOTLIGHT_TONE.activate : 'red')} className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] w-[68.57%] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', FX_CARD)}>
@@ -524,7 +523,7 @@ function RingsSample() {
                 {key === 'target' ? <TargetMark /> : null}
               </div>
             </div>
-            <span className="text-micro text-muted">{label}</span>
+            <span className="mt-2 block text-micro text-muted">{label}</span>
           </div>
         ))}
       </div>
@@ -560,7 +559,8 @@ function GlowsSample() {
           const frame = glowFrame(kind)
 
           return (
-            <div key={key} className="grid justify-items-center gap-2">
+            // En bloque, como los aros: la casilla con `aspect-ratio` en grilla dentro de grilla rehacía el layout de toda la sección.
+            <div key={key} className="text-center">
               <div role="group" aria-label={label} className={cx(CELL_MONSTER, 'w-full')}>
                 <ZoneLines kind="monster" />
                 <div
@@ -576,7 +576,7 @@ function GlowsSample() {
                 {kind === 'act' ? <ChainBadge medals={CL1} /> : null}
                 {attack ? <AttackMark /> : null}
               </div>
-              <span className="text-micro text-muted">{label}</span>
+              <span className="mt-2 block text-micro text-muted">{label}</span>
             </div>
           )
         })}

@@ -32,23 +32,40 @@ afterEach(() => {
 })
 
 describe('el catálogo /playground', () => {
-  it('tiene todas las secciones, con su tabla de arriba, y no lo indexan los buscadores', () => {
+  it('tiene todas las secciones, con su tabla de arriba, monta sólo la elegida y no lo indexan los buscadores', () => {
     renderInStore(<Playground />)
 
     expect(screen.getByRole('heading', { level: 1, name: 'Playground' })).toBeInTheDocument()
     const toc = screen.getByRole('navigation', { name: 'Secciones del catálogo' })
-    const names = within(toc).getAllByRole('link').map((link) => link.textContent)
-    expect(names).toEqual(['Botones y controles', 'Navegación', 'Títulos', 'Tarjetas, avisos y campos', 'Listas, atajos y carrusel', 'Datos', 'El Lab', 'Reglas del Lab', 'Diálogos y avisos', 'Comparar', 'Duelo por enlace', 'Duelo automático (beta)', 'Íconos', 'Assets', 'Tokens del diseño'])
+    const links = within(toc).getAllByRole('link')
+    const names = links.map((link) => link.textContent)
+    expect(names).toEqual(['Botones y controles', 'Navegación', 'Títulos', 'Tarjetas, avisos y campos', 'Listas, atajos y carrusel', 'Datos', 'El Lab', 'Reglas del Lab', 'Diálogos y avisos', 'Comparar', 'Duelo por enlace', 'Sensación de juego', 'Duelo automático (beta)', 'Íconos', 'Assets', 'Tokens del diseño'])
 
-    for (const name of names) {
-      expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument()
+    // Se recorren todas: cada pestaña monta su sección (con todas sus muestras) y desmonta la anterior.
+    const ids = links.map((link) => link.getAttribute('href')!.slice(1))
+    for (const [index, link] of links.entries()) {
+      fireEvent.click(link)
+      expect(screen.getByRole('heading', { level: 2, name: names[index] })).toBeInTheDocument()
+      expect(ids.filter((id) => document.getElementById(id))).toEqual([ids[index]])
+      expect(link).toHaveAttribute('aria-current', 'page')
     }
 
     expect(document.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex,nofollow')
     expect(document.title).toBe('Playground · YGOUltraLab')
   })
 
+  it('un enlace con ancla abre su sección, también la que vive dentro de otra (#sensacion, la del prototipo, sin las muestras del duelo)', () => {
+    window.history.pushState({}, '', '/playground#sensacion')
+    renderInStore(<Playground />)
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Sensación de juego' })).toBeInTheDocument()
+    expect(document.getElementById('duelo')).not.toBeInTheDocument()
+    expect(document.getElementById('botones')).not.toBeInTheDocument()
+    expect(document.getElementById('sensacion')).toBeInTheDocument()
+  })
+
   it('muestra todos los íconos del set, en sus tres variantes, y un buscador', () => {
+    window.history.pushState({}, '', '/playground#iconos')
     renderInStore(<Playground />)
 
     const section = document.getElementById('iconos') as HTMLElement
@@ -61,6 +78,7 @@ describe('el catálogo /playground', () => {
   })
 
   it('lista los archivos de public/ por carpeta, con su tamaño', () => {
+    window.history.pushState({}, '', '/playground#assets')
     renderInStore(<Playground />)
 
     const section = document.getElementById('assets') as HTMLElement
@@ -72,6 +90,7 @@ describe('el catálogo /playground', () => {
   })
 
   it('en la navegación se puede probar el armazón completo y salir', () => {
+    window.history.pushState({}, '', '/playground#navegacion')
     renderInStore(<Playground />)
 
     const section = document.getElementById('navegacion') as HTMLElement

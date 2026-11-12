@@ -1409,14 +1409,14 @@ test.describe('V-02, elegir varias (muestra de /playground)', () => {
   test.beforeEach(async ({ context }) => prepare(context, true))
 
   test('un solo cartel con las copias agrupadas («×N»), el orden numerado, el contador «N de M» y una sola principal a la derecha que se prende al completar', async ({ page, isMobile }) => {
-    // /playground monta cientos de muestras y la traza que Playwright toma en cada toque tumba el renderizador del celular de la prueba (×3, con toque): en celular se midió por script (390×844, con toque).
+    // Con la traza de cada toque, el celular de la prueba (×3, con toque) se cae en /playground: en celular se midió por script (390×844, con toque).
     test.skip(isMobile, 'sólo escritorio: con la traza, el celular (×3) tumba la página de /playground')
-    // /playground en un dev server con la máquina cargada tarda más de un minuto en montar (la ronda 5 lo midió): sin esperas cortas.
+    // /playground monta sólo la sección del ancla (la del duelo automático).
     test.setTimeout(240_000)
-    await page.goto('/playground')
+    await page.goto('/playground#automatico')
     // La muestra «Elegir varias · copias juntas»: su botón «Abrir la hoja» es el primero que le sigue al título.
     const title = page.locator('h3', { hasText: 'Elegir varias · copias juntas' })
-    await expect(title, '/playground monta todas sus muestras (en un dev server tarda)').toBeAttached({ timeout: 180_000 })
+    await expect(title, '/playground#automatico monta la muestra').toBeAttached({ timeout: 180_000 })
     await title.scrollIntoViewIfNeeded()
     await press(title.locator('xpath=following::button[normalize-space()="Abrir la hoja"][1]'), isMobile)
     const sheet = page.locator('[data-prompt]').filter({ hasText: 'Branded Fusion' }).first()

@@ -1,4 +1,4 @@
-import { useEffect, type ComponentType } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { AppToaster } from '../ui/AppToaster'
@@ -15,6 +15,7 @@ import { CompareSection } from './sections/CompareSection'
 import { DataSection } from './sections/DataSection'
 import { DialogsSection } from './sections/DialogsSection'
 import { DuelSection } from './sections/DuelSection'
+import { GameFeelSamples } from './sections/GameFeelSection'
 import { IconsSection } from './sections/IconsSection'
 import { LabResultSection } from './sections/LabResultSection'
 import { ListsSection } from './sections/ListsSection'
@@ -45,18 +46,42 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños, las confirmaciones y los avisos (toast).', Component: DialogsSection },
   { id: 'comparar', title: 'Comparar', icon: 'columns', description: 'El par A/B, «Mis builds», la tarjeta del veredicto, las filas espejo, «Qué cambiaste», las dos listas y la barra de abajo.', Component: CompareSection },
   { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
+  { id: 'juego', title: 'Sensación de juego', icon: 'play', description: 'El prototipo «Impacto Ligero», solo: se abre rápido en el celular (`#sensacion`).', Component: GameFeelSamples },
   { id: 'automatico', title: 'Duelo automático (beta)', icon: 'play', description: 'Las piezas del modo automático, fuera del campo: la pregunta del núcleo, sus opciones, elegir y ordenar cartas, y la barra de arriba.', Component: AutoSection },
   { id: 'iconos', title: 'Íconos', icon: 'cube', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },
   { id: 'assets', title: 'Assets', icon: 'image', description: 'Los archivos de public/, la marca, las fuentes y las imágenes de cartas.', Component: AssetsSection },
   { id: 'tokens', title: 'Tokens del diseño', icon: 'sliders', description: 'Colores, radios, sombras y tipografías, leídos de index.css.', Component: TokensSection },
 ]
 
+/** Anclas que viven dentro de una sección: `#sensacion` abre la del prototipo de sensación de juego. */
+const NESTED_ANCHORS: Record<string, string> = { sensacion: 'juego' }
+
+/** La sección que pide el `#ancla` (la suya o la que la contiene); sin ancla conocida, la primera. */
+function sectionOf(hash: string) {
+  const id = decodeURIComponent(hash.replace(/^#/, ''))
+  return SECTIONS.some((section) => section.id === id) ? id : (NESTED_ANCHORS[id] ?? SECTIONS[0]!.id)
+}
+
 /**
  * `/playground`: el catálogo vivo de la app. Cada muestra es el componente real (no una copia), así que tocar un componente en `src/`
  * cambia acá y en toda la app a la vez: se prueba primero acá. No está linkeado desde la app ni lo indexan los buscadores.
+ * Se monta **sólo la sección elegida** (la pestaña o el `#ancla`): todas juntas eran ~29 mil nodos y cientos de animaciones, y
+ * el catálogo tardaba dos minutos en abrir.
  */
 export default function Playground() {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const [active, setActive] = useState(() => sectionOf(window.location.hash))
+
+  useEffect(() => {
+    const sync = () => setActive(sectionOf(window.location.hash))
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [])
+
+  // El navegador busca el ancla antes de que la sección exista: una vez montada, se baja hasta ella.
+  useEffect(() => {
+    document.getElementById(decodeURIComponent(window.location.hash.slice(1)))?.scrollIntoView?.()
+  }, [active])
 
   useEffect(() => {
     const previousTitle = document.title
@@ -92,7 +117,9 @@ export default function Playground() {
             <a
               key={section.id}
               href={`#${section.id}`}
-              className="flex shrink-0 items-center gap-1.5 rounded-control bg-lavender px-3 py-1.5 text-micro font-semibold text-foreground transition-colors hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus"
+              aria-current={section.id === active ? 'page' : undefined}
+              onClick={() => setActive(section.id)}
+              className="flex shrink-0 items-center gap-1.5 rounded-control bg-lavender px-3 py-1.5 text-micro font-semibold text-foreground transition-colors hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground"
             >
               <Icon name={section.icon} size={14} />
               {section.title}
@@ -108,7 +135,7 @@ export default function Playground() {
         </p>
         {/* En el celular las preguntas de la mesa son la hoja de abajo: acá van dentro del marco de su muestra, no sobre la página. */}
         <SheetHost phone={!desktop}>
-          {SECTIONS.map(({ id, title, icon, description, Component }) => (
+          {SECTIONS.filter(({ id }) => id === active).map(({ id, title, icon, description, Component }) => (
             <section key={id} id={id} aria-labelledby={`${id}-title`} className="grid min-w-0 scroll-mt-28 gap-4">
               <SectionHeader as="h2" icon={icon} title={<span id={`${id}-title`}>{title}</span>} description={description} />
               <Component />
