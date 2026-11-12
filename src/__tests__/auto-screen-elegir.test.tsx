@@ -61,18 +61,18 @@ describe('auto-screen · elegir', () => {
     const tags = () => [...document.querySelectorAll('[data-pick-stat]')].map((tag) => tag.textContent).sort()
 
     core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, stats: { mine: { 'card-200-1': { attack: 1900, defense: 1000, level: 4 } }, theirs: { c1: { attack: 3500, defense: 2500, level: 8 } } } } }))
-    expect(tags()).toEqual(['1900 / 1000', '3500 / 2500'])
+    expect(tags()).toEqual(['1900/1000', '3500/2500'])
     expect(screen.getByRole('button', { name: 'Maxx C, ATK 1900, DEF 1000' })).toBeInTheDocument()
     core(() => fake.ask(CARD))
     // La mano (Ash Blossom) también se elige, pero no está en el campo: sin etiqueta.
-    expect(tags()).toEqual(['1900 / 1000', '3500 / 2500'])
+    expect(tags()).toEqual(['1900/1000', '3500/2500'])
     expect(screen.getByRole('button', { name: 'Maxx C, ATK 1900, DEF 1000, elegible' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Rival, Zona de monstruo 1, ATK 3500, DEF 2500, elegible: marcar' })).toBeInTheDocument()
     tap(screen.getByRole('button', { name: /^Maxx C, ATK/ }))
     expect(screen.getByRole('button', { name: 'Maxx C, ATK 1900, DEF 1000, elegible (Elegida)' })).toBeInTheDocument()
     fireEvent.click(within(status()).getByRole('button', { name: 'Listo' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
-    expect(tags()).toEqual(['1900 / 1000', '3500 / 2500'])
+    expect(tags()).toEqual(['1900/1000', '3500/2500'])
     expect(screen.getByRole('button', { name: 'Maxx C, ATK 1900, DEF 1000' })).toBeInTheDocument()
   })
 
@@ -112,7 +112,10 @@ describe('auto-screen · elegir', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(PLACE))
-    expect(status()).toHaveTextContent('Elegí 1 casilla')
+    expect(status()).toHaveTextContent('Elegí una casilla')
+    // La tira (M-06): sin el nombre de la carta (ya está levantada en tu mano), un renglón, y en el celular de 56 px.
+    expect(status().textContent).toBe('Elegí una casilla')
+    expect(status()).toHaveClass('max-[1101px]:h-14')
     expect(screen.queryByRole('button', { name: 'Zona de monstruo 1: elegir' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
     expect(fake.answers).toEqual([{ type: 'select_place', places: [{ player: 0, location: L.MZONE, sequence: 2 }] }])
@@ -154,7 +157,7 @@ describe('auto-screen · elegir', () => {
     expect(fake.answers).toEqual([{ type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 2 }] }])
     // Con una casilla propia entre las libres, el texto de siempre.
     core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 0) | (1 << 16)) >>> 0 }))
-    expect(status()).toHaveTextContent('Elegí 1 casilla')
+    expect(status()).toHaveTextContent('Elegí una casilla')
     expect(status()).not.toHaveTextContent('del rival')
   })
 

@@ -1,6 +1,6 @@
 # Sistema de diseño
 
-Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y probalo en el catálogo (sección 7). Los valores de los tokens están en `src/index.css` y cada componente se explica en su comentario; acá van las reglas que no se ven en el código.
+Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y probalo en el catálogo (sección 7). Los tokens, `src/index.css`; cada componente se explica en su comentario; acá, lo que no se ve en el código.
 
 ## 1. Idea general
 
@@ -26,11 +26,11 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 
 **Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): por eso el verde lleno es `success-solid` y el verde claro queda para texto, anillos y puntos; lo elegido y lo del rival van en violeta (sobre la lima, el texto es carbón). Excepción: «Qué es» de una regla, lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en lima (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
 
-**El violeta es de lo tuyo, no de todo:** roles y grupos (`deck-groups.ts`), zonas del deck, tipos de carta y tiers (`meta-format.ts`) llevan cada uno su color (`color-variety.test.ts` vigila roles y tiers).
+**El violeta es de lo tuyo, no de todo:** roles y grupos (`deck-groups.ts`), zonas del deck y tiers (`meta-format.ts`) llevan su color (`color-variety.test.ts`); el tipo de carta, el de su marco (`app/card-frame.ts`; el Péndulo, partido en dos).
 
 ## 3. Tokens
 
-- **Texto:** `text-foreground` → `text-muted` → `text-soft` (`*-soft` sobre fondos teñidos), en seis tamaños (`text-micro`, de 12 px, … `text-display`; aparte, `text-score` (calculadora) y `text-hit` (daño)) y nunca `text-[…]`.
+- **Texto:** `text-foreground` → `text-muted` → `text-soft` (`*-soft` sobre fondos teñidos), en seis tamaños (`text-micro` … `text-display`; aparte `text-score`, `text-tag` (ATK/DEF) y `text-hit` (cadena)) y nunca `text-[…]`.
 - **Radios, sombras y espacio:** `rounded-tag/control/card/panel` (rectos en la mesa y sus hojas: `mat-square`); `shadow-card/overlay/focus` (un foco); la escala de Tailwind (base 4 px, 16 px entre bloques), `px-gutter` en el celular y `max-w-content`.
 - **Movimiento:** las curvas, qué se anima y cómo no trabar la mesa, en `docs/movimiento.md`.
 - **Objetivos táctiles de 44 px** con puntero táctil (`pointer-coarse`), salvo la mesa (las pilas, la mano no jugable y las fases miden por el campo) y los campos dentro de un `FieldBox` (el `label` es toda la tarjeta).

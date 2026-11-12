@@ -141,8 +141,8 @@ describe('la pregunta del medio, en su lugar fijo', () => {
   })
 })
 
-describe('la pregunta con la hoja de la cadena (celular)', () => {
-  it('la hoja de la cadena va abajo y no mueve nada de la mesa: la capa de arriba queda vacía, la pregunta sigue entera en su lugar y no hace falta recalcular más de una vez', () => {
+describe('la pregunta con la cadena en grande', () => {
+  it('la cadena no mueve nada de la mesa ni a la pregunta: la pregunta sigue entera en su lugar, fuera de la escena, y no hace falta recalcular más de una vez', () => {
     const fake = fakeSession()
 
     renderAuto(fake)
@@ -152,30 +152,14 @@ describe('la pregunta con la hoja de la cadena (celular)', () => {
     layouts = 0
     core(() => fake.ask(YESNO))
 
-    // La hoja va en su propio portal, abajo: la capa de arriba no lleva nada que subir ni que acortar.
-    expect(screen.getByTestId('chain-notice')).not.toBeNull()
-    expect(chain()!.contains(screen.getByTestId('chain-notice'))).toBe(false)
-    expect(chain()!.style.translate).toBe('')
-    expect(list()).toBeNull()
-    expect(chain()!.dataset.squeezed).toBeUndefined()
+    expect(screen.getByTestId('chain-notice')).not.toContainElement(document.querySelector('[data-prompt]') as HTMLElement)
     expect(layer()!.style.bottom).toBe('464px')
-    // Un solo recálculo: lo que dejó la vez anterior en la cinta se borra junto antes de medir.
     expect(layouts).toBeLessThanOrEqual(1)
 
-    // Una pregunta más alta: la hoja sigue a la vista y la pregunta, entera, en su lugar.
+    // Una pregunta más alta: entera, en su lugar.
     promptHeight = 250
     window.dispatchEvent(new Event('resize'))
     act(() => vi.advanceTimersByTime(20))
-    expect(chain()!.dataset.squeezed).toBeUndefined()
     expect(layer()!.style.bottom).toBe('464px')
-
-    // Una sola hoja: la pregunta va en el pie de la de la cadena (no en la capa del medio). Bajada, nada cambia de lugar.
-    expect(screen.getByTestId('chain-notice')).toContainElement(document.querySelector('[data-prompt]') as HTMLElement)
-    expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Bajar la hoja' }))
-    window.dispatchEvent(new Event('resize'))
-    act(() => vi.advanceTimersByTime(20))
-    expect(chain()!.dataset.squeezed).toBeUndefined()
-    expect(chain()!.style.translate).toBe('')
   })
 })

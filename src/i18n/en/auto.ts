@@ -158,6 +158,7 @@ export const auto: Translated<typeof es> = {
   'auto.picker.cards': 'Cards to choose from',
   'auto.picker.choose': { one: 'Choose {count} card', other: 'Choose {count} cards' },
   'auto.picker.status': '{chosen} of {max}',
+  'auto.picker.copies': '{name}, {count} copies',
   'auto.picker.search': 'Search by name',
   'auto.picker.noMatches': 'No cards match “{query}”.',
   // Where each card is: its group's heading (and, lowercased, «…, in your hand» for screen readers) and the short chip over the card.
@@ -197,8 +198,7 @@ export const auto: Translated<typeof es> = {
   'auto.counter.done': 'Remove counters',
 
   // What is chosen on the mat (the status line below): zones and cards.
-  'auto.pick.zone': { one: 'Choose {count} zone', other: 'Choose {count} zones' },
-  'auto.pick.zoneFor': 'Choose a zone for "{name}"',
+  'auto.pick.zone': { one: 'Choose a zone', other: 'Choose {count} zones' },
   'auto.pick.zoneRival': { one: "Choose one of your opponent's zones", other: "Choose {count} of your opponent's zones" },
   'auto.pick.disfield': { one: "Choose {count} zone that can't be used", other: "Choose {count} zones that can't be used" },
   'auto.pick.cards': { one: 'Choose {count} card', other: 'Choose {count} cards' },
@@ -209,7 +209,6 @@ export const auto: Translated<typeof es> = {
   'auto.pick.sumAtLeast': 'Choose cards whose Levels add up to at least {total} · {chosen} of {total}',
   'auto.pick.counter': 'Counters: {chosen} of {total}',
   'auto.pick.attackTarget': 'Choose which monster to attack',
-  'auto.pick.attackTargetOf': 'Choose which monster "{name}" attacks',
   'auto.pick.announce': 'Declare a card name',
   'auto.pick.for': '{what} {why}',
   'auto.pick.count': '{chosen} of {max}',
@@ -259,7 +258,6 @@ export const auto: Translated<typeof es> = {
   'auto.askWhy.activation': 'Activating {name}',
   'auto.askWhy.effect': 'Effect of {name}',
   'auto.band.from': '{place} · {count}',
-  'auto.band.hint': 'Tap a card to choose it; tap it again to let it go.',
   'auto.pick.done': 'Done',
   'auto.pick.chosen': 'Chosen',
   'auto.pick.stat': '{name}, ATK {atk}, DEF {def}, selectable',
@@ -268,9 +266,10 @@ export const auto: Translated<typeof es> = {
   'auto.pick.statRank': '{name}, Rank {rank}, ATK {atk}, DEF {def}, selectable',
   'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, selectable',
   'auto.phase.notYet': 'Not yet',
-  // The automatic duel's phase selector (`AutoPhases`): its title and the word under the current phase.
+  // The automatic duel's phase menu (`AutoPhases`): its name and where you can go.
   'auto.phase.title': 'Select the phase to switch to',
-  'auto.phase.now': 'now',
+  'auto.phase.goTo': 'Go to the {phase}',
+  'auto.phase.endTurn': 'End the turn',
   // One sheet at the bottom on the phone: what the card sheet or a prompt covers and brings back.
   'auto.layer.card': '{name} card',
   'auto.layer.back': 'Back to {place}',
@@ -312,14 +311,14 @@ export const auto: Translated<typeof es> = {
   'auto.lane.thinking': 'The rules engine is resolving…',
   'auto.lane.rivalChoosing': 'The opponent is choosing',
   'auto.lane.respondTo': 'You can respond to {card} with {cards}',
-  'auto.lane.pass': "Don't respond",
+  'auto.lane.pass': 'Pass',
   // The band to respond to a chain (which link is said by the chain stack above): with which cards and which number your response would take.
   'auto.respond.title': 'Respond to the chain',
   'auto.respond.now': 'Activate a card or effect?',
-  'auto.respond.activated': '"{name}" was activated (CL{link}). Chain another card or effect?',
+  'auto.respond.activated': '"{name}" was activated. Respond?',
+  'auto.respond.strip': 'Respond to "{name}"?',
   'auto.respond.cards': 'You can respond with',
-  'auto.respond.chain': 'Chain as CL{link}',
-  'auto.respond.start': 'Activate as CL1',
+  'auto.respond.start': 'Activate',
   'auto.respond.mode': 'Ask me',
   'auto.lane.mustActivate': { one: 'You must activate the glowing card: tap it', other: 'You must activate the {count} glowing cards: tap one' },
   // Several mandatory ones at once: you pick which one enters the chain first (the band in the middle).
@@ -333,13 +332,10 @@ export const auto: Translated<typeof es> = {
   'auto.lane.rejected': "The rules engine didn't accept that answer: choose again.",
   'auto.lane.stuck': "Automatic mode can't answer this rules engine question yet.",
 
-  // The chain notice (the pill above the mat and its list): how it goes and the state of each link.
+  // The big chain (`ChainStage`): the line at the bottom, while building and while resolving ("Ash Blossom: No effect by Called by the Grave"), and each link's state.
   'auto.chain.title': 'Chain',
-  'auto.chain.show': 'Show the chain',
-  'auto.chain.hide': 'Hide the chain',
-  'auto.chain.list': 'Chain links, in resolution order',
-  'auto.chain.strip': 'Chain links, first to last',
-  'auto.chain.fresh': 'New',
+  'auto.chain.order': 'Resolves from the last to the first',
+  'auto.chain.say': '{card}: {what}',
   'auto.chain.state.chained': 'Waiting',
   'auto.chain.state.solving': 'Resolving',
   'auto.chain.state.solved': 'Resolved',
@@ -347,7 +343,7 @@ export const auto: Translated<typeof es> = {
   'auto.chain.state.disabled': 'No effect',
   // Negated or no effect, with the link that did it (the core doesn't say: the adapter works it out).
   'auto.chain.by': '{state} · by CL{by}',
-  // The same with the name of the card that did it, where it fits (the phone line): it's read while the link holds still.
+  // The same with the name of the card that did it (the chain scene): read while the crossed-out card stays in the middle.
   'auto.chain.byCard': '{state} by {card}',
   // Resolved: what its effect did, when the core says so without doubt (`chainOutcome`). Replaces «Resolved» in its chip.
   'auto.chain.outcome.add': { one: 'Adds {count} card', other: 'Adds {count} cards' },
@@ -355,37 +351,9 @@ export const auto: Translated<typeof es> = {
   'auto.chain.outcome.summon': { one: 'Summons {count} monster', other: 'Summons {count} monsters' },
   'auto.chain.outcome.grave': 'Sends {count} to the GY',
   'auto.chain.outcome.banish': { one: 'Banishes {count} card', other: 'Banishes {count} cards' },
-  // Phones: on top of the pill, «Chain · 2 · Resolves CL2».
-  'auto.chain.count': 'Chain · {count}',
-  'auto.chain.resolves': 'Resolves',
-  // Each link is tapped to read it in the detail: what the screen reader says.
+  // What the screen reader says for each card of the chain.
   'auto.chain.linkMine': 'Chain Link {number}: {card}, yours. {state}',
   'auto.chain.linkTheirs': 'Chain Link {number}: {card}, your opponent’s. {state}',
-  // Two orders of the same chain, side by side (`ChainOrderCompare`): each verdict, in words as well as color.
-  'auto.chainOrder.good': 'Works',
-  'auto.chainOrder.bad': 'Backfires',
-  'auto.chainOrder.scenario': '{letter} · {title}. {verdict}',
-  'auto.chainOrder.replay': 'Replay',
-  // The "How it resolves" sheet (the chain's ⓘ): the key line, two pairs of orders with real cards and the wrap-up. Card names aren't translated.
-  'auto.chainLesson.open': 'How a chain resolves',
-  'auto.chainLesson.title': 'How it resolves',
-  'auto.chainLesson.key': 'A chain resolves from the top down: the last link added is the first to resolve.',
-  'auto.chainLesson.wait.title': "Respond to the effect, don't jump the gun",
-  'auto.chainLesson.wait.a': 'Wait',
-  'auto.chainLesson.wait.aNote': 'Let them activate the effect and chain Veiler: it resolves first and the effect does nothing.',
-  'auto.chainLesson.wait.b': "Don't fire first",
-  'auto.chainLesson.wait.bNote': 'If you activate Veiler first, they chain the effect and it resolves first: the banish still happens.',
-  'auto.chainLesson.late': 'Too late',
-  'auto.chainLesson.now.title': 'Respond in the chain, not after',
-  'auto.chainLesson.now.a': 'Respond now',
-  'auto.chainLesson.now.aNote': 'Called by the Grave chained to Maxx "C" resolves first and leaves it without effect: no draws.',
-  'auto.chainLesson.now.b': 'Later is too late',
-  'auto.chainLesson.now.bNote': "Once it resolves it applies all turn: banishing it later doesn't stop the draws.",
-  'auto.chainLesson.effect.veiler': "During your opponent's Main Phase: negates the effects of 1 of their monsters until the end of the turn",
-  'auto.chainLesson.effect.mirrorjade': 'Quick Effect: banishes 1 monster on the field',
-  'auto.chainLesson.effect.maxx': 'This turn, your opponent draws 1 card each time you Special Summon',
-  'auto.chainLesson.effect.called': "Banishes 1 monster from your opponent's GY and negates its effects until the end of the next turn",
-  'auto.chainLesson.closing': 'In short: wait for your opponent to activate, then respond in that same chain.',
 
   // Steps and combos (the practice panel): the empty list (no dragging or holding here) and reviewing a combo or your plays on the same mat, with the way back.
   'auto.steps.empty': 'Tap a card or the phase button to see what you can do. Every play is noted here.',

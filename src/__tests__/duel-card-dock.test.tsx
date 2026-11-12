@@ -61,7 +61,11 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
     const stats = () => Array.from(document.querySelectorAll('dl > div')).map((element) => element.textContent)
     const view = render(<DuelCardDock peek={peek(blue)} />)
 
-    expect(screen.getByText('[Normal Monster] Dragon/LIGHT')).toBeInTheDocument()
+    // El tipo, en un chip con el color de su marco (Normal: `bg-frame-normal`), y la raza y el atributo al lado.
+    // El nombre del chip en español (el de los filtros del buscador), no el del juego en inglés.
+    expect(screen.getByText('Normal')).toHaveClass('bg-frame-normal')
+    expect(screen.queryByText('Normal Monster')).toBeNull()
+    expect(screen.getByText('Dragon/LIGHT')).toBeInTheDocument()
     expect(stats()).toEqual(['Nivel8', 'ATK3000', 'DEF2500'])
 
     view.rerender(<DuelCardDock peek={peek({ ...blue, ygoprodeckId: 1, cardType: 'XYZ Monster' })} />)
@@ -70,8 +74,10 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
     view.rerender(<DuelCardDock peek={peek({ ...blue, ygoprodeckId: 2, cardType: 'Link Monster', level: null, linkValue: 2, def: null })} />)
     expect(stats()).toEqual(['Link2', 'ATK3000'])
 
-    view.rerender(<DuelCardDock peek={peek({ ...blue, ygoprodeckId: 3, cardType: 'Spell Card', race: 'Field', attribute: null, level: null, atk: null, def: null })} />)
+    view.rerender(<DuelCardDock peek={peek({ ...blue, ygoprodeckId: 3, cardType: 'Spell Card', frameType: 'spell', race: 'Field', attribute: null, level: null, atk: null, def: null })} />)
     expect(stats()).toEqual([])
+    expect(screen.getByText('Mágica de Campo')).toBeInTheDocument()
+    expect(screen.queryByText('Spell Card')).toBeNull()
   })
 
   it('se inclina en 3D hacia el mouse y vuelve al irse', async () => {

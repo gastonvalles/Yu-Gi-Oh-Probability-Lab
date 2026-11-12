@@ -20,7 +20,7 @@ import { core, dispatches, handCard, lane, phaseButton } from './support/auto-sc
 import { CARDS, fakeSession, loc } from './support/auto-session-fake'
 import { createMemoryRoom } from './support/memory-room'
 import { render, tap } from './support/practice-mat-harness'
-import { tapMenu } from './support/mat-menu'
+import { openOptions } from './support/mat-menu'
 
 vi.mock(import('../app/use-toast-message'), async (importOriginal) => ({ ...(await importOriginal()), showToastMessage: vi.fn() }))
 
@@ -495,9 +495,9 @@ describe('auto-screen-online · la mesa', () => {
 
 describe('auto-screen-online · pasar a manual', () => {
   const moreOptions = () => {
-    tapMenu('Opciones del duelo')
+    openOptions()
 
-    return within(screen.getByRole('dialog', { name: 'Más opciones del duelo' }))
+    return within(screen.getByRole('dialog', { name: 'Opciones' }))
   }
   const prompt = () => screen.getByText(/quiere seguir el duelo en modo manual/).closest<HTMLElement>('[data-prompt]')!
 
@@ -508,12 +508,12 @@ describe('auto-screen-online · pasar a manual', () => {
     start()
     const more = moreOptions()
 
-    expect(more.getByText('Modo manual')).toBeInTheDocument()
-    expect(more.getByText('Le preguntás a Ana: si acepta, siguen a mano los dos, con la mesa como está. El automático vuelve en la revancha.')).toBeInTheDocument()
+    // Una fila sin párrafo de ayuda: lo que explica va en su `title`.
+    expect(more.getByRole('button', { name: 'Pasar a manual' })).toHaveAttribute('title', 'Le preguntás a Ana: si acepta, siguen a mano los dos, con la mesa como está. El automático vuelve en la revancha.')
     fireEvent.click(more.getByRole('button', { name: 'Pasar a manual' }))
     expect(link.manuals).toEqual([true])
     core(() => link.set({ manual: 'asking' }))
-    expect(more.getByText('Esperando a que Ana acepte seguir en modo manual…')).toBeInTheDocument()
+    expect(more.getByRole('button', { name: 'Cancelar pedido' })).toHaveAttribute('title', 'Esperando a que Ana acepte seguir en modo manual…')
     fireEvent.click(more.getByRole('button', { name: 'Cancelar pedido' }))
     expect(link.manuals).toEqual([true, false])
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -669,7 +669,7 @@ describe('auto-screen-online · deshacer', () => {
 })
 
 describe('auto-screen-online · la fase del rival', () => {
-  it('en su turno el botón dice la fase que él ve (con el cartel de cada una) y «Beto está eligiendo…» va sólo si contesta algo; vos le decís la tuya', () => {
+  it('en su turno el botón dice la fase que él ve (que pulsa con cada una) y «Beto está eligiendo…» va sólo si contesta algo; vos le decís la tuya', () => {
     vi.useFakeTimers()
     const { start, link } = setup()
     const session = start()
@@ -686,10 +686,11 @@ describe('auto-screen-online · la fase del rival', () => {
     core(() => session.set({ status: 'waiting', ask: null, overlay: { ...session.getSnapshot().overlay, turn: 2, turnPlayer: 1 } }))
     phaseIs('Draw Phase')
     expect(lane()).toBeNull()
-    // Pasa a su Standby Phase: se ve en el botón y en el cartel, todavía sin «está eligiendo».
+    // Pasa a su Standby Phase: se ve en el botón (que pulsa; sin cartel) y el lector la oye, todavía sin «está eligiendo».
     core(() => link.set({ rivalPhase: { turn: 2, phase: 'standby', busy: false } }))
     phaseIs('Standby Phase')
-    expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent(/Beto.*Standby Phase/)
+    expect(phaseButton().parentElement!.querySelector('[role="status"]')).toHaveTextContent(/Beto.*Standby Phase/)
+    expect(document.querySelector('[data-fx="banner"]')).toBeNull()
     expect(lane()).toBeNull()
     // Contesta algo del núcleo: ahora sí.
     core(() => link.set({ rivalPhase: { turn: 2, phase: 'main1', busy: true } }))

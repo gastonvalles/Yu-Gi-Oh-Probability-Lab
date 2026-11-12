@@ -31,12 +31,11 @@ import { ResultCard } from '../duel/DuelResult'
 import type { FeedEntry } from '../duel/use-duel-feed'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNotice, useSignals } from '../duel/use-duel-table'
 import { cardIdOfDrawId } from '../probability/practice'
+import { PileGroupContext } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
-import { Button } from '../ui/Button'
 import { SaveReplayDialog } from '../replays/SaveReplayDialog'
-import { Segmented } from '../ui/Segmented'
 import { AskPrompt } from './AskPrompt'
-import { chainModeHint, chainModeOptions, Setting } from './AutoBar'
+import { ActionRow, ChainRow, OptionsGear, PlaceRow } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckOf } from './deck-list'
 import { sentinel, useAutoAsks } from './use-auto-asks'
@@ -532,51 +531,40 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   const control = underControl(snap.mine) || underControl(snap.theirs)
   const manualHint = switching ? t('auto.online.manualSwitching') : manual === 'asking' ? t('auto.online.manualAsking', { name: rivalName }) : control ? t('auto.online.manualControlHint') : t('auto.online.manualHint', { name: rivalName })
 
-  // «Más opciones» de la barra: lo mismo que en solo (las respuestas a la cadena y la casilla) y pasar a manual; los sonidos y reconectar ya están.
+  // Opciones (el ⚙): lo mismo que en solo (las respuestas a la cadena y la casilla), el replay y pasar a manual; cada uno, una fila. Los sonidos y reconectar ya están.
   const settings = (close: () => void) => (
     <>
-      <Setting title={t('auto.bar.chain')} hint={chainModeHint(prefs.chain)}>
-        <Segmented label={t('auto.bar.chain')} value={prefs.chain} onChange={(mode) => setAutoPref('chain', mode)} fullWidth options={chainModeOptions()} />
-      </Setting>
-      <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
-        <Segmented label={t('auto.bar.place')} value={prefs.place} onChange={(mode) => setAutoPref('place', mode)} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
-      </Setting>
-      <Setting title={t('meta.duels.save.title')} hint={t('auto.bar.saveReplayHint')}>
-        <Button
-          variant="secondary"
-          icon="save"
-          className="justify-self-start"
-          aria-haspopup="dialog"
-          onClick={() => {
-            close()
-            setSaving(true)
-          }}
-        >
-          {t('meta.duels.save.button')}
-        </Button>
-      </Setting>
+      <ChainRow chain={prefs.chain} onChain={(mode) => setAutoPref('chain', mode)} />
+      <PlaceRow place={prefs.place} onPlace={(mode) => setAutoPref('place', mode)} />
+      <ActionRow
+        title={t('meta.duels.save.button')}
+        hint={t('auto.bar.saveReplayHint')}
+        aria-haspopup="dialog"
+        onClick={() => {
+          close()
+          setSaving(true)
+        }}
+      />
       {canSwitch ? (
-        <Setting title={t('auto.online.manualTitle')} hint={manualHint}>
-          {manual === 'asking' ? (
-            <Button variant="tertiary" className="justify-self-start" onClick={() => want(false)}>
-              {t('auto.online.manualCancel')}
-            </Button>
-          ) : (
-            <Button variant="secondary" icon="hand" className="justify-self-start" disabled={switching || control} onClick={() => want(true)}>
-              {t('auto.online.manualAsk')}
-            </Button>
-          )}
-        </Setting>
+        manual === 'asking' ? (
+          <ActionRow title={t('auto.online.manualCancel')} hint={manualHint} onClick={() => want(false)} />
+        ) : (
+          <>
+            <ActionRow title={t('auto.online.manualAsk')} hint={manualHint} disabled={switching || control} onClick={() => want(true)} />
+            {control ? <p className="m-0 pb-2 text-micro text-soft">{t('auto.online.manualControlHint')}</p> : null}
+          </>
+        )
       ) : null}
     </>
   )
   // El celular: las chapas, la línea (el registro con el aviso encima) y el chat en la botonera de abajo, no en la barra.
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
+  // El ⚙ de abajo a la derecha: Opciones (la vista 3D, los menús flotantes, lo de arriba y Rendirse al final: el mismo `concede` de la sala).
+  const gear = <OptionsGear concede={{ onConcede: duel.concede, text: t('duel.bar.concedeText', { name: rivalName }), disabled: result !== null || !snapshot.peerPresent }}>{settings}</OptionsGear>
   const chatToggle = <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} tile={phone} />
   const logTicker = <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />
   // Un duelo que sigue a uno manual arranca en el turno 1 del núcleo: se le suma lo que llevaban las mesas de arranque (en uno de cero, nada).
   const turnNumber = Math.max(1, snap.overlay.turn) + duelTurnNumber(snap.initial.mine, snap.initial.theirs) - 1
-  const turnText = asks.turnMine ? t('duel.bar.yourTurnN', { turn: turnNumber }) : t('duel.bar.theirTurnN', { name: rivalName, turn: turnNumber })
   // Lo del pase a manual en la línea: la espera (con «Cancelar pedido») y el corte. Lo que hay que contestar del núcleo va antes.
   const manualLane: LaneNotice | null = switching
     ? { kind: 'thinking', text: t('auto.online.manualSwitching') }
@@ -608,7 +596,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         onRematch={onRematch}
         onLeave={onLeave}
         onAbandon={onAbandon}
-        onConcede={duel.concede}
+        inOptions
         onReconnect={duel.reconnect}
         log={docked ? undefined : logTicker}
         resultOpen={resultOpen}
@@ -616,22 +604,21 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         rivalSignalKey={signals.theirsKey}
         lane={lane}
         turnNumber={turnNumber}
-        extraSettings={settings}
         {...(reason ? { resultReason: reason } : {})}
       />
     ),
-    // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): en el celular, las chapas (la tuya abajo con el turno y la botonera, la del rival junto a su mano) y la línea; de 640
-    // a 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, cada chapa en su esquina (D2).
+    // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): en el celular, las chapas (la tuya abajo con el turno y la botonera, la del rival en la barra: `DuelBar`) y el aviso, que
+    // flota sobre tu mano sólo mientras está (la última jugada queda en el chat); de 640 a 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, cada chapa en su esquina (D2).
     life: phone ? (
-      <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge turn={turnText} turnMine={asks.turnMine} />
+      <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge active={asks.turnMine} />
     ) : docked ? (
       <span className="-mt-5 flex" data-corner="mine">
-        <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge />
+        <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge active={asks.turnMine} />
       </span>
     ) : null,
-    ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge active={phone ? !asks.turnMine : undefined} /> } : {}),
+    ...(docked ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge active={!asks.turnMine} /> } : {}),
     ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
-    ...(phone ? { line: <DuelLine lane={lane} rivalName={rivalName} log={logTicker} />, dock: chatToggle } : {}),
+    ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: <>{chatToggle}{gear}</> } : { dock: gear }),
     tools: null,
     // El chat: en escritorio, fijo a la derecha (con las reacciones); hasta 1100 px, en su panel (lo abre su botón de la barra), con las reacciones.
     aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
@@ -650,7 +637,9 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     // Tocar la mesa mientras cuenta una tanda la salta al final.
     <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
       <LifeHold value={asks.lifeHeld}>
-        <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={askUndo ? () => askUndo(true) : NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} rivalViewer={asks.rivalViewer} />
+        <PileGroupContext value>
+          <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={askUndo ? () => askUndo(true) : NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} rivalViewer={asks.rivalViewer} />
+        </PileGroupContext>
       </LifeHold>
       {asks.pieces}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />

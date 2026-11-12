@@ -41,12 +41,17 @@ describe('la mesa manual · ATK/DEF de los monstruos', () => {
     render(<Harness initial={replayMat(INITIAL, PLAYS)} cards={CARDS} />)
 
     // En el orden de la mesa: la Zona Extra, arriba de la fila de monstruos.
-    expect(tags()).toEqual(['?', '0 / 1800', '500 / 200'])
+    expect(tags()).toEqual(['?', '0/1800', '500/200'])
     expect(screen.getByRole('button', { name: 'Ash Blossom, ATK 0, DEF 1800' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Maxx C, en defensa, ATK 500, DEF 200' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Apollousa, ATK ?' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Nibiru, boca abajo' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Called by the Grave' })).toBeInTheDocument()
+    // La placa de 10 px (`text-tag`) lleva los dos números en un renglón y sin cortes por posición (nada se oculta ni se parte según el ancho de la casilla).
+    for (const tag of document.querySelectorAll('[data-pick-stat]')) {
+      expect(tag).toHaveClass('text-tag', 'whitespace-nowrap')
+      expect(tag.outerHTML).not.toMatch(/@max|hidden/)
+    }
     // Una sola etiqueta por casilla, dentro de ella.
     expect(zone('Zona de monstruo 1').querySelectorAll('[data-pick-stat]')).toHaveLength(1)
     expect(zone('Zona de monstruo 3').querySelector('[data-pick-stat]')).toBeNull()

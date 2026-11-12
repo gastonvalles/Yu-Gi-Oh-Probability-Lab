@@ -10,6 +10,7 @@ import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { PLAYER_COLOR } from './player-color'
+import { TypeMark } from './TypeMark'
 import { ReactionButtons } from './ReactionButtons'
 import { isEmojiSignal, isSignal } from '../../app/duel-signals'
 import type { FeedEntry } from './use-duel-feed'
@@ -80,6 +81,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed, quiet =
               return (
                 <li key={entry.id} data-event={entry.side} className={cx('flex items-start gap-2 text-micro text-muted', enters(entry.id) && ENTER)}>
                   <i aria-hidden="true" className={cx('mt-1.5 size-1.5 shrink-0 rounded-full', entry.side === 'mine' ? 'bg-accent' : 'bg-info')} />
+                  {entry.frame ? <TypeMark kind={entry.frame} className="mt-0.5" /> : null}
                   <span className="min-w-0 break-words">{entry.text}</span>
                 </li>
               )

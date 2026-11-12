@@ -9,7 +9,7 @@ import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { pos } from './support/auto-session-fake'
 import { core, handCard, lane, renderAuto } from './support/auto-screen-harness'
 
-// La negación («Sin efecto · por CL2» en la pila y en el nombre de la carta, también en la píldora, sin nombres; la carta, gris y latiendo) y varias obligatorias a la vez (se elige cuál va primero).
+// La negación (la carta tachada en la escena de la cadena; en la mesa, «Sin efecto · por CL2» en su nombre y gris y latiendo) y varias obligatorias a la vez (se elige cuál va primero).
 
 const link = (index: number, card: CardRef, from: number = L.MZONE): ChainStep => ({ kind: 'chain', at: 0, index, link: { card, code: 1, mine: card.side === 'mine', from } })
 const step = (kind: ChainStep['kind'], index: number, by?: number): ChainStep => ({ kind, at: 0, index, ...(by ? { by } : {}) })
@@ -17,7 +17,7 @@ const step = (kind: ChainStep['kind'], index: number, by?: number): ChainStep =>
 const grayed = () => [...document.querySelectorAll('.grayscale')].filter((element) => !element.closest('[data-testid="chain-notice"]'))
 
 describe('auto-screen · la cadena negada', () => {
-  it('Maxx C (CL1) queda sin efecto por el CL2 del rival: la píldora, la pila y el nombre dicen «Sin efecto · por CL2», la carta se ve gris y latiendo, sin moverla, y se va con el aviso', () => {
+  it('Maxx C (CL1) queda sin efecto por el CL2 del rival: en la escena se tacha, en la mesa su nombre dice «Sin efecto · por CL2» y se ve gris y latiendo, sin moverla', () => {
     const fake = renderAuto()
     const cell = () => document.querySelector('[data-card-id="card-200-1"]')!.parentElement!
     const chain = [link(0, { side: 'mine', id: 'card-200-1' }), link(1, { side: 'theirs', id: 'c1' }), step('solving', 1), step('disabled', 0, 2)]
@@ -26,12 +26,16 @@ describe('auto-screen · la cadena negada', () => {
     // Los pasos se muestran de a uno, con su ritmo.
     act(() => vi.advanceTimersByTime(0))
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
     const before = cell().getBoundingClientRect()
     expect(grayed()).toEqual([])
 
-    act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · Resuelve CL2Sin efecto · por CL2')
+    // Armada, se resuelve: lo que pasa mientras resuelve el del rival (negar la tuya) sale con él.
+    act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
+    // En la escena: el del rival resuelve en el centro y tu carta, en su lugar, ya va tachada; quién la dejó sin efecto, por su nombre.
+    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent(/: Resolviendo$/)
+    const linked = screen.getByRole('img', { name: 'Eslabón 1: Carta, tuyo. Sin efecto por Carta' })
+    expect(linked).toHaveAttribute('data-pose', 'slot')
+    expect(linked).toHaveAttribute('data-voided')
     // Sobre la carta: la insignia tachada y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
     expect(cell().querySelector('[data-chain-link]')).toHaveClass('line-through')
     expect(cell().querySelector('[data-chain-link]')).toHaveAttribute('data-chain-void', '2')
@@ -43,12 +47,6 @@ describe('auto-screen · la cadena negada', () => {
     expect(cell()).not.toHaveTextContent('Sin efecto')
     expect(screen.getByRole('button', { name: 'Maxx C, eslabón 1 de la cadena. Sin efecto · por CL2' })).toBeInTheDocument()
     expect(cell().getBoundingClientRect()).toEqual(before)
-    // La pila (la hoja abre entera): la fila de la carta negada.
-    const row = within(screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })
-
-    // Su arte, gris y latiendo como en la mesa; sin efecto no tacha el nombre (sólo el negado).
-    expect(row.querySelector('.grayscale')).toHaveClass('motion-safe:animate-fx-void')
-    expect(within(row).getByText('Carta')).not.toHaveClass('line-through')
   })
 
   it('negada desde la mano o en el Cementerio: el arte de esa carta, gris (sin `by`, el nombre dice sólo «Negada»); se va con el aviso', () => {
@@ -86,7 +84,7 @@ describe('auto-screen · varias obligatorias', () => {
     ],
   }
 
-  it('una banda en el medio: cuál va primero (el número lo dice la principal), la primera ya elegida, sin «No responder»; tocar otra la cambia y la principal la activa con su número («Activar como CL1»)', () => {
+  it('una banda en el medio: cuál va primero, la primera ya elegida, sin «Pasar»; tocar otra la cambia y la principal la activa («Activar»)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(FORCED))
@@ -95,10 +93,10 @@ describe('auto-screen · varias obligatorias', () => {
     // La línea de «Tenés que activar la carta que brilla: tocala» es para una sola.
     expect(lane()).toBeNull()
     expect(band).toHaveTextContent('Los demás se activan después.')
-    expect(within(band).queryByRole('button', { name: 'No responder' })).toBeNull()
-    expect(within(band).getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
+    expect(within(band).queryByRole('button', { name: 'Pasar' })).toBeNull()
+    expect(within(band).getByRole('button', { name: 'Activar' })).toBeEnabled()
     fireEvent.click(within(band).getByRole('option', { name: /Ash Blossom/ }))
-    fireEvent.click(within(band).getByRole('button', { name: 'Activar como CL1' }))
+    fireEvent.click(within(band).getByRole('button', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }])
   })
 
@@ -111,7 +109,7 @@ describe('auto-screen · varias obligatorias', () => {
 
     expect(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ })).toHaveTextContent('Rival, Campo')
     fireEvent.click(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ }))
-    fireEvent.click(within(band).getByRole('button', { name: 'Activar como CL1' }))
+    fireEvent.click(within(band).getByRole('button', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }])
 
     // Sola: la banda lo dice igual (puede no estar a la vista) y tocarla en su campo también la activa.

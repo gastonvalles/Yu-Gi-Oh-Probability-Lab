@@ -772,9 +772,8 @@ describe('ask-ui: el título de una elección de cartas dice para qué', () => {
     expect(pickTitle(pick())).toBe('Elegí 2 cartas · 1 de 2')
   })
 
-  it('atacar nombra al que ataca; los Sacrificios y las sumas, en imperativo y con la cuenta sólo si falta más de 1', () => {
+  it('atacar no nombra al que ataca (lleva su aro en la mesa); los Sacrificios y las sumas, en imperativo y con la cuenta sólo si falta más de 1', () => {
     expect(pickTitle(pick({ min: 1, max: 1 }), '549')).toBe('Elegí a qué monstruo atacar')
-    expect(pickTitle(pick({ min: 1, max: 1 }), '549', 'Raye')).toBe('Elegí a qué monstruo ataca «Raye»')
     expect(pickTitle(pick({ type: 'select_tribute', count: { now: 1, need: 2 } }), '500')).toBe('Elegí los monstruos para Sacrificar · 1 de 2')
     expect(pickTitle(pick({ type: 'select_tribute', count: { now: 0, need: 1 } }), '500')).toBe('Elegí el monstruo para Sacrificar')
     expect(pickTitle(pick({ type: 'select_sum', count: { now: 3, need: 8 } }), '500')).toBe('Elegí cartas que sumen 8 Niveles · 3 de 8')
@@ -803,8 +802,8 @@ describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qu�
 
   afterEach(() => applyLocale('es'))
 
-  it('responder a la cadena: el eslabón con su carta y su número; sin cadena, sólo la pregunta', () => {
-    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('Se activó «Ash Blossom & Joyous Spring» (CL2). ¿Encadenás otra carta o efecto?')
+  it('responder a la cadena: qué carta se activó (sin «CL»: decisión 6); sin cadena, sólo la pregunta', () => {
+    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('Se activó «Ash Blossom & Joyous Spring». ¿Respondés?')
     expect(respondTitle(offer(0), '')).toBe('¿Activás una carta o efecto?')
   })
 
@@ -822,12 +821,11 @@ describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qu�
     expect(effectText(null, stringId(400, 0))).toBeNull()
   })
 
-  it('la casilla nombra la carta (el núcleo la manda como título) si se la conoce; si no, la genérica; con varias, cuántas', () => {
-    expect(zoneTitle(zone(), 'Kagari')).toBe('Elegí una casilla para «Kagari»')
-    expect(zoneTitle(zone(), null)).toBe('Elegí 1 casilla')
-    expect(zoneTitle(zone({ count: 2 }), 'Kagari')).toBe('Elegí 2 casillas')
-    expect(zoneTitle(zone({ targets: [{ side: 'theirs', zone: 'mz', index: 0 }] }), 'Kagari')).toBe('Elegí una casilla del rival')
-    expect(zoneTitle(zone({}, 'select_disfield'), null)).toBe('Elegí 1 casilla que no se va a poder usar')
+  it('la casilla es de un renglón, sin nombrar la carta (ya está levantada en tu mano); con varias, cuántas', () => {
+    expect(zoneTitle(zone())).toBe('Elegí una casilla')
+    expect(zoneTitle(zone({ count: 2 }))).toBe('Elegí 2 casillas')
+    expect(zoneTitle(zone({ targets: [{ side: 'theirs', zone: 'mz', index: 0 }] }))).toBe('Elegí una casilla del rival')
+    expect(zoneTitle(zone({}, 'select_disfield'))).toBe('Elegí 1 casilla que no se va a poder usar')
   })
 
   it('las opciones: la posición nombra la carta; un efecto, por su pista (550/566 activar, 556 aplicar); sin pista, la genérica', () => {
@@ -847,8 +845,8 @@ describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qu�
     applyLocale('en')
     expect(effectText('Destroy a monster', stringId(400, 0))).toBe('Destroy a monster')
     expect(yesNoText('Tribute 1 monster?', stringId(400, 2), 'Kagari')).toBe('Tribute 1 monster?')
-    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('"Ash Blossom & Joyous Spring" was activated (CL2). Chain another card or effect?')
-    expect(zoneTitle(zone(), 'Kagari')).toBe('Choose a zone for "Kagari"')
+    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('"Ash Blossom & Joyous Spring" was activated. Respond?')
+    expect(zoneTitle(zone())).toBe('Choose a zone')
   })
 })
 

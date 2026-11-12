@@ -312,6 +312,12 @@ export const duel: Translated<typeof es> = {
   'duel.bar.concedeTitle': 'Surrender this duel?',
   'duel.bar.concedeText': 'You lose the duel and {name} wins. Afterwards you can ask for a rematch.',
   'duel.bar.keepPlaying': 'Keep playing',
+  'duel.options.title': 'Options',
+  'duel.options.viewHint': 'The field tilted, with perspective. Off, flat and seen from above.',
+  'duel.options.floating': 'Floating menus',
+  'duel.options.floatingHint': 'Questions open in a window you drag by its bar and resize from the corner.',
+  'duel.options.concede': 'Concede',
+  'duel.options.concedeSolo': 'You lose the duel and see the final screen. Afterwards you can play again.',
   'duel.bar.leaveConfirm': 'Leave and keep it paused',
   'duel.bar.leaveNow': 'Leave',
   'duel.bar.leaveDoneText': 'This duel is over: leaving closes the table.',
@@ -469,7 +475,6 @@ export const duel: Translated<typeof es> = {
   'duel.result.rematchWaiting': 'Waiting for {name}…',
   'duel.result.rematchOffered': '{name} wants a rematch.',
   'duel.turn.passHint': 'Pass the turn',
-  'duel.turn.drew': 'Your turn started: you drew a card.',
 
   // A room with automatic rules: the rules engine applies the rules for both players.
   'duel.auto.rulesHint': 'The rules engine applies the rules for both of you. No spectators yet.',

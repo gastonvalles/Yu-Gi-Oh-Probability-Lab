@@ -693,9 +693,9 @@ export function effectAskText(prompt: AskPromptView, cause: TriggerCause | null,
   return { kicker, text: name ? t('auto.ask.effectOf', { name }) : t('auto.ask.effect'), place: placeLabel(prompt.at) }
 }
 
-/** El título de responder a una cadena: qué pasó (el último eslabón, con su carta y su número) y qué se te pide; sin cadena, sólo la pregunta. */
+/** El título de responder a una cadena: qué pasó (el último eslabón, con su carta) y qué se te pide; sin cadena, sólo la pregunta. */
 export function respondTitle(offer: RespondOffer, name: string): string {
-  return offer.to ? t('auto.respond.activated', { name, link: offer.to.number }) : t('auto.respond.now')
+  return offer.to ? t('auto.respond.activated', { name }) : t('auto.respond.now')
 }
 
 export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, ctx: AskContext): AskState {
@@ -979,13 +979,13 @@ const PICK_PURPOSE: Readonly<Record<string, Extract<MessageKey, `auto.pick.why.$
 
 /**
  * El título de una elección de cartas: cuántas, para qué (el código de pista, si está en la tabla) y, si se eligen varias, cuántas van («Elegí 2 cartas para desterrar · 1 de 2»):
- * la cuenta va sólo con un total mayor que 1. `name`, la carta que ataca (a qué monstruo ataca «X»).
+ * la cuenta va sólo con un total mayor que 1. Sin nombres de carta: la que ataca ya lleva su aro en la mesa y la tira es de un renglón.
  */
-export function pickTitle(pick: CardPick, hint?: string, name?: string): string {
+export function pickTitle(pick: CardPick, hint?: string): string {
   if (pick.type === 'announce_card') return t('auto.pick.announce')
   if (pick.type === 'select_tribute') return pick.count.need > 1 ? t('auto.pick.tribute', { chosen: pick.count.now, total: pick.count.need }) : t('auto.pick.tributeOne')
   if (pick.type === 'select_sum') return t(pick.atLeast ? 'auto.pick.sumAtLeast' : 'auto.pick.sum', { chosen: pick.count.now, total: pick.count.need })
-  if (pick.type === 'select_card' && hint === ATTACK_TARGET_HINT) return name ? t('auto.pick.attackTargetOf', { name }) : t('auto.pick.attackTarget')
+  if (pick.type === 'select_card' && hint === ATTACK_TARGET_HINT) return t('auto.pick.attackTarget')
   const what = pick.min === pick.max ? t('auto.pick.cards', { count: pick.max }) : t('auto.pick.range', { min: pick.min, max: pick.max })
   const why = hint === undefined ? undefined : PICK_PURPOSE[hint]
   const title = why ? t('auto.pick.for', { what, why: t(why) }) : what
@@ -994,15 +994,15 @@ export function pickTitle(pick: CardPick, hint?: string, name?: string): string 
 }
 
 /**
- * El título de elegir casillas. `name`, la carta que va (el núcleo la manda como título de `select_place`: su código, medido con el núcleo real): «Elegí una casilla para «X»».
- * Sin ella, cuántas; si todas son del rival (dar el control), lo dice.
+ * El título de elegir casillas, de un renglón: «Elegí una casilla» (la carta que va ya está levantada en tu mano; el núcleo manda su código como título de `select_place`, pero no se repite). Con
+ * varias, cuántas; si todas son del rival (dar el control), lo dice.
  */
-export function zoneTitle(view: Pick<AskView, 'type' | 'zonePick'>, name: string | null): string {
+export function zoneTitle(view: Pick<AskView, 'type' | 'zonePick'>): string {
   const pick = view.zonePick!
 
   if (view.type === 'select_disfield') return t('auto.pick.disfield', { count: pick.count })
   if (pick.targets.length && pick.targets.every((target) => target.side === 'theirs')) return t('auto.pick.zoneRival', { count: pick.count })
-  return name && pick.count === 1 ? t('auto.pick.zoneFor', { name }) : t('auto.pick.zone', { count: pick.count })
+  return t('auto.pick.zone', { count: pick.count })
 }
 
 /** El título de las opciones del núcleo: qué se elige (de un efecto, por su pista: 550/566 activar, 556 aplicar) y, en la posición, de qué carta (`name`). */

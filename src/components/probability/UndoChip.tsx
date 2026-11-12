@@ -35,10 +35,13 @@ export function useUndoPlay<P extends UndoPlay>(play: P | null): P | null {
  * Sin el nombre de la carta ni qué hace. Se va solo (`useUndoPlay`), con otra jugada o cuando ya no se puede deshacer; la mesa lo pone donde no tapa cartas. Sin velo, 44 px.
  */
 export function UndoChip({ art, onUndo, className }: { art: string | null; onUndo: () => void; className?: string }) {
+  // Un arte que no carga (sin red, una carta sin imagen) deja el ícono: antes se veía la imagen rota del navegador.
+  const [broken, setBroken] = useState(false)
+
   return (
     <Button variant="secondary" data-undo-chip="" aria-label={t('practice.mat.undoPlay')} className={cx('whitespace-nowrap shadow-overlay animate-sheet-in motion-reduce:animate-none', className)} onClick={onUndo}>
       {/* El arte dice qué se deshace; sin arte, el ícono de Deshacer. Los dos no: el aviso entra junto a tus vidas en el celular. */}
-      {art ? <img src={cardImageSrc(art)} alt="" draggable={false} className="h-7 w-5 rounded-tag object-cover" /> : <Icon name="undo" size={18} />}
+      {art && !broken ? <img src={cardImageSrc(art)} alt="" draggable={false} className="h-7 w-5 rounded-tag object-cover" onError={() => setBroken(true)} /> : <Icon name="undo" size={18} />}
       {t('practice.mat.undo')}
     </Button>
   )

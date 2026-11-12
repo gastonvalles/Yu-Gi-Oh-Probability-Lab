@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving, usePresence } from '../../app/use-presence'
@@ -10,30 +9,14 @@ import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
 import { BottomSheet, useSheetHost } from '../ui/BottomSheet'
 import { cx } from '../ui/cx'
-import { Icon } from '../ui/Icon'
-import { IconButton } from '../ui/IconButton'
 import { PromptHandle } from '../ui/SheetHandle'
-
-/** En qué fase está el duelo (la de quien tiene el turno) y si el turno es tuyo. */
-export interface PromptTurn {
-  phase: MatPhase
-  mine: boolean
-}
-
-/**
- * La fase y el turno que dicen todas las preguntas de la mesa, en una línea chica arriba de su cabeza («Draw Phase · Turno del rival»): así se entiende por qué se pregunta. Lo da la mesa
- * (`PracticeMat`, sólo cuando el duelo automático ya sabe de quién es el turno); sin él (la práctica manual, el duelo por enlace, cuya pregunta ya nombra la fase), no hay línea.
- */
-export const PromptTurnContext = createContext<PromptTurn | null>(null)
-
-export const promptTurnText = ({ phase, mine }: PromptTurn) => t(mine ? 'duel.prompt.turnMine' : 'duel.prompt.turnTheirs', { phase: PHASES.find((entry) => entry.id === phase)?.name ?? phase })
 
 interface MatPromptProps {
   /** Lo que dice el asa minimizada: la pregunta, corta («¿Activás el efecto?»). */
   label: string
-  /** La fila de arriba (lo que es y la pregunta); el botón de minimizar va a su derecha. */
+  /** La fila de arriba (lo que es y la pregunta). */
   head: ReactNode
-  /** Sólo en escritorio: a la derecha de la cabeza (y de la fase), antes de minimizar; no suma un renglón (el modo de respuesta). */
+  /** Sólo en escritorio: a la derecha de la cabeza; no suma un renglón (el modo de respuesta). */
   aside?: ReactNode
   children: ReactNode
   /** `data-prompt`: qué pregunta es (la mesa y las pruebas la buscan por esto). */
@@ -52,7 +35,7 @@ interface MatPromptProps {
 /**
  * Una pregunta de la mesa («¿Activás el efecto?», responder a una cadena, elegir de una lista corta, la pregunta del rival de pasar de fase).
  * - **Desde 1101 px, un cartel** en la ranura de la pregunta (`duel.prompt`), sin velo y sin mover nada, siempre en el mismo lugar: apoyado sobre la fila de las Zonas Extra, crece hacia el campo del rival
- *   (si no entra, sus cartas se achican a lo que hay, `--prompt-art` de la mesa, y si ni así, su cuerpo se desplaza). Arriba a la derecha, la flecha (44 px, «Minimizar») lo reduce a un asa de una línea («¿Activás el efecto? ▲», `PromptHandle`) en ese mismo lugar: minimizado, todo
+ *   (si no entra, sus cartas se achican a lo que hay, `--prompt-art` de la mesa, y si ni así, su cuerpo se desplaza). Sin flecha de bajar: Escape (con `escape`) o el dedo lo reducen a un asa de una línea («¿Activás el efecto? ▲», `PromptHandle`) en ese mismo lugar: minimizado, todo
  *   lo de abajo se toca y la pregunta sigue pendiente; la flecha del asa lo reabre. Con el dedo, arrastrar la fila de arriba hacia abajo lo minimiza y arrastrar el asa hacia arriba lo abre (`useSwipeFold`).
  *   Con el mouse, la fila de arriba (o el asa) lo lleva a cualquier lado y ahí queda para las preguntas que siguen; doble clic, a su lugar (`useDraggableOffset`).
  * - **En el celular, la hoja de abajo estándar** (`BottomSheet`, Gastón 2026-11-02: «no aparece como debería sino como un cartel en el medio de la pantalla»): la fila de arriba es su título y lo que se
@@ -65,7 +48,6 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
   const ref = useRef<HTMLDivElement | null>(null)
   const leaving = useLeaving()
   const host = useSheetHost()
-  const turn = useContext(PromptTurnContext)
   // En un marco del catálogo (`SheetHost phone`), como en el celular en cualquier ancho.
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
   const slot = host?.slot ?? null
@@ -83,14 +65,9 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
   }, [minimized, focus, desktop, slot])
 
   const attrs = { role, 'aria-labelledby': labelledBy, 'data-prompt': kind, ...(row ? { 'data-prompt-row': '' } : {}) }
-  // La cabeza: arriba, chica, la fase y de quién es el turno (si la mesa lo sabe); debajo, lo que es y la pregunta. Bajada en el celular no se repite: queda la tira con la pregunta corta.
+  // La cabeza: lo que es y la pregunta (sin fase ni turno: cada dato, una vez). Bajada en el celular no se repite: queda la tira con la pregunta corta.
   const top = (
     <div className="grid min-w-0 flex-1 gap-1">
-      {turn ? (
-        <p data-prompt-turn="" className="m-0 text-micro text-muted">
-          {promptTurnText(turn)}
-        </p>
-      ) : null}
       <div className="flex min-w-0 items-center gap-3">{head}</div>
     </div>
   )
@@ -103,9 +80,6 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
         <div {...swipe} title={t('duel.prompt.move')} className="flex cursor-grab touch-none select-none items-center gap-2 active:cursor-grabbing">
           {top}
           {aside}
-          <IconButton size="lg" className="-my-2 -mr-2 self-start" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setFold(true)}>
-            <Icon name="chevron-down" />
-          </IconButton>
         </div>
         {/* Más alto que lo que hay arriba de la fila Extra, el cuerpo se desplaza (la fila de arriba, con minimizar, queda a la vista). Llega hasta el borde del cartel (`-mx-4`, y 4 px arriba y abajo): lo que
             se desplaza no corta el aro del foco ni una fila de botones que no entra en 360 px. La fila de acciones (lo último, si hay algo antes) queda siempre a la vista, abajo, y opaca de borde a borde:

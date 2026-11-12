@@ -1,6 +1,8 @@
 import type { BotNote, SessionAnswer } from '../../app/auto/auto-session'
+import { type FrameKind } from '../../app/card-frame'
 import { t, type MessageKey } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { TypeMark } from '../duel/TypeMark'
 import { EmptyState } from '../ui/EmptyState'
 import { ListGroup, ListRow } from '../ui/ListRow'
 import { Modal } from '../ui/Modal'
@@ -53,6 +55,8 @@ interface BotLogProps {
   loading?: boolean
   nameOf: (code: number) => string
   artOf: (code: number) => string | null
+  /** El tipo de la carta (su color de marco), si se sabe: una marca junto a su arte. Del bot sólo se sabe lo que está en tu deck. */
+  frameOf?: (code: number) => FrameKind | null
   /** Tocar un renglón: tu mesa en ese momento (el repaso de tus jugadas). Sin esto, los renglones no se tocan. */
   onPick?: (note: BotNote) => void
 }
@@ -62,7 +66,7 @@ interface BotLogProps {
  * y abajo el texto fijo de sus límites. Con el rival pasivo, y sin decisiones todavía, lo dice (`EmptyState`); rearmando, el esqueleto (`aria-busy`). Tocar un renglón (con `onPick`) lleva
  * tu mesa a ese momento: lo que sigue es del repaso («Volver al duelo»).
  */
-export function BotLog({ turns, deciding, loading = false, nameOf, artOf, onPick }: BotLogProps) {
+export function BotLog({ turns, deciding, loading = false, nameOf, artOf, frameOf, onPick }: BotLogProps) {
   const body = !deciding ? (
     <EmptyState icon="chat" title={t('auto.bot.log.passiveTitle')}>
       {t('auto.bot.log.passive')}
@@ -85,6 +89,7 @@ export function BotLog({ turns, deciding, loading = false, nameOf, artOf, onPick
               {turn.notes.map((note, i) => {
                 const code = note.cards?.[0] ?? 0
                 const art = artOf(code)
+                const frame = frameOf?.(code) ?? null
 
                 return (
                   <ListRow
@@ -92,7 +97,12 @@ export function BotLog({ turns, deciding, loading = false, nameOf, artOf, onPick
                     wrap
                     title={botSentence(note, nameOf)}
                     // Una carta: recta, como en las listas de decks. Su nombre ya va en la frase.
-                    media={<span aria-hidden="true" className="block h-12 w-9 shrink-0 overflow-hidden bg-input">{art ? <CardArt remoteUrl={art} name={nameOf(code)} className="block size-full object-cover" /> : null}</span>}
+                    media={
+                      <span aria-hidden="true" className="relative block h-12 w-9 shrink-0 overflow-hidden bg-input">
+                        {art ? <CardArt remoteUrl={art} name={nameOf(code)} className="block size-full object-cover" /> : null}
+                        {frame ? <TypeMark kind={frame} className="absolute left-0 top-0" /> : null}
+                      </span>
+                    }
                     {...(onPick ? { onClick: () => onPick(note) } : {})}
                   />
                 )

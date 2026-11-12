@@ -13,7 +13,7 @@ import { FLIGHT_MS } from '../app/use-card-flights'
 import { CARDS, fakeSession, pos, SPOTS, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, renderAuto, status } from './support/auto-screen-harness'
 import { render } from './support/practice-mat-harness'
-import { tapMenu } from './support/mat-menu'
+import { openOptions } from './support/mat-menu'
 
 // El rival de handtraps en la pantalla: con qué rival se arma el duelo, su mano boca arriba (o de dorso, «A ciegas») y cambiar las handtraps desde «Más opciones», que arma
 // el duelo de nuevo con la misma semilla.
@@ -52,9 +52,9 @@ function mount() {
 
 const rivalHand = () => screen.getByLabelText(/^Mano del rival:/)
 const more = () => {
-  tapMenu('Opciones del duelo')
+  openOptions()
 
-  return screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+  return screen.getByRole('dialog', { name: 'Opciones' })
 }
 
 afterEach(() =>
@@ -73,15 +73,15 @@ const handtrapSheet = () => {
 }
 
 describe('auto-screen · el rival de handtraps', () => {
-  it('con el simulador apagado, el rival es el pasivo de siempre: su mano de dorso y «Más opciones» dice que no juega', () => {
+  it('con el simulador apagado, el rival es el pasivo de siempre: su mano de dorso y Opciones lo dice en una palabra', () => {
     const { calls } = mount()
 
     expect(calls).toEqual([{ rival: null, seed: expect.any(Number), seat: 0 }])
     expect(rivalHand()).toHaveAccessibleName('Mano del rival: 0')
     const dialog = more()
 
-    expect(dialog).toHaveTextContent('RivalPasivo')
-    expect(dialog).toHaveTextContent('El rival no juega: sólo recibe.')
+    expect(dialog).toHaveTextContent('Cambiar rivalPasivo')
+    expect(dialog).not.toHaveTextContent('El rival no juega')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
   })
 
@@ -127,7 +127,7 @@ describe('auto-screen · el rival de handtraps', () => {
     expect(readHandtrapConfig().enabled).toBe(false)
   })
 
-  it('lo que activa el rival se cuenta después con la carta grande; la cadena va en su aviso, de a un eslabón y del último al primero (lo negado, en su eslabón); un rearme no lo repite', () => {
+  it('lo que activa el rival no sale en grande (en el automático lo muestra la cadena: decisión 9 de la fase); la cadena va en su aviso, de a un eslabón y del último al primero (lo negado, en su eslabón); un rearme no lo repite', () => {
     const { fakes } = mount()
     const fake = fakes[0]!
     const overlay = fake.getSnapshot().overlay
@@ -136,46 +136,44 @@ describe('auto-screen · el rival de handtraps', () => {
     const link = (index: number, ref: { card: CardRef; code: number }): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: ref.card, code: ref.code, mine: ref.card.side === 'mine' } })
     const step = (kind: ChainStep['kind'], index: number): ChainStep => ({ kind, at: 0, index })
     const notice = () => screen.getByTestId('chain-notice')
-    const pill = () => within(notice()).getByRole('status')
+    const say = () => within(notice()).getByRole('status')
+    const pose = () => [...document.querySelectorAll<HTMLElement>('[data-chain-card]')].map((card) => `${card.getAttribute('aria-label')} · ${card.dataset.pose}`)
     const two = [link(0, mine), link(1, theirs)]
 
     // Tu Maxx C (en tu campo) y el rival responde: después de su eslabón, el núcleo te pregunta (la mesa la ve abierta).
     act(() => fake.set({ overlay: { ...overlay, chain: [mine] }, chainSteps: two.slice(0, 1) }))
     act(() => vi.advanceTimersByTime(0))
-    // La pila (la hoja abre entera con cada eslabón), del primero al último; el resumen («Cadena · CL1 · Vos», «En espera») es para el lector de pantalla.
-    const chips = () => within(within(notice()).getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).getAllByRole('button').map((button) => button.getAttribute('aria-label')).reverse()
-
-    expect(pill()).toHaveTextContent('Cadena · CL1 · VosEn espera')
-    expect(pill().firstElementChild).toHaveTextContent(/^Cadena · CL1 · Vos$/)
+    expect(say()).toHaveTextContent(/^Se resuelve del último al primero$/)
     act(() => fake.set({ overlay: { ...overlay, chain: [mine, theirs] }, chainSteps: two }))
-    expect(screen.getByText('Rival responde a Maxx C')).toBeInTheDocument()
+    // Sin `Spotlight` de activar en el automático (ni lo propio ni lo del rival): lo cuenta la cadena.
+    expect(screen.queryByText('Rival responde a Maxx C')).toBeNull()
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    expect(pill()).toHaveTextContent('Cadena · CL2 · RivalEn espera')
-    expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. En espera', `Eslabón 2: ${ASH.name}, del rival. En espera`])
+    // La respuesta del rival se ve en la escena: su carta entra con su «2», del color del rival, unida a la tuya.
+    expect(pose()).toEqual(['Eslabón 1: Maxx C, tuyo. En espera · slot', `Eslabón 2: ${ASH.name}, del rival. En espera · slot`])
+    expect(screen.getByRole('img', { name: `Eslabón 2: ${ASH.name}, del rival. En espera` })).toHaveTextContent(/2$/)
+    expect(document.querySelector('[data-chain-bond="2"]')).toHaveClass('opacity-100')
 
-    // Se resuelve de una en el núcleo; la pantalla lo cuenta de a un eslabón, del último al primero.
+    // Se resuelve de una en el núcleo; la pantalla lo cuenta de a un eslabón, del último al primero: cada uno al centro con lo que le pasó.
     const all = [...two, step('solving', 1), step('disabled', 0), step('solved', 1), step('solving', 0), step('solved', 0), step('end', -1)]
 
     act(() => fake.set({ overlay: { ...overlay, chain: [], negated: [{ ...mine, state: 'disabled' }] }, chainSteps: all }))
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    expect(pill()).toHaveTextContent('Cadena · Resuelve CL2Resolviendo')
-    expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. En espera', `Eslabón 2: ${ASH.name}, del rival. Resolviendo`])
-    // Mientras se resuelve, Ash deja tu Maxx C sin efecto; al llegarle el turno no se cuenta otra vez.
+    // Mientras se resuelve, Ash deja tu Maxx C sin efecto: se tacha en su lugar.
+    expect(pose()).toEqual(['Eslabón 1: Maxx C, tuyo. Sin efecto · slot', `Eslabón 2: ${ASH.name}, del rival. Resuelta · center`])
+    expect(say()).toHaveTextContent(`${ASH.name}: Resuelta`)
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    // Quién se resuelve y qué le pasa (sin `by` no se sabe quién lo negó: sólo su estado; el nombre va en el chip).
-    expect(pill()).toHaveTextContent('Cadena · Resuelve CL2Sin efecto')
-    expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. Sin efecto', `Eslabón 2: ${ASH.name}, del rival. Resolviendo`])
-    // Lo que quedó sin efecto se queda a leer 1,6 s más (TI-172).
+    // Al llegarle el turno no se cuenta otra vez: al centro, tachada, y se queda a leer 1,6 s más.
+    expect(pose()).toEqual(['Eslabón 1: Maxx C, tuyo. Sin efecto · center', `Eslabón 2: ${ASH.name}, del rival. Resuelta · out`])
+    expect(say()).toHaveTextContent(/^Maxx C: Sin efecto$/)
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(pill()).toHaveTextContent('Cadena · Resuelve CL2Sin efecto')
+    expect(pose()[0]).toMatch(/center$/)
     act(() => vi.advanceTimersByTime(CHAIN_READ_MS))
-    expect(pill()).toHaveTextContent('Cadena · 2 · Resuelve CL1Sin efecto')
-    expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. Sin efecto', `Eslabón 2: ${ASH.name}, del rival. Resuelta`])
+    expect(pose()[0]).toMatch(/out$/)
     // Nada de la cadena en la línea.
     expect(document.querySelector('[data-lane]')).toBeNull()
 
-    // Terminó: la cinta se queda un rato con cómo quedó cada eslabón y se va sola (tocar un chip, para leerlo, no la retiene).
-    act(() => vi.advanceTimersByTime(RIVAL_READ_MS + CHAIN_SOLVE_MS * 2 + CHAIN_LINGER_MS * 2))
+    // Terminó: se va sola.
+    act(() => vi.advanceTimersByTime(RIVAL_READ_MS + CHAIN_LINGER_MS * 2))
     expect(screen.queryByText('Rival responde a Maxx C')).toBeNull()
     expect(screen.queryByTestId('chain-notice')).toBeNull()
 
@@ -216,7 +214,7 @@ describe('auto-screen · el rival «Bot»', () => {
     expect(rivalHand()).toHaveAccessibleName('Mano del rival: 2')
     const dialog = more()
 
-    expect(dialog).toHaveTextContent('RivalBot · Sky Striker')
+    expect(dialog).toHaveTextContent('Cambiar rivalBot · Sky Striker')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
     fireEvent.click(within(dialog).getByRole('switch', { name: 'Mostrar la mano del bot' }))
     expect(rivalHand()).toHaveAccessibleName(`Mano del rival: ${ASH.name}, ${VEILER.name}`)

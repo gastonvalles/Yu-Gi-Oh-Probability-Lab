@@ -326,8 +326,8 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(handCard('Droll (target)')).toBeInTheDocument()
     expect(dispatches).toBe(0)
 
-    tapMenu('Opciones del duelo')
-    fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el mismo duelo' }))
+    // Repasando, la fila de abajo es del replay (sin el ⚙): «Nueva mano» del ⋯ arma otro duelo y cierra el repaso.
+    tapMenu('Nueva mano')
     expect(fake.restarts).toBe(1)
     expect(lane()?.textContent ?? '').not.toMatch(/Repasás/)
     expect(replayControls()).toBeNull()

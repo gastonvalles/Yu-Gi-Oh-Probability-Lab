@@ -7,11 +7,13 @@ import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { TurnClock } from '../app/duel-clock'
+import { AutoDock } from '../components/auto/AutoBar'
 import { LifeBadge } from '../components/duel/LifeScore'
 import { TurnDial } from '../components/duel/TurnDial'
 import { Icon } from '../components/ui/Icon'
 import { IconButton } from '../components/ui/IconButton'
 import { CardMenu, PileViewer, PlayTag, SaveComboDialog } from '../components/probability/MatDialogs'
+import { ConfirmDialog } from '../components/probability/ConfirmDialog'
 import { PhaseRow } from '../components/probability/PhaseRow'
 import { RulesPill } from '../components/probability/RulesPill'
 import { BottomSheet } from '../components/ui/BottomSheet'
@@ -195,6 +197,24 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
     expect(roundCorners(screen.getByRole('dialog', { name: 'Exportar' }))).not.toEqual([])
   })
 
+  it('la confirmación del duelo («¿Terminar tu turno?», `anchor="mat"`) es recta, con sus botones y su X; la del resto de la app (sin `anchor`) sigue redondeada', () => {
+    render(
+      <>
+        <ConfirmDialog veil={false} anchor="mat" isOpen title="¿Terminar tu turno?" description="El turno pasa a Beto." confirmLabel="Terminar turno" cancelLabel="Seguir jugando" onCancel={() => {}} onConfirm={() => {}} />
+        <ConfirmDialog isOpen title="Borrar combo" description="No se puede deshacer." confirmLabel="Borrar" onCancel={() => {}} onConfirm={() => {}} />
+      </>,
+    )
+    const duel = screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })
+    const app = screen.getByRole('alertdialog', { name: 'Borrar combo' })
+
+    expect(duel.closest('.mat-square')).not.toBeNull()
+    expect(within(duel).getByRole('button', { name: 'Seguir jugando' })).toBeInTheDocument()
+    expect(within(duel).getByRole('button', { name: 'Terminar turno' })).toBeInTheDocument()
+    expect(roundCorners(duel.closest('.mat-square')!)).toEqual([])
+    expect(app.closest('.mat-square')).toBeNull()
+    expect(roundCorners(app)).not.toEqual([])
+  })
+
   it('la hoja de abajo (`BottomSheet`), el menú de escritorio (`CardMenu`, con su submenú) y la etiqueta de una jugada (`PlayTag`) son rectos', () => {
     render(
       <>
@@ -214,10 +234,23 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
     expect(portals.flatMap(roundCorners)).toEqual([])
   })
 
+  it('Opciones (el ⚙) es una hoja recta, no un cartel redondeado: 0 radios, con sus interruptores, sus segmentados, «Rendirse ›» y la X', () => {
+    render(<AutoDock chain="ask" onChain={() => {}} place="ask" onPlace={() => {}} onRestart={() => {}} onConcede={() => {}} rival={{ kind: 'bot', summary: 'Bot · Sky Striker', onChange: () => {} }} blind onBlind={() => {}} steps={{ open: true, onToggle: () => {} }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Opciones' }))
+    const sheet = screen.getByRole('dialog', { name: 'Opciones' })
+
+    expect(sheet).toHaveClass('mat-square')
+    expect(sheet.querySelectorAll('[role="switch"]').length).toBeGreaterThan(1)
+    expect(within(sheet).getByRole('radiogroup', { name: 'Respuestas' })).toBeInTheDocument()
+    expect(within(sheet).getByRole('button', { name: 'Rendirse' })).toBeInTheDocument()
+    expect(within(sheet).getByRole('button', { name: 'Cerrar' })).toBeInTheDocument()
+    expect(roundCorners(sheet)).toEqual([])
+  })
+
   it('las chapas de vidas, la botonera y el reloj de turnos son rectos: ningún círculo; el reloj no anima `stroke-dashoffset` sino una barra con `scaleX`', () => {
     render(
       <div className="mat-square">
-        <LifeBadge name="Vos" label="Vos" life={8000} mine turn="Tu turno · 1" onClick={() => {}} />
+        <LifeBadge name="Vos" label="Vos" life={8000} mine onClick={() => {}} />
         <LifeBadge name="Rival" label="Rival" life={8000} />
         <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
           <Icon name="list" />

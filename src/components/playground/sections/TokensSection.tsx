@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 
+import { frameKindOf } from '../../../app/card-frame'
+import { CardArt } from '../../CardArt'
 import { SearchField } from '../../ui/SearchField'
 import { Segmented } from '../../ui/Segmented'
 import { Specimen, SpecimenGrid } from '../Specimen'
@@ -15,6 +17,22 @@ const KIND_LABEL: Record<TokenKind, string> = {
   size: 'Medidas',
   other: 'Otras variables',
 }
+
+/** Los doce de la tabla oficial (el Péndulo, con uno de Efecto). */
+const FRAME_SAMPLES: [string, string][] = [
+  ['effect', 'Efecto'],
+  ['normal', 'Normal'],
+  ['effect_pendulum', 'Péndulo'],
+  ['spell', 'Mágica'],
+  ['ritual', 'Ritual'],
+  ['link', 'Enlace'],
+  ['fusion', 'Fusión'],
+  ['trap', 'Trampa'],
+  ['synchro', 'Sincronía'],
+  ['token', 'Ficha'],
+  ['dark_synchro', 'Sincronía Oscura'],
+  ['xyz', 'Xyz'],
+]
 
 const KIND_ORDER: TokenKind[] = ['color', 'radius', 'shadow', 'font-size', 'font-family', 'size', 'animation', 'other']
 
@@ -91,6 +109,21 @@ export function TokensSection() {
         />
       </div>
       {tokens.length === 0 ? <p className="m-0 text-body text-muted">No se pudieron leer las hojas de estilo.</p> : null}
+      <Specimen
+        title="Marcos por tipo de carta"
+        note="frameKindOf(frameType, cardType) y CardArt frame: la carta sin imagen sobre el color de su marco. El texto, blanco o carbón según dé AA; Xyz, Enlace y Sincronía Oscura con aro; el Péndulo partido."
+      >
+        {FRAME_SAMPLES.map(([frameType, label]) => (
+          <span key={frameType} className="grid w-16 justify-items-center gap-1">
+            <span className="block h-22 w-16">
+              <CardArt remoteUrl={null} name={label} frame={frameKindOf(frameType)} className="h-full w-full" />
+            </span>
+            <span className="text-center text-micro text-soft" title={frameType}>
+              {label}
+            </span>
+          </span>
+        ))}
+      </Specimen>
       {grouped.map(([entry, list]) => (
         <Specimen key={entry} title={`${KIND_LABEL[entry]} · ${list.length}`} layout="free">
           <SpecimenGrid min="15rem">

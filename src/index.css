@@ -40,7 +40,9 @@
   --text-stat--line-height: 1.15;
   --text-display: 2.75rem;
   --text-display--line-height: 1.1;
-  /* Aparte (como `text-score`), el daño de un golpe junto a la chapa de vidas (`LifeBadge`): 64 px en el celular y 84 desde 1101. */
+  /* Aparte (como `text-score`): `text-tag`, el ATK/DEF de la placa de la carta del campo (10 px: «3000/2500» mide 52 px y entra entre dos casillas vecinas a 360); `text-hit`, el número enorme de la cadena (64 px; 84 desde 1101). */
+  --text-tag: 0.625rem;
+  --text-tag--line-height: 0.875rem;
   --text-hit: 4rem;
   --text-hit--line-height: 1;
   --text-hit-lg: 5.25rem;
@@ -66,6 +68,19 @@
 
   /* Lavanda clara del diseño: botón y anillo sobre una tarjeta violeta. */
   --color-lavender-light: #ece5ff;
+
+  /* El marco de cada tipo de carta (`bg-frame-effect`…): la fuente es `FRAME_HEX` en `app/card-frame.ts` y un test los mantiene iguales. */
+  --color-frame-effect: #ff8b53;
+  --color-frame-normal: #fde68a;
+  --color-frame-ritual: #9db5cc;
+  --color-frame-fusion: #a086b7;
+  --color-frame-synchro: #cccccc;
+  --color-frame-dark-synchro: #555555;
+  --color-frame-xyz: #000000;
+  --color-frame-link: #00008b;
+  --color-frame-token: #c0c0c0;
+  --color-frame-spell: #1d9e74;
+  --color-frame-trap: #b65480;
 
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;
@@ -103,8 +118,6 @@
   --animate-side-drawer: side-drawer 200ms var(--ease-out) both;
   --animate-nav-scrim: nav-scrim 200ms var(--ease-out) both;
   --animate-pop: pop var(--motion-duration) var(--ease-snap) both;
-  /* Un eslabón nuevo en la cinta de la cadena: entra desde el borde por donde crece la cadena (sólo opacidad y transform). */
-  --animate-chain-link-in: chain-link-in 360ms var(--ease-snap) both;
   /* Lo pasajero (el −N de las vidas, el globo de una señal, el emoji del rival): entra como un pop, se queda y se funde al final. La duración la pone cada uso con `style` (animationDuration). */
   --animate-linger: linger 1600ms var(--ease-out) both;
   /* Una carta que se suma a una zona del deck: sube un poco y se asienta (sin relleno hacia adelante: no deja un contexto de apilado detrás). */
@@ -162,6 +175,8 @@
   /* La estela de un ataque (`ChevronTrail`): el renglón de chevrones avanza un dibujo (30 px, dos chevrones) por vuelta, en bucle; sólo `translate`. */
   --animate-chevrons: chevrons 700ms linear infinite;
   --animate-fx-banner: fx-banner 1100ms var(--ease-out) both;
+  /* El botón de fase al cambiar de fase o de turno (`PhasePulse`): un aro que sale de su caja y se apaga, sin texto. */
+  --animate-phase-pulse: phase-pulse 640ms var(--ease-out) both;
   --animate-fx-banner-text: fx-banner-text 1100ms var(--ease-out) both;
   --animate-fx-stage: fx-stage 950ms var(--ease-out) both;
   /* Una carta que sale del deck o del Extra aparece de dorso y se da vuelta en 3D. */
@@ -174,38 +189,8 @@
   --animate-plate-in: plate-in 700ms var(--ease-snap) both;
   --animate-banner-veil: banner-veil 2.8s var(--ease-out) both;
   --animate-banner-rise: banner-rise 600ms var(--ease-out) 350ms both;
-  /* La cadena animada (prototipo de TI-138): sólo transform y opacity; cada uso, con `motion-reduce:animate-none`. Las curvas, las de docs/movimiento.md. */
-  /* Un eslabón nuevo encaja: entra de 40 px, se pasa 3 y se traba. */
-  --animate-link-in: link-in 300ms var(--ease-snap) both;
-  /* La carta que se encadena se levanta 10 px y vuelve. */
-  --animate-lift: lift 320ms var(--ease-out);
-  /* La carta que resuelve ejecuta su efecto: sube 8 px y vuelve. */
-  --animate-act: act 160ms var(--ease-out);
-  /* El trazo recto que une las cartas de la cadena crece desde su punta (scaleX). */
-  --animate-seg-in: seg-in 280ms var(--ease-out) both;
-  /* El número del trazo aparece cuando el trazo ya creció. */
-  --animate-seg-num-in: fade-in 200ms var(--ease-out) 160ms both;
-  /* Una capa ya dibujada se enciende: la lima del que resuelve, la menta de lo resuelto, el rojo de lo negado. */
-  --animate-glow-in: fade-in 120ms var(--ease-out) both;
-  /* El eslabón que resuelve sube 4 px. */
-  --animate-rise: rise 120ms var(--ease-out) forwards;
-  /* La cadena se tensa: los eslabones de cada lado tiran 7 px hacia el que resuelve. */
-  --animate-pull-l: pull-l 200ms var(--ease-in-out);
-  --animate-pull-r: pull-r 200ms var(--ease-in-out);
-  /* El eslabón resuelto o negado se parte en dos mitades que se separan y se funden. */
-  --animate-split-a: split-a 260ms var(--ease-out) forwards;
-  --animate-split-b: split-b 260ms var(--ease-out) forwards;
-  /* El rótulo de un eslabón que se parte se apaga antes que sus mitades. */
-  --animate-split-fade: fade-out 140ms var(--ease-out) forwards;
-  /* «Sin efecto»: el eslabón se apaga deslizándose 26 px hacia abajo. */
-  --animate-slide-off: slide-off 260ms var(--ease-out) forwards;
-  /* Lo negado: el tajo rojo se dibuja de punta a punta. */
-  --animate-slash-in: slash-in 120ms var(--ease-out) forwards;
-  /* Se apaga: el trazo de un eslabón que se fue y lo que queda de la cadena al final. */
-  --animate-fade-out: fade-out 200ms var(--ease-out) forwards;
-  /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida) y el «−N ▼» entra grande (1,6 → 1), se sostiene, sube 24 px y se funde. */
+  /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida); el «−N» chico de la chapa usa `animate-linger`. */
   --animate-life-bump: life-bump 240ms var(--ease-out);
-  --animate-life-delta: life-delta 1500ms var(--ease-out) both;
   /* La carta que un ataque saca del campo se parte en dos (`AttackFx`): las mitades del eslabón, más lentas. */
   --animate-card-split-a: split-a 520ms var(--ease-out) forwards;
   --animate-card-split-b: split-b 520ms var(--ease-out) forwards;
@@ -267,18 +252,6 @@
     from {
       opacity: 0;
       transform: translateY(6px) scale(0.9);
-    }
-  }
-
-  @keyframes chain-link-in {
-    from {
-      opacity: 0;
-      transform: translateX(1rem) scale(0.85);
-    }
-
-    to {
-      opacity: 1;
-      transform: none;
     }
   }
 
@@ -794,6 +767,18 @@
     }
   }
 
+  @keyframes phase-pulse {
+    from {
+      opacity: 0.95;
+      transform: scale(1);
+    }
+
+    to {
+      opacity: 0;
+      transform: scale(1.3);
+    }
+  }
+
   @keyframes fx-banner-text {
     0%,
     6% {
@@ -1039,103 +1024,6 @@
     }
   }
 
-  @keyframes link-in {
-    from {
-      opacity: 0;
-      transform: translateX(40px);
-    }
-
-    70% {
-      opacity: 1;
-      transform: translateX(-3px);
-    }
-
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-
-  @keyframes lift {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    40% {
-      transform: translateY(-10px);
-    }
-  }
-
-  @keyframes act {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    50% {
-      transform: translateY(-8px);
-    }
-  }
-
-  @keyframes seg-in {
-    from {
-      transform: scaleX(0);
-    }
-
-    to {
-      transform: scaleX(1);
-    }
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes fade-out {
-    from {
-      opacity: 1;
-    }
-
-    to {
-      opacity: 0;
-    }
-  }
-
-  @keyframes rise {
-    to {
-      transform: translateY(-4px);
-    }
-  }
-
-  @keyframes pull-l {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    50% {
-      transform: translateX(7px);
-    }
-  }
-
-  @keyframes pull-r {
-    0%,
-    100% {
-      transform: none;
-    }
-
-    50% {
-      transform: translateX(-7px);
-    }
-  }
-
   @keyframes split-a {
     to {
       opacity: 0;
@@ -1150,23 +1038,6 @@
     }
   }
 
-  @keyframes slide-off {
-    to {
-      opacity: 0;
-      transform: translateY(26px);
-    }
-  }
-
-  @keyframes slash-in {
-    from {
-      transform: rotate(-18deg) scaleX(0);
-    }
-
-    to {
-      transform: rotate(-18deg) scaleX(1);
-    }
-  }
-
   @keyframes life-bump {
     0%,
     100% {
@@ -1175,28 +1046,6 @@
 
     50% {
       transform: scale(1.08);
-    }
-  }
-
-  @keyframes life-delta {
-    0% {
-      opacity: 0;
-      transform: scale(1.6);
-    }
-
-    12% {
-      opacity: 1;
-      transform: none;
-    }
-
-    70% {
-      opacity: 1;
-      transform: none;
-    }
-
-    100% {
-      opacity: 0;
-      transform: translateY(-24px);
     }
   }
 }

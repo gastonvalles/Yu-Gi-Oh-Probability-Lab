@@ -10,7 +10,6 @@ import type { SocketTransport } from '../app/duel-socket'
 import type { DuelConnect } from '../app/use-duel'
 import { DuelScreen } from '../components/duel/DuelScreen'
 import { COMPACT_FIELD_MEDIA_QUERY, phoneDuelLayout } from '../components/probability/compact-field'
-import { THEIR_HAND } from '../components/duel/their-hand'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
 import { createDuelHarness, asDesktop, asSocket, asSpectatorSocket, closeMore, handOf, hasSave, leaveDuel, mainIds, monsters, moreButton, openGames, phaseChip, render, rulesDialog, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
 
@@ -1026,7 +1025,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
   })
 
-  it('en un celular en vertical (menos de 640 px) el campo de siete columnas tiene geometría fija (sale del tamaño de la pantalla, con la línea de alto fijo debajo) y la línea de jugadas flota sobre la mano del rival (no ocupa lugar): al terminar el duelo la tira del resultado ocupa su lugar y tampoco suma alto', () => {
+  it('en un celular en vertical (menos de 640 px) el campo de siete columnas tiene geometría fija (sale del tamaño de la pantalla, sin línea debajo: una marca de 0 px) y la del rival va en la barra: al terminar el duelo la tira del resultado flota debajo de la barra y tampoco suma alto', () => {
     window.matchMedia = ((query: string) => ({ matches: query === COMPACT_FIELD_MEDIA_QUERY, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {} })) as unknown as typeof window.matchMedia
     const screenSize = { width: window.innerWidth, height: window.innerHeight }
     Object.assign(window, { innerWidth: 390, innerHeight: 844 })
@@ -1036,24 +1035,27 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    // El campo: la casilla sale del ancho (siete columnas, orillas de 4 px y huecos de 3) y la caja, de `phoneDuelLayout` (3D; la barra es sólo la fila de los íconos y abajo va tu fila de 60 px).
+    // El campo: la casilla sale del ancho (siete columnas, orillas de 4 px y huecos de 3) y la caja, de `phoneDuelLayout` (3D; la barra es la fila de los íconos y abajo va tu fila de 60 px).
     const field = within(host.container).getByLabelText('Campo')
-    const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 58, rival: THEIR_HAND.mobile.room + 14, bottom: 68 })
+    const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 58, bottom: 68 })
     expect(parseFloat(field.style.width)).toBeCloseTo(layout.fieldWidth, 2)
     expect(parseFloat(field.style.height)).toBeCloseTo(layout.fieldHeight, 2)
+    expect(field.style.gridTemplateRows).toBe(`repeat(5, ${layout.row}px)`)
     const line = host.container.querySelector<HTMLElement>('[data-duel-line]')!
-    expect(line).toHaveStyle({ height: `${layout.lineHeight}px` })
+    expect(line).toHaveClass('h-0')
+    expect(line).toHaveStyle({ marginBottom: `${layout.gap}px` })
 
-    // Las vidas salen de la barra: la tuya, en tu fila de abajo con el turno y el chat al lado; la del rival, junto a su mano. La línea de jugadas va en la línea, no flota sobre la barra.
+    // Las vidas salen del marcador: la tuya, en tu fila de abajo con el turno y el chat al lado; la del rival, en la fila de los íconos de la barra. La última jugada no está en la mesa.
     expect(within(host.container).queryByTestId('duel-score')).toBeNull()
     expect(host.container.querySelectorAll('[class~="max-sm:-mb-11"]')).toHaveLength(0)
     const seat = host.container.querySelector<HTMLElement>('[data-mat-seat]')!
     expect(within(seat).getByRole('button', { name: /^Puntos de vida de Ana/ })).toHaveAttribute('data-life-badge')
     expect(within(seat).getByRole('button', { name: /^Chat/ })).toBeInTheDocument()
-    expect(host.container.querySelector('[data-corner="theirs"] [data-life-badge]')).not.toBeNull()
-    expect(within(line).getByTestId('duel-line')).toBeInTheDocument()
+    expect(host.container.querySelector('[data-bar-seat] [data-life-badge][data-lp="theirs"]')).not.toBeNull()
+    expect(host.container.querySelector('[data-corner="theirs"]')).toBeNull()
+    expect(within(line).queryByTestId('duel-line')).toBeNull()
 
-    // Termina el duelo y se cierra la tarjeta: la tira del resultado flota debajo de la barra (no la agranda) y la línea queda del mismo alto.
+    // Termina el duelo y se cierra la tarjeta: la tira del resultado flota debajo de la barra (no la agranda) y el campo queda igual.
     click(guest, 'Rendirme')
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
     flush()
@@ -1061,7 +1063,7 @@ describe('la pantalla del duelo', () => {
 
     const strip = within(host.container).getByRole('button', { name: 'Revancha' }).closest('[class~="top-full"]')
     expect(strip).toHaveClass('absolute', 'z-20')
-    expect(line).toHaveStyle({ height: `${layout.lineHeight}px` })
+    expect(parseFloat(field.style.height)).toBeCloseTo(layout.fieldHeight, 2)
   })
 
   it('las reacciones (🤔 👍) van en la hoja del chat; las tuyas salen como un globo debajo de tus vidas, en el marcador, y las del rival, en el celular, como un mensaje más en la línea del registro (no en toda la pantalla)', () => {
@@ -1073,12 +1075,12 @@ describe('la pantalla del duelo', () => {
     const rivalEmoji = (view: RenderResult) => within(view.container).queryByTestId('rival-emoji')
 
     expect(rivalEmoji(host)).toBeNull()
-    // Sin botonera abajo: las reacciones no están a la vista, van en la hoja del chat (dos toques). El + va al medio del campo (entre las dos Zonas Extra) y, al lado, el botón de la fase.
+    // Sin botonera abajo: las reacciones no están a la vista, van en la hoja del chat (dos toques). El botón de la fase va al medio del campo (entre las dos Zonas Extra) y, al lado, el +.
     expect(within(guest.container).queryByRole('toolbar')).not.toBeInTheDocument()
     expect(within(guest.container).queryByRole('group', { name: 'Mensajes rápidos' })).not.toBeInTheDocument()
     expect(within(guest.container).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
-    expect(within(guest.container).getByRole('button', { name: 'Ficha' }).parentElement).toHaveStyle({ gridArea: 'p2' })
-    expect(phaseChip(guest).parentElement).toHaveStyle({ gridArea: 'p3' })
+    expect(within(guest.container).getByRole('button', { name: 'Ficha' }).parentElement).toHaveStyle({ gridArea: 'p3' })
+    expect(phaseChip(guest).parentElement).toHaveStyle({ gridArea: 'p2' })
     const sendFromChat = (view: RenderResult, name: string) => {
       fireEvent.click(within(view.container).getByRole('button', { name: /^Chat/ }))
       const quick = within(within(screen.getByRole('dialog')).getByRole('group', { name: 'Mensajes rápidos' }))

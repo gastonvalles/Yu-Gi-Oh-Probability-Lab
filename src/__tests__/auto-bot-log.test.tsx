@@ -8,7 +8,7 @@ import { writeHandtrapConfig } from '../app/handtraps'
 import { BotLog, botTurns } from '../components/auto/BotLog'
 import { applyLocale } from '../i18n'
 import { core, lane, renderAuto } from './support/auto-screen-harness'
-import { tapMenu } from './support/mat-menu'
+import { openOptions } from './support/mat-menu'
 
 // «Qué hizo el bot y por qué»: la lista por turno (con sus estados), y la hoja desde el final y desde «Opciones del duelo».
 
@@ -99,7 +99,7 @@ describe('Qué hizo el bot y por qué', () => {
         names: { [ASH]: NAMES[ASH]!, [TERRA]: NAMES[TERRA]! },
       }),
     )
-    tapMenu('Opciones del duelo')
+    openOptions()
     fireEvent.click(screen.getByRole('button', { name: 'Qué hizo el bot' }))
     const sheet = screen.getByRole('dialog', { name: 'Qué hizo el bot y por qué' })
 

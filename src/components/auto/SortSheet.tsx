@@ -4,7 +4,7 @@ import type { AskWhyView } from '../../app/auto/ask-why'
 import { t } from '../../i18n'
 import { AskWhy } from '../duel/AskWhy'
 import { Button } from '../ui/Button'
-import { AutoPanel } from './AutoPanel'
+import { AutoPanel, PANEL_MAIN } from './AutoPanel'
 import { PickCount, PickGrid, TRAY, usePicked, type PickCard } from './CardPicker'
 
 interface SortSheetProps {
@@ -47,21 +47,19 @@ export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hi
           <p className="m-0 text-micro text-muted">{hint}</p>
         </>
       }
+      aside={<PickCount chosen={order.length} max={cards.length} />}
       actions={
         <>
-          <PickCount chosen={order.length} max={cards.length} />
-          <div className="ml-auto flex justify-end gap-2">
-            <Button variant="tertiary" size="sm" onClick={() => onSort(null)}>
-              {t('auto.sort.asIs')}
-            </Button>
-            <Button variant="primary" size="sm" disabled={order.length < cards.length} onClick={() => onSort(order)}>
-              {done}
-            </Button>
-          </div>
+          <Button variant="tertiary" onClick={() => onSort(null)}>
+            {t('auto.sort.asIs')}
+          </Button>
+          <Button variant="primary" className={PANEL_MAIN} disabled={order.length < cards.length} onClick={() => onSort(order)}>
+            {done}
+          </Button>
         </>
       }
     >
-      <PickGrid label={title} cards={cards} chosen={order} multi onToggle={toggle} className={TRAY} />
+      <PickGrid label={title} cards={cards} chosen={order} multi onToggle={toggle} max={cards.length} className={TRAY} />
     </AutoPanel>
   )
 }

@@ -38,7 +38,7 @@ function rearm(fake: FakeSession, actions: MatAction[], ask: CoreAsk | null) {
 const phaseIs = (name: string) => expect(phaseButton()).toHaveAccessibleName(`Fases: ${name}`)
 const goTo = (name: string) => {
   fireEvent.click(phaseButton())
-  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
+  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a la ${name}` }))
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
 
@@ -50,9 +50,8 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     phaseIs('Main Phase 1')
     expect(phaseButton()).toBeEnabled()
     fireEvent.click(phaseButton())
-    // Ni vuelta atrás ni una Battle Phase que el núcleo no da (el turno 1 no ataca); la End Phase, sí.
-    for (const name of ['Draw Phase', 'Standby Phase', 'Battle Phase']) expect(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('menuitem', { name: 'Ir a End Phase' })).not.toHaveAttribute('aria-disabled')
+    // Ni vuelta atrás ni una Battle Phase que el núcleo no da (el turno 1 no ataca): sólo terminar el turno (M-04, sólo adónde se puede ir).
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Terminar el turno'])
     fireEvent.keyDown(window, { key: 'Escape' })
     tap(handCard('Ash Blossom'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
@@ -126,7 +125,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     }
     expect(seen).toEqual(['End Phase', 'Draw Phase', 'Draw Phase', 'Main Phase 1'].map((name) => `Fases: ${name}`))
     fireEvent.click(phaseButton())
-    expect(screen.getByRole('menuitem', { name: /^Battle Phase/ })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('menuitem', { name: /Battle Phase/ })).toBeNull()
   })
 
   it('la ventana de tu DP con una Rápida en la mano: brilla sin cartel, se activa con su menú y «Standby Phase» pasa; la de la SP, igual', () => {
@@ -204,9 +203,10 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(screen.queryAllByText(/Battle Phase|Main Phase 1/)).toHaveLength(0)
   })
 
-  // El de tu mesa («Turno de Rival») y los del rival van cada uno por su lado.
-  const banners = () => [...document.querySelectorAll('[data-fx="banner"]')].map((element) => element.textContent ?? '')
-  const rivalBanner = () => banners().find((text) => /^(Rival|Tu turno)/.test(text)) ?? null
+  // En un duelo no hay cartel de la fase ni del turno: la fase vive en su botón, que pulsa, y el cartel queda sólo para el lector de pantalla (un `role="status"` oculto a la vista, junto al botón).
+  const said = () => phaseButton().parentElement!.querySelector('[role="status"]')?.textContent ?? ''
+  const pulses = () => document.querySelectorAll('[data-fx="phase-pulse"]').length
+  const rivalBanner = () => (/^(Rival|Tu turno)/.test(said()) ? said() : null)
   /**
    * Terminás tu turno y, en la misma tanda, el rival juega el suyo entero y te lo devuelve, como lo cuenta el núcleo de verdad (el rival pasivo y el de handtraps, yendo primero o
    * segundo: `auto-fases-rival.slow.test.ts`): su robo, su SP, su M1, su End Phase (a veces con su descarte) y el pase; después, tu robo del turno nuevo.
@@ -219,7 +219,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     core(() => fake.ask(IDLE))
   }
 
-  it('el turno del rival, que el núcleo juega de una, se ve fase por fase con su cartel después de tu End Phase y «Turno de Rival», con su End Phase antes de «Tu turno»; tu turno espera', () => {
+  it('el turno del rival, que el núcleo juega de una, se ve fase por fase (el botón pulsa y el lector oye cada una) después de tu End Phase y «Turno de Rival», con su End Phase antes de «Tu turno»; tu turno espera', () => {
     const fake = renderAuto()
     const cards = () => within(hand()).getAllByRole('listitem').length
     const before = cards()
@@ -229,7 +229,9 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(rivalBanner()).toBeNull()
     step()
     step()
-    expect(banners()).toContain('Turno de Rival')
+    expect(said()).toBe('Turno de Rival')
+    expect(pulses()).toBe(1)
+    expect(document.querySelector('[data-fx="banner"]')).toBeNull()
     // Su robo va con «Turno de Rival», sin cartel propio.
     act(() => vi.advanceTimersByTime(0))
     const seen: string[] = []
@@ -242,7 +244,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
         expect(phaseButton()).toBeDisabled()
       }
     }
-    expect(seen).toEqual(['RivalStandby Phase', 'RivalMain Phase 1', 'RivalEnd Phase', 'Tu turno'])
+    expect(seen).toEqual(['Rival · Standby Phase', 'Rival · Main Phase 1', 'Rival · End Phase', 'Tu turno'])
     step()
     expect(cards()).toBe(before + 1)
     act(() => vi.advanceTimersByTime(1100))
@@ -257,14 +259,14 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     step()
     act(() => vi.advanceTimersByTime(0))
     act(() => vi.advanceTimersByTime(1100))
-    expect(rivalBanner()).toBe('RivalStandby Phase')
+    expect(rivalBanner()).toBe('Rival · Standby Phase')
     fireEvent.pointerDown(hand())
     const seen = new Set<string>()
     for (let i = 0; i < 8; i += 1) {
       act(() => vi.advanceTimersByTime(STEP_MS))
       seen.add(rivalBanner() ?? '')
     }
-    expect(seen).toEqual(new Set(['RivalStandby Phase', '']))
+    expect(seen).toEqual(new Set(['Rival · Standby Phase', '']))
     expect(phaseButton()).toBeEnabled()
   })
 })

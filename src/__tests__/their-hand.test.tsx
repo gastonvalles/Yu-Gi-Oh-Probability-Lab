@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { TheirHand } from '../components/duel/DuelTable'
-import { THEIR_HAND } from '../components/duel/their-hand'
+import { THEIR_HAND, TheirHandSize } from '../components/duel/their-hand'
 import { computeHandLayout } from '../app/practice-hand-layout'
 import { RivalHandStrip } from '../components/probability/RivalHandStrip'
 import { readFileSync } from 'node:fs'
@@ -34,18 +34,18 @@ describe('la mano del rival', () => {
     expect(screen.getByRole('img')).toHaveAccessibleName(/5/)
     // Cerca del tamaño de la nuestra (que mide hasta 100 px), pero más chica: 68 px de ancho, con su alto de carta.
     expect(cards[0]).toHaveStyle({ width: `${THEIR_HAND.desktop.cardWidth}px` })
-    // El abanico es ascendente, como el nuestro (Gastón, 2026-10-19): el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
+    // El abanico es el espejo del nuestro (Gastón, 2026-11-12: «un espejo exacto de nuestra mano»): el centro es lo más cercano al campo y las puntas suben, abiertas hacia el rival.
     const lift = (card: HTMLElement) => -Number.parseFloat(/translate\([^,]+,\s*(-?[\d.]+)px\)/.exec(card.style.transform)?.[1] ?? '0')
     const angle = (card: HTMLElement) => Number.parseFloat(/rotate\((-?[\d.]+)deg\)/.exec(card.style.transform)?.[1] ?? '0')
 
-    expect(lift(cards[0]!)).toBeCloseTo(0)
-    expect(lift(cards[4]!)).toBeCloseTo(0)
-    expect(lift(cards[2]!)).toBeGreaterThan(lift(cards[0]!))
-    expect(lift(cards[1]!)).toBeGreaterThan(lift(cards[0]!))
+    expect(lift(cards[2]!)).toBeCloseTo(0)
+    expect(lift(cards[0]!)).toBeGreaterThan(lift(cards[1]!))
+    expect(lift(cards[1]!)).toBeGreaterThan(lift(cards[2]!))
+    expect(lift(cards[0]!)).toBeCloseTo(lift(cards[4]!))
     expect(lift(cards[1]!)).toBeCloseTo(lift(cards[3]!))
-    // Las puntas se abren hacia afuera: la izquierda gira a la izquierda y la derecha a la derecha, y el centro queda derecho.
-    expect(angle(cards[0]!)).toBeLessThan(0)
-    expect(angle(cards[4]!)).toBeGreaterThan(0)
+    // Espejado: la de la izquierda gira como la de la derecha de tu mano (y al revés), y el centro queda derecho.
+    expect(angle(cards[0]!)).toBeGreaterThan(0)
+    expect(angle(cards[4]!)).toBeLessThan(0)
     expect(angle(cards[2]!)).toBeCloseTo(0)
   })
 
@@ -58,6 +58,18 @@ describe('la mano del rival', () => {
     expect(cards).toHaveLength(12)
     expect(cards[0]).toHaveStyle({ width: `${THEIR_HAND.mobile.cardWidth}px` })
     expect(THEIR_HAND.mobile.cardWidth).toBeLessThan(THEIR_HAND.desktop.cardWidth)
+  })
+
+  it('en el duelo del celular la mesa le da su tamaño (`TheirHandSize`): tu mano a 0,8, con la caja del ancho de su abanico', () => {
+    viewport(false)
+    const { container } = render(
+      <TheirHandSize value={{ cardWidth: 72, maxWidth: 305.6, room: 113 }}>
+        <TheirHand count={5} />
+      </TheirHandSize>,
+    )
+
+    expect(cardsOf()[0]).toHaveStyle({ width: `${computeHandLayout(305.6, 5, 72, 5).cardWidth}px` })
+    expect(container.firstElementChild).toHaveStyle({ width: '305.6px', height: '113px' })
   })
 
   it('sin cartas no dibuja nada pero conserva su lugar (la mesa no se mueve cuando roba)', () => {

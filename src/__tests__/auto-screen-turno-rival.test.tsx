@@ -26,7 +26,8 @@ const TICK = 50
  * del campo del rival, tu Kuriboh, tus vidas, el marcador, el aviso del ataque y su mano boca arriba.
  */
 function frame() {
-  const banners = [...document.querySelectorAll('[data-fx="banner"]')].filter(visible).map((element) => element.textContent ?? '')
+  // Sin cartel: lo que el lector de pantalla oye de la fase (un `role="status"` oculto junto al botón, que es el que pulsa); se apaga solo cuando termina el aviso.
+  const banners = [...document.querySelectorAll('[aria-haspopup="menu"][aria-label^="Fases:"]')].map((button) => button.parentElement?.querySelector('[role="status"]')?.textContent ?? '').filter(Boolean)
   const rivalHand = screen.queryByLabelText(/^Mano del rival/)
   const rival = [...document.querySelectorAll<HTMLElement>('[data-rival-card-id]')].filter((element) => !rivalHand?.contains(element)).map((element) => element.dataset.rivalCardId!)
 
@@ -42,18 +43,7 @@ function frame() {
 }
 type Frame = ReturnType<typeof frame>
 
-/** El reloj de la prueba y cuándo apareció cada cartel: su animación dura `BANNER_MS` y termina transparente (el elemento queda hasta la jugada siguiente de tu mesa). */
-let clock = 0
-const born = new WeakMap<Element, number>()
-const BANNER_MS = 1100
-const visible = (element: Element) => {
-  if (!born.has(element)) born.set(element, clock)
-  return clock - born.get(element)! < BANNER_MS
-}
-const advance = (ms: number) => {
-  act(() => vi.advanceTimersByTime(ms))
-  clock += ms
-}
+const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms))
 type Line = (Frame & { ms: number })[]
 
 /** La pantalla con la grabación, en tu última pregunta del turno 1. */
@@ -108,16 +98,16 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     botConfig()
     const line = play(BOT, 'bot')
     const rivalTurn = when(line, (now) => now.banner === 'Turno de Rival')
-    const standby = when(line, (now) => now.banner === 'RivalStandby Phase')
-    const main1 = when(line, (now) => now.banner === 'RivalMain Phase 1')
+    const standby = when(line, (now) => now.banner === 'Rival · Standby Phase')
+    const main1 = when(line, (now) => now.banner === 'Rival · Main Phase 1')
     const raigeki = when(line, (now) => now.rival.includes(RAIGEKI))
     const swept = when(line, (now) => now.kuriboh === '')
     const resolved = when(line, (now) => now.rival === '' && now.kuriboh === '' && now.ms > raigeki)
     const inpachi = when(line, (now) => now.rival.includes(INPACHI))
-    const battle = when(line, (now) => now.banner === 'RivalBattle Phase')
+    const battle = when(line, (now) => now.banner === 'Rival · Battle Phase')
     const attack = when(line, (now) => now.attack === 'ataque')
     const hit = when(line, (now) => now.life === '6150')
-    const end = when(line, (now) => now.banner === 'RivalEnd Phase')
+    const end = when(line, (now) => now.banner === 'Rival · End Phase')
     const back = when(line, (now) => now.banner === 'Tu turno')
 
     expect(increasing([rivalTurn, standby, main1, raigeki, swept, resolved, inpachi, battle, attack, end, back])).toBe(true)
@@ -147,7 +137,7 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     const hit = when(line, (now) => now.life === '6150')
 
     expect(hit - attack).toBeGreaterThanOrEqual(250)
-    expect(hit).toBeLessThan(when(line, (now) => now.banner === 'RivalEnd Phase'))
+    expect(hit).toBeLessThan(when(line, (now) => now.banner === 'Rival · End Phase'))
   })
 
   it('el rival pasivo: «Turno de Rival», Standby, Main Phase 1, End Phase y «Tu turno», con el marcador del rival hasta su cartel; tu robo, después', () => {
@@ -157,7 +147,7 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     const back = when(line, (now) => now.banner === 'Tu turno')
 
     // Después de «Tu turno», tu SP y tu M1 pasan solas, cada una con su cartel (no encima de «Tu turno»).
-    expect(line.map((item) => item.banner).filter((banner, i, all) => banner !== '' && banner !== all[i - 1])).toEqual(['End Phase', 'Turno de Rival', 'RivalStandby Phase', 'RivalMain Phase 1', 'RivalEnd Phase', 'Tu turno', 'Standby Phase', 'Main Phase 1'])
+    expect(line.map((item) => item.banner).filter((banner, i, all) => banner !== '' && banner !== all[i - 1])).toEqual(['End Phase', 'Turno de Rival', 'Rival · Standby Phase', 'Rival · Main Phase 1', 'Rival · End Phase', 'Tu turno', 'Standby Phase', 'Main Phase 1'])
     expect(new Set(line.filter((item) => item.ms >= rivalTurn && item.ms < back).map((item) => item.turn))).toEqual(new Set(['Turno de Rival · 2']))
     expect(cards(back).turn).toBe('Tu turno · 3')
     expect(back - rivalTurn).toBeLessThanOrEqual(5_000)
@@ -172,7 +162,7 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     })
     // Con los temporizadores de mentira cada paso de la mesa es un `act`: se avanza de a poco, como en el navegador.
     for (let ms = 0; ms < 3_000; ms += TICK) advance(TICK)
-    expect(frame()).toMatchObject({ banner: 'RivalMain Phase 1', turn: 'Turno de Rival · 2', life: '8000' })
+    expect(frame()).toMatchObject({ banner: 'Rival · Main Phase 1', turn: 'Turno de Rival · 2', life: '8000' })
     fireEvent.pointerDown(hand(), { button: 0, pointerId: 1 })
     const seen = new Set<string>()
 
@@ -180,7 +170,7 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
       advance(TICK)
       seen.add(frame().banner)
     }
-    expect([...seen].filter((banner) => banner.startsWith('Rival') && banner !== 'RivalMain Phase 1')).toEqual([])
+    expect([...seen].filter((banner) => banner.startsWith('Rival') && banner !== 'Rival · Main Phase 1')).toEqual([])
     expect(frame()).toMatchObject({ rival: INPACHI, kuriboh: '', life: '6150', turn: 'Tu turno · 3' })
   })
 })

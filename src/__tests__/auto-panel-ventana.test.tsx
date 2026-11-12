@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { setMatMenus } from '../app/mat-menus'
 import { clampSize, readSize, sizeKey } from '../app/use-draggable-offset'
 import { AskPrompt } from '../components/auto/AskPrompt'
 import { autoWindowKey } from '../components/auto/AutoPanel'
@@ -46,6 +47,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  setMatMenus('docked')
   window.matchMedia = original.matchMedia
   Element.prototype.getBoundingClientRect = original.rect
   Object.defineProperty(HTMLElement.prototype, 'offsetWidth', original.width)
@@ -63,30 +65,32 @@ const corner = () => {
   return { left, top }
 }
 const mouse = { pointerId: 1, pointerType: 'mouse', isPrimary: true }
-function pull(element: Element, dx: number, dy: number) {
-  fireEvent.pointerDown(element, { ...mouse, button: 0, buttons: 1, clientX: 500, clientY: 500 })
-  fireEvent.pointerMove(element, { ...mouse, buttons: 1, clientX: 500 + dx, clientY: 500 + dy })
-  fireEvent.pointerUp(element, { ...mouse, button: 0, buttons: 0, clientX: 500 + dx, clientY: 500 + dy })
+const finger = { pointerId: 2, pointerType: 'touch', isPrimary: true }
+function pull(element: Element, dx: number, dy: number, pointer = mouse) {
+  fireEvent.pointerDown(element, { ...pointer, button: 0, buttons: 1, clientX: 500, clientY: 500 })
+  fireEvent.pointerMove(element, { ...pointer, buttons: 1, clientX: 500 + dx, clientY: 500 + dy })
+  fireEvent.pointerUp(element, { ...pointer, button: 0, buttons: 0, clientX: 500 + dx, clientY: 500 + dy })
 }
 /** Las clases de radio que `mat-square` no apaga (no salen de un token). */
 const fixedRadii = (root: Element) => [root, ...root.querySelectorAll('*')].flatMap((element) => [...element.classList].filter((name) => /(^|:)rounded-(full|\[)/.test(name)))
 
 describe('la ventana del escritorio', () => {
-  it('sale en el lugar de siempre (centrada, 620 px, apoyada abajo), con la barra de título violeta, esquinas rectas y 92 % sin desenfoque; es un diálogo nombrado por la pregunta', () => {
+  it('sale en el lugar de siempre (centrada, apaisada de 30 rem, apoyada abajo), con la barra de título violeta sin fase, turno ni flecha de bajar, esquinas rectas y 92 % sin desenfoque; es un diálogo nombrado por la pregunta', () => {
     ask()
     const dialog = screen.getByRole('dialog', { name: '¿Activás el efecto?' })
 
     expect(dialog).toBe(win())
     expect(dialog).toHaveAttribute('data-auto-panel', 'floating')
-    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(38.75rem,var(--mat-w,100vw))]', 'mat-square', 'bg-card-background')
+    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(30rem,var(--mat-w,100vw))]', 'mat-square', 'bg-card-background')
     expect(dialog.className).not.toMatch(/backdrop-|rounded-/)
     expect(fixedRadii(dialog)).toEqual([])
     expect(drag(dialog)).toEqual({ x: 0, y: 0 })
     expect(dialog.style.width).toBe('')
-    // La barra: violeta con texto blanco, el asa (se enfoca), minimizar recto de 44 px.
+    // La barra: violeta con texto blanco, el asa (se enfoca); sin fase, turno ni flecha de bajar (M-08); sólo «Minimizar», un botón de 44 px para el mouse.
     expect(bar()).toHaveClass('bg-primary', 'text-white', 'cursor-grab', 'focus-visible:shadow-focus')
     expect(bar()).toHaveAttribute('tabindex', '0')
-    expect(within(bar()).getByRole('button', { name: 'Minimizar' })).toHaveClass('size-11', 'rounded-control')
+    expect(within(bar()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Minimizar'])
+    expect(dialog.querySelector('[data-panel-fold], [data-prompt-turn]')).toBeNull()
     // Tab recorre la barra, sus botones y los de abajo; el foco arranca en la principal.
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
     expect(dialog.querySelectorAll('[data-window-corner]')).toHaveLength(1)
@@ -195,5 +199,54 @@ describe('en el celular (menos de 1101 px)', () => {
     expect(win().querySelector('[data-window-bar], [data-window-corner]')).toBeNull()
     expect(win().style.width).toBe('')
     expect(drag(win())).toEqual({ x: 0, y: 0 })
+  })
+})
+
+describe('«Menús flotantes» (Opciones) en el celular', () => {
+  const phoneKey = (storage: string) => `${storage}:phone`
+
+  it('vuelve ventana la pregunta abierta, con barra y esquina; con el dedo la barra la lleva y la esquina la estira; el lugar y el tamaño se guardan aparte del de escritorio', () => {
+    desktop = false
+    localStorage.setItem(autoWindowKey('ask'), '{"x":-40,"y":-200}')
+    ask()
+    expect(win()).toHaveAttribute('data-auto-panel', 'docked')
+    act(() => setMatMenus('floating'))
+
+    expect(win()).toHaveAttribute('data-auto-panel', 'floating')
+    expect(bar()).toBeInTheDocument()
+    expect(drag(win())).toEqual({ x: 0, y: 0 })
+    pull(bar(), -100, -300, finger)
+    expect(drag(win())).toEqual({ x: -100, y: -300 })
+    const before = corner()
+    pull(win().querySelector('[data-window-corner]')!, 40, 30, finger)
+    expect(sizeOf(win())).toEqual({ width: 660, height: 230 })
+    expect(corner()).toEqual(before)
+    // Estirada, la esquina de arriba a la izquierda quedó quieta: el corrimiento que se guardó es el de ahora.
+    expect(saved(phoneKey(autoWindowKey('ask')))).toEqual(drag(win()))
+    expect(saved(sizeKey(phoneKey(autoWindowKey('ask'))))).toEqual({ width: 660, height: 230 })
+    // El de escritorio no se tocó.
+    expect(saved(autoWindowKey('ask'))).toEqual({ x: -40, y: -200 })
+    // Apagado, vuelve a la hoja de abajo.
+    act(() => setMatMenus('docked'))
+    expect(win()).toHaveAttribute('data-auto-panel', 'docked')
+  })
+
+  it('en escritorio el dedo también la lleva (una pantalla táctil), como el mouse y el lápiz', () => {
+    ask()
+    pull(bar(), -100, -300, finger)
+    expect(drag(win())).toEqual({ x: -100, y: -300 })
+    expect(saved(autoWindowKey('ask'))).toEqual({ x: -100, y: -300 })
+  })
+})
+
+describe('minimizar con el mouse', () => {
+  it('la barra de la ventana lleva «Minimizar» (44 px): queda la tira con la pregunta y sus botones; tocarla la vuelve a subir', () => {
+    ask()
+    expect(within(bar()).getByRole('button', { name: 'Minimizar' })).toHaveClass('size-11')
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Minimizar' }))
+    expect(win()).toHaveAttribute('data-minimized')
+    expect(within(bar()).queryByRole('button', { name: 'Minimizar' })).toBeNull()
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Mostrar la pregunta' }))
+    expect(win()).not.toHaveAttribute('data-minimized')
   })
 })

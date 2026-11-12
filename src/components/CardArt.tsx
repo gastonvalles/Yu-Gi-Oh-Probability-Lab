@@ -1,5 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
+import { frameClass, type CardFrame } from '../app/card-frame'
 import { cardImageSrc } from '../app/card-image-source'
 import { buildInitials } from '../app/utils'
 import type { ApiCardReference } from '../types'
@@ -23,6 +24,8 @@ interface CardArtProps {
    * y tiene que aparecer ahí de una: la que se suelta en otra fila del creador de tier lists.
    */
   instant?: boolean
+  /** Sin imagen, las iniciales van sobre el color del marco de su tipo (`frameKindOf(card.frameType, card.cardType)`); sin esto, sobre el gris de siempre. */
+  frame?: CardFrame
 }
 
 /**
@@ -39,6 +42,7 @@ export const CardArt = memo(function CardArt({
   limitBadgeSize = 'md',
   tilt = false,
   instant = false,
+  frame: cardFrame,
 }: CardArtProps) {
   const frame = ['relative block h-full w-full', tilt ? TILT_IN_PLACE : ''].join(' ').trim()
   const frameProps = tilt ? tiltInPlaceHandlers : {}
@@ -116,13 +120,16 @@ export const CardArt = memo(function CardArt({
     <div className={frame} {...frameProps}>
       <div
         data-card-art
+        data-card-frame={cardFrame?.kind}
         className={[
-          'rounded-none! grid place-items-center bg-input font-bold text-warning',
+          'rounded-none! grid place-items-center font-bold',
+          cardFrame ? frameClass(cardFrame) : 'bg-input text-warning',
           className,
         ].join(' ')}
         aria-hidden="true"
       >
-        <span>{buildInitials(name)}</span>
+        {/* En el Péndulo, el texto va en la mitad de arriba: su tono se midió contra ella. */}
+        <span className={cardFrame?.pendulum ? 'grid h-1/2 w-full self-start place-items-center' : undefined}>{buildInitials(name)}</span>
       </div>
       <CardLimitBadge card={limitCard} size={limitBadgeSize} />
       {tilt ? <CardGlare /> : null}

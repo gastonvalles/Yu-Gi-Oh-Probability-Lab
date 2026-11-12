@@ -17,8 +17,9 @@ import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { autoRival, BOT_DECK_MENU, dealRival, isBotModified, poolCount, readHandtrapConfig, rivalCardOf, rivalKindOf, withRival, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
 import { botDeckList } from '../../app/bot-deck-lists'
 import { parseDerivedCardId } from '../../app/calculator-state'
+import { frameKindOf, type FrameKind } from '../../app/card-frame'
 import { LifeHold } from '../../app/life-effects'
-import { lifeText, MOMENT_MS, momentText } from '../../app/duel-moment'
+import { MOMENT_MS, momentText } from '../../app/duel-moment'
 import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
 import type { ReplayView } from '../../app/duel-replay'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -29,6 +30,7 @@ import { LifeBadge } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { RivalSheet } from '../duel/RivalRow'
+import { PileGroupContext } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { cardIdOfDrawId } from '../probability/practice'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
@@ -278,6 +280,20 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   )
   const codeName = useCallback((code: number) => nameOf(null, code), [nameOf])
   const codeArt = useCallback((code: number) => artOf(null, code), [artOf])
+  // El tipo (el color de su marco) de las cartas de tu deck, por su código: el registro del bot lo marca junto al arte (de las del rival, el núcleo no da el tipo).
+  const frames = useMemo(() => {
+    const map = new Map<number, FrameKind>()
+
+    for (const [id, card] of cardsById) {
+      const code = parseDerivedCardId(cardIdOfDrawId(id))
+      const kind = card.apiCard ? frameKindOf(card.apiCard.frameType, card.apiCard.cardType).kind : 'neutral'
+
+      if (code !== null && kind !== 'neutral' && !map.has(code)) map.set(code, kind)
+    }
+
+    return map
+  }, [cardsById])
+  const frameOf = useCallback((code: number) => frames.get(code) ?? null, [frames])
 
   // ── Lo que activa el rival (sus handtraps): el núcleo resuelve la cadena de una, así que se cuenta después y se deja leer (`RIVAL_READ_MS`). La carta grande en el centro,
   // con a qué responde (como en el duelo por enlace); lo que se negó lo dice su eslabón en el aviso de la cadena. Se mira la cadena (una Trampa que activa desde la mano llega a la mesa colocada, no como
@@ -315,18 +331,24 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const { fault, status, progress } = snap
   const { end, lp } = snap.overlay
   const undo = useCallback(() => session.undo(), [session])
-  const restart = useCallback(() => session.restart(), [session])
+  // «Rendirse» (Opciones): el duelo termina como derrota, con su pantalla final (el núcleo no se entera); reiniciar o repartir otra mano lo borra.
+  const [gaveUp, setGaveUp] = useState(false)
+  const giveUp = useCallback(() => setGaveUp(true), [])
+  const restart = useCallback(() => {
+    setGaveUp(false)
+    session.restart()
+  }, [session])
   // Cada pieza que la mesa recibe se arma de nuevo sólo cuando cambia lo que muestra: los avisos del núcleo que no la tocan no vuelven a dibujar la mesa (`PracticeMat` compara sus props).
   const cover = useMemo(
     () =>
       fault ? (
         <FaultCover fault={fault} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
-      ) : status === 'ended' && end ? (
-        <EndCover end={end} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} onLog={openLog} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+      ) : gaveUp || (status === 'ended' && end) ? (
+        <EndCover end={gaveUp || !end ? { winner: 1 - seat, reason: 0 } : end} conceded={gaveUp} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} onLog={openLog} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'loading' ? (
         <LoadingCover progress={progress} note={rivalLine(handtraps)} />
       ) : undefined,
-    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, handtraps, openSave, openLog],
+    [fault, restart, recoverable, undo, openManual, onExit, status, end, gaveUp, lp, seat, rivalName, progress, handtraps, openSave, openLog],
   )
 
   // Las vidas van por asiento (las tuyas son las de `seat`): las de lo que la mesa ya contó (`asks.lp`).
@@ -346,6 +368,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       onRestart: restart,
       onSaveReplay: openSave,
       onBotLog: openLog,
+      ...(status === 'ended' || gaveUp ? {} : { onConcede: giveUp }),
       ...(openManual ? { onManual: openManual } : {}),
       rival: {
         kind,
@@ -360,51 +383,56 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       blind: facedown,
       onBlind: (on) => (kind === 'bot' ? setAutoPref('botHand', !on) : setAutoPref('blind', on)),
     }),
-    [prefs.chain, prefs.place, restart, openSave, openLog, openManual, kind, facedown, handtraps, botName],
+    [prefs.chain, prefs.place, restart, openSave, openLog, openManual, kind, facedown, handtraps, botName, status, gaveUp, giveUp],
   )
   const turn = reviewing ? asks.state.turn : asks.turn
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
   const { turnMine, lane } = asks
   // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
-  const newHand = useCallback(() => (resumed ? resumed.onNewHand() : redeal ? redeal() : session.restart(randomSeed())), [resumed, redeal, session])
-  const header = useMemo(
-    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} lane={lane} dock {...options} />,
-    [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, lane, options],
-  )
+  const newHand = useCallback(() => {
+    setGaveUp(false)
+    if (resumed) resumed.onNewHand()
+    else if (redeal) redeal()
+    else session.restart(randomSeed())
+  }, [resumed, redeal, session])
   // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
   // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 20 px sobre el borde de la mano (`-mt-5`, la chapa: la fila no crece y el campo no se corre). Con
   // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
-  // En el celular, las chapas: la del rival arriba a la derecha, junto a su mano, y la tuya abajo a la izquierda con el turno (la barra queda sólo con los íconos); el aviso va en la línea.
+  // En el celular, las chapas: la del rival en la fila de los íconos de la barra (`seat`) y la tuya abajo a la izquierda con el turno; el aviso flota sobre tu mano.
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const seated = docked || phone
-  const turnText = turn > 0 ? (turnMine ? t('auto.bar.turnMine', { turn }) : t('duel.bar.theirTurnN', { name: rivalName, turn })) : undefined
   const myLife = useMemo(
     () =>
       phone ? (
-        <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine turn={turnText} turnMine={turnMine} active={turnMine} />
+        <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine active={turnMine} />
       ) : rails || !docked ? null : (
         <span className="-mt-5 flex" data-corner="mine">
-          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
+          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine active={turnMine} />
         </span>
       ),
-    [phone, rails, docked, life.mine, turnText, turnMine],
+    [phone, rails, docked, life.mine, turnMine],
   )
-  const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} active={phone ? !turnMine : undefined} /> : undefined), [seated, rivalName, life.theirs, phone, turnMine])
-  // La línea, sólo con un aviso o un momento (invocar, atacar, el daño: `duel-moment.ts`, 1,5 s): sin ellos, la mesa pone la pista de fases (nunca queda vacía). El momento sólo se dice: nada lo espera.
-  const moment = useMoment(asks.matSession, life, snap.initial, reviewing, cardsById, nameOf)
+  const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} compact={phone} active={!turnMine} /> : undefined), [seated, rivalName, life.theirs, phone, turnMine])
+  const header = useMemo(
+    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} lane={lane} {...(phone ? { seat: corner } : {})} {...options} />,
+    [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, lane, options, phone, corner],
+  )
+  // La línea, sólo con un aviso o un momento (invocar, atacar, el daño: `duel-moment.ts`, 1,5 s), flotando sobre tu mano; sin ellos no hay nada. El momento sólo se dice: nada lo espera.
+  const moment = useMoment(asks.matSession, snap.initial, reviewing, cardsById, nameOf)
   const shownLane = useMemo<LaneNotice | null>(() => lane ?? (moment ? { kind: 'ask', text: moment, actions: [] } : null), [lane, moment])
   const line = useMemo(() => (phone && shownLane ? <DuelLine lane={shownLane} rivalName={rivalName} /> : undefined), [phone, shownLane, rivalName])
   const toggleSteps = useCallback(() => setStepsOpen((open) => !open), [])
-  const dock = useMemo(() => (docked ? <AutoDock {...options} steps={{ open: stepsOpen, onToggle: toggleSteps }} /> : undefined), [docked, options, stepsOpen, toggleSteps])
+  // ≡ y ⚙ abajo a la derecha: en escritorio los dos (≡ muestra u oculta los pasos); en el celular, sólo ⚙ (≡ es el de la mesa).
+  const dock = useMemo(() => <AutoDock {...options} {...(docked ? { steps: { open: stepsOpen, onToggle: toggleSteps } } : {})} />, [docked, options, stepsOpen, toggleSteps])
   const link: DuelMatLink = {
     ...asks.mat,
     header,
     tools: null,
     life: myLife,
-    ...(seated ? { corner } : {}),
+    ...(docked ? { corner } : {}),
     ...(docked ? {} : { scoreInHeader: true }),
     ...(line ? { line } : {}),
-    ...(docked ? { dock } : {}),
+    dock,
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(asks.notice ? { notice: asks.notice } : {}),
     ...(told?.effect && toldNow && !reviewing ? { rivalEffect: told.effect } : {}),
@@ -420,6 +448,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
       {/* Los pasos del panel y los combos guardados se repasan en esta misma mesa (`asks.review`); nada se despacha. */}
       <LifeHold value={asks.lifeHeld}>
+        <PileGroupContext value>
         <PracticeMat
           session={asks.matSession}
           state={asks.state}
@@ -434,6 +463,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
           rivalViewer={asks.rivalViewer}
           {...(chips.needCards || resumed ? {} : { footer: chips.footer, footerSummary: chips.summary, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
         />
+        </PileGroupContext>
       </LifeHold>
       {/* «Cambiar rival» y, desde ella, la hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}
       <RivalSheet
@@ -466,7 +496,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       />
       {asks.pieces}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
-      <BotLogSheet isOpen={logOpen} onClose={() => setLogOpen(false)} turns={botLog} deciding={rivalOn} loading={snap.replaying} nameOf={codeName} artOf={codeArt} onPick={pickNote} />
+      <BotLogSheet isOpen={logOpen} onClose={() => setLogOpen(false)} turns={botLog} deciding={rivalOn} loading={snap.replaying} nameOf={codeName} artOf={codeArt} frameOf={frameOf} onPick={pickNote} />
       <ManualDialog
         key={opened}
         isOpen={switching}
@@ -484,25 +514,23 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
 }
 
 /**
- * El momento que dice la línea (`duel-moment.ts`): cuando la mesa avanza una jugada que es invocar o atacar, su frase; cuando cambian las vidas, el daño, sumado al momento que todavía se lee
- * («… · Rival −500»). Cada uno, `MOMENT_MS`. Repasar, saltar varias jugadas de una o rearmar la mesa (otra mano, deshacer) no dicen nada.
+ * El momento que dice la línea (`duel-moment.ts`): cuando la mesa avanza una jugada que es invocar o atacar, su frase, `MOMENT_MS`. El daño no se dice acá: lo cuenta la chapa (Gastón, 2026-11-12: «no quiero que
+ * salga más vida ocupando pantalla si ya tenemos una vida visible»). Repasar, saltar varias jugadas de una o rearmar la mesa (otra mano, deshacer) no dicen nada.
  */
-function useMoment(session: MatSession, life: { mine: number; theirs: number }, initial: unknown, reviewing: boolean, cardsById: ReadonlyMap<string, MatCard>, nameOf: (ref: CardRef | null, code?: number) => string): string | null {
-  const [moment, setMoment] = useState<{ text: string; at: number } | null>(null)
-  const seen = useRef({ cursor: session.cursor, life, initial })
+function useMoment(session: MatSession, initial: unknown, reviewing: boolean, cardsById: ReadonlyMap<string, MatCard>, nameOf: (ref: CardRef | null, code?: number) => string): string | null {
+  const [moment, setMoment] = useState<string | null>(null)
+  const seen = useRef({ cursor: session.cursor, initial })
   const { cursor } = session
 
   useEffect(() => {
     const before = seen.current
 
-    seen.current = { cursor, life, initial }
+    seen.current = { cursor, initial }
     if (reviewing || before.initial !== initial) return
     const play = cursor === before.cursor + 1 ? momentText(session.initial, session.actions, cursor, (id) => cardsById.get(id)?.name ?? nameOf({ side: 'theirs', id })) : null
-    const hurt = before.life.mine > 0 && before.life.theirs > 0 ? lifeText([{ label: t('duel.bar.rivalTag'), delta: life.theirs - before.life.theirs }, { label: t('duel.bar.you'), delta: life.mine - before.life.mine }]) : null
 
-    if (play) setMoment({ text: hurt ? `${play} · ${hurt}` : play, at: Date.now() })
-    else if (hurt) setMoment((last) => ({ text: last && Date.now() - last.at < MOMENT_MS ? `${last.text} · ${hurt}` : hurt, at: Date.now() }))
-  }, [cursor, life, initial, reviewing, session, cardsById, nameOf])
+    if (play) setMoment(play)
+  }, [cursor, initial, reviewing, session, cardsById, nameOf])
 
   useEffect(() => {
     if (!moment) return
@@ -511,18 +539,20 @@ function useMoment(session: MatSession, life: { mine: number; theirs: number }, 
     return () => window.clearTimeout(timer)
   }, [moment])
 
-  return reviewing ? null : (moment?.text ?? null)
+  return reviewing ? null : moment
 }
 
 /** El final: quién ganó y por qué, «Qué hizo el bot», «Guardar replay» y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */
-function EndCover({ end, lp, seat, rival, onAgain, onSave, onLog, onManual, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onLog: () => void; onManual?: () => void; onExit: () => void }) {
+function EndCover({ end, conceded = false, lp, seat, rival, onAgain, onSave, onLog, onManual, onExit }: { end: { winner: number; reason: number }; /** Te rendiste (Opciones): la derrota dice eso y no las vidas. */ conceded?: boolean; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onLog: () => void; onManual?: () => void; onExit: () => void }) {
   const won = end.winner === seat
   const [mine, theirs] = [lp[seat], lp[1 - seat]!]
   const title = end.winner === 2 ? t('duel.result.title.draw') : won ? t('duel.result.title.win') : t('duel.result.title.lose')
   const byLife = end.reason === REASON_LP || (won ? theirs : mine) <= 0
   // Por qué: las vidas (el núcleo dice 0, o alguien quedó en 0), sin robar (con las vidas enteras y una razón del núcleo, no de un script: en un duelo solo sin reloj no hay otra) o el efecto de una carta.
   const reason =
-    end.winner === 2
+    conceded
+      ? t('duel.result.reason.loseConceded')
+      : end.winner === 2
       ? t('duel.result.reason.draw')
       : byLife
         ? won
@@ -535,7 +565,7 @@ function EndCover({ end, lp, seat, rival, onAgain, onSave, onLog, onManual, onEx
   return (
     <div role="alertdialog" aria-modal="true" aria-label={title} className="relative grid h-full place-items-center bg-background/90 p-6">
       <CloseButton size="md" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-3 top-3" onClick={onExit} />
-      <ResultHero tone={end.winner === 2 ? 'draw' : won ? 'win' : 'lose'} icon={end.winner === 2 ? 'swap' : won ? 'trophy' : byLife ? 'heart' : 'flag'} title={title} reason={reason} score={{ mine, theirs, rival }}>
+      <ResultHero tone={end.winner === 2 ? 'draw' : won ? 'win' : 'lose'} icon={end.winner === 2 ? 'swap' : won ? 'trophy' : byLife && !conceded ? 'heart' : 'flag'} title={title} reason={reason} score={{ mine, theirs, rival }}>
         <Button variant="tertiary" icon="chat" aria-haspopup="dialog" onClick={onLog}>
           {t('auto.bot.log.open')}
         </Button>

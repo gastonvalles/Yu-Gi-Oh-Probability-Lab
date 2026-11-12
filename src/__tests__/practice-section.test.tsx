@@ -353,7 +353,7 @@ describe('la práctica integrada en la mesa', () => {
     // Con el teclado (o arrastrándolo) el ancho pasa a la sección, y se recuerda.
     fireEvent.keyDown(detailEdge, { key: 'ArrowRight', shiftKey: true })
     expect(mat.style.getPropertyValue('--mat-left')).toBe('384px')
-    expect(JSON.parse(localStorage.getItem('ygo-lab:mat-panels:v2') ?? 'null')).toEqual({ left: 384, right: null, column: null })
+    expect(JSON.parse(localStorage.getItem('ygo-lab:mat-panels:v2') ?? 'null')).toEqual({ left: 384, right: null })
     wide.unmount()
 
     // Sin el detalle (menos de 1440 px) queda sólo el borde de los pasos.

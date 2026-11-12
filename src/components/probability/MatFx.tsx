@@ -1,10 +1,8 @@
-import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
-import { createPortal } from 'react-dom'
+import { useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import type { ChainBadgeData } from '../../app/card-glow'
 import { printedBadge, statShift } from '../../app/field-stats'
-import { cuesBetween, fated, play, type Cue, type LinkLook } from '../../app/chain-motion'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { PHASES, type MatPhase, type MatSpot } from '../../app/practice-mat'
@@ -187,7 +185,7 @@ export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
 
 /**
  * La insignia del eslabón de la cadena («CL1», «CL1·3» si la carta tiene dos), pegada arriba a la izquierda de la carta o de la pila (`className` la ubica), montada sobre el borde de arriba para
- * no tapar el nombre. Recta y naranja, el color de lo que se activa (el mismo del trazo que une las cartas de la cadena, `ChainTrace`), con el texto carbón; de quién es lo dice su eslabón en la línea.
+ * no tapar el nombre. Recta y naranja, el color de lo que se activa, con el texto carbón; de quién es lo dice la cadena en grande.
  * Sólo se mira: `aria-hidden`, y el eslabón va en el nombre de la carta (`chainLinkLabel`). Se va con el aviso de la cadena.
  * Negado o sin efecto (`voided`): la insignia va tachada y el arte de la carta, gris y latiendo (`VOIDED_ART`).
  */
@@ -202,165 +200,6 @@ export function ChainBadge({ link, className }: { link: ChainBadgeData; classNam
     >
       {t('auto.link.badge', { numbers: link.numbers.join('·') })}
     </span>
-  )
-}
-
-/**
- * Los pasos de la cadena animada (`cuesBetween`, `app/chain-motion.ts`) en su momento: cada cambio de los eslabones (número y estado) o el final (`done`) da los suyos y `onCue` los aplica.
- * Un cambio que llega antes de que terminen los del anterior los adelanta (quedan secos, en su lugar). Con movimiento reducido o `still`, nada: el estado lo dicen el color y el texto.
- */
-export function useChainCues(rows: readonly LinkLook[], done: boolean, onCue: (cue: Cue) => void, still = false) {
-  const before = useRef<{ rows: readonly LinkLook[]; done: boolean } | null>(null)
-  const apply = useRef(onCue)
-  const signature = `${rows.map((row) => `${row.number}:${row.state}`).join('|')}${done ? '|fin' : ''}`
-
-  useLayoutEffect(() => {
-    apply.current = onCue
-  })
-  useLayoutEffect(() => {
-    const prev = before.current
-
-    before.current = { rows, done }
-    if (still || prefersReducedMotion()) return
-    const run = play(cuesBetween(prev?.rows ?? null, rows, done, prev?.done ?? false), ({ cue }) => apply.current(cue))
-
-    return run.finish
-    // `signature` resume `rows` y `done`: un dibujo con la misma cadena no da pasos.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, still])
-}
-
-/** El centro de `element` en el plano de `root` (su caja sin transformar: en la vista 3D, el campo antes de inclinarse), sumando `offsetLeft`/`offsetTop` hasta llegar a él. */
-function centerIn(element: HTMLElement, root: HTMLElement): [number, number] {
-  let x = element.offsetWidth / 2
-  let y = element.offsetHeight / 2
-
-  for (let node: HTMLElement | null = element; node && node !== root; node = node.offsetParent as HTMLElement | null) {
-    x += node.offsetLeft
-    y += node.offsetTop
-  }
-  return [x, y]
-}
-
-interface TraceSegment {
-  /** Une CL`from` con CL`from + 1`. */
-  from: number
-  x: number
-  y: number
-  length: number
-  angle: number
-}
-
-/** Dónde está cada eslabón en el campo: la casilla de la carta (o la pila) que lleva su insignia. */
-const anchorsIn = (field: HTMLElement) => {
-  const anchors = new Map<number, HTMLElement>()
-
-  for (const badge of field.querySelectorAll<HTMLElement>('[data-chain-link]')) for (const n of (badge.dataset.chainLink ?? '').split(',')) if (badge.parentElement) anchors.set(Number(n), badge.parentElement)
-  return anchors
-}
-
-function segmentsIn(field: HTMLElement, count: number): TraceSegment[] {
-  const anchors = anchorsIn(field)
-  const segments: TraceSegment[] = []
-
-  for (let from = 1; from < count; from += 1) {
-    const a = anchors.get(from)
-    const b = anchors.get(from + 1)
-
-    if (!a || !b || a === b) continue
-    const [x, y] = centerIn(a, field)
-    const [x2, y2] = centerIn(b, field)
-
-    segments.push({ from, x, y, length: Math.hypot(x2 - x, y2 - y), angle: (Math.atan2(y2 - y, x2 - x) * 180) / Math.PI })
-  }
-  return segments
-}
-
-const sameSegments = (a: readonly TraceSegment[], b: readonly TraceSegment[]) => a.length === b.length && a.every((seg, i) => (Object.keys(seg) as Array<keyof TraceSegment>).every((key) => Math.abs(seg[key] - b[i]![key]) < 0.5))
-
-/** Le da a la casilla de la carta del eslabón `n` una animación de una vez (se levanta al encadenarse, ejecuta al resolverse) y se la saca al terminar. */
-function bump(field: HTMLElement | null | undefined, n: number, classes: readonly string[], ms: number) {
-  const cell = field ? anchorsIn(field).get(n) : undefined
-
-  if (!cell) return
-  cell.classList.remove(...classes)
-  cell.classList.add(...classes)
-  window.setTimeout(() => cell.classList.remove(...classes), ms)
-}
-
-/**
- * El trazo de la cadena en la mesa: las cartas de la cadena unidas en orden por un trazo recto naranja numerado («1–2», «2–3»), de casilla a casilla de las insignias `CL#`. Cada trazo es un
- * `span` rotado que crece con `scaleX` (`animate-seg-in`, el número después); el de un eslabón que se resolvió (o toda la cadena al terminar) se apaga (`animate-fade-out`). Al encadenarse, la carta
- * se levanta (`animate-lift`); al resolverse, ejecuta (`animate-act`). Se dibuja adentro del campo (`data-chain-trace`, el lugar que le deja la mesa; `slot` en el catálogo) y se mide con
- * `offsetLeft`/`offsetTop` en su plano, así en la vista 3D se inclina con él (la caja de `getBoundingClientRect` sería la proyectada). Decorativo: lo que pasa lo dicen la línea y las insignias.
- */
-export function ChainTrace({ rows, done = false, slot, still = false }: { rows: readonly LinkLook[]; done?: boolean; slot?: HTMLElement | null; still?: boolean }) {
-  const [host, setHost] = useState<HTMLElement | null>(null)
-  const [segments, setSegments] = useState<TraceSegment[]>([])
-  const count = rows.length
-
-  useLayoutEffect(() => {
-    setHost(slot ?? document.querySelector<HTMLElement>('[data-chain-trace]'))
-  }, [slot])
-  useLayoutEffect(() => {
-    const field = host?.parentElement
-
-    if (!field) return
-    let frame = 0
-    const measure = () => {
-      frame = 0
-      const next = segmentsIn(field, count)
-
-      setSegments((prev) => (sameSegments(prev, next) ? prev : next))
-    }
-    const soon = () => {
-      if (!frame) frame = requestAnimationFrame(measure)
-    }
-    // Las cartas cambian de lugar (un costo, una Invocación) y el campo de tamaño: se vuelve a medir, una vez por cuadro.
-    const moved = new MutationObserver(soon)
-    const resized = typeof ResizeObserver === 'function' ? new ResizeObserver(soon) : null
-
-    measure()
-    moved.observe(field, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-chain-link'] })
-    resized?.observe(field)
-    return () => {
-      cancelAnimationFrame(frame)
-      moved.disconnect()
-      resized?.disconnect()
-    }
-  }, [host, count])
-  useChainCues(
-    rows,
-    done,
-    (cue) => {
-      if (cue.kind === 'enter') bump(host?.parentElement, cue.link, ['animate-lift', 'motion-reduce:animate-none'], 360)
-      if (cue.kind === 'act') bump(host?.parentElement, cue.link, ['animate-act', 'motion-reduce:animate-none'], 200)
-    },
-    still,
-  )
-
-  if (!host) return null
-  const off = (from: number) => done || fated(rows.find((row) => row.number === from + 1)?.state ?? 'chained')
-  // Sin movimiento (el catálogo; la preferencia del sistema la toma `motion-reduce:`): aparece y se va seco.
-  const look = (from: number, grow: string) => (off(from) ? (still ? 'invisible' : 'animate-fade-out motion-reduce:invisible motion-reduce:animate-none') : still ? null : grow)
-
-  return createPortal(
-    segments.map((seg) => (
-      <Fragment key={seg.from}>
-        <span
-          data-chain-segment={`${seg.from}-${seg.from + 1}`}
-          className={cx('absolute h-0.75 origin-left bg-warning', look(seg.from, 'animate-seg-in motion-reduce:animate-none'))}
-          style={{ left: seg.x, top: seg.y - 1.5, width: seg.length, rotate: `${seg.angle}deg` }}
-        />
-        <span
-          className={cx('absolute -translate-x-1/2 -translate-y-1/2 bg-background px-1 text-micro font-extrabold leading-tight tabular-nums text-warning ring-1 ring-warning', look(seg.from, 'animate-seg-num-in motion-reduce:animate-none'))}
-          style={{ left: seg.x + (Math.cos((seg.angle * Math.PI) / 180) * seg.length) / 2, top: seg.y + (Math.sin((seg.angle * Math.PI) / 180) * seg.length) / 2 }}
-        >
-          {`${seg.from}–${seg.from + 1}`}
-        </span>
-      </Fragment>
-    )),
-    host,
   )
 }
 
@@ -400,35 +239,33 @@ export function levelText(card: ApiCardReference | null | undefined): string | n
 const SHIFT_TONE = { up: 'text-success-soft', down: 'text-danger-soft' } as const
 
 /**
- * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), en una placa de 15 px al pie
- * de la carta, sobre su cuadro de texto (que a este tamaño no se lee): el arte queda entero. Nada más va sobre la carta: la ficha (`badge`: ★ Nivel, R Rango o LINK) sale de la mesa y vive en
- * la ficha de la carta (`levelText`); vuelve, arriba y al centro, sólo mientras se elige (la de `pickStatsOf`, o la casilla con `data-pick`: Sacrificios y materiales de la mesa manual), que
- * es cuando el Nivel decide. No cambian la caja de la carta ni la de la casilla. El número que cambió respecto del impreso (`printed`, sólo los de ahora), en menta si subió y en rojo claro si
- * bajó; un «?» y la mesa manual, sin color. La DEF que no cambió, apagada. Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla
- * no llega a los dos números de cuatro cifras (`@container`: el celular y la mesa de escritorio angosta), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`); el nombre
- * lleva los dos. Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla (`animate-chip-drop`, `animate-chip-rise` 70 ms después); con movimiento reducido,
- * quietas.
+ * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), en una placa de 10 px (`text-tag`) al pie
+ * de la carta, sobre su cuadro de texto (que a este tamaño no se lee): el arte queda entero. Siempre los dos números en un renglón, también en defensa (Gastón, 2026-11-12: «no depende de la posición»);
+ * un Link, sólo el ATK. Nada más va sobre la carta: la ficha (`badge`: ★ Nivel, R Rango o LINK) sale de la mesa y vive en la ficha de la carta (`levelText`); vuelve, arriba y al centro, sólo mientras se
+ * elige (la de `pickStatsOf`, o la casilla con `data-pick`: Sacrificios y materiales de la mesa manual), que es cuando el Nivel decide. No cambian la caja de la carta ni la de la casilla. El número que
+ * cambió respecto del impreso (`printed`, sólo los de ahora), en menta si subió y en rojo claro si bajó; un «?» y la mesa manual, sin color. La DEF que no cambió, apagada. Sólo se mira (`aria-hidden`): lo
+ * que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla (`animate-chip-drop`,
+ * `animate-chip-rise` 70 ms después); con movimiento reducido, quietas.
  */
-export function StatTag({ stat, sideways = false, className }: { stat: PickStat | null; sideways?: boolean; className?: string }) {
-  const def = stat !== null && stat.defense !== null && sideways
+export function StatTag({ stat, className }: { stat: PickStat | null; className?: string }) {
   const badge = stat?.badge
   const atkShift = stat ? statShift(stat.attack, stat.printed?.attack) : null
   const defShift = stat ? statShift(stat.defense, stat.printed?.defense) : null
 
   return (
     <>
-      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[16%] z-11 animate-chip-drop motion-reduce:animate-none" style={BADGE_ARRIVAL}>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[16%] z-11 grid justify-items-center animate-chip-drop motion-reduce:animate-none" style={BADGE_ARRIVAL}>
         {badge ? (
           <span data-stat-badge={badge.kind} className={cx(STAT_CHIP, stat.resting ? 'hidden in-data-[pick=true]:block' : 'block')}>{`${BADGE_MARK[badge.kind]}\u2009${badge.value}`}</span>
         ) : null}
       </span>
-      <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container animate-chip-rise motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
+      <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 grid justify-items-center animate-chip-rise motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
         {stat ? (
           <span data-pick-stat="" className={cx(STAT_CHIP, 'block')}>
-            <span data-shift={atkShift ?? undefined} className={cx(def && '@max-[5rem]:hidden', atkShift && SHIFT_TONE[atkShift])}>{stat.attack}</span>
+            <span data-shift={atkShift ?? undefined} className={cx(atkShift && SHIFT_TONE[atkShift])}>{stat.attack}</span>
             {stat.defense === null ? null : (
-              <span data-shift={defShift ?? undefined} className={cx('font-semibold', defShift ? SHIFT_TONE[defShift] : 'text-muted', def ? cx('@max-[5rem]:font-extrabold', !defShift && '@max-[5rem]:text-foreground') : '@max-[5rem]:hidden')}>
-                <span className={cx('text-muted', def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
+              <span data-shift={defShift ?? undefined} className={cx('font-semibold', defShift ? SHIFT_TONE[defShift] : 'text-muted')}>
+                <span className="text-muted">{STAT_SEPARATOR}</span>
                 {stat.defense}
               </span>
             )}
@@ -439,14 +276,11 @@ export function StatTag({ stat, sideways = false, className }: { stat: PickStat 
   )
 }
 
-/** 12 px con su renglón de 15 (`leading-tight`), cifras tabulares y el carbón al 92 % debajo: se lee sobre cualquier arte (≥4,5:1). Sin `block`: lo pone cada uso. */
-const STAT_CHIP = 'mx-auto w-fit max-w-full whitespace-nowrap bg-background/92 px-1 text-micro leading-tight font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
+/** 10 px (`text-tag`) con su renglón de 12,5 (`leading-tight`), apretado (`tracking-tighter`) y de cifras tabulares, con el carbón al 92 % debajo: se lee sobre cualquier arte (≥4,5:1). Sin `block`: lo pone cada uso. */
+const STAT_CHIP = 'w-fit whitespace-nowrap bg-background/92 px-px text-tag leading-tight tracking-tighter font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
 
-/**
- * La barra entre el ATK y la DEF, con espacios finos: «2500 / 2000» mide 80 px y entra justo en la casilla de 1440 px (80–81). El corte (`@max-[5rem]`) es el de cuatro cifras y
- * cuatro: un ATK de cinco cifras desborda unos 8 px el fondo de la etiqueta (se lee igual, no se corta); si se vuelve común, un corte por cantidad de cifras.
- */
-const STAT_SEPARATOR = '\u2009/\u2009'
+/** La barra entre el ATK y la DEF, sin espacios: «3000/2500» mide 52 px a 10 px y es lo que entra entre dos casillas a 360. */
+const STAT_SEPARATOR = '/'
 
 /**
  * El arte de una carta cuyo eslabón quedó negado o sin efecto (Gastón: «una carta negada debe verse gris parpadeando»), mientras se ve el aviso de la cadena: en escala de grises y con el pulso
@@ -505,6 +339,22 @@ export function PhaseBanner({ phase, turn, who, label, className }: { phase: Mat
         <span className="animate-fx-banner-text text-title font-extrabold leading-none text-foreground motion-reduce:animate-none min-[1101px]:text-stat">{name}</span>
       </div>
     </div>
+  )
+}
+
+/**
+ * Lo que reemplaza al cartel de la fase en un duelo (Gastón, 2026-11-12: «las fases se repiten y no deberían», «no necesito saber el turno de quién es»): la fase vive sólo en su botón y el turno lo
+ * dice la chapa. Para que el cambio no pase de largo, el botón hace un pulso corto (un aro que sale de su caja y se apaga; `pulse` es la clave del cambio, `null` si no hay) y, para el lector de pantalla,
+ * `text` va en un `role="status"` oculto a la vista. Va dentro de la casilla del botón (`relative`). Con menos movimiento no hay aro.
+ */
+export function PhasePulse({ pulse, text }: { pulse: number | null; text: string }) {
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {text}
+      </span>
+      {pulse !== null ? <span key={pulse} aria-hidden="true" data-fx="phase-pulse" className="pointer-events-none absolute inset-0 z-1 animate-phase-pulse border-2 border-info motion-reduce:hidden" /> : null}
+    </>
   )
 }
 

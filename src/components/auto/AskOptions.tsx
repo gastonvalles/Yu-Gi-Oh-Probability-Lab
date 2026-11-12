@@ -3,13 +3,15 @@ import { useId, useState } from 'react'
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
 import type { AskWhyView } from '../../app/auto/ask-why'
+import { POSITION } from '../../app/auto/protocol'
 import { t } from '../../i18n'
 import { AskWhy } from '../duel/AskWhy'
 import { Options } from '../probability/CardSheet'
+import { CARD_BACK } from '../probability/practice-styles'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { choiceChip } from '../ui/surfaces'
-import { AutoPanel } from './AutoPanel'
+import { AutoPanel, PANEL_MAIN } from './AutoPanel'
 import { PickCount } from './CardPicker'
 
 /** Una opción del núcleo: un texto, una posición, un número, un Tipo o un Atributo. */
@@ -38,6 +40,20 @@ interface AskOptionsProps {
   onCancel?: () => void
   /** Con `'one'`: una opción por fila, a la izquierda (la lista de efectos, como en la mesa manual). Sin esto, de a una por fila sólo si algún texto es largo. */
   stacked?: boolean
+  /** Qué se pregunta (`ask-ui`: `position`, `number`…): la posición va con dos dibujos (M-05). */
+  of?: string
+}
+
+/** El dibujo de una posición (`select_position`: el valor de `POSITION`): la carta parada (ataque) o acostada (defensa), boca arriba o con el dorso. */
+function PositionDrawing({ value }: { value: number }) {
+  const down = (value & POSITION.FACEDOWN) !== 0
+  const defense = (value & (POSITION.FACEUP_DEFENSE | POSITION.FACEDOWN_DEFENSE)) !== 0
+
+  return (
+    <span aria-hidden="true" data-position-drawing={defense ? 'defense' : 'attack'} className="grid h-14 w-14 place-items-center">
+      <span className={cx('relative block h-14 w-10 overflow-hidden', defense && 'rotate-90', down ? 'bg-input' : 'border-2 border-foreground/70 bg-surface-raised')}>{down ? <span className={CARD_BACK} /> : null}</span>
+    </span>
+  )
 }
 
 /** Con un texto así de largo, una opción por fila. */
@@ -48,7 +64,7 @@ const LONG_LABEL = 22
  * de una carta (`Options`: de a dos por fila, `menuitem`) y un toque contesta. Con `{ count }`, pastillas que se prenden en lima (`aria-pressed`) y bajan de renglón (los 25 Tipos a la vez): con
  * `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan, y el contador va sólo con un total mayor que 1. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel, stacked }: AskOptionsProps) {
+export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel, stacked, of }: AskOptionsProps) {
   const leaving = useLeaving()
   const whyId = useId()
   const [chosen, setChosen] = useState<string[]>([])
@@ -70,21 +86,29 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
       actions={
         mode === 'one' ? (
           onCancel ? (
-            <Button variant="tertiary" size="sm" onClick={onCancel}>
+            <Button variant="tertiary" onClick={onCancel}>
               {t('common.cancel')}
             </Button>
           ) : undefined
         ) : (
-          <>
-            <PickCount chosen={chosen.length} max={count} />
-            <Button variant="primary" size="sm" className="ml-auto" disabled={!full} onClick={() => onPick(chosen)}>
-              {t('auto.options.declare')}
-            </Button>
-          </>
+          <Button variant="primary" className={cx(PANEL_MAIN, 'ml-auto')} disabled={!full} onClick={() => onPick(chosen)}>
+            {t('auto.options.declare')}
+          </Button>
         )
       }
+      {...(mode === 'one' ? {} : { aside: <PickCount chosen={chosen.length} max={count} /> })}
     >
-      {mode === 'one' ? (
+      {mode === 'one' && of === 'position' ? (
+        // M-05: dos dibujos; tocar uno contesta, sin confirmar.
+        <div role="menu" aria-label={title} data-positions="" className="flex justify-center gap-4">
+          {options.map((option) => (
+            <Button key={option.id} role="menuitem" variant="secondary" aria-disabled={option.disabled || undefined} className={cx('min-h-28 min-w-24 flex-col gap-2 px-3!', option.disabled && 'cursor-default opacity-40')} onClick={option.disabled ? undefined : () => onPick([option.id])}>
+              <PositionDrawing value={Number(option.id)} />
+              <span className="whitespace-nowrap">{option.label}</span>
+            </Button>
+          ))}
+        </div>
+      ) : mode === 'one' ? (
         <div role="menu" aria-label={title}>
           <Options items={options.map((option) => ({ label: option.label, lead: option.lead, disabled: option.disabled, onSelect: () => onPick([option.id]) }))} stacked={stacked ?? options.some((option) => option.label.length > LONG_LABEL)} />
         </div>
@@ -94,7 +118,7 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
             const on = chosen.includes(option.id)
 
             return (
-              <button key={option.id} type="button" aria-pressed={on} disabled={option.disabled || (full && !on && count > 1)} className={cx(choiceChip, 'min-h-10 px-4 text-body disabled:pointer-events-none disabled:opacity-40 pointer-coarse:min-h-11')} onClick={() => toggle(option.id)}>
+              <button key={option.id} type="button" aria-pressed={on} disabled={option.disabled || (full && !on && count > 1)} className={cx(choiceChip, 'min-h-11 whitespace-nowrap px-4 text-body disabled:pointer-events-none disabled:opacity-40')} onClick={() => toggle(option.id)}>
                 {option.label}
               </button>
             )

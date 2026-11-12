@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from '../components/probability/compact-field'
 import { THEIR_HAND } from '../components/duel/their-hand'
 
-/** Lo que la mesa le pasa hoy (`PracticeMat`): la barra con el marcador y el hueco de la columna, el lugar de la mano del rival (su caja y 14 px) y el margen de abajo. */
-const APP = { bar: 110, rival: THEIR_HAND.mobile.room + 14, bottom: 8 }
-const round = (layout: ReturnType<typeof phoneDuelLayout>) => Object.fromEntries(Object.entries(layout).map(([key, value]) => [key, Math.round(value * 10) / 10]))
+/** Lo que la mesa le pasa (`PracticeMat`): la barra (la fila de los íconos con las vidas del rival) y el hueco de la columna, y abajo tu fila con el margen. */
+const APP = { bar: 58, bottom: 68 }
+const SIZES = [[360, 740], [390, 844], [412, 915], [430, 932], [360, 640]] as const
 
 describe('el duelo en el celular: geometría fija (`phoneDuelLayout`)', () => {
   it('rige con menos de 640 px de ancho, el corte `sm` de Tailwind', () => {
@@ -19,41 +19,66 @@ describe('el duelo en el celular: geometría fija (`phoneDuelLayout`)', () => {
     for (const width of [360, 390, 430]) expect(phoneDuelLayout(width, 844, { tilted: false, ...APP }).fieldWidth).toBeCloseTo(width - 8, 1)
   })
 
-  it('a 390 × 844, de arriba: el campo en y = 226, la línea de 96 px pegada a él, el aire que sobra antes de tu mano y tu mano hasta el margen de abajo', () => {
-    expect(round(phoneDuelLayout(390, 844, { tilted: false, ...APP }))).toMatchObject({ fieldTop: 226, fieldBoxTop: 226, fieldHeight: 297.7, lineTop: 523.7, lineHeight: 96, air: 11.9, handTop: 631.6, handHeight: 204.4, handCard: 119.4, bottomTop: 836 })
+  it('a 390 × 844 las casillas tienen forma de carta (cartas de 54 × 79), tu mano se lleva lo que queda y la del rival es la tuya a 0,8', () => {
+    const layout = phoneDuelLayout(390, 844, { tilted: false, ...APP })
+
+    expect(layout.row / layout.cell).toBeGreaterThanOrEqual(1.4)
+    expect(layout.card).toBeCloseTo(54, 0)
+    expect(layout.cardHeight).toBeCloseTo(79, 0)
+    expect(layout.handCard).toBeCloseTo(90, 0)
+    expect(layout.rivalCard).toBeCloseTo(layout.handCard * 0.8, 5)
+    expect(layout.rivalWidth).toBeCloseTo((390 - 8) * 0.8, 5)
+    // Sin línea: del borde de abajo del campo a tu mano, 8 px (el kit pide 40 o menos).
+    expect(layout.handTop - layout.lineTop).toBe(8)
   })
 
-  it('en 3D la perspectiva baja el borde de arriba del campo (23 px a 390): se le quita al lugar de la mano del rival, el campo se ve donde de arriba y la línea gana ese aire; tu mano no se mueve', () => {
-    const flat = phoneDuelLayout(390, 844, { tilted: false, ...APP })
-    const tilted = phoneDuelLayout(390, 844, { tilted: true, ...APP })
+  it('una carta en defensa pisa a lo sumo 11 px de cada lado de su casilla (no se achica para entrar)', () => {
+    for (const [width, height] of SIZES) {
+      const layout = phoneDuelLayout(width, height, { tilted: false, ...APP })
 
-    expect(tilted.drop).toBeCloseTo(22.7, 1)
-    expect(tilted.fieldTop).toBe(flat.fieldTop)
-    expect(tilted.fieldBoxTop).toBeCloseTo(flat.fieldTop - tilted.drop, 5)
-    expect(tilted.handTop).toBe(flat.handTop)
-    expect(tilted.air).toBeCloseTo(flat.air + tilted.drop, 5)
+      expect((layout.cardHeight - layout.cell) / 2).toBeLessThanOrEqual(11.01)
+      expect(layout.card).toBeLessThanOrEqual(layout.cell - 3 + 1e-9)
+    }
   })
 
-  it('en una pantalla chica la línea no baja de 56 px: tu mano se achica (360 × 740 de arriba) y a 430 × 932 lo que sobra queda entre la línea y tu mano', () => {
-    expect(round(phoneDuelLayout(360, 740, { tilted: false, ...APP }))).toMatchObject({ lineHeight: 56, air: 0, handCard: 99.8, handTop: 556.1 })
-    expect(round(phoneDuelLayout(360, 740, { tilted: true, ...APP }))).toMatchObject({ handCard: 110, air: 0 })
-    expect(round(phoneDuelLayout(430, 932, { tilted: false, ...APP }))).toMatchObject({ lineHeight: 96, handCard: 131.9 })
-    expect(phoneDuelLayout(430, 932, { tilted: false, ...APP }).air).toBeGreaterThan(50)
+  it('en una pantalla baja (360 × 640) tu mano queda en su mínimo y las filas bajan, nunca por debajo de cuadradas', () => {
+    const layout = phoneDuelLayout(360, 640, { tilted: false, ...APP })
+
+    expect(layout.handCard).toBe(64)
+    expect(layout.row).toBeGreaterThanOrEqual(layout.cell)
+    expect(layout.row).toBeLessThan(layout.cell * 1.4612)
+    expect(layout.rivalTop).toBeGreaterThan(APP.bar - 1e-6)
   })
 
-  it('las piezas van una debajo de la otra sin pisarse y la última termina en el margen de abajo, en todos los tamaños y las dos vistas', () => {
-    for (const [width, height] of [[360, 740], [390, 844], [412, 915], [430, 932]] as const) {
+  it('en 3D la caja crece hacia arriba lo que la perspectiva baja su borde: lo que se ve queda donde de arriba, y tu mano no se mueve', () => {
+    for (const [width, height] of SIZES) {
+      const flat = phoneDuelLayout(width, height, { tilted: false, ...APP })
+      const tilted = phoneDuelLayout(width, height, { tilted: true, ...APP })
+
+      expect(tilted.drop).toBeGreaterThan(0)
+      expect(tilted.fieldHeight).toBeCloseTo(flat.fieldHeight + tilted.drop, 5)
+      expect(tilted.fieldTop).toBeCloseTo(flat.fieldTop, 5)
+      expect(tilted.fieldBoxTop).toBeCloseTo(flat.fieldTop - tilted.drop, 5)
+      expect(tilted.handTop).toBe(flat.handTop)
+      expect(tilted.rivalTop).toBeCloseTo(flat.rivalTop, 5)
+    }
+  })
+
+  it('las piezas van una debajo de la otra sin pisarse, desde la barra hasta el margen de abajo, en todos los tamaños y las dos vistas', () => {
+    for (const [width, height] of SIZES) {
       for (const tilted of [false, true]) {
         const layout = phoneDuelLayout(width, height, { tilted, ...APP })
 
+        expect(layout.rivalTop).toBeGreaterThan(APP.bar - 1e-6)
+        expect(layout.rivalTop + layout.rivalRoom + layout.rivalGap).toBeCloseTo(layout.fieldTop, 5)
         expect(layout.fieldBoxTop + layout.fieldHeight).toBeCloseTo(layout.lineTop, 5)
-        expect(layout.lineTop + layout.lineHeight + layout.air).toBeCloseTo(layout.handTop, 5)
-        expect(layout.air).toBeGreaterThanOrEqual(0)
+        expect(layout.lineTop + layout.gap).toBeCloseTo(layout.handTop, 5)
         expect(layout.bottomTop).toBeCloseTo(height - APP.bottom, 5)
       }
     }
   })
 })
+
 
 /** De 640 a 1100 px lo que no es campo suma 421 px (las barras, tu mano y sus márgenes; ver `mediumDuelFieldStyle`); el campo son cinco filas de casillas y cuatro huecos de 4 px. */
 const MEDIUM_CHROME = 421

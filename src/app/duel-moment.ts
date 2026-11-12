@@ -2,7 +2,7 @@ import { describeMatAction, replayMat, type MatAction, type MatState } from './p
 
 /**
  * Los momentos del duelo que la línea del celular dice un rato (`MOMENT_MS`, «Jugar solo» automático) antes de volver a la pista de fases: invocar a la vista y atacar, con la frase del
- * paso que ya existe (`describeMatAction`, la de la lista de pasos), y el daño que les sigue («Rival −500»). Puro: la pantalla lo llama cuando la mesa avanza o cambian las vidas.
+ * paso que ya existe (`describeMatAction`, la de la lista de pasos). El daño no va: lo cuenta la chapa. Puro: la pantalla lo llama cuando la mesa avanza.
  */
 
 /** Cuánto dice la línea un momento. */
@@ -30,11 +30,4 @@ export function momentText(initial: MatState, actions: readonly MatAction[], cur
   const action = actions[cursor - 1]
 
   return action && isMoment(action) ? describeMatAction(replayMat(initial, actions, cursor - 1), action, nameOf) : null
-}
-
-/** El daño (o lo que se ganó) de cada lado, dicho como en la chapa: «Rival −500». Los lados sin cambio no van; sin ninguno, null. */
-export function lifeText(changes: ReadonlyArray<{ label: string; delta: number }>): string | null {
-  const said = changes.filter(({ delta }) => delta !== 0).map(({ label, delta }) => `${label} ${delta < 0 ? '−' : '+'}${Math.abs(delta)}`)
-
-  return said.length > 0 ? said.join(' · ') : null
 }

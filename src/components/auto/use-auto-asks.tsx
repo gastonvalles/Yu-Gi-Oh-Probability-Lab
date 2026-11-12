@@ -5,7 +5,9 @@ import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
 import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
 import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
-import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainStep } from '../../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainRow, type ChainStep } from '../../app/auto/chain-feed'
+import { frameKindOf, frameOfType, type CardFrame } from '../../app/card-frame'
+import { fetchCardsByIds } from '../../ygoprodeck'
 import { rivalAttackInCourse } from '../../app/attack-trail'
 import { actingOf, linksOf } from '../../app/card-glow'
 import type { PhaseView } from '../../app/auto/online'
@@ -14,7 +16,7 @@ import { turnReasons } from '../../app/auto/no-plays'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
-import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
+import { useAutoPrefs } from '../../app/auto-prefs'
 import { useHeldValue } from '../../app/life-effects'
 import { prefersReducedMotion } from '../../app/motion'
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -30,7 +32,6 @@ import { usePracticeSounds } from '../../app/use-practice-sounds'
 import { showToastMessage } from '../../app/use-toast-message'
 import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
-import type { ApiCardReference } from '../../types'
 import { artOfDrawId } from '../duel/duel-art'
 import type { LaneNotice } from '../duel/DuelBar'
 import { DuelCardDock, type CardPeek } from '../duel/DuelCardDock'
@@ -46,9 +47,8 @@ import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { AutoCardSheet, AutoPhases } from './AutoPanel'
-import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard, type PickFrom } from './CardPicker'
-import { ChainListRows, outcomeChip } from './chain-parts'
-import { ChainNotice } from './ChainNotice'
+import { BAND_MAX, CardPicker, PickBand, copyGroups, pickPlace, type PickCard, type PickFrom } from './CardPicker'
+import { ChainStage, outcomeLabel } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
 import { RespondBand } from './RespondBand'
@@ -234,7 +234,7 @@ export interface AutoAsks {
   /** Tu mesa como se ve ahora (con el ritmo) y la sesión de la mesa que la reproduce. */
   state: MatState
   matSession: MatSession
-  /** La mesa terminó de contar la última tanda; `skipAhead` salta al final (tocar la mesa; los botones del aviso de la cadena, no: se toca para mirarla). */
+  /** La mesa terminó de contar la última tanda; `skipAhead` salta al final (tocar la mesa: la cadena no ataja toques). */
   settled: boolean
   /** El cartel de la fase del rival que se ve ahora (`rivalPhases`; `PracticeMat.duel.notice`). */
   notice: DuelMatLink['notice']
@@ -298,15 +298,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     return { initial: snap.initial.mine, actions: snap.mineActions, cursor, theirs: theirsUpTo(cursor, snap.mineActions) }
   })
   const [seen, setSeen] = useState(snap.initial)
-  // La cadena (el aviso de arriba de la mesa, `ChainNotice`): sus mensajes (`snap.chainSteps`) se muestran de a uno con su tiempo (`chainDwell`), cada uno cuando la mesa contó
+  // La cadena (la escena en grande, `ChainStage`): sus mensajes (`snap.chainSteps`) se muestran de a uno con su tiempo (`chainDwell`), cada uno cuando la mesa contó
   // hasta donde llegó, y la mesa no pasa del próximo hasta mostrarlo: primero los eslabones que se encadenan y después cada uno resolviéndose, con sus jugadas. Al rearmarse
   // o al tocar la mesa, lo que ya pasó se da por visto. `chainGone`: la cadena terminada que ya se escondió.
   const [chainSeen, setChainSeen] = useState(() => stepsDue(paced.cursor, paced.theirs))
   const [chainGone, setChainGone] = useState(() => chainFeed(snap.chainSteps, stepsDue(paced.cursor, paced.theirs))?.key ?? -1)
-  /** Lo que la persona hizo con la pila de esta cadena (`key`): la plegó o la desplegó, o tocó un eslabón. Cada cadena abre desplegada. */
-  const [chainTouch, setChainTouch] = useState<{ key: number; open: boolean } | null>(null)
-  /** Se está leyendo «Cómo se resuelve» (el ⓘ de la cadena): mientras tanto la pila no se esconde. */
-  const [chainReading, setChainReading] = useState(false)
   const chainShownAt = useRef(0)
   /**
    * El repaso («Jugar solo»): un combo guardado (`name`), o tus jugadas hasta un paso, en la misma mesa y con la lista de siempre. El duelo vivo espera donde estaba: ni el ritmo, ni
@@ -410,8 +406,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }, [steps, chainSeen, chainDue, paced.cursor, theirsShown, reviewing, snap.replaying])
 
   // Tocar la mesa salta hasta el final; repasando, no. Lo del rival, también (sin carteles en ráfaga).
-  const skipAhead = useCallback((event?: { target: EventTarget | null }) => {
-    if (reviewing || (event?.target instanceof Element && event.target.closest('[data-testid="chain-notice"]'))) return
+  const skipAhead = useCallback(() => {
+    if (reviewing) return
     const to = paced.actions.length
     const theirs = rivalPhases ? Math.max(paced.theirs, theirsUpTo(to, paced.actions)) : paced.theirs
 
@@ -553,10 +549,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     [snap.overlay.limits, seat, effectLabel, nameOf],
   )
   // De dónde es (el chip y el grupo de `CardPicker`): lo que sólo se nombra por código, de ningún lado.
+  // La carta sin imagen, sobre el color de su tipo: el de tu carta (o de una igual a las tuyas) o, del rival, su tipo del `.cdb` si llegó (`cards`).
   const pickCardOf = (card: AskCard, key: string): PickCard => {
     const from = card.place === 'pile' ? card.pile : card.place === 'none' ? undefined : card.place
+    const code = card.ref ? codeOf(card.ref) || card.code : card.code
+    const api = (card.ref?.side === 'mine' ? cardsById.get(card.ref.id)?.apiCard : undefined) ?? byCode.get(code)?.apiCard
+    const frame = api ? frameKindOf(api.frameType, api.cardType) : frameOfType(cards?.get(code)?.type ?? 0)
 
-    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(from && card.ref ? pickPlace(from, card.ref.side === 'theirs') : {}) }
+    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(frame.kind === 'neutral' ? {} : { frame }), ...(from && card.ref ? pickPlace(from, card.ref.side === 'theirs') : {}) }
   }
 
   // ── La pregunta pendiente: se abre con la mesa del núcleo (`session.adapter`) en el mismo render en que llega (un rearme con pregunta es un solo commit); lo que se contesta solo, se
@@ -722,10 +722,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── Lo que la mesa recibe de la pregunta (`duel.auto`). ──
   const pick = shown?.cardPick ?? null
   // Cuántas, para qué (el código de pista del núcleo, si está comprobado) y cuántas van: el mismo título en la mesa, en la banda y en la hoja.
-  const pickLabel = pick ? pickTitle(pick, shown?.title, attacker ? nameOf({ side: 'mine', id: attacker }) : undefined) : ''
+  const pickLabel = pick ? pickTitle(pick, shown?.title) : ''
   // La carta que una pregunta nombra por su código (la que va a la casilla, la de la posición), sólo si se la conoce: si no, el título genérico.
   const knownName = (code: number | undefined) => (code ? (byCode.get(code)?.name ?? snap.names[code] ?? cards?.get(code)?.name ?? null) : null)
-  const zoneLabel = shown?.zonePick ? zoneTitle(shown, knownName(Number(shown.title))) : ''
+  const zoneLabel = shown?.zonePick ? zoneTitle(shown) : ''
   // Una lista aparte (de varios lugares, por código, lo del rival): hasta `BAND_MAX` cartas, una banda en el medio de la mesa (`PickBand`); con más, la hoja (`CardPicker`).
   const list = pick && decision.listed ? pick : null
   // De qué carta es lo que se pregunta y si es su costo, su activación o su efecto (`ask-why.ts`: sólo lo que se sabe), para la línea `AskWhy` de cada cartel. Por valor: la mesa no se vuelve a dibujar por él.
@@ -1043,45 +1043,30 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
                       : null,
     [review, back, frozen, stuck, canUndo, session, status, waitingText, rivalBusy, canCancel, shown, forcedOn, activatableCount, faults, newFault, unmappedCount, nameOf],
   )
-  // La cadena que se puede pasar, al medio de la mesa (como «¿Activás el efecto?»): se responde tocando la carta que brilla; sin nada más urgente en la línea (trabada, esperando, pensando).
-  // El aviso de la cadena: la última que empezó, como se ve con lo que ya se mostró (`feed`, más arriba). Abre desplegada y sólo la pliega la persona; terminada, se va a los
-  // `CHAIN_LINGER_MS` (Gastón, 2026-11-03: «si ya se resolvió, ¿por qué queda flotando?»): tocar un eslabón o desplegarla le da otro rato desde ese toque, pero nunca la deja para
-  // siempre. Sólo «Cómo se resuelve» abierto la retiene (`chainReading`).
-  const touched = feed !== null && chainTouch?.key === feed.key
-  const chainOpen = touched ? chainTouch.open : true
-
+  // La escena de la cadena: la última que empezó, como se ve con lo que ya se mostró (`feed`, más arriba). Terminada, se va a los `CHAIN_LINGER_MS` (lo que tarda en irse la
+  // última carta).
   useEffect(() => {
-    if (!feed?.done || chainReading) return
+    if (!feed?.done) return
     const timer = window.setTimeout(() => setChainGone(feed.key), CHAIN_LINGER_MS)
 
     return () => window.clearTimeout(timer)
-    // `chainTouch`: cada toque (otro objeto) vuelve a contar el rato.
-  }, [feed, chainReading, chainTouch])
-  // Tocar un eslabón de la pila lo muestra para leerlo: en el detalle fijo (la tuya, con tu carta; la del rival, por su número: un eslabón está a la vista) o, sin detalle, grande
-  // como una carta del rival. Con la frase de su efecto resaltada en el detalle cuando no hay duda de cuál es (`linkPhrase`); se resalta mientras la pila está a la vista.
-  const [linkRead, setLinkRead] = useState<{ code: number; description?: string; card: ApiCardReference | null } | null>(null)
-  const linkRivalCard = useRivalCard(linkRead && !linkRead.card && linkRead.code ? drawIdOf(linkRead.code) : undefined)
-  const readLink = useCallback(
-    (index: number, rect: DOMRect) => {
-      const row = feed?.rows[index]
-
-      if (!row) return
-      const card = row.mine ? ((row.card?.side === 'mine' ? cardsById.get(row.card.id)?.apiCard : undefined) ?? byCode.get(row.code)?.apiCard ?? null) : null
-
-      setLinkRead({ code: row.code, card, ...(row.description ? { description: row.description } : {}) })
-      // Desde 1101 px leer un eslabón le da a la pila otro rato desde el toque (cuenta de nuevo `CHAIN_LINGER_MS` si ya terminó); la cinta del celular no, y se va sola al terminar.
-      if (desktop) setChainTouch({ key: feed.key, open: true })
-      if (desktop && card) lockDock({ name: nameOf(row.card, row.code), card })
-      else showRival(row.code ? { drawId: drawIdOf(row.code) } : { faceDown: true }, rect)
-    },
-    [feed, cardsById, byCode, desktop, lockDock, nameOf, showRival],
-  )
+  }, [feed])
   // La cadena que se puede pasar, en la banda de responder: a qué eslabón y con qué cartas (con su lugar). Con una sola de un solo efecto, ya viene elegida; una con varios efectos
   // abre su lista (como su menú en la mesa).
   const offer = shown && lane === null ? respondOffer(shown, chain) : null
   // La elegida es de esta pregunta (`askState`, no su número: al reiniciar el duelo los números vuelven a empezar).
   const [offerPick, setOfferPick] = useState<{ of: AskState; key: string } | null>(null)
-  const only = offer?.candidates.length === 1 && offer.candidates[0]!.answer ? offer.candidates[0]! : null
+  // Las candidatas de la banda de responder (`RespondBand`). En el celular la banda va en la hoja de abajo y, con la cadena abierta, en el pie de su hoja (`SheetHost`): una sola hoja.
+  const respondCards =
+    offer?.candidates.map(({ ref, key, at }): PickCard => {
+      // El lugar con su ícono (la mano, el Cementerio, el campo…): en las columnas angostas del celular, sólo el ícono, y el nombre accesible lo dice entero.
+      const from: PickFrom | null = at === null ? null : at === 'mz' || at === 'emz' || at === 'st' ? 'field' : at
+
+      return { key, name: nameOf(ref), art: artOf(ref), ...(from ? pickPlace(from, ref.side === 'theirs') : {}) }
+    }) ?? []
+  // Una sola opción (una carta, o un solo grupo de copias «×4») viene elegida de entrada: la primera copia que se puede activar.
+  const respondGroups = copyGroups(respondCards)
+  const only = respondGroups.length === 1 ? (offer?.candidates.find((candidate) => candidate.answer && respondGroups[0]!.some((card) => card.key === candidate.key)) ?? null) : null
   const offered = offer?.candidates.find((candidate) => offerPick !== null && offerPick.of === askState && candidate.key === offerPick.key) ?? only
   const pickOffer = (key: string) => {
     const candidate = offer?.candidates.find((item) => item.key === key)
@@ -1092,60 +1077,59 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }
 
   const chainShown = feed !== null && !reviewing && !(feed.done && chainGone === feed.key)
+  /** Los datos de tu carta (o de una igual a las tuyas) por eslabón: el marco y el texto. */
+  const linkApi = useCallback((row: ChainRow) => (row.card?.side === 'mine' ? cardsById.get(row.card.id)?.apiCard : undefined) ?? byCode.get(row.code)?.apiCard ?? null, [cardsById, byCode])
+  // El marco de las cartas de la cadena que no son tuyas (sólo se sabe su código): el tipo del `.cdb` si llegó (`cards`, el duelo por enlace) o, si no, se pide a YGOPRODeck una vez.
+  const [linkFrames, setLinkFrames] = useState<ReadonlyMap<number, CardFrame>>(() => new Map())
+  const framesDue = [...new Set((feed?.rows ?? []).filter((row) => row.code && !linkApi(row) && !cards?.get(row.code)?.type && !linkFrames.has(row.code)).map((row) => row.code))].join()
 
-  // Sin cartel (otro duelo, el repaso) no se lee nada: que `chainReading` no se quede puesto.
   useEffect(() => {
-    if (!chainShown) setChainReading(false)
-  }, [chainShown])
-  // El visor de pilas de una búsqueda flota sobre el centro de la mesa (escritorio): mientras se elige ahí, la cadena va plegada a su píldora para no pisarlo (después vuelve a como estaba).
-  const viewerOpen = desktop && pick !== null && list === null && pick.surface === 'pile'
-  // Las candidatas de la banda de responder (`RespondBand`). En el celular la banda va en la hoja de abajo y, con la cadena abierta, en el pie de su hoja (`SheetHost`): una sola hoja.
-  const respondCards =
-    offer?.candidates.map(({ ref, key, at }): PickCard => {
-      // El lugar con su ícono (la mano, el Cementerio, el campo…): en las columnas angostas del celular, sólo el ícono, y el nombre accesible lo dice entero.
-      const from: PickFrom | null = at === null ? null : at === 'mz' || at === 'emz' || at === 'st' ? 'field' : at
+    if (!framesDue) return
+    let alive = true
 
-      return { key, name: nameOf(ref), art: artOf(ref), ...(from ? pickPlace(from, ref.side === 'theirs') : {}) }
-    }) ?? []
+    fetchCardsByIds(framesDue.split(',').map(Number))
+      .then((found) => alive && setLinkFrames((now) => new Map([...now, ...found.map((card): [number, CardFrame] => [card.ygoprodeckId, frameKindOf(card.frameType, card.cardType)])])))
+      .catch(() => {})
+
+    return () => {
+      alive = false
+    }
+  }, [framesDue])
   const chainRows = useMemo(
-    () => feed?.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}), ...(row.outcome ? { outcome: outcomeChip(row.outcome) } : {}) })) ?? [],
-    [feed, rivalName, nameOf, artOf],
-  )
-  // La pestaña «Cadena» de la columna de escritorio: la pila entera (la línea muestra hasta cuatro eslabones), también la última cadena después de irse de la línea.
-  const chainList = useMemo(
     () =>
-      desktop && feed && !reviewing ? (
-        <ol key={feed.key} className="m-0 grid list-none content-start gap-1 p-0">
-          <ChainListRows rows={chainRows} onPick={readLink} />
-        </ol>
-      ) : null,
-    [desktop, feed, reviewing, chainRows, readLink],
+      feed?.rows.map((row) => {
+        const api = linkApi(row)
+
+        return {
+          number: row.number,
+          mine: row.mine,
+          name: row.code ? nameOf(null, row.code) : nameOf(row.card),
+          art: artOf(row.card, row.code),
+          frame: api ? frameKindOf(api.frameType, api.cardType) : (linkFrames.get(row.code) ?? frameOfType(cards?.get(row.code)?.type ?? 0)),
+          state: row.state,
+          ...(row.by ? { by: row.by } : {}),
+          ...(row.outcome ? { outcome: outcomeLabel(row.outcome) } : {}),
+        }
+      }) ?? [],
+    [feed, nameOf, artOf, linkApi, cards, linkFrames],
   )
-  const chainNotice = useMemo(
-    () =>
-      chainShown && feed ? (
-        <ChainNotice
-          // Una cadena nueva es otra (sus números vuelven a empezar): los eslabones de la anterior no se animan contra ella.
-          key={feed.key}
-          done={feed.done}
-          rows={chainRows}
-          focus={feed.focus}
-          resolving={feed.resolving}
-          open={chainOpen && !viewerOpen}
-          compact={!desktop}
-          onOpenChange={(open) => setChainTouch({ key: feed.key, open })}
-          onReading={setChainReading}
-          onPick={readLink}
-        />
-      ) : null,
-    [chainShown, feed, chainRows, chainOpen, viewerOpen, desktop, readLink],
-  )
-  const linkText = linkRead?.card ?? linkRivalCard
+  // Una cadena nueva es otra (sus números vuelven a empezar): sus cartas no se animan contra las de la anterior.
+  const chainNotice = useMemo(() => (chainShown && feed ? <ChainStage key={feed.key} rows={chainRows} current={feed.current} done={feed.done} /> : null), [chainShown, feed, chainRows])
+  // En escritorio el detalle de la izquierda muestra el eslabón del que habla la escena (el que se resuelve o, armando, el último), con la frase de su efecto resaltada cuando no
+  // hay duda de cuál es (`linkPhrase`).
+  const linkRow = desktop && chainShown && feed ? (feed.rows[feed.current >= 0 ? feed.current : feed.rows.length - 1] ?? null) : null
+  const linkCard = linkRow ? linkApi(linkRow) : null
+  const linkRivalCard = useRivalCard(linkRow && !linkCard && linkRow.code ? drawIdOf(linkRow.code) : undefined)
+
+  useEffect(() => {
+    if (linkRow) hoverDock(linkCard ? { name: nameOf(linkRow.card, linkRow.code), card: linkCard } : linkRow.code ? { drawId: drawIdOf(linkRow.code) } : { faceDown: true })
+  }, [linkRow, linkCard, hoverDock, nameOf])
+  const linkText = linkCard ?? linkRivalCard
   const linkHighlight = useMemo<CardTextHighlight | null>(() => {
-    const range = chainNotice && linkRead && linkText?.description ? linkPhrase(linkText.description, linkRead.code, linkRead.description) : null
+    const range = linkRow && linkText?.description ? linkPhrase(linkText.description, linkRow.code, linkRow.description) : null
 
     return range && linkText ? { ygoprodeckId: linkText.ygoprodeckId, ...range } : null
-  }, [chainNotice, linkRead, linkText])
+  }, [linkRow, linkText])
   // ── ATK/DEF de ahora de la carta del detalle (sólo las del campo los tienen): se busca por código entre las del campo de ese lado. ──
   const peeked = dock.shown
   const dockStats = useMemo(() => {
@@ -1222,8 +1206,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     phase: turnMine ? state.phase : (rival?.phase ?? theirs.phase),
     // Cambiás de fase en tus jugadas del turno y en la ventana de una fase tuya.
     myTurn: shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
-    // De quién es el turno, para que las preguntas digan la fase: sólo si el núcleo ya empezó uno (antes, no se dice).
-    ...(snap.overlay.turnPlayer !== null && turnNumber > 0 ? { turnMine } : {}),
     respond,
     attack,
     ...(aim ? { aim } : {}),
@@ -1248,6 +1230,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         key={askId ?? 0}
         // A qué eslabón respondés (su número, su dueño, su carta y su estado) ya lo dice la pila de la cadena, arriba y desplegada: la banda dice sólo qué se decide.
         title={respondTitle(offer, offer.to ? nameOf(offer.to.link.card, offer.to.link.code) : '')}
+        {...(offer.to ? { about: nameOf(offer.to.link.card, offer.to.link.code) } : {})}
         link={offer.link}
         cards={respondCards}
         chosen={offered?.key ?? null}
@@ -1256,7 +1239,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           if (offered?.answer) gesture({ kind: 'item', answer: offered.answer })
         }}
         onPass={() => gesture({ kind: 'cancel' })}
-        mode={{ value: prefs.chain, onChange: (mode) => setAutoPref('chain', mode) }}
       />
     ) : forced && forcedFirst && lane === null ? (
       // Varias obligatorias: tocar elige cuál va primero (la primera, de entrada) y la principal la activa; sin «No responder». Una del rival dice de dónde es.
@@ -1276,7 +1258,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         done
         onToggle={setForcedPick}
         onPick={() => gesture({ kind: 'item', answer: forcedFirst.item.answer! })}
-        action={forced.length > 1 ? (chain.length === 0 ? t('auto.respond.start') : t('auto.respond.chain', { link: chain.length + 1 })) : forcedFirst.item.label}
+        action={forced.length > 1 ? t('auto.respond.start') : forcedFirst.item.label}
         {...(forced.length > 1 ? { note: t('auto.forced.hint') } : {})}
       />
     ) : band && listProps ? (
@@ -1294,15 +1276,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ) : undefined,
     rivalFlights,
     ...(chainNotice ? { chain: chainNotice } : {}),
-    ...(chainList ? { chainList } : {}),
     turnNumber,
     rivalEmz: rivalEmzTaken,
     // El ATK/DEF de ahora es del duelo vivo: repasando, el detalle muestra la carta impresa.
     ...(desktop ? { detail } : {}),
     onPeek: dock.lock,
     onHover: dock.hover,
-    // Lo que se tocó y quedó fijo en el detalle (una carta, un eslabón, una del rival): la columna de escritorio pasa a «Carta».
-    peekLock: dock.locked ? dock.shown : null,
     onRivalHover,
     rivalViewing: rivalPile !== null,
     onActivity,
@@ -1325,6 +1304,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             why={why}
             options={options.options.map((option): AskOption => ({ id: String(option.value), label: optionLabel(option) }))}
             mode={options.count > 1 || options.of === 'race' || options.of === 'attribute' ? { count: options.count } : 'one'}
+            of={options.of}
             onPick={(ids) => gesture(...ids.map((id) => ({ kind: 'option' as const, value: Number(id) })))}
           />
         ) : null}

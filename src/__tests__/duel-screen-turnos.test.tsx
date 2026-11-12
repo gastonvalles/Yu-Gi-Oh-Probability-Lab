@@ -510,12 +510,14 @@ describe('la pantalla del duelo', () => {
     expect(bubble(hostChat, 'Primero')).not.toHaveClass('motion-safe:animate-message-in')
   })
 
-  it('las fases y el turno: los dos ven en qué fase va quien juega, el rival ve el cartel de cada fase y, al terminar el turno, el de "Tu turno"', () => {
+  it('las fases y el turno: los dos ven en qué fase va quien juega, el botón pulsa con cada fase del rival (sin cartel) y, al terminar el turno, con "Tu turno" para el lector', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
     const phase = (view: RenderResult) => phaseChip(view).getAttribute('aria-label')?.replace('Fases: ', '')
-    const banner = (view: RenderResult) => view.container.querySelector('[data-fx="banner"]')?.textContent ?? ''
+    // Sin cartel en el duelo: la fase la dice su botón (que pulsa) y el lector de pantalla oye un status oculto, junto al botón.
+    const banner = (view: RenderResult) => phaseChip(view).parentElement!.querySelector('[role="status"]')?.textContent ?? ''
+    const visibleBanner = (view: RenderResult) => view.container.querySelector('[data-fx="banner"]')
 
     expect(phase(host)).toBe('Draw Phase')
     expect(phase(guest)).toBe('Draw Phase')
@@ -527,6 +529,7 @@ describe('la pantalla del duelo', () => {
     expect(phase(guest)).toBe('Main Phase 1')
     expect(banner(guest)).toContain('Ana')
     expect(banner(guest)).toContain('Main Phase 1')
+    expect(visibleBanner(guest)).toBeNull()
 
     // Las fases son una sola para los dos y sólo las toca quien tiene el turno: Beto las ve (encendidas igual que Ana) pero no puede cambiarlas.
     expect(phaseChip(guest)).toBeDisabled()

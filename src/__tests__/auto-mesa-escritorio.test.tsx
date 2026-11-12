@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
 
@@ -9,11 +9,12 @@ import { loc } from './support/auto-session-fake'
 import { core, renderAuto } from './support/auto-screen-harness'
 
 /**
- * La mesa de escritorio crece (Gastón, «Las 7», mejora 6b), sólo en el duelo automático desde 1101 px: debajo del campo va la línea de alto fijo (la pista de fases o la cadena) con el botón
- * del turno a su derecha, y la ficha «M1» sale del campo. Lo que mide (la casilla de 88 px a 1440 × 900, entera a 1101 × 700) se mide en un navegador: jsdom no mide.
+ * La mesa de escritorio del duelo automático (desde 1101 px; Gastón, 2026-11-12: «esto de mover el detalle de la carta a un único panel derecho no me gusta»): dos paneles, el detalle de la carta a la
+ * izquierda (desde 1440 px) y los pasos a la derecha, sin pestañas ni columna única; sin línea debajo del campo ni renglón del turno; la fase, en su botón que llena su casilla, al medio del campo.
+ * Lo que mide (la casilla de ~100 px a 1440 × 900, entera a 1101 × 700, el campo que no se mueve) se mide en un navegador: jsdom no mide.
  */
 
-const idle = (toBattle: boolean): CoreAsk => ({
+const idle =(toBattle: boolean): CoreAsk => ({
   type: 'select_idlecmd',
   player: 0,
   summons: [loc(100, L.HAND, 0)],
@@ -35,29 +36,36 @@ beforeEach(() => {
 })
 
 describe('auto · la mesa de escritorio', () => {
-  it('la línea de abajo del campo lleva la pista de fases (la única «Fases:», fuera del campo) y, a su derecha, el botón del turno', () => {
+  it('dos paneles, como antes: el detalle de la carta a la izquierda y los pasos a la derecha, sin pestañas ni columna única', () => {
+    renderAuto()
+
+    expect(screen.getAllByLabelText('Detalle de la carta')).toHaveLength(1)
+    expect(document.querySelector('[data-card-dock]')).toHaveClass('min-[1440px]:col-start-1')
+    expect(screen.getByRole('region', { name: 'Pasos y combos' })).toHaveClass('min-[1101px]:col-start-2', 'min-[1440px]:col-start-3')
+    expect(screen.queryByRole('tablist', { name: 'Panel de la mesa' })).toBeNull()
+    expect(document.querySelector('[data-mat-column]')).toBeNull()
+  })
+
+  it('sin línea debajo del campo (queda su marca de 0 px, el techo de las ventanas) ni pista de fases ni botón del turno: la fase va en su botón, al medio del campo, y llena su casilla', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(idle(true)))
     const line = document.querySelector<HTMLElement>('[data-duel-line]')!
-    const track = within(line).getByRole('button', { name: 'Fases: Main Phase 1' })
 
-    expect(screen.getAllByRole('button', { name: /^Fases:/ })).toEqual([track])
-    expect(within(screen.getByLabelText('Campo')).queryByRole('button', { name: /^Fases:/ })).toBeNull()
-    expect(line).toHaveClass('h-14')
+    expect(line).toHaveClass('h-0')
+    expect(within(line).queryByRole('button')).toBeNull()
+    expect(document.querySelector('[data-phase-track], [data-turn-action]')).toBeNull()
+    const phase = screen.getAllByRole('button', { name: /^Fases:/ })
 
-    const action = within(line).getByRole('button', { name: 'Ir a Batalla' })
-
+    expect(phase).toEqual([within(screen.getByLabelText('Campo')).getByRole('button', { name: 'Fases: Main Phase 1' })])
+    expect(phase[0]).toHaveClass('size-full!')
+    expect(screen.queryByRole('button', { name: /^(Ir a Batalla|Terminar turno)$/ })).toBeNull()
     expect(document.querySelector('[data-mat-seat]')).toBeNull()
-    fireEvent.click(action)
-    expect(fake.answers.at(-1)).toMatchObject({ type: 'select_idlecmd', action: 6 })
   })
 
-  it('sin Battle Phase el botón dice «Terminar turno» y termina el turno', () => {
-    const fake = renderAuto()
+  it('ningún renglón dice de quién es el turno (la chapa de quien juega lo dice)', () => {
+    renderAuto()
 
-    core(() => fake.ask(idle(false)))
-    fireEvent.click(within(document.querySelector<HTMLElement>('[data-duel-line]')!).getByRole('button', { name: 'Terminar turno' }))
-    expect(fake.answers.at(-1)).toMatchObject({ type: 'select_idlecmd', action: 7 })
+    expect(screen.queryByTestId('auto-turn')).toBeNull()
   })
 })

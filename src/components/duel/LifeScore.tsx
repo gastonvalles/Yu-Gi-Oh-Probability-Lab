@@ -1,7 +1,7 @@
 import { memo, useContext, useEffect, useLayoutEffect, useRef } from 'react'
 
 import { isEmojiSignal } from '../../app/duel-signals'
-import { LifeHold, useHeldValue, useLifeNumber, useLpDelta } from '../../app/life-effects'
+import { DELTA_MS, LifeHold, useHeldValue, useLifeNumber, useLpDelta } from '../../app/life-effects'
 import { isCritical, playCritical, playLifeChange } from '../../app/life-hit'
 import { prefersReducedMotion } from '../../app/motion'
 import { t } from '../../i18n'
@@ -11,6 +11,9 @@ import { PLAYER_COLOR, type PlayerSide } from './player-color'
 
 /** Cuánto se queda el globo de una señal (pensando, todo bien, un 👍) junto a las vidas: el temporizador de `useSignals` (use-duel-table) lo quita a esta misma duración. */
 export const SIGNAL_MS = 3500
+
+/** Lo más que cuenta el número de una chapa al cambiar (el kit, F-05: 600 ms; hasta 700). */
+const BADGE_COUNT_MAX_MS = 700
 
 /**
  * Las vidas de un jugador, planas (Gastón, 2026-10-27, opción A «Marcador arriba»: las placas «no le gustan»): sin caja, chapa ni barra de 8000. Arriba el nombre chico en el color del dueño
@@ -154,13 +157,15 @@ export const LifeScore = memo(function LifeScore({
 const BADGE_TAG = { mine: 'bg-primary text-white', theirs: 'bg-info text-background' } as const
 
 /**
- * La chapa de vidas del duelo (Gastón, 2026-11-10: el diseño de la mesa del celular, como Master Duel): junto a cada lado de la mesa, la del rival arriba a la derecha y la tuya abajo a la izquierda (en
- * escritorio, a los costados del campo). Recta, con fondo carbón al 82 % en alfa plano (sin desenfoque: el texto blanco pasa AA sobre el remolino) y el borde del dueño; arriba la etiqueta («Vos» violeta,
- * «Rival» lima) y, si se da, el turno (`turn`); abajo, el número de 33 px.
- * - **El cambio de vidas:** el número crece a 1,08 y vuelve (`animate-life-bump`) y sale «−1100 ▼» en grande (`text-hit`, 64 px; 84 desde 1101), que entra de 1,6, se sostiene, sube y se funde en 1,5 s
- *   (`animate-life-delta`): el del rival a la izquierda de su chapa, sobre su mano; el tuyo arriba de tu chapa (nunca sobre el botón del turno). Rojo si te conviene poco (tu daño, lo que el rival
- *   gana), menta si te conviene (el daño al rival, lo que ganás). Sólo `transform`/`opacity`; con movimiento reducido aparece quieto y se va solo. Lo anuncia el lector de pantalla (`aria-live`).
+ * La chapa de vidas del duelo (Gastón, 2026-11-10: el diseño de la mesa del celular, como Master Duel; 2026-11-12: «no quiero que salga más vida ocupando pantalla si ya tenemos una vida visible»): junto a
+ * cada lado de la mesa, la del rival arriba a la derecha y la tuya abajo a la izquierda (en escritorio, a los costados del campo). Recta, con fondo carbón al 82 % en alfa plano (sin desenfoque: el texto blanco
+ * pasa AA sobre el remolino) y el borde del dueño; arriba la etiqueta («Vos» violeta, «Rival» lima) y abajo el número de 33 px. No dice de quién es el turno: lo dice su borde.
+ * - **El turno:** `active` es el de quien juega; su chapa lleva el borde de 3 px y la del otro, uno tenue de 1 px. El relleno compensa el borde (el ancho y el alto de la chapa no cambian al pasar el turno).
+ * - **El cambio de vidas** (pieza F-05 del kit), todo adentro de la chapa y sin ocupar lugar fuera de ella: la chapa tiembla al bajar (`sacudir`: `translate`), el número cuenta hasta el valor nuevo en 700 ms como
+ *   mucho (`useLifeNumber`: salta con movimiento reducido), crece a 1,08 y vuelve (`animate-life-bump`), y el «−1100» chico toma el lugar de la etiqueta un momento (`animate-linger`, `DELTA_MS`): rojo si te
+ *   conviene poco (tu daño, lo que el rival gana), menta si te conviene (el daño al rival, lo que ganás). Sólo `transform`/`opacity`. Lo anuncia el lector de pantalla (`aria-live`).
  * - Crítico (2000 o menos) y en 0, el número en rojo. `onClick` (el duelo manual): un botón de 44 px que abre la calculadora. `bubble`: la señal de su dueño, como en `LifeScore`.
+ * - `compact`: la del rival en la fila de los íconos del celular (44 px): relleno de arriba y abajo mínimo y el número de 19 px.
  * - Usos: los duelos (manual, por enlace y automático) en el celular y en las esquinas del campo en escritorio; la marca y la fila de 640 a 1100 px siguen con `LifeScore`.
  */
 export const LifeBadge = memo(function LifeBadge({
@@ -170,9 +175,8 @@ export const LifeBadge = memo(function LifeBadge({
   mine = false,
   color,
   align = mine ? 'start' : 'end',
-  turn,
-  turnMine,
   active,
+  compact = false,
   onClick,
   bubble = null,
   bubbleKey,
@@ -183,11 +187,10 @@ export const LifeBadge = memo(function LifeBadge({
   mine?: boolean
   color?: PlayerSide
   align?: 'start' | 'end'
-  /** El turno, junto a la etiqueta («tu turno 3»), en el color de quién lo tiene. */
-  turn?: string | undefined
-  turnMine?: boolean | undefined
-  /** De quién es el turno (el duelo): la chapa del que juega se enciende con su aro (sombra: no cambia la medida) y la del otro se apaga (borde tenue). Sin esto, como siempre. */
+  /** De quién es el turno (el duelo): la chapa del que juega lleva el borde de 3 px y la del otro uno tenue. Sin esto, como siempre. */
   active?: boolean | undefined
+  /** La de la fila de los íconos del celular: relleno de arriba y abajo mínimo y el número de 19 px. */
+  compact?: boolean
   onClick?: (() => void) | undefined
   bubble?: string | null
   bubbleKey?: number | undefined
@@ -196,14 +199,14 @@ export const LifeBadge = memo(function LifeBadge({
   const owner = color ?? side
   const life = useHeldValue(real, useContext(LifeHold))
   // Sin `into`: el número que late se vuelve a montar con cada cambio (su clave) y React tiene que ser el dueño de su texto. La chapa es chica: dibujarla por cuadro mientras cuenta no pesa.
-  const shown = useLifeNumber(life)
+  const shown = useLifeNumber(life, undefined, BADGE_COUNT_MAX_MS)
   const change = useLpDelta(life)
   const box = useRef<HTMLElement | null>(null)
   const setBox = (node: HTMLElement | null) => {
     box.current = node
   }
 
-  // Al bajar, la chapa se sacude como en el impacto (`sacudir`: sólo `transform`; con movimiento reducido no se mueve).
+  // Al bajar, la chapa tiembla como en el impacto (`sacudir`: sólo `translate`; con movimiento reducido no se mueve).
   useEffect(() => {
     const shake = change && change.delta < 0 && box.current && !prefersReducedMotion() ? sacudir(box.current, 'life') : null
 
@@ -216,34 +219,26 @@ export const LifeBadge = memo(function LifeBadge({
   const lifeOf = `${t('duel.bar.lifeOf', { name })}: ${life}`
   const body = (
     <>
-      {/* `max-w-full`: si la chapa cede ancho (la fila de abajo del celular), el turno se recorta con «…» en vez de salirse. */}
-      <span className={cx('flex min-w-0 max-w-full items-center gap-1.5 text-micro font-bold leading-4', align === 'end' && 'flex-row-reverse')}>
-        <span aria-hidden="true" className={cx('shrink-0 px-1.5 uppercase tracking-wider', BADGE_TAG[owner])}>{label}</span>
-        {turn ? <span className={cx('min-w-0 truncate', turnMine === false ? 'text-info-soft' : 'text-accent')}>{turn}</span> : null}
-      </span>
-      <span className={cx('relative flex items-center', align === 'end' && 'flex-row-reverse')}>
-        {/* El golpe: la clave cambia con cada cambio y vuelve a correr la animación. Distinta de la del «−N» (son hermanos): con la misma, React dejaba el número viejo al lado del nuevo («75007500»). */}
-        <span key={`bump-${change?.key ?? 'idle'}`} aria-hidden="true" className={cx('origin-center', change && 'animate-life-bump motion-reduce:animate-none')}>
-          <span className={cx('block text-stat font-extrabold leading-none tabular-nums', isCritical(life) || life === 0 ? 'text-danger-soft' : 'text-foreground')}>
-            {shown}
-          </span>
-        </span>
+      {/* La etiqueta y, mientras dura, el «−N» en su mismo lugar: la chapa no se ensancha. */}
+      <span className={cx('relative flex min-w-0 max-w-full items-center text-micro font-bold leading-4', align === 'end' && 'flex-row-reverse')}>
+        <span aria-hidden="true" className={cx('shrink-0 px-1.5 uppercase tracking-wider transition-opacity duration-200 motion-reduce:transition-none', BADGE_TAG[owner], change && 'opacity-0')}>{label}</span>
         {change ? (
-          // En grande y sin ocupar lugar (no ensancha la chapa ni corre nada): el del rival a su izquierda, sobre su mano (son dorsos); el tuyo arriba de tu chapa, nunca sobre el botón del turno.
           <span
             key={`delta-${change.key}`}
             aria-hidden="true"
             data-life-delta={good ? 'good' : 'bad'}
-            className={cx(
-              'pointer-events-none absolute z-30 flex animate-life-delta items-center gap-1 whitespace-nowrap text-hit font-extrabold tabular-nums drop-shadow-[0_2px_6px_rgb(0_0_0/0.7)] motion-reduce:animate-none min-[1101px]:text-hit-lg',
-              mine ? 'bottom-full left-0 mb-6 origin-bottom-left' : 'right-full mr-3 origin-right',
-              good ? 'text-success' : 'text-danger-soft',
-            )}
+            style={{ animationDuration: `${DELTA_MS}ms` }}
+            className={cx('pointer-events-none absolute inset-y-0 flex animate-linger items-center whitespace-nowrap font-extrabold tabular-nums motion-reduce:animate-none', align === 'end' ? 'right-0' : 'left-0', good ? 'text-success' : 'text-danger-soft')}
           >
-            {deltaText}{' '}
-            <span className="text-title min-[1101px]:text-stat">{change.delta < 0 ? '▼' : '▲'}</span>
+            {deltaText}
           </span>
         ) : null}
+      </span>
+      {/* El golpe: la clave cambia con cada cambio y vuelve a correr la animación (sin ella, React dejaba el número viejo al lado del nuevo: «75007500»). */}
+      <span key={`bump-${change?.key ?? 'idle'}`} aria-hidden="true" className={cx('origin-center', change && 'animate-life-bump motion-reduce:animate-none')}>
+        <span className={cx('block font-extrabold leading-none tabular-nums', compact ? 'text-lead' : 'text-stat', isCritical(life) || life === 0 ? 'text-danger-soft' : 'text-foreground')}>
+          {shown}
+        </span>
       </span>
       <span aria-live="polite" className="sr-only">
         {change ? `${label} ${deltaText}` : ''}
@@ -255,11 +250,11 @@ export const LifeBadge = memo(function LifeBadge({
       ) : null}
     </>
   )
-  // Recta y traslúcida (82 %, alfa plano), con el borde de su dueño.
+  // Recta y traslúcida (82 %, alfa plano). La del turno, con el borde de su dueño de 3 px; la otra, tenue y de 1 px. El relleno cede lo que el borde suma: la medida es la misma.
   const plate = cx(
-    'relative grid shrink-0 gap-0.5 border bg-background/82 px-2 py-1',
-    active === false ? 'border-border-subtle' : owner === 'mine' ? 'border-primary' : 'border-info',
-    active && (owner === 'mine' ? 'ring-2 ring-primary' : 'ring-2 ring-info'),
+    'relative grid shrink-0 gap-0.5 bg-background/82',
+    active ? (owner === 'mine' ? 'border-[3px] border-primary' : 'border-[3px] border-info') : active === false ? 'border border-border-subtle' : owner === 'mine' ? 'border border-primary' : 'border border-info',
+    active ? (compact ? 'px-1.5 py-0' : 'px-1.5 py-0.5') : compact ? 'px-2 py-0.5' : 'px-2 py-1',
     align === 'end' ? 'justify-items-end text-right' : 'justify-items-start text-left',
   )
 

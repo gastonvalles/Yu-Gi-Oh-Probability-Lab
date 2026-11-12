@@ -49,9 +49,9 @@ describe('el duelo manual · ATK/DEF de los monstruos', () => {
     flush()
     await act(async () => {})
 
-    expect(tagsIn(host.container)).toEqual(['1200 / 800'])
+    expect(tagsIn(host.container)).toEqual(['1200/800'])
     expect(within(host.container).getByRole('button', { name: `${name}, ATK 1200, DEF 800` })).toBeInTheDocument()
-    expect(tagsIn(guest.container)).toEqual(['1200 / 800'])
+    expect(tagsIn(guest.container)).toEqual(['1200/800'])
     expect(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1, ATK 1200, DEF 800: marcar' })).toBeInTheDocument()
 
     // Colocado: boca abajo no se ve nada, de ningún lado.
@@ -61,7 +61,7 @@ describe('el duelo manual · ATK/DEF de los monstruos', () => {
     fireEvent.click(within(host.container).getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
     flush()
     await act(async () => {})
-    expect(tagsIn(host.container)).toEqual(['1200 / 800'])
-    expect(tagsIn(guest.container)).toEqual(['1200 / 800'])
+    expect(tagsIn(host.container)).toEqual(['1200/800'])
+    expect(tagsIn(guest.container)).toEqual(['1200/800'])
   })
 })

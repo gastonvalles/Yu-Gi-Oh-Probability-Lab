@@ -144,9 +144,9 @@ interface Stretch {
  * pisa: se escriben `--drag-x` y `--drag-y`, que sus clases le suman (`translate-x-[calc(var(--drag-x,0px)-50%)]`).
  * `minSize`: además se estira (las ventanas del duelo automático, `AutoPanel`): `stretch` da los agarres del borde y la esquina, `resizeBy` el teclado; el tamaño se guarda al lado de la posición
  * (`sizeKey`), acotado al mínimo y a la pantalla, se escribe en `width`/`height` del cartel (sin redibujar React) y la esquina de arriba a la izquierda no se mueve al estirarlo. Doble clic, a su lugar y
- * a su tamaño de siempre.
+ * a su tamaño de siempre. `touch`: también con el dedo (la barra y la esquina de una ventana que flota: «Menús flotantes»); sin esto el dedo sigue lo suyo (`touchOr`).
  */
-export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean, vars = false, minSize?: Size) {
+export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean, vars = false, minSize?: Size, touch = false) {
   const stored = useRef<FabPosition | null>(null)
   const sized = useRef<Size | null>(null)
   const stretching = useRef<Stretch | null>(null)
@@ -156,6 +156,7 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
   const observed = useRef<HTMLElement | null>(null)
   const observer = useRef<ResizeObserver | null>(null)
   const seen = useRef<HTMLElement | null>(null)
+  const loaded = useRef(storageKey)
 
   if (stored.current === null) {
     stored.current = readOffset(storageKey)
@@ -275,8 +276,9 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
 
   // Cada vez que se dibuja (otra pregunta, minimizado/abierto): el cartel en su lugar recordado, acotado; y su tamaño, vigilado.
   useLayoutEffect(() => {
-    // Al aparecer, lo último guardado de su lugar (y de su tamaño).
-    if (ref.current && !seen.current) {
+    // Al aparecer, lo último guardado de su lugar (y de su tamaño); y si cambió el lugar donde se guarda (el celular que pasa a «Menús flotantes»), el de ese lugar.
+    if (ref.current && (!seen.current || loaded.current !== storageKey)) {
+      loaded.current = storageKey
       stored.current = readOffset(storageKey)
       sized.current = minSize ? readSize(storageKey) : null
     }
@@ -306,7 +308,7 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
   const onPointerDown: PointerHandler = (event) => {
     const element = ref.current
 
-    if (!enabled || !element || event.pointerType === 'touch' || event.button !== 0) return
+    if (!enabled || !element || (event.pointerType === 'touch' && !touch) || event.button !== 0) return
     // Los botones de la cabeza siguen siendo botones.
     if ((event.target as Element).closest('button, a, input, select, textarea')) return
     // Sin esto el mouse selecciona texto de la mesa al arrastrar y, con algo seleccionado, el navegador arranca su propio arrastre (cancela el puntero).
@@ -357,7 +359,7 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
       onPointerDown: (event) => {
         const element = ref.current
 
-        if (!element || event.pointerType === 'touch' || event.button !== 0) return
+        if (!element || (event.pointerType === 'touch' && !touch) || event.button !== 0) return
         event.preventDefault()
         event.stopPropagation()
         stretching.current = { id: event.pointerId, start: { x: event.clientX, y: event.clientY }, ...stretchFrom(element) }

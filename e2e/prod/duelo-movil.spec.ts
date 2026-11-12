@@ -1,10 +1,10 @@
-// QA de SÓLO LECTURA contra el sitio publicado (`npm run test:prod`): el duelo rearmado (TI-138: campo de siete columnas, fondo remolino, esquinas rectas, chapas y línea, menús) y «Las 7» (TI-171 a TI-179), en celular y escritorio.
+// QA de SÓLO LECTURA contra el sitio publicado (`npm run test:prod`): la mesa del duelo con el kit aprobado (TI-190 a TI-198; QA del conjunto, TI-199) y la práctica manual, en celular (390×844, con toque) y en escritorio (1440×900).
 // Nunca crea una sala ni envía un formulario: las rutas con # son locales al navegador y el deck se siembra en el `localStorage` de la prueba. El catálogo de YGOPRODeck se responde vacío y las imágenes de cartas se cortan.
 // Dos grupos: la práctica MANUAL (`ygo-lab:auto-duel` en «off»: «Solo» → «Jugar contra las handtraps» abre la mesa sin núcleo ni relay) y el duelo AUTOMÁTICO (necesita `/auto-data/*` y el núcleo: el sitio publicado o un dev server,
-// p. ej. `BASE_URL=http://ti180.localhost:5281`; contra `127.0.0.1`/`localhost` se saltea).
-// Cada caso afirma un criterio de aceptación de TI-140 a TI-148 y TI-171 a TI-179: 7 pistas y sin scroll horizontal, el campo y tu mano quietos (`y` idéntica) al abrir una carta, el Cementerio o las fases, ningún `border-radius` distinto de 0,
-// un solo AVIF de fondo por ancho, el menú manual intacto (con «Al deck ›» y su ficha de fase), y en el automático: la pista de fases en la línea (nunca vacía; ningún «Fases:» dentro del campo), el botón del turno al alcance del pulgar,
-// las hojas opacas, «‹ GY» que vuelve al visor, el ATK al pie de la carta sin Nivel a la vista y, en escritorio, el menú de 76 px, la casilla de ≥ 88 px y la columna «Carta · Cadena · Pasos».
+// p. ej. `BASE_URL=http://ti199.localhost:5299`; contra `127.0.0.1`/`localhost` se saltea).
+// Manual: 7 pistas y sin scroll horizontal, el campo y tu mano quietos (`y` idéntica) al abrir una carta, ningún `border-radius` distinto de 0, un solo AVIF de fondo por ancho, el menú manual intacto (con «Al deck ›») y su ficha de fase.
+// Automático (V-01 / V-04, un turno; V-04, escritorio; V-02, elegir varias): el botón de fase al centro entre las dos Zonas Extra (sin pista ni botón del turno), la chapa con borde grueso como turno, la ficha con la principal a la derecha, la
+// placa ATK/DEF, la cadena en grande aun para una activación sola, las vidas contando dentro de la chapa, el visor con copias agrupadas, el menú de fases pegado al botón, los dos paneles de escritorio y la `y` del campo y de tu mano sin moverse.
 //
 // Lo que se afirma en la práctica manual y no en el duelo: las chapas («Vos» y «Rival») y la línea (`data-duel-line`) sólo existen en un duelo (automático o por enlace); la práctica manual no tiene vidas.
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test'
@@ -41,12 +41,6 @@ const main = [
 
 const stateOf = (cards: unknown[]) => JSON.stringify({ version: 16, handSize: 5, deckFormat: 'unlimited', patternsSeeded: false, disabledGenericRuleIds: [], systemRuleNames: {}, deckBuilder: { deckName: 'Deck QA', main: cards, extra: [], side: [] }, patterns: [] })
 const deckState = stateOf(main)
-
-// Dos decks de 40 cartas iguales: la mano es siempre la misma carta, así que el caso no depende de la suerte del reparto. Gene-Warped Warwolf (monstruo normal de 2000 de ATK) para invocar; Ookazi (Mágica
-// normal que se activa sin pedir nada y termina en el Cementerio) para abrir el Cementerio con una carta adentro.
-const SPELL = { cardType: 'Spell Card', frameType: 'spell', race: 'Normal', attribute: null, level: null, atk: null, def: null }
-const warwolfDeck = stateOf(Array.from({ length: 40 }, () => card(69247929, 'Gene-Warped Warwolf', { cardType: 'Normal Monster', frameType: 'normal', race: 'Beast-Warrior', attribute: 'EARTH', level: 4, atk: '2000', def: '100' })))
-const ookaziDeck = stateOf(Array.from({ length: 40 }, () => card(19523799, 'Ookazi', SPELL)))
 
 /** Aislamiento: deck sembrado, sin mascotas ni sonidos, catálogo vacío y sin imágenes de cartas. `auto` deja el modo del duelo en su valor de fábrica (automático) o lo apaga (la mesa manual). */
 async function prepare(context: BrowserContext, auto: boolean, deck: string = deckState) {
@@ -115,9 +109,9 @@ const fieldTracks = (page: Page) =>
 /** La mesa y, por portal, su hoja, su menú, su visor o su panel: cada raíz `mat-square` y todo lo que lleva adentro. `rounded-full` computa a un valor enorme (3.35544e+07 px): también cuenta. */
 const roundCorners = (page: Page) =>
   page.evaluate(() => {
-    const roots = new Set<Element>([document.querySelector('[aria-label="Mesa de práctica"]')!, ...document.querySelectorAll('.mat-square, [data-auto-panel], [data-pile-sheet]')])
+    const roots = new Set<Element>([document.querySelector('[aria-label="Mesa de práctica"]')!, ...Array.from(document.querySelectorAll('.mat-square, [data-auto-panel], [data-pile-sheet]'))])
     const all = new Set<Element>()
-    for (const root of roots) for (const node of [root, ...root.querySelectorAll('*')]) all.add(node)
+    for (const root of roots) for (const node of [root, ...Array.from(root.querySelectorAll('*'))]) all.add(node)
     return [...all].flatMap((node) => {
       const style = getComputedStyle(node)
       const radii = [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius]
@@ -295,16 +289,34 @@ test.describe('práctica manual', () => {
 })
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
-// El duelo AUTOMÁTICO contra el bot de handtraps: sólo existe donde están `/auto-data/*` y el núcleo (el sitio publicado o un dev server: `BASE_URL=http://ti180.localhost:5281`). Contra un preview local de `vite preview`
-// (`127.0.0.1`/`localhost`), `/auto-data/*` no está: se saltea. Sólo lecturas y jugadas locales del duelo (invocar, activar una carta): no crea una sala ni envía un formulario; el núcleo corre en el navegador.
-// Los casos que juegan usan un deck de 40 cartas iguales: la mano es siempre la misma y el caso no depende de la suerte del reparto.
+// El duelo AUTOMÁTICO contra el bot de handtraps (el kit aprobado, TI-190 a TI-198; QA del conjunto, TI-199): sólo existe donde están `/auto-data/*` y el núcleo (el sitio publicado o un dev server: `BASE_URL=http://ti199.localhost:5299`).
+// Contra un preview local de `vite preview` (`127.0.0.1`/`localhost`) no están: se saltea. Sólo lecturas y jugadas locales del duelo (invocar, activar una carta): no crea una sala ni envía un formulario; el núcleo corre en el navegador.
+// El deck del duelo es de 40 cartas (20 Gene-Warped Warwolf y 20 Ookazi: un monstruo para invocar y una Mágica que nadie puede responder) y el azar va sembrado: la mano es siempre la misma y el caso no depende de la suerte del reparto.
 
-/** «Solo» → «Jugar contra las handtraps» (con el modo de fábrica, el automático) y espera TU turno: el botón del turno habilitado (si arranca el rival, espera a que pase). */
+/** `Math.random` determinista (mulberry32): se pisa en cada carga, antes de que arranque la app. */
+const SEEDED = () => {
+  let s = 20261112
+  Math.random = () => {
+    s = (s + 0x6d2b79f5) | 0
+    let t = Math.imul(s ^ (s >>> 15), 1 | s)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const SPELL = { cardType: 'Spell Card', frameType: 'spell', race: 'Normal', attribute: null, level: null, atk: null, def: null }
+const WARWOLF = { cardType: 'Normal Monster', frameType: 'normal', race: 'Beast-Warrior', attribute: 'EARTH', level: 4, atk: '2000', def: '100' }
+const duelDeck = stateOf([...Array.from({ length: 20 }, () => card(69247929, 'Gene-Warped Warwolf', WARWOLF)), ...Array.from({ length: 20 }, () => card(19523799, 'Ookazi', SPELL))])
+
+const PHASE = 'button[aria-label^="Fases: "]'
+const phaseButton = (page: Page) => page.getByRole('button', { name: /^Fases: / })
+
+/** «Solo» → «Jugar contra las handtraps» (con el modo de fábrica, el automático) y espera TU turno: el botón de fase del centro habilitado (si arranca el rival, espera a que pase). */
 async function startAuto(page: Page) {
   await page.goto('/#solo')
   await page.getByRole('button', { name: /^Jugar contra las handtraps/ }).click()
   await expect(mat(page)).toBeVisible({ timeout: 60_000 })
-  await expect(page.locator('[data-turn-action]')).toBeEnabled({ timeout: 90_000 })
+  await expect(phaseButton(page)).toBeEnabled({ timeout: 90_000 })
   await expect(handList(page).getByRole('listitem').first()).toBeVisible()
 }
 
@@ -326,7 +338,7 @@ const alphaOf = (locator: Locator) =>
       const legacy = css.match(/^rgba\(.*,\s*([\d.]+)\)$/)
       return legacy ? Number(legacy[1]) : 1
     }
-    for (const node of [root, ...root.querySelectorAll('*')]) {
+    for (const node of [root, ...Array.from(root.querySelectorAll('*'))]) {
       const a = alpha(getComputedStyle(node).backgroundColor)
       if (a > 0) return a
     }
@@ -341,227 +353,514 @@ const expectReachable = (buttons: Locator, what: string) =>
     .poll(() => buttons.evaluateAll((nodes) => nodes.filter((node) => { const box = node.getBoundingClientRect(); const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2); return !(top && node.contains(top)) }).length), { message: `${what} tapados por otra capa` })
     .toBe(0)
 
-/** Activa Ookazi de la mano (Mágica normal: no pide nada, no la frena un handtrap y termina en el Cementerio) y espera a que se resuelva. */
-async function sendOokaziToGrave(page: Page, isMobile: boolean) {
-  await press(handList(page).getByRole('listitem', { name: 'Ookazi', exact: true }).first(), isMobile)
-  const activate = page.locator('[data-auto-panel]').getByRole('menuitem', { name: /^Activar/ })
-  await expect(activate).toBeVisible()
-  await press(activate.first(), isMobile)
-  // Una Mágica pide la casilla: una de las elegibles.
-  const zones = mat(page).locator('[aria-label="Campo"] [aria-label$=": elegir"]')
-  await expect(zones.first()).toBeVisible()
-  await press(zones.nth(Math.min(2, (await zones.count()) - 1)), isMobile)
-  await expect(page.locator('[data-drop="gy"]').first()).toHaveAccessibleName('GY: 1', { timeout: 30_000 })
-  await expect(page.locator('[data-turn-action]')).toBeEnabled({ timeout: 30_000 })
+type Box = { x: number; y: number; w: number; h: number; cx: number; cy: number }
+const boxOf = (page: Page, selector: string) =>
+  page.evaluate((sel) => {
+    const node = Array.from(document.querySelectorAll(sel)).find((candidate) => candidate.getClientRects().length > 0)
+    if (!node) return null
+    const b = node.getBoundingClientRect()
+    return { x: b.left, y: b.top, w: b.width, h: b.height, cx: b.left + b.width / 2, cy: b.top + b.height / 2 }
+  }, selector) as Promise<Box | null>
+
+/** B-01 a B-04: cada botón de la fila de jugadas de una hoja o ventana mide ≥ 44 px, va en un renglón, la principal es la última (la de más a la derecha) y va rellena, y no se estira a todo el ancho de una ventana de escritorio. */
+async function expectActionRow(page: Page, what: string, windowed: boolean) {
+  // Con poll: la hoja y la ventana entran con una animación de escala.
+  await expect
+    .poll(() => page.evaluate(() => Math.min(...Array.from(document.querySelectorAll('[data-auto-panel] [role=menu] button')).map((node) => node.getBoundingClientRect().height))), { message: `${what}: alto de los botones` })
+    .toBeGreaterThanOrEqual(44)
+  const row = await page.evaluate(() => {
+    const menu = Array.from(document.querySelectorAll('[data-auto-panel] [role=menu]')).find((node) => node.getClientRects().length > 0)
+    if (!menu) return null
+    const panel = menu.closest('[data-auto-panel]')!.getBoundingClientRect()
+    const buttons = Array.from(menu.querySelectorAll('button')).map((node) => {
+      const b = node.getBoundingClientRect()
+      return { text: node.textContent!.trim(), w: b.width, h: b.height, right: b.right, oneLine: node.scrollHeight <= node.clientHeight + 1, bg: getComputedStyle(node).backgroundColor }
+    })
+    return { buttons, panel: { right: panel.right, w: panel.width } }
+  })
+  expect(row, `${what}: la fila de jugadas`).not.toBeNull()
+  const { buttons, panel } = row!
+  expect(buttons.length, `${what}: botones`).toBeGreaterThanOrEqual(1)
+  for (const button of buttons) {
+    expect(button.h, `${what}: alto de «${button.text}»`).toBeGreaterThanOrEqual(44)
+    expect(button.oneLine, `${what}: «${button.text}» en un renglón`).toBe(true)
+    expect(button.text, `${what}: sin «CL» en un botón`).not.toMatch(/\bCL\d/)
+  }
+  const rightmost = Math.max(...buttons.map((button) => button.right))
+  expect(buttons.at(-1)!.right, `${what}: la principal es la de más a la derecha`).toBe(rightmost)
+  if (buttons.length > 1) expect(buttons.at(-1)!.bg, `${what}: la principal va rellena (distinta de las otras)`).not.toBe(buttons[0]!.bg)
+  if (windowed) expect(Math.max(...buttons.map((button) => button.w)), `${what}: los botones van a su ancho y no a toda la ventana`).toBeLessThan(panel.w * 0.6)
 }
+
+const MENU_OWN = /\b(Turno|Main Phase|Standby Phase|Draw Phase|Battle Phase|End Phase)\b/
 
 test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio publicado o un dev server)', () => {
   test.skip(({ baseURL }) => /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(baseURL ?? ''), 'necesita /auto-data/* y el núcleo: no están en un preview local')
 
-  test('en reposo: la pista de fases en la línea (nunca vacía, ningún «Fases:» en el campo), el botón del turno al alcance, la ficha opaca con sus jugadas tocables, las fases cuadradas y, en el celular, las chapas', async ({ page, context, isMobile }) => {
-    test.setTimeout(120_000)
-    await prepare(context, true)
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(SEEDED)
+    await prepare(context, true, duelDeck)
+  })
+
+  // V-01 (celular, en 3D) y V-04 (escritorio, en 3D): el turno entero con las piezas del kit. Un solo duelo y muchos pasos: arrancar el núcleo cuesta.
+  test('V-01 / V-04, un turno: el botón de fase al centro, la ficha, invocar, la placa, la activación sola, el daño en la chapa, las fases y terminar; el campo y tu mano no se mueven', async ({ page, isMobile }) => {
+    test.setTimeout(240_000)
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
     await startAuto(page)
-    // Tu DP y tu SP pasan solas hasta la Main Phase 1 (el núcleo pregunta qué hacés): ahí la pista se habilita.
-    const line = page.locator('[data-duel-line]')
-    const track = line.locator('[data-phase-track]')
-    await expect(track).toHaveAccessibleName('Fases: Main Phase 1', { timeout: 60_000 })
-    await expect(track).toBeEnabled()
+
+    await test.step('C-01 / C-02: el botón de fase es el único «Fases:», está entre las dos Zonas Extra, sin pista ni botón del turno, y no hay scroll', async () => {
+      await expect(phaseButton(page)).toHaveCount(1)
+      await expect(page.locator('[data-phase-track], [data-turn-action], [data-prompt-turn], [data-panel-fold]')).toHaveCount(0)
+      expect(await page.locator('[data-duel-line]').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height)), 'la línea de abajo del campo es sólo una marca de 0 px').toEqual(expect.arrayContaining([]))
+      for (const height of await page.locator('[data-duel-line]').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height))) expect(height).toBeLessThanOrEqual(0.5)
+      const [field, phase, emz0, emz1] = await Promise.all(['[aria-label="Campo"]', PHASE, '[data-drop="emz:0"]', '[data-drop="emz:1"]'].map((selector) => boxOf(page, selector)))
+      expect(Math.abs(phase!.cx - field!.cx), 'el centro del botón de fase y el del campo').toBeLessThanOrEqual(2)
+      expect(phase!.cx, 'el botón de fase entre las dos Zonas Extra').toBeGreaterThan(Math.min(emz0!.cx, emz1!.cx))
+      expect(phase!.cx).toBeLessThan(Math.max(emz0!.cx, emz1!.cx))
+      expect(phase!.cy, 'en la fila de las Zonas Extra').toBeGreaterThan(emz0!.y)
+      expect(phase!.cy).toBeLessThan(emz0!.y + emz0!.h)
+      expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight), 'scroll vertical del documento').toBeLessThanOrEqual(0)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'desborde horizontal del documento').toBeLessThanOrEqual(0)
+      if (isMobile) {
+        // Casillas con forma de carta y sin hueco entre el campo y la mano.
+        const ratio = await mat(page).locator('[data-drop="mz:2"]').first().evaluate((node) => (node as HTMLElement).offsetHeight / (node as HTMLElement).offsetWidth)
+        expect(ratio, 'alto/ancho de la casilla del medio (forma de carta)').toBeGreaterThanOrEqual(1.4)
+        const hand = (await boxOf(page, '[role=list][aria-label=Mano]'))!
+        expect(hand.y - (field!.y + field!.h), 'del borde de abajo del campo al de arriba de tu mano').toBeLessThanOrEqual(40)
+        expect((await boxOf(page, '[data-lp=theirs]'))!.y + (await boxOf(page, '[data-lp=theirs]'))!.h, 'las vidas del rival en la barra de arriba, sobre el campo').toBeLessThanOrEqual(field!.y)
+      }
+    })
+
+    await test.step('F-01 / F-02: la chapa del que juega lleva borde de 3 px (ése es el turno), la otra, tenue, y ninguna dice «Turno»', async () => {
+      const mine = page.locator('[data-life-badge][data-lp=mine]')
+      const theirs = page.locator('[data-life-badge][data-lp=theirs]')
+      await expect(mine).toHaveCount(1)
+      await expect(theirs).toHaveCount(1)
+      expect(await mine.evaluate((node) => getComputedStyle(node).borderTopWidth), 'borde de tu chapa en tu turno').toBe('3px')
+      expect(await theirs.evaluate((node) => getComputedStyle(node).borderTopWidth), 'borde de la chapa del rival en tu turno').not.toBe('3px')
+      for (const badge of [mine, theirs]) expect((await badge.innerText()).toLowerCase(), 'la chapa no dice de quién es el turno').not.toContain('turno')
+      for (const badge of [mine, theirs]) expect(((await badge.innerText()).match(/\d+/g) ?? []).length, 'cada chapa muestra un solo número (TI-161: «75007500»)').toBe(1)
+    })
     await watchYs(page)
 
-    // La pista (TI-174): seis casillas, la de ahora marcada, y la línea no queda vacía en reposo. Es el único «Fases:» de la mesa y no hay ninguno dentro del campo (la ficha «M1» ya no está).
-    await expect(track.locator('span[aria-hidden="true"] > span')).toHaveText(['DP', 'SP', 'M1', 'BP', 'M2', 'EP'])
-    await expect(track.locator('[data-now]')).toHaveText('M1')
-    expect((await line.innerText()).trim(), 'la línea en reposo no queda vacía').not.toBe('')
-    await expect(page.getByRole('button', { name: /^Fases: / })).toHaveCount(1)
-    await expect(mat(page).locator('[aria-label="Campo"]').getByRole('button', { name: /^Fases: / })).toHaveCount(0)
-    await expect.poll(() => onTop(track), { message: 'lo que hay arriba de la pista es la pista' }).toBe(true)
+    await test.step('M-01 / B-01 / B-04: la ficha de un monstruo de la mano (sin «Mano», sin fase ni turno), con Colocar e Invocar: la principal a la derecha y rellena', async () => {
+      const name = 'Gene-Warped Warwolf'
+      const item = handList(page).getByRole('listitem', { name, exact: true }).first()
+      await press(item, isMobile)
+      const sheet = page.locator('[data-auto-panel]').filter({ has: page.getByRole('menuitem') })
+      await expect(sheet).toBeVisible()
+      const text = await sheet.innerText()
+      expect(text, `la ficha de ${name} no repite ni la fase ni el turno`).not.toMatch(MENU_OWN)
+      expect(text, 'la ficha no dice «Mano»: ya la tocaste ahí').not.toMatch(/\bMano\b/)
+      await expect(sheet.getByRole('menuitem')).toHaveText(['Colocar', 'Invocación Normal'])
+      await expect(page.locator('[data-prompt-turn], [data-panel-fold]')).toHaveCount(0)
+      await expectReachable(sheet.getByRole('menuitem'), 'jugadas')
+      await expectActionRow(page, 'ficha del monstruo', !isMobile)
+      if (isMobile) {
+        expect(await alphaOf(sheet), 'alfa del fondo de la ficha').toBe(1)
+        await expect(sheet.getByRole('button', { name: /^Minimizar/ })).toBeVisible()
+      } else {
+        expect((await boxOf(page, '[data-auto-panel="floating"]'))!.w, 'la ventana de escritorio, apaisada y de ≤ 480 px').toBeLessThanOrEqual(482)
+        await expect(page.locator('[data-card-dock]'), 'el detalle de la carta tocada, en su panel de la izquierda').toContainText(name)
+      }
+      expect(await roundCorners(page), 'con la ficha abierta').toEqual([])
+      // M-06: el menú de jugadas sigue en la ficha; «Invocación Normal» pide la casilla y deja sólo la tira.
+      await press(sheet.getByRole('menuitem', { name: 'Invocación Normal' }), isMobile)
+      const zones = mat(page).locator('[aria-label="Campo"] [aria-label$=": elegir"]')
+      await expect(zones.first()).toBeVisible()
+      if (isMobile) {
+        await expect(page.getByText(/^Elegí una casilla$/).first(), 'la frase corta: la carta ya está levantada en tu mano').toBeVisible()
+        await expect(page.locator('[data-auto-panel]'), 'la hoja de la ficha se fue: sólo queda la tira').toHaveCount(0)
+        const cancel = page.getByRole('button', { name: 'Cancelar', exact: true })
+        await expect(cancel).toBeVisible()
+        const stripHeight = await cancel.evaluate((button) => { let node: HTMLElement | null = button.parentElement; while (node && !/Elegí una casilla/.test(node.innerText)) node = node.parentElement; return node ? node.getBoundingClientRect().height : 9999 })
+        expect(stripHeight, 'elegir en la mesa: una tira de un renglón y ≤ 56 px').toBeLessThanOrEqual(56)
+      }
+      await press(zones.nth(Math.min(2, (await zones.count()) - 1)), isMobile)
+    })
 
-    // El botón del turno (TI-174): «Ir a Batalla» o «Terminar turno», de ≥ 44 px, sin nada encima y, en el celular, abajo (zona del pulgar).
-    const turn = page.locator('[data-turn-action]')
-    await expect(turn).toHaveText(/^(Ir a Batalla|Terminar turno)$/)
-    const turnBox = (await turn.boundingBox())!
-    expect(turnBox.height, 'alto del botón del turno').toBeGreaterThanOrEqual(44)
-    expect(turnBox.width, 'ancho del botón del turno').toBeGreaterThanOrEqual(44)
-    if (isMobile) expect(turnBox.y, 'el botón del turno abajo, en la zona del pulgar').toBeGreaterThan(page.viewportSize()!.height * 0.8)
-    // Con poll: al arrancar, las cartas del reparto todavía vuelan por encima.
-    await expect.poll(() => onTop(turn), { message: 'lo que hay arriba del botón del turno es el botón' }).toBe(true)
-    await expect(handList(page).getByRole('listitem').first()).toBeVisible()
+    await test.step('C-01 / F-04: la placa al pie de la carta lleva los dos números (ATK/DEF) en un renglón', async () => {
+      const stat = mat(page).locator('[aria-label="Campo"] [data-pick-stat]')
+      await expect(stat).toHaveCount(1)
+      await expect(stat).toBeVisible()
+      await expect(stat).toHaveText(/^2000\s*\/\s*100$/)
+      const { chip, cell, fontSize } = await stat.evaluate((node) => {
+        const zone = node.closest('[data-drop]')!.getBoundingClientRect()
+        const box = node.getBoundingClientRect()
+        return { chip: { height: box.height, top: box.top, width: box.width }, cell: { top: zone.top, height: zone.height, width: zone.width }, fontSize: parseFloat(getComputedStyle(node).fontSize) }
+      })
+      expect(chip.height, 'alto de la placa').toBeLessThanOrEqual(15.5)
+      expect(fontSize, 'la letra de la placa').toBeGreaterThanOrEqual(10)
+      expect(chip.top, 'la placa al pie de la carta').toBeGreaterThanOrEqual(cell.top + cell.height * 0.6)
+      await expect(page.locator('[data-stat-badge]:visible'), 'sin Nivel a la vista con el monstruo en reposo').toHaveCount(0)
+      await expect(phaseButton(page)).toBeEnabled({ timeout: 30_000 })
+    })
 
-    // Las chapas y la línea (celular): «Vos» y «Rival» a la vista, la barra sin el marcador de vidas y la línea con el mismo alto antes y después.
-    const lineHeight = () => line.evaluate((node) => node.getBoundingClientRect().height)
-    const before = isMobile ? await lineHeight() : 0
-    if (isMobile) {
-      await expect(page.getByLabel(/^Puntos de vida de Vos: /)).toBeVisible()
-      await expect(page.getByLabel(/^Puntos de vida de Rival: /)).toBeVisible()
-      await expect(line).toHaveCount(1)
-      expect(await page.locator('[data-life-score]').evaluateAll((nodes) => nodes.map((node) => node.hasAttribute('data-life-badge'))), 'toda marca de vidas es una chapa: la barra no lleva el marcador').toEqual([true, true])
-    }
+    await test.step('M-02 / K-01 / F-05: una Mágica que nadie responde dice «Activar» y entra igual como una carta grande inclinada, con su «1», se resuelve y se va; las vidas del rival bajan contando dentro de su chapa', async () => {
+      // El observador: la escena de la cadena (carta, pose, inclinación), los carteles de «Activar» y todo número de daño fuera de una chapa.
+      await page.evaluate(`(() => {
+        const seen = { stage: [], status: [], spot: 0, outside: [], life: [], t0: 0 }
+        window.__k = seen
+        const side = () => document.querySelector('[data-life-badge][data-lp=theirs] .text-stat, [data-life-badge][data-lp=theirs] .text-lead')?.textContent ?? ''
+        const tick = () => {
+          const now = performance.now()
+          const stage = document.querySelector('[data-chain-stage]')
+          if (stage) {
+            for (const card of stage.querySelectorAll('[data-chain-card]')) seen.stage.push({ n: card.dataset.chainCard, pose: card.dataset.pose, rotate: getComputedStyle(card).rotate, t: now, w: card.offsetWidth, layer: stage.offsetWidth, label: card.getAttribute('aria-label') })
+            const status = stage.querySelector('[role=status]')
+            if (status && !seen.status.includes(status.textContent)) seen.status.push(status.textContent)
+            seen.pe = getComputedStyle(document.querySelector('[data-testid=duel-chain-layer]')).pointerEvents
+          }
+          if (document.querySelector('[data-spot]')) seen.spot += 1
+          for (const node of document.body.querySelectorAll('*')) if (!node.children.length && /^[−+-]\\s?\\d{3,5}$/.test(node.textContent.trim()) && node.getBoundingClientRect().width && !node.closest('[data-life-badge]')) { const text = node.textContent.trim(); if (!seen.outside.includes(text)) seen.outside.push(text) }
+          const life = side()
+          if (seen.life.at(-1)?.v !== life) seen.life.push({ v: life, t: now })
+          requestAnimationFrame(tick)
+        }
+        tick()
+      })()`)
+      await press(handList(page).getByRole('listitem', { name: 'Ookazi', exact: true }).first(), isMobile)
+      const activate = page.locator('[data-auto-panel]').getByRole('menuitem', { name: 'Activar', exact: true })
+      await expect(activate, 'la jugada dice «Activar» y no «Activar como CL1»').toBeVisible()
+      await expect(page.locator('[data-auto-panel]').getByRole('menuitem', { name: /\bCL\d/ })).toHaveCount(0)
+      await expectActionRow(page, 'ficha de la Mágica', !isMobile)
+      await press(activate, isMobile)
+      const zones = mat(page).locator('[aria-label="Campo"] [aria-label$=": elegir"]')
+      await expect(zones.first()).toBeVisible()
+      await press(zones.nth(Math.min(2, (await zones.count()) - 1)), isMobile)
+      await expect(page.locator('[data-chain-stage]'), 'la activación sola también entra en la escena de la cadena').toBeVisible({ timeout: 15_000 })
+      await expect(page.locator('[data-chain-stage]'), 'y se va sola').toHaveCount(0, { timeout: 20_000 })
+      await expect(phaseButton(page)).toBeEnabled({ timeout: 30_000 })
+      await expect(page.locator('[data-life-badge][data-lp=theirs]')).toContainText('7200')
+      const k = (await page.evaluate(() => (window as unknown as { __k: unknown }).__k)) as {
+        stage: { n: string; pose: string; rotate: string; t: number; w: number; layer: number; label: string }[]
+        status: string[]
+        spot: number
+        outside: string[]
+        pe: string
+        life: { v: string; t: number }[]
+      }
+      const cards = new Set(k.stage.map((frame) => frame.n))
+      expect([...cards], 'una activación sola: un solo eslabón, el 1').toEqual(['1'])
+      expect(k.stage.some((frame) => frame.pose === 'center'), 'la carta pasa al centro a resolverse').toBe(true)
+      const tilts = k.stage.filter((frame) => frame.pose === 'slot').map((frame) => Math.abs(parseFloat(frame.rotate)))
+      expect(tilts.length, 'la carta se ve en su lugar, inclinada').toBeGreaterThan(0)
+      expect(tilts.some((angle) => angle >= 3 && angle <= 7), `inclinación de la carta (${tilts.slice(0, 3).join(', ')}°)`).toBe(true)
+      expect(k.stage[0]!.w / k.stage[0]!.layer, 'la carta de la cadena mide ≈ 1/3 del ancho de la escena').toBeGreaterThan(0.25)
+      expect(k.stage[0]!.w / k.stage[0]!.layer).toBeLessThan(0.45)
+      expect(k.stage[0]!.label, 'el eslabón dice su número y su carta').toContain('Ookazi')
+      expect(k.pe, 'la capa de la cadena no ataja toques').toBe('none')
+      const lines = [...k.status]
+      expect(lines.length, 'una sola línea de estado').toBeGreaterThan(0)
+      for (const line of lines) expect(line, 'la línea de estado no escribe «CL»').not.toMatch(/\bCL\d/)
+      expect(lines.some((line) => line === 'Se resuelve del último al primero'), 'armando: «Se resuelve del último al primero»').toBe(true)
+      expect(k.spot, 'sin Spotlight de activar mientras corre la cadena del automático').toBe(0)
+      // F-02: el número baja contando dentro de la chapa (8000 → 7200 en ≤ 700 ms) y ningún «−N» queda fuera de ella.
+      expect(k.outside, 'ningún número de daño fuera de la chapa').toEqual([])
+      const counted = k.life.map((entry) => entry.v)
+      expect(counted.at(-1)).toBe('7200')
+      const from = k.life.findIndex((entry) => entry.v !== '8000')
+      expect(k.life.at(-1)!.t - k.life[from]!.t, 'el número llega al nuevo en ≤ 700 ms').toBeLessThanOrEqual(700)
+      expect(counted.length - from, 'cuenta: pasa por valores intermedios').toBeGreaterThan(1)
+      await expect(page.locator('[data-life-delta]:visible').filter({ hasNot: page.locator('xpath=ancestor::*[@data-life-badge]') })).toHaveCount(0)
+    })
 
-    // La ficha de un monstruo de la mano (con Invocar y Colocar): de 1 a 4 jugadas, sin «Más» ni submenú y sin contador «1/1».
-    const monster = handList(page).getByRole('listitem').filter({ hasNotText: /Dark Hole|Mirror Force/ })
-    const name = (await monster.first().getAttribute('aria-label'))!
-    await press(monster.first(), isMobile)
-    const sheet = page.locator('[data-auto-panel]').filter({ has: page.getByRole('menuitem') })
-    await expect(sheet).toBeVisible()
-    const plays = sheet.getByRole('menuitem')
-    expect(await plays.count(), `jugadas de ${name}`).toBeGreaterThanOrEqual(1)
-    expect(await plays.count(), `jugadas de ${name}`).toBeLessThanOrEqual(4)
-    await expect(sheet.getByRole('menuitem', { name: /^Más/ })).toHaveCount(0)
-    // Sólo en los carteles del automático: la franja «Paso actual» de la mesa lleva su propio «2/2» y no es el contador de elegir.
-    await expect(page.locator('[data-auto-panel]').getByText(/^\d+\s*\/\s*\d+$/)).toHaveCount(0)
-    if (isMobile) expect(await lineHeight(), 'alto de la línea con la ficha abierta').toBe(before)
-    // Nada tapa las jugadas (TI-161: la tira del visor de una pila quedaba encima): lo que hay arriba en el centro de cada botón es ese botón.
-    await expectReachable(plays, 'jugadas')
-    // La hoja es opaca (TI-171: alfa 1) y no lleva esquinas redondas.
-    expect(await alphaOf(sheet), 'alfa del fondo de la ficha').toBe(1)
-    expect(await roundCorners(page), 'con la ficha abierta').toEqual([])
-    // Cada chapa muestra un solo número (TI-161: «75007500», el número viejo quedaba pegado al nuevo).
-    if (isMobile) expect(await page.locator('[data-life-badge] .text-stat').allTextContents(), 'el número de cada chapa').toEqual([expect.stringMatching(/^\d{1,5}$/), expect.stringMatching(/^\d{1,5}$/)])
-    await page.keyboard.press('Escape')
-    await expect(sheet).toHaveCount(0)
+    await test.step('P-01 / P-02: el Cementerio con dos Ookazi las agrupa («×2»); tocar el grupo abre su ficha y «‹ GY» vuelve al visor (nunca dos hojas)', async () => {
+      await press(handList(page).getByRole('listitem', { name: 'Ookazi', exact: true }).first(), isMobile)
+      await press(page.locator('[data-auto-panel]').getByRole('menuitem', { name: 'Activar', exact: true }), isMobile)
+      const zones = mat(page).locator('[aria-label="Campo"] [aria-label$=": elegir"]')
+      await expect(zones.first()).toBeVisible()
+      await press(zones.nth(Math.min(3, (await zones.count()) - 1)), isMobile)
+      await expect(page.locator('[data-drop="gy"]').first()).toHaveAccessibleName('GY: 2', { timeout: 30_000 })
+      await expect(phaseButton(page)).toBeEnabled({ timeout: 30_000 })
+      await press(page.locator('[data-drop="gy"]').first(), isMobile)
+      const viewer = isMobile ? page.locator('[data-pile-sheet]') : page.getByRole('dialog')
+      await expect(viewer).toBeVisible()
+      const group = viewer.getByRole('button', { name: 'Ookazi, 2 copias' })
+      await expect(group, 'las dos copias van agrupadas en un solo botón').toHaveCount(1)
+      await expect(viewer.getByText('×2')).toBeVisible()
+      await expect(viewer).toContainText(/GY\s*·\s*2/)
+      await expectReachable(viewer.getByRole('button'), 'botones del visor')
+      if (isMobile) expect(await alphaOf(viewer), 'alfa del fondo del visor de la pila').toBe(1)
+      await press(group, isMobile)
+      const sheet = page.locator('[data-auto-panel]')
+      if (isMobile) {
+        const back = sheet.getByRole('button', { name: /^Volver a GY/ })
+        await expect(back).toBeVisible()
+        await expect(viewer, 'la ficha reemplaza al visor: nunca dos hojas').toBeHidden()
+        expect((await back.boundingBox())!.height, 'alto de «‹ GY»').toBeGreaterThanOrEqual(44)
+        await expect.poll(() => onTop(back), { message: 'lo que hay arriba de «‹ GY» es el botón' }).toBe(true)
+        await expect(sheet).not.toContainText(/\bMano\b/)
+        await press(back, isMobile)
+        await expect(sheet).toHaveCount(0)
+        await expect(viewer).toBeVisible()
+        await expect(viewer.getByRole('button', { name: 'Ookazi, 2 copias' })).toBeVisible()
+      } else {
+        await expect(page.locator('[data-card-dock]'), 'el detalle de la carta, en su panel de la izquierda').toContainText('Ookazi')
+      }
+      expect(await roundCorners(page), 'con el visor de la pila abierto').toEqual([])
+      await page.keyboard.press('Escape')
+      await page.keyboard.press('Escape')
+      await expect(viewer).toHaveCount(0)
+    })
 
-    // Sin Nivel a la vista en reposo (TI-173: va a la ficha de la carta; sólo vuelve mientras se eligen materiales).
-    await expect(page.locator('[data-stat-badge]:visible')).toHaveCount(0)
+    await test.step('M-04: el menú de fases se abre pegado al botón con sólo adónde se puede ir (y «Terminar el turno»); no hay otra lista de fases; Escape lo cierra', async () => {
+      const phase = (await boxOf(page, PHASE))!
+      await press(phaseButton(page), isMobile)
+      const menu = page.getByRole('menu', { name: 'Elegí la fase a la que pasás' })
+      await expect(menu).toBeVisible()
+      const box = (await menu.boundingBox())!
+      const gap = box.y >= phase.y + phase.h - 2 ? box.y - (phase.y + phase.h) : phase.y - (box.y + box.height)
+      expect(gap, 'distancia del menú al botón de fase').toBeLessThanOrEqual(8)
+      const items = menu.getByRole('menuitem')
+      expect((await items.allTextContents()).at(-1), 'la última: terminar el turno').toBe('Terminar el turno')
+      expect(await items.count(), 'sólo las fases elegibles').toBeLessThanOrEqual(3)
+      await expect(menu.locator('[aria-disabled="true"], [disabled]'), 'ninguna opción apagada: sólo adónde se puede ir').toHaveCount(0)
+      // Con poll: el menú entra con una animación de escala.
+      await expect.poll(async () => Math.min(...(await items.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height)))), { message: 'alto de cada opción del menú de fases' }).toBeGreaterThanOrEqual(44)
+      await expect(page.getByRole('menu'), 'no hay ninguna otra lista de fases en pantalla').toHaveCount(1)
+      await expect(page.getByRole('tablist')).toHaveCount(0)
+      expect(await roundCorners(page), 'con las fases abiertas').toEqual([])
+      await page.keyboard.press('Escape')
+      await expect(menu).toHaveCount(0)
+    })
 
-    // Las fases se abren desde la pista (TI-174; conserva el nombre «Fases: Main Phase 1»): seis botones cuadrados (la caja de cada uno mide lo mismo de ancho que de alto, ±1 px).
-    await track.click()
-    const phases = page.getByRole('menu', { name: 'Elegí la fase a la que pasás' }).getByRole('menuitem')
-    await expect(phases).toHaveCount(6)
-    const boxes = await phases.evaluateAll((nodes) =>
-      nodes.map((node) => {
-        const rect = (node.firstElementChild ?? node).getBoundingClientRect()
-        return { width: rect.width, height: rect.height }
-      }),
-    )
-    for (const { width, height } of boxes) expect(Math.abs(width - height), `caja de fase de ${width}×${height}`).toBeLessThanOrEqual(1)
-    expect(await roundCorners(page), 'con las fases abiertas').toEqual([])
-    await page.keyboard.press('Escape')
-    await expect(phases).toHaveCount(0)
-    if (isMobile) expect(await lineHeight(), 'alto de la línea tras la jugada').toBe(before)
-    expectStill(await readYs(page), 'al abrir la ficha y las fases')
+    await test.step('F-01 / V-01: terminar el turno desde el botón de fase enciende la chapa del rival (borde de 3 px) y apaga la tuya', async () => {
+      // El observador: todo texto de fase o de turno a la vista dentro de la mesa (fuera de las chapas y de los pasos), el pulso del botón de fase y los anuncios ocultos (`role="status"`).
+      await page.evaluate(`(() => {
+        const seen = { texts: [], pulses: 0, status: [] }
+        window.__phase = seen
+        const pulses = new Set()
+        const tick = () => {
+          for (const node of document.querySelectorAll('[data-fx="phase-pulse"]')) if (!pulses.has(node)) { pulses.add(node); seen.pulses += 1 }
+          for (const node of document.querySelectorAll('[aria-label="Mesa de práctica"] *')) {
+            if (node.children.length || node.closest('.sr-only, [data-life-badge], [role=status], ol, li')) continue
+            const text = node.textContent.trim()
+            if (/^(Turno de |Tu turno|Empezó tu turno|.*· (Draw|Standby|Main|Battle|End) Phase)/.test(text) && node.getBoundingClientRect().width && !seen.texts.includes(text)) seen.texts.push(text)
+          }
+          for (const node of document.querySelectorAll('[role=status].sr-only')) if (node.textContent.trim() && !seen.status.includes(node.textContent.trim())) seen.status.push(node.textContent.trim())
+          requestAnimationFrame(tick)
+        }
+        tick()
+      })()`)
+      await press(phaseButton(page), isMobile)
+      await press(page.getByRole('menu', { name: 'Elegí la fase a la que pasás' }).getByRole('menuitem', { name: 'Terminar el turno' }), isMobile)
+      await expect.poll(() => page.locator('[data-life-badge][data-lp=theirs]').evaluate((node) => getComputedStyle(node).borderTopWidth), { timeout: 60_000, message: 'la chapa del rival en su turno' }).toBe('3px')
+      expect(await page.locator('[data-life-badge][data-lp=mine]').evaluate((node) => getComputedStyle(node).borderTopWidth), 'tu chapa en el turno del rival').not.toBe('3px')
+      // Cada dato una vez: la fase vive sólo en su botón y el turno lo dice la chapa; el cambio se nota con un pulso y se anuncia en un `role="status"` oculto.
+      await expect.poll(() => page.evaluate(() => (window as unknown as { __phase: { pulses: number } }).__phase.pulses), { message: 'el pulso del botón de fase al cambiar de fase' }).toBeGreaterThan(0)
+      const phaseSeen = (await page.evaluate(() => (window as unknown as { __phase: unknown }).__phase)) as { texts: string[]; pulses: number; status: string[] }
+      expect(phaseSeen.texts, 'ningún cartel escribe la fase ni de quién es el turno').toEqual([])
+      expect(phaseSeen.status.length, 'el anuncio de la fase va en un role="status" oculto a la vista').toBeGreaterThan(0)
+    })
+
+    expectStill(await readYs(page), 'en todo el turno: la ficha, la casilla, la placa, la cadena, el visor, las fases y el turno del rival')
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'desborde horizontal del documento').toBeLessThanOrEqual(0)
     expect(errors, 'errores de página propios').toEqual([])
   })
 
-  test('invocar un monstruo: su ATK va en una placa al pie de la carta, ningún Nivel a la vista, y el campo y tu mano no se mueven', async ({ page, context, isMobile }) => {
-    test.setTimeout(120_000)
-    await prepare(context, true, warwolfDeck)
+  // V-04 (escritorio): los dos paneles de antes, el ⚙ al pie y el campo sin scroll.
+  test('V-04, escritorio: el detalle de la carta a la izquierda y los pasos a la derecha (sin pestañas), la casilla de ≥ 96 px, las vidas en sus esquinas y ⚙ de 44 px abajo a la derecha', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'sólo escritorio (1440×900)')
+    test.setTimeout(180_000)
     await startAuto(page)
-    await expect(page.locator('[data-stat-badge]:visible'), 'sin Nivel a la vista en reposo').toHaveCount(0)
     await watchYs(page)
+    expect((await page.locator('aside').first().boundingBox())!.width, 'el menú lateral en la mesa se pliega al riel').toBe(76)
+    const field = (await boxOf(page, '[aria-label="Campo"]'))!
+    const dock = (await boxOf(page, '[data-card-dock]'))!
+    const phase = (await boxOf(page, PHASE))!
+    expect(dock.x + dock.w, 'el detalle de la carta queda a la izquierda de la columna del campo').toBeLessThanOrEqual(phase.x)
+    await expect(page.getByRole('tablist', { name: 'Panel de la mesa' }), 'sin pestañas «Carta · Cadena · Pasos»').toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Carta' })).toHaveCount(0)
+    const steps = (await page.locator('button, [role=tab]').filter({ hasText: /^Pasos/ }).first().boundingBox())!
+    expect(steps.x, 'los pasos, a la derecha de la columna del campo').toBeGreaterThanOrEqual(phase.x + phase.w)
+    expect(await mat(page).locator('[data-drop="mz:0"]').first().evaluate((node) => (node as HTMLElement).offsetWidth), 'ancho de la casilla a 1440×900').toBeGreaterThanOrEqual(96)
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight), 'scroll vertical del documento').toBeLessThanOrEqual(0)
+    const mine = (await boxOf(page, '[data-life-badge][data-lp=mine]'))!
+    const theirs = (await boxOf(page, '[data-life-badge][data-lp=theirs]'))!
+    expect(theirs.cy, 'las vidas del rival arriba').toBeLessThan(field.y + field.h / 2)
+    expect(mine.cy, 'tus vidas abajo').toBeGreaterThan(field.y + field.h / 2)
+    expect(mine.cx, 'las tuyas, a la izquierda de la columna').toBeLessThan(theirs.cx)
+    const gear = (await boxOf(page, '[data-mat-gear]'))!
+    expect(Math.min(gear.w, gear.h), 'el ⚙ mide 44 px').toBeGreaterThanOrEqual(43.5)
+    expect(gear.cy, '⚙ abajo').toBeGreaterThan(field.y + field.h * 0.75)
+    await expect(page.locator('[data-mat-dock]'), 'sin el dock de cuatro fichas').toHaveCount(0)
+    expectStill(await readYs(page), 'en reposo, con la mesa de escritorio')
+  })
 
-    await press(handList(page).getByRole('listitem').first(), isMobile)
-    const summon = page.locator('[data-auto-panel]').getByRole('menuitem', { name: 'Invocación Normal' })
-    await expect(summon).toBeVisible()
-    await press(summon, isMobile)
-    // La casilla: una del medio de las elegibles.
+  // (a) El campo no se mueve nunca, tampoco en x: abrir y cerrar el visor del Cementerio en escritorio no corre el botón de fase (antes, 22 px a la izquierda y no volvía).
+  test('escritorio: abrir el Cementerio no corre el campo en x (la del botón de fase y la de las chapas quedan igual, también al cerrar el visor)', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'sólo escritorio (1440×900)')
+    test.setTimeout(180_000)
+    await startAuto(page)
+    const before = (await boxOf(page, PHASE))!
+    const mineBefore = (await boxOf(page, '[data-life-badge][data-lp=mine]'))!
+    await press(handList(page).getByRole('listitem', { name: 'Ookazi', exact: true }).first(), isMobile)
+    await press(page.locator('[data-auto-panel]').getByRole('menuitem', { name: 'Activar', exact: true }), isMobile)
+    await press(mat(page).locator('[aria-label="Campo"] [aria-label$=": elegir"]').nth(2), isMobile)
+    await expect(page.locator('[data-drop="gy"]').first()).toHaveAccessibleName('GY: 1', { timeout: 30_000 })
+    await press(page.locator('[data-drop="gy"]').first(), isMobile)
+    await expect(page.getByRole('dialog')).toBeVisible()
+    expect(Math.abs((await boxOf(page, PHASE))!.cx - before.cx), 'el botón de fase con el visor abierto').toBeLessThanOrEqual(1)
+    expect(Math.abs((await boxOf(page, '[data-life-badge][data-lp=mine]'))!.x - mineBefore.x), 'tu chapa con el visor abierto').toBeLessThanOrEqual(1)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(Math.abs((await boxOf(page, PHASE))!.cx - before.cx), 'el botón de fase con el visor cerrado').toBeLessThanOrEqual(1)
+    expect(Math.abs((await boxOf(page, '[data-life-badge][data-lp=mine]'))!.x - mineBefore.x), 'tu chapa con el visor cerrado').toBeLessThanOrEqual(1)
+  })
+
+  // (h) M-10: Opciones es una hoja recta de abajo en el celular y una ventana recta en escritorio, con «Vista 3D» y «Menús flotantes» arriba y «Rendirse» al final; abrirla no mueve el campo.
+  test('M-10, Opciones: hoja recta de abajo (celular) o ventana recta (escritorio), «Vista 3D» y «Menús flotantes» arriba, «Rendirse» al final con confirmación, y el campo no se mueve', async ({ page, isMobile }) => {
+    test.setTimeout(180_000)
+    await startAuto(page)
+    await watchYs(page)
+    const phaseBefore = (await boxOf(page, PHASE))!
+    const gear = page.locator('[data-mat-gear]')
+    expect(Math.min(...(await gear.evaluate((node) => [node.getBoundingClientRect().width, node.getBoundingClientRect().height]))), 'el ⚙ mide 44 px').toBeGreaterThanOrEqual(43.5)
+    await press(gear, isMobile)
+    const options = page.locator('[data-auto-panel]').filter({ hasText: 'Vista 3D' })
+    await expect(options).toBeVisible()
+    await expect(page.locator('[data-mat-dock]'), 'sin el dock de cuatro fichas').toHaveCount(0)
+    const viewport = page.viewportSize()!
+    await expect.poll(async () => (await options.boundingBox())!.y + (await options.boundingBox())!.height, { message: 'la hoja/ventana entra y se asienta' }).toBeGreaterThan(viewport.height - 2)
+    const box = (await options.boundingBox())!
+    if (isMobile) {
+      expect(box.x, 'la hoja de abajo, de borde a borde').toBeLessThanOrEqual(0.5)
+      expect(box.width, 'la hoja de abajo, de borde a borde').toBeGreaterThanOrEqual(viewport.width - 0.5)
+      await expect(options).toHaveAttribute('data-auto-panel', 'docked')
+    } else {
+      expect(box.width, 'la ventana de escritorio, de ≤ 480 px').toBeLessThanOrEqual(482)
+      await expect(options).toHaveAttribute('data-auto-panel', 'floating')
+    }
+    expect(await roundCorners(page), 'Opciones: esquinas rectas').toEqual([])
+    // El orden: «Vista 3D» y «Menús flotantes» primero, «Rendirse» último.
+    const text = await options.innerText()
+    expect(text.indexOf('Vista 3D'), '«Vista 3D» antes que «Menús flotantes»').toBeGreaterThanOrEqual(0)
+    expect(text.indexOf('Menús flotantes')).toBeGreaterThan(text.indexOf('Vista 3D'))
+    expect(text.indexOf('Menús flotantes')).toBeLessThan(text.indexOf('Reiniciar el mismo duelo'))
+    await expect(options.getByRole('switch', { name: 'Vista 3D' })).toBeVisible()
+    await expect(options.getByRole('switch', { name: 'Menús flotantes' })).toBeVisible()
+    const rendirse = options.getByRole('button', { name: 'Rendirse', exact: true })
+    expect(await options.getByRole('button').last().innerText(), '«Rendirse» al final').toContain('Rendirse')
+    await rendirse.scrollIntoViewIfNeeded()
+    for (const name of ['Rendirse', 'Guardar replay', 'Reiniciar el mismo duelo']) expect((await options.getByRole('button', { name }).boundingBox())!.height, `alto de «${name}»`).toBeGreaterThanOrEqual(44)
+    expect(Math.abs((await boxOf(page, PHASE))!.cx - phaseBefore.cx), 'el botón de fase con Opciones abierta').toBeLessThanOrEqual(1)
+    // Rendirse pide confirmar (recta, con los botones de un renglón) y «Seguir jugando» no termina el duelo.
+    await press(rendirse, isMobile)
+    const confirm = page.getByRole('alertdialog', { name: '¿Rendirte en este duelo?' })
+    await expect(confirm).toBeVisible()
+    // Con poll: el diálogo entra con una animación de escala. En escritorio los botones de la confirmación miden 32 px (dato de TI-199, no se afirma).
+    if (isMobile) await expect.poll(async () => Math.min(...(await confirm.getByRole('button').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height)))), { message: 'alto de los botones de la confirmación' }).toBeGreaterThanOrEqual(44)
+    expect(await roundCorners(page), 'con la confirmación de Rendirse').toEqual([])
+    expect(await confirm.evaluate((node) => [node, ...Array.from(node.querySelectorAll('*'))].filter((child) => parseFloat(getComputedStyle(child).borderTopLeftRadius) !== 0).length), 'la confirmación, sin esquinas redondas').toBe(0)
+    await press(confirm.getByRole('button', { name: 'Seguir jugando' }), isMobile)
+    await expect(confirm).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(options).toHaveCount(0)
+    expect(Math.abs((await boxOf(page, PHASE))!.cx - phaseBefore.cx), 'el botón de fase con Opciones cerrada').toBeLessThanOrEqual(1)
+    expectStill(await readYs(page), 'al abrir y cerrar Opciones y su confirmación')
+  })
+})
+
+// M-02 / M-07 / M-08 con una respuesta real: el deck son Foolish Burial y Ash Blossom, y tu Ash puede responder a tu Foolish (el rival lleva sólo un Effect Veiler: no responde a una Mágica).
+const ASH = { cardType: 'Effect Monster', frameType: 'effect', race: 'Zombie', attribute: 'FIRE', level: 3, atk: '1700', def: '0' }
+const respondDeck = stateOf([...Array.from({ length: 20 }, () => card(81439173, 'Foolish Burial', SPELL)), ...Array.from({ length: 20 }, () => card(14558127, 'Ash Blossom & Joyous Spring', ASH))])
+
+test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-data)', () => {
+  test.skip(({ baseURL }) => /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(baseURL ?? ''), 'necesita /auto-data/* y el núcleo: no están en un preview local')
+
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(SEEDED)
+    await context.addInitScript(() => {
+      if (!localStorage.getItem('ygo-lab:rival-handtraps:v2')) localStorage.setItem('ygo-lab:rival-handtraps:v2', JSON.stringify({ enabled: true, picks: [{ id: 97268402, name: 'Effect Veiler', copies: 3 }], hand: 1 }))
+    })
+    await prepare(context, true, respondDeck)
+  })
+
+  test('el cartel de responder trae la carta elegida y «Activar» prendido (aun con copias agrupadas), la principal a la derecha, sin «Preguntarme» ni «CL»; minimizado queda una tira con la pregunta; y la cadena sigue', async ({ page, isMobile }) => {
+    test.setTimeout(180_000)
+    await startAuto(page)
+    await watchYs(page)
+    await press(handList(page).getByRole('listitem', { name: 'Foolish Burial', exact: true }).first(), isMobile)
+    await press(page.locator('[data-auto-panel]').getByRole('menuitem', { name: 'Activar', exact: true }), isMobile)
     const zones = mat(page).locator('[aria-label="Campo"] [aria-label$=": elegir"]')
     await expect(zones.first()).toBeVisible()
     await press(zones.nth(Math.min(2, (await zones.count()) - 1)), isMobile)
 
-    // La placa de ATK: al pie de la carta (su borde de abajo es el de la carta), de ≤ 15 px de alto, con el ATK impreso de la carta.
-    const stat = mat(page).locator('[aria-label="Campo"] [data-pick-stat]')
-    await expect(stat).toHaveCount(1)
-    await expect(stat).toBeVisible()
-    await expect(stat).toHaveText(/^2000/)
-    await expect(page.locator('[data-stat-badge]:visible'), 'sin Nivel a la vista con el monstruo invocado').toHaveCount(0)
-    const { chip, cell } = await stat.evaluate((node) => {
-      const zone = node.closest('[data-drop]')!.getBoundingClientRect()
-      const box = node.getBoundingClientRect()
-      return { chip: { height: box.height, top: box.top }, cell: { top: zone.top, height: zone.height } }
-    })
-    expect(chip.height, 'alto de la placa de ATK').toBeLessThanOrEqual(15.5)
-    // La mesa en 3D inclina la casilla: el borde exacto no se mide; la placa tiene que ir en el tercio de abajo de la carta.
-    expect(chip.top, 'la placa de ATK al pie de la carta').toBeGreaterThanOrEqual(cell.top + cell.height * 0.6)
-    await expect(page.locator('[data-turn-action]')).toBeEnabled({ timeout: 30_000 })
-    expectStill(await readYs(page), 'al invocar')
-  })
-
-  test('el Cementerio: la carta se abre y «‹ GY» vuelve al visor (celular) o la ficha va a la pestaña «Carta» (escritorio); hojas opacas, y la y del campo y de tu mano quietas', async ({ page, context, isMobile }) => {
-    test.setTimeout(120_000)
-    await prepare(context, true, ookaziDeck)
-    await startAuto(page)
-    await sendOokaziToGrave(page, isMobile)
-    await watchYs(page)
-
-    await press(page.locator('[data-drop="gy"]').first(), isMobile)
+    const ask = page.locator('[data-auto-panel]').filter({ hasText: '¿Respondés?' })
+    await expect(ask, 'M-02: qué pasó y qué se pide, en una frase').toBeVisible({ timeout: 30_000 })
+    await expect(ask).toContainText('Se activó «Foolish Burial». ¿Respondés?')
+    await expect(ask.getByText(/×\d/), 'las copias iguales van en un solo grupo').toBeVisible()
+    const pass = ask.getByRole('button', { name: 'Pasar', exact: true })
+    const activate = ask.getByRole('button', { name: 'Activar', exact: true })
+    await expect(activate, 'con una sola opción (un grupo de copias) viene elegida y «Activar» prendido').toBeEnabled()
+    await expect(ask.getByRole('option').first(), 'el grupo viene elegido').toHaveAttribute('aria-selected', 'true')
+    expect((await activate.boundingBox())!.x, '«Activar» a la derecha de «Pasar»').toBeGreaterThan((await pass.boundingBox())!.x)
+    expect(await ask.innerText(), 'ni «Preguntarme» ni «CL» en el cartel').not.toMatch(/Preguntarme|\bCL\d/)
+    await expect(page.locator('[data-prompt-turn], [data-panel-fold]')).toHaveCount(0)
     if (isMobile) {
-      // El visor de la pila abajo; tocar la carta abre su ficha con «‹ GY · 1» arriba (TI-171) y el visor se esconde.
-      const pile = page.locator('[data-pile-sheet]')
-      await expect(pile).toBeVisible()
-      await expectReachable(pile.getByRole('button'), 'botones del visor')
-      expect(await alphaOf(pile), 'alfa del fondo del visor de la pila').toBe(1)
-      await press(pile.getByRole('button', { name: 'Ookazi', exact: true }), isMobile)
-      const sheet = page.locator('[data-auto-panel]')
-      const back = sheet.getByRole('button', { name: /^Volver a GY/ })
-      await expect(back).toBeVisible()
-      await expect(sheet.getByText('Ookazi', { exact: true }).first()).toBeVisible()
-      expect(await alphaOf(sheet), 'alfa del fondo de la ficha').toBe(1)
-      await expectReachable(sheet.getByRole('button'), 'botones de la ficha')
-      await expect.poll(() => onTop(back), { message: 'lo que hay arriba de «‹ GY» es el botón' }).toBe(true)
-      expect((await back.boundingBox())!.height, 'alto de «‹ GY»').toBeGreaterThanOrEqual(44)
-      // «‹ GY» vuelve al visor con su carta.
-      await press(back, isMobile)
-      await expect(sheet).toHaveCount(0)
-      await expect(pile).toBeVisible()
-      await expect(pile.getByRole('button', { name: 'Ookazi', exact: true })).toBeVisible()
-      await expectReachable(pile.getByRole('button'), 'botones del visor al volver')
-    } else {
-      // En escritorio el visor es una ventana chica y la ficha va a la columna, en «Carta».
-      const dialog = page.getByRole('dialog')
-      await expect(dialog).toBeVisible()
-      await press(dialog.getByRole('button', { name: 'Ookazi', exact: true }), isMobile)
-      await expect(page.getByRole('tab', { name: 'Carta' })).toHaveAttribute('aria-selected', 'true')
-      await expect(page.locator('[data-auto-panel]').getByText('Ookazi', { exact: true }).first()).toBeVisible()
+      const option = (await ask.getByRole('option').first().boundingBox())!
+      expect(Math.abs(option.x + option.width / 2 - page.viewportSize()!.width / 2), 'la carta, centrada en la bandeja').toBeLessThanOrEqual(2)
     }
-    expectStill(await readYs(page), 'al abrir el Cementerio, una carta y volver')
+    expect(await roundCorners(page), 'con el cartel de responder').toEqual([])
+
+    // M-07: minimizado queda una tira con la pregunta (en un renglón; si no entra, se corta el nombre de la carta y nunca la pregunta) y tocarla la sube.
+    await press(ask.getByRole('button', { name: /^Minimizar/ }), isMobile)
+    const strip = page.locator('[data-auto-panel]').filter({ has: page.getByRole('button', { name: 'Mostrar la pregunta' }) })
+    await expect(strip).toBeVisible()
+    await expect(strip).toContainText('¿Respondés a «')
+    await expect(strip).toContainText('»?')
+    if (isMobile) expect((await strip.boundingBox())!.height, 'la tira minimizada (≤ 56 px)').toBeLessThanOrEqual(56)
+    const cut = await strip.evaluate((node) => Array.from(node.querySelectorAll('*')).filter((child) => child.children.length === 0 && child.scrollWidth > child.clientWidth + 1).map((child) => child.textContent!.trim()))
+    for (const text of cut) expect(text, 'lo que se corta es el nombre de la carta, no la pregunta').not.toMatch(/Respondés|»\?/)
+    await press(strip.getByRole('button', { name: 'Mostrar la pregunta' }), isMobile)
+    await expect(ask, 'tocar la tira sube la pregunta').toBeVisible()
+
+    // Responder: la cadena de dos (tu Ash niega tu Foolish) se arma y se resuelve del último al primero.
+    await press(activate, isMobile)
+    await expect(page.locator('[data-chain-card="2"]'), 'el segundo eslabón entra').toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('[data-chain-stage]')).toHaveCount(0, { timeout: 30_000 })
+    await expect(phaseButton(page)).toBeEnabled({ timeout: 30_000 })
+    expectStill(await readYs(page), 'al responder, minimizar y la cadena')
   })
+})
 
-  test('esquinas rectas con el visor del Cementerio abierto', async ({ page, context, isMobile }) => {
-    test.setTimeout(120_000)
-    await prepare(context, true, ookaziDeck)
-    await startAuto(page)
-    await sendOokaziToGrave(page, isMobile)
-    await press(page.locator('[data-drop="gy"]').first(), isMobile)
-    await expect(isMobile ? page.locator('[data-pile-sheet]') : page.getByRole('dialog')).toBeVisible()
-    expect(await roundCorners(page), 'con el visor de la pila abierto').toEqual([])
-  })
+// V-02 (M-03, elegir varias): la muestra de /playground (la misma hoja de CardPicker que usa el duelo; un efecto real que pida varias cartas en el deck de la prueba no se arma de forma estable).
+test.describe('V-02, elegir varias (muestra de /playground)', () => {
+  test.beforeEach(async ({ context }) => prepare(context, true))
 
-  test('escritorio: el menú lateral de 76 px, la casilla de ≥ 88 px, la columna «Carta · Cadena · Pasos» y la línea con la pista y el botón del turno', async ({ page, context, isMobile }) => {
-    test.skip(isMobile, 'sólo escritorio (1440×900)')
-    test.setTimeout(120_000)
-    await prepare(context, true)
-    await startAuto(page)
-    await watchYs(page)
+  test('un solo cartel con las copias agrupadas («×N»), el orden numerado, el contador «N de M» y una sola principal a la derecha que se prende al completar', async ({ page, isMobile }) => {
+    // /playground monta cientos de muestras y la traza que Playwright toma en cada toque tumba el renderizador del celular de la prueba (×3, con toque): en celular se midió por script (390×844, con toque).
+    test.skip(isMobile, 'sólo escritorio: con la traza, el celular (×3) tumba la página de /playground')
+    await page.goto('/playground')
+    // La muestra «Elegir varias · copias juntas»: su botón «Abrir la hoja» es el primero que le sigue al título.
+    const title = page.locator('h3', { hasText: 'Elegir varias · copias juntas' })
+    await expect(title, '/playground monta todas sus muestras (en un dev server tarda)').toBeAttached({ timeout: 50_000 })
+    await title.scrollIntoViewIfNeeded()
+    await press(title.locator('xpath=following::button[normalize-space()="Abrir la hoja"][1]'), isMobile)
+    const sheet = page.locator('[data-prompt]').filter({ hasText: 'Branded Fusion' }).first()
+    await expect(sheet).toBeVisible()
+    const groups = sheet.locator('[role=option]').filter({ hasText: /×\d/ })
+    await expect(groups, 'las copias iguales van en un solo grupo cada una').toHaveCount(2)
+    await expect(sheet).toContainText('0 de 3')
 
-    // TI-176: en la mesa el menú lateral se pliega al riel.
-    expect((await page.locator('aside').first().boundingBox())!.width, 'el menú lateral en la mesa').toBe(76)
-    // TI-177: la casilla del medio mide ≥ 88 px y la mesa entra sin scroll.
-    const cell = await mat(page).locator('[data-drop="mz:0"]').first().evaluate((node) => (node as HTMLElement).offsetWidth)
-    expect(cell, 'ancho de la casilla a 1440×900').toBeGreaterThanOrEqual(88)
-    expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight), 'scroll vertical del documento').toBeLessThanOrEqual(0)
-    // TI-178: una sola columna con tres pestañas, navegables con flechas.
-    const tablist = page.getByRole('tablist', { name: 'Panel de la mesa' })
-    await expect(tablist.getByRole('tab')).toHaveCount(3)
-    const [card, chain, steps] = ['Carta', 'Cadena', 'Pasos'].map((name) => tablist.getByRole('tab', { name, exact: true }))
-    await expect(steps).toBeVisible()
-    await card.click()
-    await expect(card).toHaveAttribute('aria-selected', 'true')
-    await page.keyboard.press('ArrowRight')
-    await expect(chain).toHaveAttribute('aria-selected', 'true')
-    await card.click()
-    // TI-174/177: la pista y el botón del turno comparten la línea, que no queda vacía.
-    const line = page.locator('[data-duel-line]')
-    await expect(line.locator('[data-phase-track]')).toBeVisible()
-    await expect(line.locator('[data-turn-action]')).toBeVisible()
-    // Con una ficha abierta (en «Carta»): cero radios y la y del campo y de tu mano quietas.
-    // Un monstruo de la mano (una Mágica o Trampa suelta no tiene jugadas).
-    await handList(page).getByRole('listitem').filter({ hasNotText: /Dark Hole|Mirror Force/ }).first().click()
-    await expect(page.locator('[data-auto-panel]').filter({ has: page.getByRole('menuitem') })).toBeVisible()
-    expect(await roundCorners(page), 'con la ficha abierta en la columna').toEqual([])
-    expectStill(await readYs(page), 'al abrir la ficha y cambiar de pestaña')
+    const primary = sheet.getByRole('button').last()
+    await expect(primary, 'la principal está apagada hasta completar').toBeDisabled()
+    expect((await primary.boundingBox())!.x, 'la principal, a la derecha de «Cancelar»').toBeGreaterThan((await sheet.getByRole('button', { name: 'Cancelar' }).boundingBox())!.x)
+    expect((await primary.boundingBox())!.height, 'alto de la principal').toBeGreaterThanOrEqual(44)
+    // Cada toque suma la próxima copia del grupo y lleva su número de orden: 1, 1·2, 1·2·3.
+    for (const [counter, order] of [['1 de 3', '1'], ['2 de 3', '1·2'], ['3 de 3', '1·2·3']] as const) {
+      await press(groups.first(), isMobile)
+      await expect(sheet).toContainText(counter)
+      await expect(groups.first()).toContainText(order)
+
+    }
+    await expect(primary, 'completo: la principal se prende').toBeEnabled()
+    // Lleno, tocar el grupo suelta la última.
+    await press(groups.first(), isMobile)
+    await expect(sheet).toContainText('2 de 3')
+    await expect(primary).toBeDisabled()
+    await expect(sheet, 'sin cabecera de fase ni de turno').not.toContainText(MENU_OWN)
   })
 })

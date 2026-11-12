@@ -88,11 +88,11 @@ describe('auto-screen · los dibujos de la mesa', () => {
 
     core(() => fake.ask(IDLE))
     expect(draws(() => core(() => fake.set({ overlay: { ...overlay(), stats: stats(1900) } })))).toBe(1)
-    expect(document.querySelector('[data-pick-stat]')).toHaveTextContent('1900 / 1000')
+    expect(document.querySelector('[data-pick-stat]')).toHaveTextContent('1900/1000')
     expect(draws(() => core(() => fake.set({ overlay: { ...overlay(), stats: stats(1900) } })))).toBe(0)
     expect(draws(() => core(() => fake.set({ overlay: { ...overlay(), stats: stats(1900, { 'card-101-1': { attack: 500, defense: 500, level: 1 } }) } })))).toBe(0)
     expect(draws(() => core(() => fake.set({ overlay: { ...overlay(), stats: stats(2400) } })))).toBe(1)
-    expect(document.querySelector('[data-pick-stat]')).toHaveTextContent('2400 / 1000')
+    expect(document.querySelector('[data-pick-stat]')).toHaveTextContent('2400/1000')
   })
 
   it('nada queda congelado: lo que la mesa ofrece es siempre lo de la última pregunta, aunque la de antes haya dejado sus funciones armadas', () => {
@@ -111,7 +111,7 @@ describe('auto-screen · los dibujos de la mesa', () => {
     expect(screen.queryByRole('menuitem', { name: 'Invocación Normal' })).toBeNull()
     fireEvent.keyDown(document, { key: 'Escape' })
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a la Battle Phase' }))
     expect(fake.answers.at(-1)).toEqual({ type: 'select_idlecmd', action: 6, index: null })
     expect(dispatches).toBe(0)
   })

@@ -325,6 +325,12 @@ export const duel = {
   'duel.bar.concedeTitle': '¿Rendirte en este duelo?',
   'duel.bar.concedeText': 'Perdés el duelo y {name} gana. Después podés pedir la revancha.',
   'duel.bar.keepPlaying': 'Seguir jugando',
+  'duel.options.title': 'Opciones',
+  'duel.options.viewHint': 'El campo inclinado, con perspectiva. Apagado, plano y visto de arriba.',
+  'duel.options.floating': 'Menús flotantes',
+  'duel.options.floatingHint': 'Las preguntas salen en una ventana que arrastrás de la barra y estirás de la esquina.',
+  'duel.options.concede': 'Rendirse',
+  'duel.options.concedeSolo': 'Perdés el duelo y ves la pantalla final. Después podés jugar otra vez.',
   'duel.bar.leaveConfirm': 'Salir y dejar en pausa',
   'duel.bar.leaveNow': 'Salir',
   'duel.bar.leaveDoneText': 'Este duelo ya terminó: al salir se cierra la mesa.',
@@ -486,7 +492,6 @@ export const duel = {
   'duel.result.rematchWaiting': 'Esperando a {name}…',
   'duel.result.rematchOffered': '{name} quiere la revancha.',
   'duel.turn.passHint': 'Pasar el turno',
-  'duel.turn.drew': 'Empezó tu turno: robaste una carta.',
 
   // Los puntos de vida con los que empieza el duelo (los fija quien lo crea).
 

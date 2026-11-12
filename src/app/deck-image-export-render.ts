@@ -1,4 +1,5 @@
 import { t } from '../i18n'
+import { FRAME_HEX } from './card-frame'
 import { cardImageSrc } from './card-image-source'
 import { getCardLimitIndicator } from './deck-format'
 import { PAGE_PADDING, computeDeckImageLayout, type Rect, type ZoneLayout } from './deck-image-layout'
@@ -16,18 +17,18 @@ const ZONE_TINT: Record<DeckZone, string> = {
   extra: 'rgba(59, 130, 246, 0.13)',
   side: 'rgba(46, 224, 143, 0.09)',
 }
-const TYPE_SWATCH: Record<string, string> = {
-  monster: '#ff9f1c',
-  spell: '#2ee08f',
-  trap: 'rgb(236, 72, 153)',
-  // Los colores del marco de la carta (los mismos que los puntos del builder, `ZONE_TYPE_SWATCH`).
-  fusion: 'rgb(167, 110, 205)',
-  synchro: 'rgb(245, 245, 250)',
-  xyz: 'rgb(12, 10, 18)',
-  link: 'rgb(37, 99, 235)',
+/** Los puntos de cada tipo: los del builder (`ZONE_TYPE_SWATCH`), del marco de la carta. */
+export const TYPE_SWATCH: Record<string, string> = {
+  monster: FRAME_HEX.effect,
+  spell: FRAME_HEX.spell,
+  trap: FRAME_HEX.trap,
+  fusion: FRAME_HEX.fusion,
+  synchro: FRAME_HEX.synchro,
+  xyz: FRAME_HEX.xyz,
+  link: FRAME_HEX.link,
 }
-/** El punto negro de la Xyz lleva un borde claro: sobre el fondo oscuro, solo se pierde. */
-const OUTLINED_TYPES = new Set(['xyz'])
+/** La Xyz y el Enlace llevan un borde claro: sobre el fondo oscuro, solos se pierden. */
+const OUTLINED_TYPES = new Set(['xyz', 'link'])
 const PAGE_BACKGROUND = '#18181c'
 const SURFACE_BASE = 'rgba(32, 31, 39, 0.6)'
 const TEXT_MAIN = '#fdffff'

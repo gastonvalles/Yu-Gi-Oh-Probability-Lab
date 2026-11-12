@@ -1,5 +1,4 @@
 import { effectSentences, type TextRange } from '../card-text'
-import { READ_MS } from '../chain-motion'
 import type { CardRef, ChainLink } from './adapter'
 import { LOCATION as L, splitDesc, type WireEvent } from './protocol'
 
@@ -106,6 +105,8 @@ export interface ChainFeed {
   done: boolean
   /** El eslabón del que habla el aviso plegado: el último que cambió (mientras se arma, el último que se sumó). */
   focus: number
+  /** El que se resuelve ahora (el último `solving`; en el centro hasta que empieza el siguiente): los de número mayor ya se fueron. -1 mientras se arma. */
+  current: number
 }
 
 /** La cadena como se ve después de mostrar los primeros `count` pasos (la última que empezó), o null si todavía no hubo ninguna. */
@@ -125,6 +126,7 @@ export function chainFeed(steps: readonly ChainStep[], count: number): ChainFeed
   let resolving = false
   let done = false
   let focus = 0
+  let current = -1
 
   for (const step of steps.slice(start, upTo)) {
     if (step.kind === 'end') {
@@ -141,39 +143,39 @@ export function chainFeed(steps: readonly ChainStep[], count: number): ChainFeed
     if (!row) continue
     resolving = true
     focus = step.index
+    if (step.kind === 'solving') current = step.index
     // Una negada sigue negada al llegarle el turno y al resolverse: el núcleo la niega mientras se resuelve el eslabón que la niega (antes de llegar a ella).
     if ((row.state !== 'negated' && row.state !== 'disabled') || step.kind === 'negated' || step.kind === 'disabled') row.state = step.kind
     if (step.by) row.by = step.by
     if (step.outcome && row.state === 'solved') row.outcome = step.outcome
   }
 
-  return { key: start, rows: rows.filter(Boolean), resolving, done, focus }
+  return { key: start, rows: rows.filter(Boolean), resolving, done, focus, current }
 }
 
-/** Cuánto se lee cada eslabón al resolverse en una cadena de dos o más: lo que dura su animación (chain-motion.ts, 750 ms por eslabón). */
-export const CHAIN_SOLVE_MS = 750
-/** Cuánto se ve un eslabón que se suma (y una activación suelta al resolverse): breve. */
+/** El ritmo de la cadena en grande (decisión 9 de la fase): cada eslabón que entra se ve `CHAIN_LINK_MS`; cada uno que se resuelve, `CHAIN_SOLVE_MS`. */
 export const CHAIN_LINK_MS = 700
-
-/** La pausa de lectura de lo negado o sin efecto (`READ_MS` de chain-motion.ts): el eslabón se queda con su tajo y «por quién» antes de soltarse. Sólo ahí. */
-export const CHAIN_READ_MS = READ_MS
+export const CHAIN_SOLVE_MS = 900
+/** Una activación sola, aunque nadie pueda responder, entra igual con su «1» y se resuelve: 1 s en total (con 1,2 s, un turno corto del bot pasaba de los 9 s). */
+export const CHAIN_ALONE_MS = 1000
+/** Lo negado o sin efecto se queda en el centro, tachado, este rato más para leerlo. */
+export const CHAIN_READ_MS = 1600
 
 /**
- * Cuánto queda a la vista el paso `i` antes de mostrar el siguiente: un eslabón que se suma, `CHAIN_LINK_MS` (una activación suelta no se cuenta dos veces: pasa directo a
- * resolverse); uno que se resuelve, `CHAIN_SOLVE_MS` (suelto, `CHAIN_LINK_MS`); uno que se niega o queda sin efecto, además `CHAIN_READ_MS`; el que terminó de resolverse,
- * llegar a uno ya negado (ya se leyó «Negada») y el final, nada (el siguiente ya lo dice).
+ * Cuánto queda a la vista el paso `i` antes de mostrar el siguiente. Un eslabón que entra, `CHAIN_LINK_MS`. Cada uno se resuelve en el centro con lo que hizo a la vista: el tiempo va
+ * en su `solved` (su `solving` y lo que pasa mientras, como negar a otro, salen juntos con él): `CHAIN_SOLVE_MS` (sola, lo que le falta a `CHAIN_ALONE_MS`), más `CHAIN_READ_MS` si
+ * quedó negado o sin efecto. Tres eslabones: 3 × 0,7 + 3 × 0,9 = 4,8 s. Lo demás, nada (el siguiente ya lo dice).
  */
 export function chainDwell(steps: readonly ChainStep[], i: number): number {
   const step = steps[i]
 
-  if (!step || step.kind === 'solved' || step.kind === 'end') return 0
+  if (step?.kind === 'chain') return CHAIN_LINK_MS
+  if (step?.kind !== 'solved') return 0
   const feed = chainFeed(steps, i + 1)
-  const size = feed?.rows.length ?? 1
+  const row = feed?.rows[step.index]
+  const voided = row?.state === 'negated' || row?.state === 'disabled'
 
-  if (step.kind === 'chain') return size === 1 && steps[i + 1]?.kind === 'solving' ? 0 : CHAIN_LINK_MS
-  if (step.kind === 'solving' && feed?.rows[step.index]?.state !== 'solving') return 0
-
-  return (size > 1 ? CHAIN_SOLVE_MS : CHAIN_LINK_MS) + (step.kind === 'negated' || step.kind === 'disabled' ? CHAIN_READ_MS : 0)
+  return ((feed?.rows.length ?? 1) > 1 ? CHAIN_SOLVE_MS : CHAIN_ALONE_MS - CHAIN_LINK_MS) + (voided ? CHAIN_READ_MS : 0)
 }
 
 /** Cuántos pasos llegaron hasta la jugada `cursor` de tu mesa (los que se dan por vistos al saltar o al rearmarse). */
@@ -197,5 +199,5 @@ export function linkPhrase(text: string, code: number, description: string | und
   return sentence ? { start: sentence.start, end: sentence.start + sentence.text.length } : null
 }
 
-/** Cuánto se queda el aviso después de que la cadena terminó (el celular lo usa para leer cómo quedó cada eslabón: ✓ o ✕). */
-export const CHAIN_LINGER_MS = 2500
+/** Cuánto se queda la escena después de que la cadena terminó: lo que tarda en irse la última carta. */
+export const CHAIN_LINGER_MS = 400

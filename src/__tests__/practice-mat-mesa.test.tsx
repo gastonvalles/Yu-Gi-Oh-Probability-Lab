@@ -305,7 +305,8 @@ describe('la mesa de práctica', () => {
     render(<Harness />)
 
     expect(screen.queryByRole('group', { name: 'Fases' })).not.toBeInTheDocument()
-    expect(phaseButton().parentElement).toHaveStyle({ gridArea: 'p3' })
+    // Entre las dos Zonas Extra (`p2`, Gastón 2026-11-12: «debe estar en el medio de las 2 zonas de extra monster zone»); el + pasa a `p3`.
+    expect(phaseButton().parentElement).toHaveStyle({ gridArea: 'p2' })
     // Es parte del campo (la fila del medio), como en un duelo.
     expect(within(screen.getByLabelText('Campo')).getByRole('button', { name: /^Fases:/ })).toBe(phaseButton())
     expect(phaseButton()).toHaveTextContent('DP')
