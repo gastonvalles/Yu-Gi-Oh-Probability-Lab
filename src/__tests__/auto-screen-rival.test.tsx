@@ -73,15 +73,15 @@ const handtrapSheet = () => {
 }
 
 describe('auto-screen · el rival de handtraps', () => {
-  it('con el simulador apagado, el rival es el pasivo de siempre: su mano de dorso y «Más opciones» dice que no juega', () => {
+  it('con el simulador apagado, el rival es el pasivo de siempre: su mano de dorso y Opciones lo dice en una palabra', () => {
     const { calls } = mount()
 
     expect(calls).toEqual([{ rival: null, seed: expect.any(Number), seat: 0 }])
     expect(rivalHand()).toHaveAccessibleName('Mano del rival: 0')
     const dialog = more()
 
-    expect(dialog).toHaveTextContent('RivalPasivo')
-    expect(dialog).toHaveTextContent('El rival no juega: sólo recibe.')
+    expect(dialog).toHaveTextContent('Cambiar rivalPasivo')
+    expect(dialog).not.toHaveTextContent('El rival no juega')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
   })
 
@@ -214,7 +214,7 @@ describe('auto-screen · el rival «Bot»', () => {
     expect(rivalHand()).toHaveAccessibleName('Mano del rival: 2')
     const dialog = more()
 
-    expect(dialog).toHaveTextContent('RivalBot · Sky Striker')
+    expect(dialog).toHaveTextContent('Cambiar rivalBot · Sky Striker')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
     fireEvent.click(within(dialog).getByRole('switch', { name: 'Mostrar la mano del bot' }))
     expect(rivalHand()).toHaveAccessibleName(`Mano del rival: ${ASH.name}, ${VEILER.name}`)

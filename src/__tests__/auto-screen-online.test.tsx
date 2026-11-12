@@ -508,12 +508,12 @@ describe('auto-screen-online · pasar a manual', () => {
     start()
     const more = moreOptions()
 
-    expect(more.getByText('Modo manual')).toBeInTheDocument()
-    expect(more.getByText('Le preguntás a Ana: si acepta, siguen a mano los dos, con la mesa como está. El automático vuelve en la revancha.')).toBeInTheDocument()
+    // Una fila sin párrafo de ayuda: lo que explica va en su `title`.
+    expect(more.getByRole('button', { name: 'Pasar a manual' })).toHaveAttribute('title', 'Le preguntás a Ana: si acepta, siguen a mano los dos, con la mesa como está. El automático vuelve en la revancha.')
     fireEvent.click(more.getByRole('button', { name: 'Pasar a manual' }))
     expect(link.manuals).toEqual([true])
     core(() => link.set({ manual: 'asking' }))
-    expect(more.getByText('Esperando a que Ana acepte seguir en modo manual…')).toBeInTheDocument()
+    expect(more.getByRole('button', { name: 'Cancelar pedido' })).toHaveAttribute('title', 'Esperando a que Ana acepte seguir en modo manual…')
     fireEvent.click(more.getByRole('button', { name: 'Cancelar pedido' }))
     expect(link.manuals).toEqual([true, false])
     fireEvent.keyDown(document, { key: 'Escape' })

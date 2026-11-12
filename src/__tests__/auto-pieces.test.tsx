@@ -414,8 +414,9 @@ describe('RespondBand', () => {
     expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Pasar', 'Activar'])
     expect(within(group).getByRole('listbox').compareDocumentPosition(within(group).getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(within(group).getByRole('button', { name: 'Activar' })).toBeDisabled()
-    // Sin `mode`, sin el selector.
+    // El modo de respuesta («Preguntarme: Siempre · Nunca») no se repite en el cartel: vive en Opciones.
     expect(within(group).queryByRole('radiogroup')).toBeNull()
+    expect(group).not.toHaveTextContent('Preguntarme')
     // Escape es «Pasar» (lo da la mesa): la banda no se minimiza.
     escape()
     expect(group).not.toHaveAttribute('data-minimized')
@@ -423,10 +424,9 @@ describe('RespondBand', () => {
     expect(onPass).toHaveBeenCalledTimes(1)
   })
 
-  it('la elegida, con el aro y la tilde lima; la principal contesta; el modo, sólo en escritorio', () => {
+  it('la elegida, con el aro y la tilde lima; la principal contesta', () => {
     const onChain = vi.fn()
-    const onMode = vi.fn()
-    respond({ chosen: 'b', onChain, mode: { value: 'ask', onChange: onMode } })
+    respond({ chosen: 'b', onChain })
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
     const chosen = within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })
 
@@ -436,14 +436,11 @@ describe('RespondBand', () => {
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelector('[data-pick-chosen]')).toBeNull()
     fireEvent.click(within(group).getByRole('button', { name: 'Activar' }))
     expect(onChain).toHaveBeenCalledTimes(1)
-    const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
 
-    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila del título: a su derecha, sin un renglón propio (el alto es de las cartas). «Minimizar» va en la barra.
+    // El título sin partirse a mitad de palabra («Respond / er»). «Minimizar» va en la barra.
     const title = within(group).getByText('Responder a la cadena')
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
-    expect(modes.parentElement?.parentElement).toBe(title.parentElement?.parentElement)
     expect(within(group).getByRole('button', { name: 'Minimizar' })).toHaveAttribute('data-window-minimize')
-    expect(title.compareDocumentPosition(modes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // Texto, bandeja y botones, en ese orden en el código (en la ventana, la bandeja se dibuja a la izquierda); las cartas, de 4,5 rem en la ventana.
     const listbox = within(group).getByRole('listbox')
     expect(listbox).toHaveClass('grid-flow-col', 'justify-center-safe', 'group-data-[auto-panel=floating]/panel:auto-cols-[4.5rem]')
@@ -453,9 +450,6 @@ describe('RespondBand', () => {
     const name = within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' }).querySelector('[data-pick-name]')!
     expect(name).toHaveAttribute('title', 'Aluber the Jester of Despia')
     expect(name.firstElementChild).not.toHaveClass('min-[1101px]:line-clamp-2')
-    expect(within(modes).getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'true')
-    fireEvent.click(within(modes).getByRole('radio', { name: 'Nunca' }))
-    expect(onMode).toHaveBeenCalledWith('never')
     cleanup()
 
     // Sin cadena todavía, tu respuesta la abre.
@@ -481,8 +475,8 @@ describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
 })
 
 describe('RespondBand en el celular', () => {
-  it('sin el modo (queda en «Más opciones»), la pregunta a la vista, las cartas en la bandeja y las acciones debajo', () => {
-    render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} mode={{ value: 'ask', onChange: () => {} }} />)
+  it('sin el modo (vive en Opciones), la pregunta a la vista, las cartas en la bandeja y las acciones debajo', () => {
+    render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
     const listbox = within(group).getByRole('listbox')
 
@@ -762,14 +756,16 @@ describe('AutoBar', () => {
     expect(within(dialog).getAllByRole('switch').map((item) => item.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Menús flotantes'])
     // Dos modos, y la línea chica dice qué hace el elegido.
     expect(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Nunca'])
-    expect(dialog).toHaveTextContent('Te pregunta cada vez que tenés un efecto rápido o uno con su condición cumplida.')
+    // Cada ajuste, en su fila de 44 px y con el control a la derecha; lo que hace el elegido va en el `title` de la fila, no en un párrafo debajo.
+    expect(within(dialog).getByRole('radiogroup', { name: 'Respuestas' }).parentElement).toHaveAttribute('title', 'Te pregunta cada vez que tenés un efecto rápido o uno con su condición cumplida.')
+    expect(within(dialog).getByRole('radiogroup', { name: 'Respuestas' }).parentElement).toHaveClass('flex', 'min-h-11', 'items-center', 'justify-between')
     fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getByRole('radio', { name: 'Nunca' }))
     fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Casilla' })).getByRole('radio', { name: 'Automática' }))
     expect(onChain).toHaveBeenCalledWith('never')
     expect(onPlace).toHaveBeenCalledWith('auto')
-    expect(dialog).toHaveTextContent('El rival no juega: sólo recibe.')
-    // El pasivo: «Rival · Pasivo» y sin «A ciegas».
-    expect(dialog).toHaveTextContent('RivalPasivoCambiar rival')
+    expect(dialog).not.toHaveTextContent('El rival no juega')
+    // El pasivo: «Cambiar rival · Pasivo» (sin el párrafo de que no juega) y sin «A ciegas».
+    expect(dialog).toHaveTextContent('Cambiar rivalPasivo')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
   })
 
@@ -803,7 +799,7 @@ describe('AutoBar', () => {
     expect(menuRow('Rival')).toHaveTextContent('Bot')
     const dialog = openOptions()
 
-    expect(dialog).toHaveTextContent('RivalBot · Sky Striker')
+    expect(dialog).toHaveTextContent('Cambiar rivalBot · Sky Striker')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
     const show = within(dialog).getByRole('switch', { name: 'Mostrar la mano del bot' })
 

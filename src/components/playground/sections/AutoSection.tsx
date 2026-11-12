@@ -680,7 +680,6 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   ]
   const [shown, setShown] = useState(true)
   const [chosen, setChosen] = useState<string | null>(null)
-  const [mode, setMode] = useState<AutoChainMode>('ask')
   const picked = cards.find((card) => card.key === chosen)
   const reply = (answer: string) => {
     setShown(false)
@@ -692,7 +691,7 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     <Specimen
       title="Responder a una cadena"
       layout="column"
-      note={<>Una cadena que se puede pasar. La pila de la cadena, arriba, abre desplegada y dice a qué eslabón respondés (número, dueño, carta y estado); la banda, debajo, abre entera y dice sólo qué se decide («Responder a la cadena»): cada dato una vez. Las candidatas con la pestaña de dónde están (tocar una la elige, con el marco celeste; con una sola, ya viene elegida); «Pasar» sin caja y «Activar» al final. En escritorio, el modo de respuesta arriba a la derecha (en el celular, en «Más opciones»). Nada se minimiza ni se esconde solo: el asa de la banda la baja a una tira que se sube tocándola (Escape es «Pasar») y la de la pila, a su píldora. Tocar la carta que brilla en la mesa sigue valiendo. Desde 1101 px, la pila y la banda (también su asa) se llevan con el mouse a cualquier lado agarrándolas por su fila de arriba (o con el foco adentro, Alt + flechas), como las mascotas: quedan donde las soltás para las cadenas y preguntas que siguen, y doble clic en esa fila las devuelve a su lugar (<Tag>use-draggable-offset.ts</Tag>; probalo acá). En el celular (menos de 1101 px) el título no se ve (queda para el lector de pantalla: la cinta de la cadena, arriba, ya dice a qué eslabón respondés) y «No responder» y la principal suben a la fila de arriba, junto a la flecha; abajo quedan sólo las cartas, cada una con el ícono de dónde está. Archivos: <Tag>auto/RespondBand.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>}
+      note={<>Una cadena que se puede pasar. La pila de la cadena, arriba, abre desplegada y dice a qué eslabón respondés (número, dueño, carta y estado); la banda, debajo, abre entera y dice sólo qué se decide («Responder a la cadena»): cada dato una vez. Las candidatas con la pestaña de dónde están (tocar una la elige, con el marco celeste; con una sola, ya viene elegida); «Pasar» sin caja y «Activar» al final. El modo de respuesta («Siempre · Nunca») no se repite acá: vive en Opciones («Respuestas»), la misma preferencia. Nada se minimiza ni se esconde solo: el asa de la banda la baja a una tira que se sube tocándola (Escape es «Pasar») y la de la pila, a su píldora. Tocar la carta que brilla en la mesa sigue valiendo. Desde 1101 px, la pila y la banda (también su asa) se llevan con el mouse a cualquier lado agarrándolas por su fila de arriba (o con el foco adentro, Alt + flechas), como las mascotas: quedan donde las soltás para las cadenas y preguntas que siguen, y doble clic en esa fila las devuelve a su lugar (<Tag>use-draggable-offset.ts</Tag>; probalo acá). En el celular (menos de 1101 px) el título no se ve (queda para el lector de pantalla: la cinta de la cadena, arriba, ya dice a qué eslabón respondés) y «No responder» y la principal suben a la fila de arriba, junto a la flecha; abajo quedan sólo las cartas, cada una con el ícono de dónde está. Archivos: <Tag>auto/RespondBand.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>}
     >
       <div className="relative isolate h-128 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
@@ -712,7 +711,6 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
                     onToggle={setChosen}
                     onChain={() => reply(picked?.name ?? '')}
                     onPass={() => reply(t('auto.lane.pass'))}
-                    mode={{ value: mode, onChange: setMode }}
                   />
                 </div>
             </div>
@@ -744,10 +742,10 @@ function LongTextSample() {
     <Specimen
       title="Textos largos · es y en"
       layout="column"
-      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila y el modo debajo; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano («▯ 12») no se cortan. Elegido, violeta con texto blanco (<Tag>primary</Tag>, 7,6:1).</>}
+      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano («▯ 12») no se cortan. Elegido, violeta con texto blanco (<Tag>primary</Tag>, 7,6:1).</>}
     >
       <div className="relative grid w-[min(22rem,100%)] gap-3 max-[1101px]:min-h-80 max-[1101px]:content-start">
-        <RespondBand title="Respond to the chain" link={2} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} mode={{ value: mode, onChange: setMode }} />
+        <RespondBand title="Respond to the chain" link={2} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} />
         <Segmented label="Responses" value={mode} onChange={setMode} options={modes} fullWidth />
         <Segmented label={t('auto.respond.mode')} value={mode} onChange={setMode} options={chainModeOptions()} fullWidth />
         <div className="flex gap-2">
@@ -1087,7 +1085,7 @@ function DockSample() {
       title="AutoDock · la botonera y las esquinas (escritorio)"
       layout="column"
       className="col-span-full"
-      note={<>Desde 1101 px, en «Jugar solo automático»: las vidas del rival arriba a la derecha del campo y las tuyas abajo a la izquierda, cada una con las cartas de su mano (<Tag>LifeTile</Tag> <Tag>hand</Tag>); abajo a la derecha, la botonera redonda: «Automático» (el modo de ahora, prendido: abre «Seguir en modo manual»; el camino de vuelta no existe), «Cadena» (las respuestas), «Pasos» (oculta y muestra el panel) y «Opciones» (el resto de «Más opciones», que sale de la barra). Mide 56 px y sube 12 sobre la mano: el campo no se mueve. Archivo: <Tag>auto/AutoBar.tsx</Tag></>}
+      note={<>Desde 1101 px, en «Jugar solo automático»: las vidas del rival arriba a la derecha del campo y las tuyas abajo a la izquierda, cada una con las cartas de su mano (<Tag>LifeTile</Tag> <Tag>hand</Tag>); abajo a la derecha, dos cuadrados de 44 px: ≡ «Pasos» (oculta y muestra el panel) y ⚙ «Opciones». Opciones abre la hoja recta de siempre (en escritorio, su ventana, que se lleva de la barra): filas de 44 px con su interruptor o su segmentado a la derecha (Vista 3D, Menús flotantes, Respuestas, Casilla, el rival, reiniciar, replay, bot, modo manual) y «Rendirse ›» al final; no mueve el campo. Archivo: <Tag>auto/AutoBar.tsx</Tag></>}
     >
       <div className="relative isolate grid min-h-48 grid-cols-[minmax(0,1fr)_auto] content-between gap-3 overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />

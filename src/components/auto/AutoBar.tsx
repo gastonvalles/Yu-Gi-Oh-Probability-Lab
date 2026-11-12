@@ -1,4 +1,4 @@
-import { useContext, useLayoutEffect, useState, type ReactNode } from 'react'
+import { useContext, useLayoutEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 
 import type { AutoPrefs } from '../../app/auto-prefs'
 import type { RivalKind } from '../../app/handtraps'
@@ -6,19 +6,19 @@ import { useDuelRails } from '../../app/duel-rails'
 import { setMatMenus, useMatMenus } from '../../app/mat-menus'
 import { setMatView, useMatView } from '../../app/mat-view'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { Presence } from '../../app/use-presence'
 import { t, type MessageKey } from '../../i18n'
-import { BAR_SEAT, LaneBanner, RAIL_LANE_STYLE, Setting, type LaneNotice } from '../duel/DuelBar'
+import { BAR_SEAT, LaneBanner, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
 import { LifeScore } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext } from '../probability/MatBarActions'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
-import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
-import { Modal } from '../ui/Modal'
+import { AutoPanel } from './AutoPanel'
 import { Segmented, type SegmentedOption } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
 
@@ -83,17 +83,33 @@ interface AutoBarProps extends AutoOptions {
   seat?: ReactNode
 }
 
-export { Setting }
+/** Una fila de Opciones (M-10): de 44 px, el nombre a la izquierda y su control a la derecha. Lo que explica va en el `title` (sin párrafos de ayuda debajo: «explican lo justo y necesario»). */
+export function OptionRow({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <div title={hint} className="flex min-h-11 min-w-0 items-center justify-between gap-3 border-b border-border-subtle last:border-b-0">
+      <span className="min-w-0 text-body font-semibold text-foreground">{title}</span>
+      {children}
+    </div>
+  )
+}
 
-/** Una fila de ajuste con su interruptor (Opciones): el nombre, lo que hace en una línea chica y el interruptor a la derecha. */
+/** Una fila de Opciones que se enciende y se apaga: el interruptor a la derecha. */
 function SwitchRow({ title, hint, checked, onChange }: { title: string; hint: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="grid min-w-0 gap-0.5">
-        <span className="text-body font-semibold text-foreground">{title}</span>
-        <span className="text-micro text-soft">{hint}</span>
-      </span>
+    <OptionRow title={title} hint={hint}>
       <Switch checked={checked} onChange={onChange} label={title} />
+    </OptionRow>
+  )
+}
+
+/** Una fila de Opciones que hace algo (o abre algo): toda la fila es el botón, con su «›» a la derecha y, si hace falta, el dato de hoy en gris. */
+export function ActionRow({ title, hint, value, danger = false, onClick, ...rest }: { title: string; hint?: string; value?: string; danger?: boolean; onClick: () => void } & Pick<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-haspopup' | 'disabled'>) {
+  return (
+    <div className="border-b border-border-subtle last:border-b-0">
+      <Button variant="tertiary" {...(danger ? { color: 'danger' as const } : {})} iconEnd="chevron-right" fullWidth title={hint} aria-label={title} className="justify-between px-0! text-left" onClick={onClick} {...rest}>
+        <span className={cx('truncate', value ? 'shrink-0' : 'min-w-0 flex-1')}>{title}</span>
+        {value ? <span className="min-w-0 flex-1 truncate text-right text-micro font-normal text-muted">{value}</span> : null}
+      </Button>
     </div>
   )
 }
@@ -105,16 +121,36 @@ export interface ConcedeOption {
   disabled?: boolean
 }
 
+/** Las dos respuestas de una fila de Opciones, el segmentado chico en la misma fila (la cadena y la casilla). */
+const rowSegmented = { size: 'sm', dense: true, className: '-my-1 shrink-0' } as const
+
 /**
- * El ⚙ de abajo a la derecha (44 px, en el celular y en escritorio) y sus Opciones (M-10): arriba «Vista 3D» y «Menús flotantes» (se prenden y apagan en medio del duelo: la pregunta abierta cambia en el
- * acto), después lo propio de cada duelo (`children`: la cadena, la casilla, el rival, reiniciar, el replay, el bot, seguir en manual) y, al final, «Rendirse» (pide confirmar). Sin velo: la mesa se
- * sigue viendo. Es lo único que lleva la vista 3D y las ventanas en un duelo automático: su ⋯ ya no. El estado es de toda la app (`mat-view`, `mat-menus`).
+ * El panel de Opciones (M-10): la hoja recta de abajo del resto de los menús del duelo (`AutoPanel`: asa, ✕, Escape o tocar afuera) y, en escritorio, su ventana recta. Arriba «Vista 3D» y
+ * «Menús flotantes» (se prenden y apagan en medio del duelo: la pregunta abierta cambia en el acto), después lo propio de cada duelo (`children`: cada uno, una fila) y, al final, «Rendirse ›».
+ */
+function OptionsPanel({ onClose, onConcede, disabled, children }: { onClose: () => void; onConcede?: () => void; disabled: boolean; children: ReactNode }) {
+  const view = useMatView()
+  const menus = useMatMenus()
+
+  return (
+    <AutoPanel kind="options" label={t('duel.options.title')} tall onDismiss={onClose}>
+      <div>
+        <SwitchRow title={t('practice.view.3d')} hint={t('duel.options.viewHint')} checked={view === '3d'} onChange={(on) => setMatView(on ? '3d' : 'top')} />
+        <SwitchRow title={t('duel.options.floating')} hint={t('duel.options.floatingHint')} checked={menus === 'floating'} onChange={(on) => setMatMenus(on ? 'floating' : 'docked')} />
+        {children}
+        {onConcede ? <ActionRow danger title={t('duel.options.concede')} aria-haspopup="dialog" disabled={disabled} onClick={onConcede} /> : null}
+      </div>
+    </AutoPanel>
+  )
+}
+
+/**
+ * El ⚙ de abajo a la derecha (44 px, en el celular y en escritorio) y sus Opciones (`OptionsPanel`). Sin velo: la mesa se sigue viendo. Es lo único que lleva la vista 3D y las ventanas en un
+ * duelo automático: su ⋯ ya no. El estado es de toda la app (`mat-view`, `mat-menus`).
  */
 export function OptionsGear({ children, concede }: { children: ReactNode | ((close: () => void) => ReactNode); concede?: ConcedeOption }) {
   const [open, setOpen] = useState(false)
   const [conceding, setConceding] = useState(false)
-  const view = useMatView()
-  const menus = useMatMenus()
   const close = () => setOpen(false)
 
   return (
@@ -122,29 +158,24 @@ export function OptionsGear({ children, concede }: { children: ReactNode | ((clo
       <IconButton tone="tile" size="sm" data-mat-gear="" aria-haspopup="dialog" aria-label={t('auto.dock.options')} title={t('auto.dock.options')} onClick={() => setOpen(true)}>
         <Icon name="gear" />
       </IconButton>
-      <Modal isOpen={open} onClose={close} size="keypad" anchor="mat" veil={false} title={t('duel.options.title')}>
-        <div className="grid gap-5">
-          <SwitchRow title={t('practice.view.3d')} hint={t('duel.options.viewHint')} checked={view === '3d'} onChange={(on) => setMatView(on ? '3d' : 'top')} />
-          <SwitchRow title={t('duel.options.floating')} hint={t('duel.options.floatingHint')} checked={menus === 'floating'} onChange={(on) => setMatMenus(on ? 'floating' : 'docked')} />
-          {typeof children === 'function' ? children(close) : children}
-          {concede ? (
-            <Button
-              variant="tertiary"
-              color="danger"
-              icon="flag"
-              className="justify-self-start"
-              disabled={concede.disabled === true}
-              aria-haspopup="dialog"
-              onClick={() => {
-                close()
-                setConceding(true)
-              }}
-            >
-              {t('duel.options.concede')}
-            </Button>
-          ) : null}
-        </div>
-      </Modal>
+      <Presence>
+        {open ? (
+          <OptionsPanel
+            onClose={close}
+            disabled={concede?.disabled === true}
+            {...(concede
+              ? {
+                  onConcede: () => {
+                    close()
+                    setConceding(true)
+                  },
+                }
+              : {})}
+          >
+            {typeof children === 'function' ? children(close) : children}
+          </OptionsPanel>
+        ) : null}
+      </Presence>
       {concede ? (
         <ConfirmDialog
           veil={false}
@@ -166,98 +197,46 @@ export function OptionsGear({ children, concede }: { children: ReactNode | ((clo
   )
 }
 
-/** Lo de Opciones que es de «Jugar solo automático»: las respuestas a la cadena, la casilla, el rival y su mano de dorso, reiniciar el mismo duelo, el replay, el bot y seguir en modo manual. */
+/** «Respuestas»: siempre o nunca te pregunta si respondés a una cadena (en la misma fila). */
+export function ChainRow({ chain, onChain }: { chain: AutoChainMode; onChain: (mode: AutoChainMode) => void }) {
+  return (
+    <OptionRow title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
+      <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} options={chainModeOptions()} {...rowSegmented} />
+    </OptionRow>
+  )
+}
+
+/** «Casilla»: la elegís vos o va a la primera libre (en la misma fila). */
+export function PlaceRow({ place, onPlace }: { place: AutoPlaceMode; onPlace: (mode: AutoPlaceMode) => void }) {
+  return (
+    <OptionRow title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
+      <Segmented label={t('auto.bar.place')} value={place} onChange={onPlace} options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} {...rowSegmented} />
+    </OptionRow>
+  )
+}
+
+/** Lo de Opciones que es de «Jugar solo automático»: las respuestas a la cadena, la casilla, el rival y su mano de dorso, reiniciar el mismo duelo, el replay, el bot y seguir en modo manual; cada uno, una fila. */
 function SoloSettings({ chain, onChain, place, onPlace, onRestart, onManual, onSaveReplay, onBotLog, rival, blind, onBlind, close }: AutoOptions & { close: () => void }) {
+  // Cada acción cierra el panel antes de abrir lo suyo (una hoja o un diálogo).
+  const go = (action: () => void) => () => {
+    close()
+    action()
+  }
+
   return (
     <>
-      <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
-        <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
-      </Setting>
-      <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
-        <Segmented label={t('auto.bar.place')} value={place} onChange={onPlace} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
-      </Setting>
-      <Setting title={t('auto.rival.label')} hint={rival.summary}>
-        <Button
-          variant="secondary"
-          className="justify-self-start"
-          aria-haspopup="dialog"
-          onClick={() => {
-            close()
-            rival.onChange()
-          }}
-        >
-          {t('auto.rival.change')}
-        </Button>
-      </Setting>
+      <ChainRow chain={chain} onChain={onChain} />
+      <PlaceRow place={place} onPlace={onPlace} />
+      <ActionRow title={t('auto.rival.change')} value={rival.summary} aria-haspopup="dialog" onClick={go(rival.onChange)} />
       {rival.kind === 'bot' ? (
         <SwitchRow title={t('auto.rival.botHand')} hint={t('auto.rival.botHandHint')} checked={!blind} onChange={(shown) => onBlind(!shown)} />
       ) : rival.kind === 'handtraps' ? (
         <SwitchRow title={t('auto.bar.blind')} hint={t('auto.bar.blindHint')} checked={blind} onChange={onBlind} />
-      ) : (
-        <Callout tone="neutral">{t('auto.rival.passive')}</Callout>
-      )}
-      {onRestart ? (
-        <Setting title={t('auto.bar.restart')} hint={t('auto.bar.restartHint')}>
-          <Button
-            variant="secondary"
-            icon="refresh"
-            className="justify-self-start"
-            onClick={() => {
-              close()
-              onRestart()
-            }}
-          >
-            {t('auto.bar.restart')}
-          </Button>
-        </Setting>
       ) : null}
-      {onSaveReplay ? (
-        <Setting title={t('meta.duels.save.title')} hint={t('auto.bar.saveReplayHint')}>
-          <Button
-            variant="secondary"
-            icon="save"
-            className="justify-self-start"
-            aria-haspopup="dialog"
-            onClick={() => {
-              close()
-              onSaveReplay()
-            }}
-          >
-            {t('meta.duels.save.button')}
-          </Button>
-        </Setting>
-      ) : null}
-      {onBotLog ? (
-        <Setting title={t('auto.bot.log.title')} hint={t('auto.bot.log.optionHint')}>
-          <Button
-            variant="secondary"
-            icon="chat"
-            className="justify-self-start"
-            aria-haspopup="dialog"
-            onClick={() => {
-              close()
-              onBotLog()
-            }}
-          >
-            {t('auto.bot.log.open')}
-          </Button>
-        </Setting>
-      ) : null}
-      {onManual ? (
-        <Setting title={t('auto.bar.manual')} hint={t('auto.bar.manualHint')}>
-          <Button
-            variant="secondary"
-            icon="hand"
-            className="justify-self-start"
-            onClick={() => {
-              close()
-              onManual()
-            }}
-          >
-            {t('auto.bar.manual')}
-          </Button>
-        </Setting>
-      ) : null}
+      {onRestart ? <ActionRow title={t('auto.bar.restart')} hint={t('auto.bar.restartHint')} onClick={go(onRestart)} /> : null}
+      {onSaveReplay ? <ActionRow title={t('meta.duels.save.button')} hint={t('auto.bar.saveReplayHint')} aria-haspopup="dialog" onClick={go(onSaveReplay)} /> : null}
+      {onBotLog ? <ActionRow title={t('auto.bot.log.open')} hint={t('auto.bot.log.optionHint')} aria-haspopup="dialog" onClick={go(onBotLog)} /> : null}
+      {onManual ? <ActionRow title={t('auto.bar.manual')} hint={t('auto.bar.manualHint')} onClick={go(onManual)} /> : null}
     </>
   )
 }

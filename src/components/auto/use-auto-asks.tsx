@@ -16,7 +16,7 @@ import { turnReasons } from '../../app/auto/no-plays'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
-import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
+import { useAutoPrefs } from '../../app/auto-prefs'
 import { useHeldValue } from '../../app/life-effects'
 import { prefersReducedMotion } from '../../app/motion'
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -1236,7 +1236,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           if (offered?.answer) gesture({ kind: 'item', answer: offered.answer })
         }}
         onPass={() => gesture({ kind: 'cancel' })}
-        mode={{ value: prefs.chain, onChange: (mode) => setAutoPref('chain', mode) }}
       />
     ) : forced && forcedFirst && lane === null ? (
       // Varias obligatorias: tocar elige cuál va primero (la primera, de entrada) y la principal la activa; sin «No responder». Una del rival dice de dónde es.

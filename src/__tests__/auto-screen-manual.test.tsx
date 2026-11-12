@@ -23,7 +23,9 @@ describe('auto-screen · seguir en modo manual', () => {
     core(() => fake.set({ mineActions: PLAYS.flat(), playStarts: [0, 1, 2, 3, 4] }))
     core(() => fake.ask(IDLE))
     openOptions()
-    expect(screen.getByText(/La partida sigue en la mesa manual/)).toBeInTheDocument()
+    // Una fila de 44 px sin párrafo de ayuda: lo que explica va en su `title`.
+    expect(screen.getByRole('button', { name: 'Seguir en modo manual' })).toHaveAttribute('title', expect.stringMatching(/La partida sigue en la mesa manual/))
+    expect(screen.queryByText(/La partida sigue en la mesa manual/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Seguir en modo manual' }))
 
     const back = within(dialog()).getByRole('radiogroup', { name: 'Volver atrás' })

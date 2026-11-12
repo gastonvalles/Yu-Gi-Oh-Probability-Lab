@@ -1,3 +1,5 @@
+import { getLocale, t, type MessageKey } from '../i18n'
+
 /**
  * El color de cada tipo de carta: el de su marco oficial (Gastón, 2026-11-12). Una sola tabla: `FRAME_HEX` es la fuente, `src/index.css` la repite como
  * `--color-frame-*` (un test las mantiene iguales) y de ahí salen las clases `bg-frame-effect`, `border-frame-xyz`, `text-frame-trap`… El rojo, el azul
@@ -102,6 +104,43 @@ export function frameKindOf(frameType: string | null | undefined, cardType?: str
     text: !hex || contrastRatio(hex, WHITE) >= contrastRatio(hex, CARBON) ? 'light' : 'dark',
     outlined: hex !== null && contrastRatio(hex, CARBON) < 3,
   }
+}
+
+/** Los nombres que el proyecto ya tradujo para los filtros del buscador (`search.frame.*` y `search.kind.*`): el marco y, en Mágicas y Trampas, su clase. */
+type SearchName = Extract<MessageKey, `search.frame.${string}` | `search.kind.${string}`>
+const FRAME_NAME: Partial<Record<FrameKind, SearchName>> = {
+  normal: 'search.frame.normal',
+  effect: 'search.frame.effect',
+  fusion: 'search.frame.fusion',
+  ritual: 'search.frame.ritual',
+  synchro: 'search.frame.synchro',
+  xyz: 'search.frame.xyz',
+  link: 'search.frame.link',
+  spell: 'search.frame.spell',
+  trap: 'search.frame.trap',
+}
+const KIND_NAME: Record<string, SearchName> = {
+  'spell:Normal': 'search.kind.spellNormal',
+  'spell:Field': 'search.kind.spellField',
+  'spell:Equip': 'search.kind.spellEquip',
+  'spell:Continuous': 'search.kind.spellContinuous',
+  'spell:Quick-Play': 'search.kind.spellQuickPlay',
+  'spell:Ritual': 'search.kind.spellRitual',
+  'trap:Normal': 'search.kind.trapNormal',
+  'trap:Continuous': 'search.kind.trapContinuous',
+  'trap:Counter': 'search.kind.trapCounter',
+}
+
+/**
+ * El tipo de una carta para el chip de la ficha: en español, el nombre que ya tienen los filtros del buscador («Efecto», «Mágica de Juego Rápido»; un Péndulo suma «Péndulo»); lo que no tiene
+ * traducción hecha (Token, Skill, Sincronía Oscura) y todo el inglés dejan el nombre del juego tal cual («Normal Monster»).
+ */
+export function cardTypeLabel({ frameType, cardType, race }: { frameType?: string | null; cardType: string; race?: string | null }): string {
+  if (getLocale() === 'en') return cardType
+  const frame = frameKindOf(frameType, cardType)
+  const key = (frame.kind === 'spell' || frame.kind === 'trap' ? KIND_NAME[`${frame.kind}:${race ?? ''}`] : undefined) ?? FRAME_NAME[frame.kind]
+
+  return key ? [t(key), frame.pendulum ? t('search.frame.pendulum') : ''].filter(Boolean).join(' · ') : cardType
 }
 
 /** Los bits de tipo del `.cdb` (lo que el núcleo sabe de una carta del rival) que deciden el marco, con el nombre que lee `frameKindOf`. */

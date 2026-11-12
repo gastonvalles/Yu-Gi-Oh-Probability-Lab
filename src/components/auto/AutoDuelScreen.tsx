@@ -33,11 +33,9 @@ import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNo
 import { cardIdOfDrawId } from '../probability/practice'
 import { PileGroupContext } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
-import { Button } from '../ui/Button'
 import { SaveReplayDialog } from '../replays/SaveReplayDialog'
-import { Segmented } from '../ui/Segmented'
 import { AskPrompt } from './AskPrompt'
-import { chainModeHint, chainModeOptions, OptionsGear, Setting } from './AutoBar'
+import { ActionRow, ChainRow, OptionsGear, PlaceRow } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckOf } from './deck-list'
 import { sentinel, useAutoAsks } from './use-auto-asks'
@@ -533,41 +531,29 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   const control = underControl(snap.mine) || underControl(snap.theirs)
   const manualHint = switching ? t('auto.online.manualSwitching') : manual === 'asking' ? t('auto.online.manualAsking', { name: rivalName }) : control ? t('auto.online.manualControlHint') : t('auto.online.manualHint', { name: rivalName })
 
-  // «Más opciones» de la barra: lo mismo que en solo (las respuestas a la cadena y la casilla) y pasar a manual; los sonidos y reconectar ya están.
+  // Opciones (el ⚙): lo mismo que en solo (las respuestas a la cadena y la casilla), el replay y pasar a manual; cada uno, una fila. Los sonidos y reconectar ya están.
   const settings = (close: () => void) => (
     <>
-      <Setting title={t('auto.bar.chain')} hint={chainModeHint(prefs.chain)}>
-        <Segmented label={t('auto.bar.chain')} value={prefs.chain} onChange={(mode) => setAutoPref('chain', mode)} fullWidth options={chainModeOptions()} />
-      </Setting>
-      <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
-        <Segmented label={t('auto.bar.place')} value={prefs.place} onChange={(mode) => setAutoPref('place', mode)} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
-      </Setting>
-      <Setting title={t('meta.duels.save.title')} hint={t('auto.bar.saveReplayHint')}>
-        <Button
-          variant="secondary"
-          icon="save"
-          className="justify-self-start"
-          aria-haspopup="dialog"
-          onClick={() => {
-            close()
-            setSaving(true)
-          }}
-        >
-          {t('meta.duels.save.button')}
-        </Button>
-      </Setting>
+      <ChainRow chain={prefs.chain} onChain={(mode) => setAutoPref('chain', mode)} />
+      <PlaceRow place={prefs.place} onPlace={(mode) => setAutoPref('place', mode)} />
+      <ActionRow
+        title={t('meta.duels.save.button')}
+        hint={t('auto.bar.saveReplayHint')}
+        aria-haspopup="dialog"
+        onClick={() => {
+          close()
+          setSaving(true)
+        }}
+      />
       {canSwitch ? (
-        <Setting title={t('auto.online.manualTitle')} hint={manualHint}>
-          {manual === 'asking' ? (
-            <Button variant="tertiary" className="justify-self-start" onClick={() => want(false)}>
-              {t('auto.online.manualCancel')}
-            </Button>
-          ) : (
-            <Button variant="secondary" icon="hand" className="justify-self-start" disabled={switching || control} onClick={() => want(true)}>
-              {t('auto.online.manualAsk')}
-            </Button>
-          )}
-        </Setting>
+        manual === 'asking' ? (
+          <ActionRow title={t('auto.online.manualCancel')} hint={manualHint} onClick={() => want(false)} />
+        ) : (
+          <>
+            <ActionRow title={t('auto.online.manualAsk')} hint={manualHint} disabled={switching || control} onClick={() => want(true)} />
+            {control ? <p className="m-0 pb-2 text-micro text-soft">{t('auto.online.manualControlHint')}</p> : null}
+          </>
+        )
       ) : null}
     </>
   )

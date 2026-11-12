@@ -1,7 +1,7 @@
-import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+﻿import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-import { frameClass, frameKindOf } from '../../app/card-frame'
+import { cardTypeLabel, frameClass, frameKindOf } from '../../app/card-frame'
 import { useMatMenus } from '../../app/mat-menus'
 import { PHASES } from '../../app/practice-mat'
 import { useDraggableOffset } from '../../app/use-draggable-offset'
@@ -29,7 +29,7 @@ type AutoPanelVariant = 'docked' | 'floating'
  * Dónde recuerda cada ventana su lugar y su tamaño: las preguntas comparten una (la próxima sale donde quedó la anterior); la ficha de una carta, la suya; las del catálogo (`playground`), otra,
  * así probarlas no corre las de la mesa.
  */
-const OWN_PLACE = new Set(['card', 'playground'])
+const OWN_PLACE = new Set(['card', 'playground', 'options'])
 export const autoWindowKey = (kind: string) => `ygo-lab:auto-window:v1:${OWN_PLACE.has(kind) ? kind : 'ask'}`
 /** El lugar de la ventana en el celular: aparte del de escritorio (otra pantalla, otras medidas). */
 const onPhone = (key: string) => `${key}:phone`
@@ -78,6 +78,8 @@ interface AutoPanelProps {
   /** Lo que este cartel tapa en el celular (el visor de una pila bajo la ficha): arriba, «‹ GY · 2», que lo cierra y lo deja a la vista. Una pregunta lo lee de `LayerBackContext`, sin botón. */
   crumb?: { label: string; onBack: () => void }
   variant?: AutoPanelVariant
+  /** Opciones: lleva más filas que una pregunta, así que puede subir hasta la mitad de la pantalla (tapa parte del campo, que no se corre) en vez de quedarse sobre tu mano. */
+  tall?: boolean
   className?: string
 }
 
@@ -92,7 +94,7 @@ interface AutoPanelProps {
  * la esquina; con `side`, la bandeja a la izquierda del texto. Lugar y tamaño se recuerdan por tipo (`autoWindowKey`). Con la hoja de la cadena abierta en el celular (`SheetHost`), va en su pie:
  * una sola hoja. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AutoPanel({ kind, label, head, top, aside, children, side = false, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, crumb, variant, className }: AutoPanelProps) {
+export function AutoPanel({ kind, label, head, top, aside, children, side = false, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, crumb, variant, tall = false, className }: AutoPanelProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const titleId = useId()
   const leaving = useLeaving()
@@ -139,7 +141,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
     if (!root || slot || inline) return
     const place = () => {
       const line = document.querySelector('[data-duel-line]')
-      const ceiling = line ? `${Math.max(0, Math.round(line.getBoundingClientRect().bottom))}px` : '50dvh'
+      const ceiling = line && !tall ? `${Math.max(0, Math.round(line.getBoundingClientRect().bottom))}px` : '50dvh'
 
       if (root.style.getPropertyValue('--panel-ceiling') !== ceiling) root.style.setProperty('--panel-ceiling', ceiling)
     }
@@ -147,7 +149,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
     place()
     window.addEventListener('resize', place)
     return () => window.removeEventListener('resize', place)
-  }, [slot, inline, minimized])
+  }, [slot, inline, minimized, tall])
 
   const attrs = {
     role,
@@ -478,7 +480,7 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
               <p className="m-0 flex min-w-0 items-center gap-1.5 text-micro text-muted">
                 {/* El tipo, en un chip del color de su marco (lámina T). */}
                 <span data-type-chip="" className={cx('relative shrink-0 px-1.5 font-semibold', frame && frameClass(frame))}>
-                  {apiCard.cardType}
+                  {cardTypeLabel(apiCard)}
                 </span>
                 <span className="min-w-0 truncate">{[levelText(apiCard), stats].filter(Boolean).join(' · ')}</span>
               </p>

@@ -9,6 +9,7 @@ import { HOLD_MS } from '../app/use-mat-drag'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
 import { act, fakeSession, loc, pos, SPOTS, stringId } from './support/auto-session-fake'
 import { core, dispatches, hand, handCard, inHand, lane, phaseButton, renderAuto, status } from './support/auto-screen-harness'
+import { openOptions } from './support/mat-menu'
 import { pointer, tap, zone } from './support/practice-mat-harness'
 
 // Las jugadas del turno en «Jugar solo automático»: cada pregunta del núcleo se contesta tocando la mesa de siempre, un gesto por prueba, y la mesa nunca despacha (0 del centinela).
@@ -222,7 +223,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('el modo de respuesta en la banda (escritorio; en el celular va en «Más opciones»): «Siempre · Nunca»; con «Nunca» contesta «Pasar» sola', () => {
+  it('el modo de respuesta vive en Opciones («Respuestas: Siempre · Nunca») y no en el cartel; con «Nunca» contesta «Pasar» sola', () => {
     const media = window.matchMedia
 
     window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
@@ -230,7 +231,9 @@ describe('auto-screen · las jugadas', () => {
 
     try {
       core(() => fake.ask(CHAIN))
-      const modes = within(screen.getByRole('radiogroup', { name: 'Preguntarme' }))
+      expect(document.querySelector('[data-prompt="ask"]')).not.toHaveTextContent('Preguntarme')
+      expect(screen.queryByRole('radiogroup', { name: 'Preguntarme' })).toBeNull()
+      const modes = within(within(openOptions()).getByRole('radiogroup', { name: 'Respuestas' }))
 
       expect(modes.getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Nunca'])
       expect(modes.getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'true')
