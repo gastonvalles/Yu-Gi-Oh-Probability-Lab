@@ -129,7 +129,7 @@ describe('la mesa de práctica', () => {
     expect(document.querySelector('[data-activation]')).toBeNull()
   })
 
-  it('marcar un objetivo lo cubre con la mira; cambiar de fase muestra el cartel y una invocación cae con su destello, y se van solos', () => {
+  it('marcar un objetivo lo cubre con la mira; cambiar de fase muestra la banda y una invocación cae con su destello, y se van solos', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
 
     try {
@@ -154,11 +154,12 @@ describe('la mesa de práctica', () => {
       expect(burst?.querySelector('span')).toHaveStyle({ animationDelay: `${Math.round(FLIGHT_MS * LANDING_AT)}ms` })
       expect(zone('Zona de monstruo 2').querySelector('[data-fx="landing"]')).toBeNull()
 
-      // Una fase nueva: el cartel con su nombre y nada más (sin los círculos de las seis fases, que ya están en los botones); y de la End Phase a la Draw Phase, con el turno.
+      // Una fase nueva: la banda con su nombre y nada más, también de la End Phase a la Draw Phase (el turno nuevo no se escribe); en la práctica, siempre la tuya.
       goToPhase('Main Phase 1')
       expect(document.querySelector('[data-fx="banner"]')?.textContent).toBe('Main Phase 1')
       endTurn()
-      expect(document.querySelector('[data-fx="banner"]')?.textContent).toBe('Turno 2Draw Phase')
+      expect(document.querySelector('[data-fx="banner"]')?.textContent).toBe('Draw Phase')
+      expect(document.querySelector('[data-fx="banner"]')).toHaveAttribute('data-side', 'mine')
 
       act(() => {
         vi.advanceTimersByTime(1500)

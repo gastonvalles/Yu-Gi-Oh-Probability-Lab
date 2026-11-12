@@ -186,10 +186,8 @@
   --animate-fx-blade: fx-blade 900ms var(--ease-out) both;
   /* La estela de un ataque (`ChevronTrail`): el renglón de chevrones avanza un dibujo (30 px, dos chevrones) por vuelta, en bucle; sólo `translate`. */
   --animate-chevrons: chevrons 700ms linear infinite;
-  --animate-fx-banner: fx-banner 1100ms var(--ease-out) both;
   /* El botón de fase al cambiar de fase o de turno (`PhasePulse`): un aro que sale de su caja y se apaga, sin texto. */
   --animate-phase-pulse: phase-pulse 640ms var(--ease-out) both;
-  --animate-fx-banner-text: fx-banner-text 1100ms var(--ease-out) both;
   --animate-fx-stage: fx-stage 950ms var(--ease-out) both;
   /* Una carta que sale del deck o del Extra aparece de dorso y se da vuelta en 3D. */
   --animate-fx-flip-in: fx-flip-in 520ms var(--ease-snap) 60ms both;
@@ -756,33 +754,6 @@
     }
   }
 
-  /* El cartel de la fase: la banda se abre desde una línea, se queda, y se cierra hacia el centro; el texto entra por la izquierda y sale por la derecha. */
-  @keyframes fx-banner {
-    0% {
-      opacity: 0;
-      transform: scale(1.12, 0.08);
-    }
-
-    14% {
-      opacity: 1;
-      transform: scale(1, 1.06);
-    }
-
-    26% {
-      transform: scale(1);
-    }
-
-    76% {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    100% {
-      opacity: 0;
-      transform: scale(1.06, 0.2);
-    }
-  }
-
   @keyframes phase-pulse {
     from {
       opacity: 0.95;
@@ -792,25 +763,6 @@
     to {
       opacity: 0;
       transform: scale(1.3);
-    }
-  }
-
-  @keyframes fx-banner-text {
-    0%,
-    6% {
-      opacity: 0;
-      transform: translateX(-1.75rem);
-    }
-
-    22%,
-    76% {
-      opacity: 1;
-      transform: translateX(0);
-    }
-
-    100% {
-      opacity: 0;
-      transform: translateX(1.75rem);
     }
   }
 

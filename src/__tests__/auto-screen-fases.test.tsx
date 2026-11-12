@@ -203,9 +203,9 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(screen.queryAllByText(/Battle Phase|Main Phase 1/)).toHaveLength(0)
   })
 
-  // En un duelo no hay cartel de la fase ni del turno: la fase vive en su botón, que pulsa, y el cartel queda sólo para el lector de pantalla (un `role="status"` oculto a la vista, junto al botón).
+  // En un duelo la fase cruza el campo en una banda del color de quien juega (sólo el nombre de la fase) y el lector de pantalla la oye en un `role="status"` oculto a la vista, junto al botón.
   const said = () => phaseButton().parentElement!.querySelector('[role="status"]')?.textContent ?? ''
-  const pulses = () => document.querySelectorAll('[data-fx="phase-pulse"]').length
+  const band = () => document.querySelector('[data-fx="banner"]')
   const rivalBanner = () => (/^(Rival|Tu turno)/.test(said()) ? said() : null)
   /**
    * Terminás tu turno y, en la misma tanda, el rival juega el suyo entero y te lo devuelve, como lo cuenta el núcleo de verdad (el rival pasivo y el de handtraps, yendo primero o
@@ -219,7 +219,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     core(() => fake.ask(IDLE))
   }
 
-  it('el turno del rival, que el núcleo juega de una, se ve fase por fase (el botón pulsa y el lector oye cada una) después de tu End Phase y «Turno de Rival», con su End Phase antes de «Tu turno»; tu turno espera', () => {
+  it('el turno del rival, que el núcleo juega de una, se ve fase por fase (la banda lima y el lector oye cada una) después de tu End Phase y «Turno de Rival», con su End Phase antes de «Tu turno»; tu turno espera', () => {
     const fake = renderAuto()
     const cards = () => within(hand()).getAllByRole('listitem').length
     const before = cards()
@@ -230,14 +230,18 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     step()
     step()
     expect(said()).toBe('Turno de Rival')
-    expect(pulses()).toBe(1)
-    expect(document.querySelector('[data-fx="banner"]')).toBeNull()
+    // Tu pase abre su turno: la banda de su Draw Phase, lima, sin el aro del botón (no son dos avisos).
+    expect(band()).toHaveTextContent(/^Draw Phase$/)
+    expect(band()).toHaveAttribute('data-side', 'theirs')
+    expect(document.querySelector('[data-fx="phase-pulse"]')).toBeNull()
     // Su robo va con «Turno de Rival», sin cartel propio.
     act(() => vi.advanceTimersByTime(0))
     const seen: string[] = []
+    const bands: string[] = []
     for (let i = 0; i < 4; i += 1) {
       act(() => vi.advanceTimersByTime(1100))
       seen.push(rivalBanner() ?? '')
+      bands.push(`${band()?.getAttribute('data-side')} ${band()?.textContent}`)
       // Tu turno (tu robo, el botón de fases) no empieza debajo de los carteles del rival: lo tuyo no tapa su End Phase.
       if (i < 3) {
         expect(cards()).toBe(before)
@@ -245,6 +249,8 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
       }
     }
     expect(seen).toEqual(['Rival · Standby Phase', 'Rival · Main Phase 1', 'Rival · End Phase', 'Tu turno'])
+    // Las suyas en lima y «Tu turno», tu Draw Phase en violeta.
+    expect(bands).toEqual(['theirs Standby Phase', 'theirs Main Phase 1', 'theirs End Phase', 'mine Draw Phase'])
     step()
     expect(cards()).toBe(before + 1)
     act(() => vi.advanceTimersByTime(1100))

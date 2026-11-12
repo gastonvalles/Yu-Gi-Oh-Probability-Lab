@@ -275,11 +275,11 @@ describe('la mesa dibujada en inglés', () => {
     expect(status()).toHaveTextContent('You banish Imperm face-down')
     expect(screen.getByRole('button', { name: 'Banish: 1' }).querySelector('[data-card-art]')).toBeNull()
 
-    // El cartel de la fase lleva el turno en el idioma activo y la mira de un objetivo, su nombre.
+    // La banda de la fase dice sólo la fase (sin el turno) y la mira de un objetivo, su nombre.
     fireEvent.click(screen.getByRole('button', { name: /^Phases:/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Go to End Phase' }))
     fireEvent.click(within(screen.getByRole('alertdialog', { name: 'End your turn?' })).getByRole('button', { name: 'End turn' }))
-    expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Turn 2Draw Phase')
+    expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent(/^Draw Phase$/)
     tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
     expect(within(hand()).getByRole('img', { name: 'Targeted' })).toHaveAttribute('data-fx', 'target')

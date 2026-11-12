@@ -94,6 +94,7 @@ import { ResizeHandle } from '../ui/ResizeHandle'
 import { AttackFx, AttackTrail, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { AskWhy } from '../duel/AskWhy'
+import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND, TheirHandSize } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from './compact-field'
@@ -104,7 +105,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -886,6 +887,16 @@ function PracticeMatBody({
   const [fxStep, setFxStep] = useState<FxStep>(() => ({ cursor: session.cursor, actions: session.actions, initial: session.initial, replay: session.replay, fx: NO_FX, step: null, shuffles: 0 }))
   const { fx } = fxStep
   const { flash, landing, banner, stage, handFlash } = fx
+  // La banda de la fase: la tuya en violeta y la del rival en lima. En un duelo tu mesa sólo trae tus fases, y su pase (turno nuevo) abre el del rival; sus fases llegan en `notice`, y la que
+  // te devuelve el turno («Tu turno», `label`) abre el tuyo. Si están las dos, la más nueva (las dos claves son `Date.now()`): una que todavía no se fue no tapa a la que llega.
+  const rivalNotice = duel?.notice
+  const dueling = Boolean(duel)
+  const phaseCue = useMemo<PhaseCue | null>(() => {
+    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: dueling && banner.turn !== null ? 'theirs' : 'mine' } : null
+    const rival: PhaseCue | null = rivalNotice ? { key: rivalNotice.key, phase: rivalNotice.phase, side: rivalNotice.label ? 'mine' : 'theirs' } : null
+
+    return own && rival ? (own.key >= rival.key ? own : rival) : (own ?? rival)
+  }, [banner, rivalNotice, dueling])
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
@@ -3049,7 +3060,8 @@ function PracticeMatBody({
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
               </IconButton>
-              {duel && !session.replay ? <PhasePulse pulse={duel.notice?.key ?? banner?.key ?? null} text={phaseSaid(duel.notice ?? (banner ? { phase: banner.phase, ...(banner.turn !== null && duel.rivalTurnLabel ? { label: duel.rivalTurnLabel } : {}) } : null))} /> : null}
+              {/* Sin el aro del botón: la banda de la fase ya lo cruza (no son dos avisos); queda el `status` para el lector de pantalla. */}
+              {duel && !session.replay ? <PhasePulse pulse={null} text={phaseSaid(duel.notice ?? (banner ? { phase: banner.phase, ...(banner.turn !== null && duel.rivalTurnLabel ? { label: duel.rivalTurnLabel } : {}) } : null))} /> : null}
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
               {isDesktop && !isAuto && myTurn && phaseNow === 'end' ? (
                 <Button
@@ -3110,12 +3122,8 @@ function PracticeMatBody({
           {pileCell('gy', 'gy')}
           {pileCell('banished', 'ban')}
 
-          {/* Cambio de fase: en la práctica y repasando un combo, el cartel se asoma en el medio del campo y se va agrandándose. En un duelo no hay cartel (la fase vive en su botón, que pulsa). */}
-          {duel && !session.replay ? null : (
-            <Deferred value={banner}>
-              {(shown) => (shown ? <PhaseBanner key={shown.key} phase={shown.phase} turn={shown.turn} className="absolute inset-0 z-30" /> : null)}
-            </Deferred>
-          )}
+          {/* Cambio de fase: la banda cruza el campo por la fila del medio, del color de quien juega (`PhaseBand`), en la práctica, repasando un combo y en los duelos. */}
+          <Deferred value={phaseCue}>{(cue) => <PhaseBand cue={cue} />}</Deferred>
           {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
           {announcement ? (
             <span

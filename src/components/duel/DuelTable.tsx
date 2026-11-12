@@ -1,4 +1,4 @@
-import { useContext, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { useContext, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import { pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
@@ -71,6 +71,8 @@ interface DuelTableProps {
   /** De quién es el turno: la tira del medio muestra su fase. */
   turn?: 'mine' | 'theirs'
   className?: string
+  /** Lo que va adentro de la grilla del campo, encima de las casillas (la banda de la fase, que se ubica sola en la fila del medio). */
+  children?: ReactNode
 }
 
 type Owner = 'mine' | 'theirs'
@@ -106,7 +108,7 @@ const zoneLabel = (owner: Owner, spot: MatSpot, index: number) => {
 
 const CARD_SHADOW = 'shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]'
 
-export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', className }: DuelTableProps) {
+export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', className, children }: DuelTableProps) {
   const showMine = show !== 'theirs'
   const showTheirs = show !== 'mine'
   const rows = [...(showTheirs ? THEIR_ROWS : []), middleRow(showTheirs, showMine), ...(showMine ? MINE_ROWS : [])]
@@ -129,6 +131,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
           </div>
         ))}
         {showMine ? <SideCells side={mine} owner="mine" /> : null}
+        {children}
       </div>
     </div>
   )

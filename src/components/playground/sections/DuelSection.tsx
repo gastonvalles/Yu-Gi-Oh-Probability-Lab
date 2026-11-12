@@ -39,6 +39,7 @@ import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleDuel } from './duel-sample'
 import { ShuffleSamples } from './ShuffleSamples'
 import { FlightSample } from './FlightSample'
+import { PhaseBandSample } from './PhaseBandSample'
 import { Presence } from '../../../app/use-presence'
 import { PendulumPicker, type PendulumPickCard } from '../../probability/PendulumPicker'
 
@@ -101,6 +102,7 @@ export function DuelSection() {
       <HoldSample />
       <ShuffleSamples />
       <FlightSample />
+      <PhaseBandSample />
       <RingsSample />
       <GlowsSample />
       <TrailSample />

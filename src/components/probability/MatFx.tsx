@@ -5,7 +5,7 @@ import type { ChainBadgeData } from '../../app/card-glow'
 import { printedBadge, statShift } from '../../app/field-stats'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
-import { PHASES, type MatPhase, type MatSpot } from '../../app/practice-mat'
+import type { MatSpot } from '../../app/practice-mat'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
@@ -321,24 +321,6 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
         />
       ))}
     </span>
-  )
-}
-
-/**
- * El cartel de una fase nueva (y del turno, si empieza otro): una placa plana y recta de borde violeta, como las del comienzo y el final, con el nombre
- * de la fase en grande y el turno arriba en lavanda. Nada más: las seis fases ya están en los botones de la mesa. En un duelo, `label` cambia la frase grande
- * ("Tu turno") y `who` dice de quién es la fase cuando no es tuya. Con menos movimiento se ve igual, quieto, el mismo rato (lo saca quien lo monta).
- */
-export function PhaseBanner({ phase, turn, who, label, className }: { phase: MatPhase; turn: number | null; who?: string; label?: string; className?: string }) {
-  const name = label ?? PHASES.find((entry) => entry.id === phase)?.name ?? phase
-
-  return (
-    <div aria-hidden="true" data-fx="banner" className={cx('pointer-events-none grid place-items-center', className)}>
-      <div className="grid animate-fx-banner justify-items-center gap-1 border-2 border-primary bg-background/92 px-6 py-3 motion-reduce:animate-none min-[1101px]:px-8 min-[1101px]:py-4">
-        {turn !== null || who ? <span className="animate-fx-banner-text text-micro font-bold text-accent motion-reduce:animate-none">{turn !== null ? t('practice.mat.turn', { turn }) : who}</span> : null}
-        <span className="animate-fx-banner-text text-title font-extrabold leading-none text-foreground motion-reduce:animate-none min-[1101px]:text-stat">{name}</span>
-      </div>
-    </div>
   )
 }
 
