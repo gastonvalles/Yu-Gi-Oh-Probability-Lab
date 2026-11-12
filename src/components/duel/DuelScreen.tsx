@@ -1952,7 +1952,7 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
           <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} badge />
         </span>
       ) : null,
-      ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} badge /> } : {}),
+      ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} badge active={phone ? turn !== 'mine' : undefined} /> } : {}),
       ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
       ...(phone ? { line: <DuelLine lane={lane} rivalName={rivalName} log={logTicker} />, dock: chatToggle } : {}),
       // Deshacer va en la barra de arriba (`MatUndoContext`).
