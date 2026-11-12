@@ -51,7 +51,7 @@ export function FlightSample() {
       className="col-span-full"
       note={
         <>
-          La jugada de una sola carta a la vista que cruza la mesa: se levanta, se inclina, la cruza un brillo, la sigue su sombra y cae con un golpe (se aplasta y levanta polvo) en el mismo momento que siempre (el destello de la invocación la espera). Un salto a la casilla de al lado, un lote o una carta boca abajo vuelan derechos, como antes. Con «Reducir movimiento», la carta aparece con un fundido corto. Archivos: <Tag>app/use-card-flights.ts</Tag> <Tag>app/card-lift.ts</Tag>
+          La jugada de una sola carta a la vista que cruza la mesa: se levanta, se inclina, la cruza un brillo, la sigue su sombra y cae con un golpe (se aplasta y levanta polvo) en el mismo momento que siempre (el destello de la invocación la espera y la casilla marca el golpe con un aro lima que se abre). Un salto a la casilla de al lado, un lote o una carta boca abajo vuelan derechos, como antes. Con «Reducir movimiento», la carta aparece con un fundido corto. Archivos: <Tag>app/use-card-flights.ts</Tag> <Tag>app/card-lift.ts</Tag>
         </>
       }
     >

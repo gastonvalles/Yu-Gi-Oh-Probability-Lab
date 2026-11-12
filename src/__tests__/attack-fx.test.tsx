@@ -257,18 +257,18 @@ describe('AttackFx', () => {
     })
   })
 
-  describe('el atacante pone el cuerpo', () => {
-    it('se adelanta hasta 18 px y vuelve en 2 × el impacto, con la curva de ida y vuelta; al desmontarse se corta', () => {
+  describe('el atacante embiste', () => {
+    it('se adelanta hasta 28 px y vuelve en 2 × el impacto, con la curva de ida y vuelta; al desmontarse se corta', () => {
       const { attacker, attackerCancel } = withAnimations()
       const view = render(<AttackFx strike={strike({ attacker, len: 200, ang: 0 })} onDone={() => {}} />)
 
       expect(attacker.animate).toHaveBeenCalledTimes(1)
       const [frames, options] = vi.mocked(attacker.animate).mock.calls[0]!
       expect(options).toEqual({ duration: 600 })
-      // 12 % de 200 px son 24: el tope de 18 px manda. Llega a la espada a mitad (offset 0,5, al impacto de 300 ms) y vuelve a 0.
+      // 18 % de 200 px son 36: el tope de 28 px manda. Llega a la espada a mitad (offset 0,5, al impacto de 300 ms) y vuelve a 0.
       expect(frames).toEqual([
         { translate: '0px 0px', easing: EASE_IN_OUT },
-        { translate: '18px 0px', offset: 0.5, easing: EASE_IN_OUT },
+        { translate: '28px 0px', offset: 0.5, easing: EASE_IN_OUT },
         { translate: '0px 0px' },
       ])
 
@@ -276,13 +276,13 @@ describe('AttackFx', () => {
       expect(attackerCancel).toHaveBeenCalledTimes(1)
     })
 
-    it('con un ataque corto avanza el 12 % del camino, y en la dirección del ataque (en pantalla, hacia abajo acá)', () => {
+    it('con un ataque corto avanza el 18 % del camino, y en la dirección del ataque (en pantalla, hacia abajo acá)', () => {
       const { attacker } = withAnimations()
 
       render(<AttackFx strike={strike({ attacker, len: 50, ang: Math.PI / 2 })} onDone={() => {}} />)
       const [frames] = vi.mocked(attacker.animate).mock.calls[0]!
-      // 12 % de 50 px son 6 px; el ángulo de π/2 los manda hacia abajo (+y), y el coseno casi cero no deja basura en x.
-      expect(frames).toContainEqual(expect.objectContaining({ translate: '0px 6px', offset: 0.5 }))
+      // 18 % de 50 px son 9 px; el ángulo de π/2 los manda hacia abajo (+y), y el coseno casi cero no deja basura en x.
+      expect(frames).toContainEqual(expect.objectContaining({ translate: '0px 9px', offset: 0.5 }))
     })
 
     it('pidiendo menos movimiento el atacante no se mueve', () => {
@@ -291,6 +291,81 @@ describe('AttackFx', () => {
       window.matchMedia = ((query: string) => ({ matches: query.includes('reduce') })) as typeof window.matchMedia
       render(<AttackFx strike={strike({ attacker, len: 200 })} onDone={() => {}} />)
       expect(attacker.animate).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('la carta atacada que sale del campo se parte en dos', () => {
+    /** jsdom no tiene `CSS.escape` ni cuadros: se los da el test, y cada cuadro se corre a mano. */
+    function frames() {
+      const queue: FrameRequestCallback[] = []
+      vi.stubGlobal('CSS', { escape: (value: string) => value })
+      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => queue.push(callback))
+      vi.stubGlobal('cancelAnimationFrame', () => {})
+
+      return () => act(() => queue.splice(0).forEach((callback) => callback(performance.now())))
+    }
+
+    it('si su carta se va de la página durante el ataque, dos mitades (sólo transform/opacity) salen de donde estaba, cada una con una copia de la carta sin sus marcas; su fantasma no se ve; y el ataque espera a que terminen', () => {
+      const tick = frames()
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+      const done = vi.fn()
+      const target = document.body.appendChild(document.createElement('div'))
+      target.setAttribute('data-rival-card-id', 'c7')
+      target.innerHTML = '<img src="https://example.invalid/c7.jpg">'
+      place(target, 30, 40, 57, 83)
+      const ghost = document.body.appendChild(document.createElement('div'))
+      ghost.dataset.flightGhost = 'c7'
+      ghost.animate = vi.fn(() => ({}) as Animation)
+
+      render(<AttackFx strike={strike({ target })} onDone={done} />)
+      tick()
+      expect(document.querySelector('[data-fx="split"]')).toBeNull()
+
+      act(() => vi.advanceTimersByTime(800))
+      target.remove()
+      tick()
+      const split = document.querySelector<HTMLElement>('[data-fx="split"]')!
+      expect(split.style).toMatchObject({ left: '30px', top: '40px', width: '57px', height: '83px' })
+      const halves = [...split.children]
+      expect(halves[0]).toHaveClass('animate-card-split-a', 'motion-reduce:hidden')
+      expect(halves[1]).toHaveClass('animate-card-split-b', 'motion-reduce:hidden')
+      for (const half of halves) {
+        expect(half.querySelector('img')).toHaveAttribute('src', 'https://example.invalid/c7.jpg')
+        expect(half.querySelector('[data-rival-card-id]')).toBeNull()
+        expect(half.firstElementChild).toHaveAttribute('aria-hidden', 'true')
+      }
+      expect(halves[0]!.firstElementChild).not.toBe(halves[1]!.firstElementChild)
+      // La de verdad no se buscaría por su copia: no hay otra con su id en la página.
+      expect(document.querySelector('[data-rival-card-id="c7"]')).toBeNull()
+      expect(ghost.animate).toHaveBeenCalledWith({ opacity: [0, 0] }, { duration: 520, fill: 'forwards' })
+
+      // Partida a los 800 ms: el ataque se queda hasta que las mitades terminan (520 ms), no a los 1050.
+      act(() => vi.advanceTimersByTime(300))
+      expect(done).not.toHaveBeenCalled()
+      act(() => vi.advanceTimersByTime(250))
+      expect(done).toHaveBeenCalledTimes(1)
+    })
+
+    it('si la carta sigue (o vuelve a estar con su id), las vidas de un directo o el movimiento reducido: nada se parte', () => {
+      const tick = frames()
+      const target = document.body.appendChild(document.createElement('div'))
+      target.setAttribute('data-card-id', 'card-1-1')
+      const view = render(<AttackFx strike={strike({ target })} onDone={() => {}} />)
+
+      tick()
+      // Otra carta con el mismo id (la mesa se redibujó): no salió del campo.
+      target.remove()
+      document.body.appendChild(document.createElement('div')).setAttribute('data-card-id', 'card-1-1')
+      tick()
+      expect(document.querySelector('[data-fx="split"]')).toBeNull()
+      view.unmount()
+
+      const lives = document.body.appendChild(document.createElement('div'))
+      lives.setAttribute('data-lp', 'theirs')
+      render(<AttackFx strike={strike({ target: lives })} onDone={() => {}} />)
+      lives.remove()
+      tick()
+      expect(document.querySelector('[data-fx="split"]')).toBeNull()
     })
   })
 

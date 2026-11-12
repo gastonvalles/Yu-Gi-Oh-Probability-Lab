@@ -466,8 +466,8 @@ const SPARKS = [
 ] as const
 
 /**
- * Una carta que cae en una zona de monstruo: un fogonazo, dos ondas que se expanden y chispas. Del color de cómo llega (Normal dorado,
- * Especial celeste, Fusión violeta, Sincronía blanca, Xyz azul, Enlace verde agua) y cuando la carta, que viene volando, toca la zona (`LANDING_AT` del vuelo).
+ * Una carta que cae en una zona de monstruo: un fogonazo, el aro lima del golpe que se abre, otro del color de cómo llega (Normal dorado,
+ * Especial celeste, Fusión violeta, Sincronía blanca, Xyz azul, Enlace verde agua) y chispas, cuando la carta, que viene volando, toca la zona (`LANDING_AT` del vuelo).
  */
 export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolean }) {
   // El retraso va en línea en cada pieza: una variable en el token de la animación se resolvería en la raíz, no acá.
@@ -476,8 +476,9 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
   return (
     <span aria-hidden="true" data-fx="landing" data-tone={tone} className="pointer-events-none absolute inset-0 z-4 motion-reduce:hidden" style={fxVars(LANDING_TONE[tone])}>
       <span className="absolute inset-0 animate-fx-flash bg-[radial-gradient(circle,rgb(255_255_255/0.95),rgb(var(--fx-rgb)/0.75)_35%,transparent_72%)]" style={delay()} />
-      <span className="absolute inset-0 animate-fx-shock border-[3px] opacity-0 border-[color:rgb(var(--fx-rgb))] shadow-[0_0_14px_rgb(var(--fx-rgb)/0.8)]" style={delay()} />
-      <span className="absolute inset-0 animate-fx-shock border opacity-0 border-[color:rgb(var(--fx-rgb)/0.8)]" style={delay(110)} />
+      {/* El golpe: un aro lima que se abre desde la casilla cuando la carta la toca, y detrás otro del color de cómo llegó. */}
+      <span className="absolute inset-0 animate-fx-shock border-[3px] border-info opacity-0 shadow-[0_0_14px_var(--color-info)]" style={delay()} />
+      <span className="absolute inset-0 animate-fx-shock border-2 opacity-0 border-[color:rgb(var(--fx-rgb))] shadow-[0_0_14px_rgb(var(--fx-rgb)/0.8)]" style={delay(110)} />
       {SPARKS.map(([x, y]) => (
         <span
           key={`${x}:${y}`}

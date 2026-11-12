@@ -214,9 +214,77 @@ function nudger(target: Element, local: boolean): (x: number, y: number) => stri
   return (x, y) => `${px(bx + (m ? m.a * x + m.c * y : x))} ${px(by + (m ? m.b * x + m.d * y : y))}`
 }
 
-/** El atacante pone el cuerpo: se adelanta hasta `LUNGE_PX`, o el `LUNGE_SHARE` del camino si es más corto, y vuelve. Llega a la espada al impacto. */
-const LUNGE_PX = 18
-const LUNGE_SHARE = 0.12
+/** El atacante embiste: se adelanta hasta `LUNGE_PX`, o el `LUNGE_SHARE` del camino si es más corto, y vuelve. Llega a la espada al impacto. */
+const LUNGE_PX = 28
+const LUNGE_SHARE = 0.18
+
+/** Lo que dura el tajo de la carta atacada que sale del campo (`animate-card-split-a/b`). */
+const SPLIT_MS = 520
+
+/** Dónde estaba la carta atacada (en pantalla) y cómo se veía (`face`, una copia sin sus marcas), para partirla cuando sale del campo. */
+interface Split {
+  left: number
+  top: number
+  width: number
+  height: number
+  face: HTMLElement
+}
+
+/** Las marcas por las que la mesa busca sus cartas: la copia no las lleva (nadie la confunde con la de verdad). */
+const CARD_MARKS = ['data-card-id', 'data-rival-card-id', 'data-lp', 'data-life-score']
+
+/** Una copia quieta de la carta, que llena la caja de cada mitad (su giro, el de una carta del rival o de costado, se queda). */
+function faceOf(card: Element): HTMLElement {
+  const face = card.cloneNode(true) as HTMLElement
+
+  for (const node of [face, ...face.querySelectorAll('*')]) for (const mark of CARD_MARKS) node.removeAttribute(mark)
+  face.setAttribute('aria-hidden', 'true')
+  face.style.cssText += ';position:absolute;inset:0;width:100%;height:100%;margin:0;translate:none;transition:none;animation:none'
+
+  return face
+}
+
+/** La carta que se fue a otra pila vuela como un fantasma (`use-card-flights`): partida, ese fantasma no se ve (la pila se pone al día cuando llega). */
+function hideGhost(id: string) {
+  const ghost = document.querySelector<HTMLElement>(`[data-flight-ghost="${CSS.escape(id)}"]`)
+
+  if (typeof ghost?.animate === 'function') ghost.animate({ opacity: [0, 0] }, { duration: SPLIT_MS, fill: 'forwards' })
+}
+
+/**
+ * La carta atacada que sale del campo (destruida, desterrada, devuelta: el núcleo no dice el motivo) se parte en dos donde estaba. Mira, cuadro a cuadro y sin medir nada, si su elemento sigue en la
+ * página mientras dura el ataque; si se fue y no hay otro con su id, devuelve dónde estaba. Sólo una carta (no las vidas de un directo) y nunca con el movimiento reducido. No espera ni retiene nada.
+ */
+function useSplitOnLeave(target: Element | null, watchMs: number): Split | null {
+  const [split, setSplit] = useState<Split | null>(null)
+
+  useEffect(() => {
+    const id = target?.getAttribute('data-card-id') ?? target?.getAttribute('data-rival-card-id')
+
+    if (!target || !id || prefersReducedMotion() || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
+
+    const rect = target.getBoundingClientRect()
+    const face = faceOf(target)
+    const until = performance.now() + watchMs
+    const selector = `[data-card-id="${CSS.escape(id)}"], [data-rival-card-id="${CSS.escape(id)}"]`
+    let frame = 0
+    const watch = (now: number) => {
+      if (target.isConnected) {
+        if (now < until) frame = requestAnimationFrame(watch)
+        return
+      }
+      if (document.querySelector(selector)) return
+      hideGhost(id)
+      setSplit({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, face })
+    }
+
+    frame = requestAnimationFrame(watch)
+
+    return () => cancelAnimationFrame(frame)
+  }, [target, watchMs])
+
+  return split
+}
 
 /** Quién sacude una casilla, y es el id de su animación: `strike` (un ataque) corta la sacudida de las vidas que haya; `life` (una pérdida de vidas) no se suma a la de un ataque. */
 export type Sacudida = 'strike' | 'life'
@@ -276,7 +344,7 @@ interface AttackFxProps {
   onDone: () => void
 }
 
-/** El ataque entero: el rayo y la espada en el atacante y, en el objetivo, la onda, el destello y las chispas del impacto; el objetivo se sacude. */
+/** El ataque entero: el rayo y la espada en el atacante (que embiste) y, en el objetivo, la onda, el destello y las chispas del impacto; el objetivo se sacude y, si sale del campo, se parte en dos. */
 export function AttackFx({ strike, onDone }: AttackFxProps) {
   // `onDone` cambia en cada render de quien lo muestra: se lee desde una ref para que el reloj no se reinicie con cada uno.
   const doneRef = useRef(onDone)
@@ -285,10 +353,17 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
     doneRef.current = onDone
   })
 
+  const split = useSplitOnLeave(strike.target, STRIKE_MS)
+  const parted = split !== null
+  const bornRef = useRef(0)
+
+  // Se va pasado el impacto; si la carta se partió, cuando terminan sus mitades.
   useEffect(() => {
-    const timer = window.setTimeout(() => doneRef.current(), STRIKE_MS)
+    if (!parted) bornRef.current = Date.now()
+    const left = parted ? Math.max(STRIKE_MS - (Date.now() - bornRef.current), SPLIT_MS) : STRIKE_MS
+    const timer = window.setTimeout(() => doneRef.current(), left)
     return () => window.clearTimeout(timer)
-  }, [strike.key])
+  }, [strike.key, parted])
 
   // El atacante pone el cuerpo: se adelanta hacia el objetivo y vuelve, llegando a la espada al impacto (a mitad de la animación). Va con `translate`, la propiedad
   // individual: se compone por fuera del giro de la carta, así se mueve en el plano del campo también si va de cabeza o de costado. Parte de la `translate` que ya tenga (`nudger`).
@@ -341,6 +416,21 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
           />
         ))}
       </div>
+      {/* La carta que salió del campo, partida en dos donde estaba: cada mitad se va para su lado girando y se funde. */}
+      {split ? (
+        <div data-fx="split" className="absolute" style={{ left: split.left, top: split.top, width: split.width, height: split.height }}>
+          {(['a', 'b'] as const).map((half) => (
+            <span
+              key={half}
+              // Cada mitad lleva su copia de la carta (la de la izquierda, la misma; la otra, otra copia): React no dibuja nada adentro.
+              ref={(node) => {
+                if (node && !node.firstChild) node.append(half === 'a' ? split.face : (split.face.cloneNode(true) as HTMLElement))
+              }}
+              className={cx('absolute inset-0 motion-reduce:hidden', half === 'a' ? 'animate-card-split-a [clip-path:inset(0_50%_0_0)]' : 'animate-card-split-b [clip-path:inset(0_0_0_50%)]')}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>,
     document.body,
   )
