@@ -469,10 +469,11 @@ describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
 
     expect(group).toHaveClass('fixed', 'bottom-0', 'left-[var(--mat-x,50%)]', 'w-[min(var(--window-w,30rem),var(--mat-w,100vw))]')
     expect(group).toHaveAttribute('data-window')
-    // La pregunta en la barra; abajo, una fila: las cartas a la izquierda (del tamaño de las de tu mano, `--desk-card`, con su pestaña sobre el arte y sin nombre) y los botones a su derecha, al pie.
+    // La pregunta en la barra; abajo, las cartas al medio de la ventana, centradas a lo ancho y a lo alto (del tamaño de las de tu mano, `--desk-card`, con su pestaña sobre el arte y sin nombre), y los botones a su derecha, al pie.
     expect(within(group.querySelector<HTMLElement>('[data-window-bar]')!).getByRole('heading', { name: 'Responder a la cadena' })).toBeInTheDocument()
     const body = group.querySelector('[data-panel-body]')!
-    expect(body.parentElement).toHaveClass('grid-cols-[minmax(0,max-content)_minmax(min-content,1fr)]')
+    expect(body.parentElement).toHaveClass('grid-cols-[minmax(0,1fr)_minmax(0,max-content)_minmax(min-content,1fr)]')
+    expect(body).toHaveClass('col-start-2', 'self-center')
     expect(body.parentElement!.lastElementChild!.contains(screen.getByRole('button', { name: 'Pasar' }))).toBe(true)
     expect(within(group).getByRole('listbox')).toHaveClass('group-data-[window]/panel:auto-cols-(--desk-card)!')
     expect(group.querySelector('[data-pick-name]')).toHaveClass('group-data-[window]/panel:hidden')
