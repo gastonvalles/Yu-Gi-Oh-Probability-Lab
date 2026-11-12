@@ -7,7 +7,7 @@ import { seatOf, setAutoPref } from '../app/auto-prefs'
 import { AutoSoloScreen } from '../components/auto/AutoSoloScreen'
 import { CARDS, fakeSession, type FakeSession } from './support/auto-session-fake'
 import { core } from './support/auto-screen-harness'
-import { tapMenu } from './support/mat-menu'
+import { openOptions, tapMenu } from './support/mat-menu'
 import { render } from './support/practice-mat-harness'
 
 // Quién empieza en jugar solo automático (la hoja de reglas de Jugar): ir segundo es ocupar el asiento 1 del núcleo. Lo del núcleo (el rival pasivo pasa su turno 1 y vos robás
@@ -82,7 +82,7 @@ describe('auto-screen · quién empieza', () => {
     expect(dealt.seat).toBe(seatOf('random', dealt.seed!))
     expect(last().restarts).toBe(0)
     // Reiniciar es el mismo duelo: la misma sesión (la misma semilla, el mismo asiento).
-    tapMenu('Opciones del duelo')
+    openOptions()
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el mismo duelo' }))
     expect(last().restarts).toBe(1)
     expect(connect.mock.calls.length).toBe(calls + 1)

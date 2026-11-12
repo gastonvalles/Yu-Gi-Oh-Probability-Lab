@@ -2,6 +2,7 @@ import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type K
 import { createPortal } from 'react-dom'
 
 import { frameClass, frameKindOf } from '../../app/card-frame'
+import { useMatMenus } from '../../app/mat-menus'
 import { PHASES } from '../../app/practice-mat'
 import { useDraggableOffset } from '../../app/use-draggable-offset'
 import { useFocusTrap } from '../../app/use-focus-trap'
@@ -19,9 +20,9 @@ import { useSheetHost } from '../ui/BottomSheet'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
-import { CloseButton } from '../ui/IconButton'
+import { CloseButton, IconButton } from '../ui/IconButton'
 
-/** `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px). Sin decirlo, según el ancho. */
+/** `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px; en el celular con «Menús flotantes»). Sin decirlo, según el ancho y esa preferencia. */
 type AutoPanelVariant = 'docked' | 'floating'
 
 /**
@@ -30,8 +31,12 @@ type AutoPanelVariant = 'docked' | 'floating'
  */
 const OWN_PLACE = new Set(['card', 'playground'])
 export const autoWindowKey = (kind: string) => `ygo-lab:auto-window:v1:${OWN_PLACE.has(kind) ? kind : 'ask'}`
+/** El lugar de la ventana en el celular: aparte del de escritorio (otra pantalla, otras medidas). */
+const onPhone = (key: string) => `${key}:phone`
 /** Lo más chica que se deja estirar una ventana (la de siempre: 30 rem de ancho, apaisada, y el alto de su contenido); lo más grande, la pantalla. */
 const WINDOW_MIN = { width: 360, height: 160 }
+/** En el celular (390 px de pantalla) la ventana se achica más: 15 rem. */
+const WINDOW_MIN_PHONE = { width: 240, height: 140 }
 const ARROW_KEYS: Record<string, readonly [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }
 const WINDOW_KEYS = 'ArrowUp ArrowDown ArrowLeft ArrowRight Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Enter'
 
@@ -97,11 +102,14 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
   const inline = host?.phone === true && !slot
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
   // En el pie de la hoja de la cadena (celular) nunca es ventana.
-  const floating = !slot && (variant === 'floating' || (variant === undefined && desktop))
+  // «Menús flotantes» (Opciones): la ventana también en el celular, con el dedo. En un marco del catálogo no vale.
+  const menus = useMatMenus()
+  const floating = !slot && (variant === 'floating' || (variant === undefined && (desktop || (menus === 'floating' && !inline))))
+  const phoneWindow = floating && !desktop && !inline
   const saved = useContext(LayerBackContext)
   const [minimized, setMinimized] = useState(false)
   // La ventana se lleva de la barra y se estira del borde y la esquina; posición y tamaño, por tipo (`autoWindowKey`). En la mesa se centra con su `translate`: el corrimiento va en `--drag-x/y`.
-  const move = useDraggableOffset(autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, WINDOW_MIN)
+  const move = useDraggableOffset(phoneWindow ? onPhone(autoWindowKey(kind)) : autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, phoneWindow ? WINDOW_MIN_PHONE : WINDOW_MIN, true)
   // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; minimizado, la tira hacia arriba lo abre.
   const follow = (dy: number | null) => {
     if (ref.current) ref.current.style.translate = dy === null ? '' : `${desktop && !slot ? '-50%' : '0'} ${dy}px`
@@ -166,7 +174,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
   // La ventana del escritorio: apoyada sobre tu mano y centrada en la columna de la mesa como el cartel de siempre (no empuja ni tapa el campo al abrirse); corrida, flota encima de lo que haya.
   const windowPlace = inline
     ? 'relative w-[min(30rem,100%)] border border-primary'
-    : 'fixed bottom-0 left-[var(--mat-x,50%)] z-[130] w-[min(30rem,var(--mat-w,100vw))] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] translate-x-[calc(var(--drag-x,0px)-50%)] translate-y-[var(--drag-y,0px)] border border-primary shadow-overlay'
+    : cx('fixed bottom-0 left-[var(--mat-x,50%)] z-[130] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] translate-x-[calc(var(--drag-x,0px)-50%)] translate-y-[var(--drag-y,0px)] border border-primary shadow-overlay', phoneWindow ? 'w-[min(19rem,calc(100vw-1rem))]' : 'w-[min(30rem,var(--mat-w,100vw))]')
   const windowSurface = 'group/panel mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-dialog-enter'
   /** Con la barra enfocada: las flechas la mueven 16 px (Mayús: 64), Alt + flechas la estiran y Enter la vuelve a su lugar y su tamaño. */
   const onBarKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -210,6 +218,12 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
         <span className="flex-1" />
       )}
       {onDismiss && !minimized ? <CloseButton size="lg" tone="raised" aria-label={t('common.close')} onClick={onDismiss} /> : null}
+      {/* Minimizar con el mouse o el dedo (antes, sólo Escape): un botón de 44 px a la derecha de la barra; la tira que queda se sube tocándola. */}
+      {!onDismiss && !minimized ? (
+        <IconButton tone="raised" size="lg" data-window-minimize="" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setMinimized(true)}>
+          <Icon name="chevron-down" />
+        </IconButton>
+      ) : null}
     </div>
   )
   // Los agarres para estirar: el borde derecho, el de abajo y la esquina (con su marca). Sólo el mouse o el lápiz; el teclado, Alt + flechas en la barra.
@@ -221,7 +235,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
         aria-hidden="true"
         title={t('auto.window.resize')}
         data-window-corner=""
-        className="absolute -right-1 -bottom-1 size-4 cursor-nwse-resize touch-none after:absolute after:right-1.5 after:bottom-1.5 after:size-2 after:border-r-2 after:border-b-2 after:border-primary"
+        className="absolute -right-1 -bottom-1 size-4 cursor-nwse-resize touch-none after:absolute after:right-1.5 after:bottom-1.5 after:size-2 after:border-r-2 after:border-b-2 after:border-primary pointer-coarse:size-9 pointer-coarse:after:right-2.5 pointer-coarse:after:bottom-2.5"
         {...move.stretch(true, true)}
       />
     </>
@@ -269,7 +283,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
         {bar}
         {side && children ? (
           // Apaisada (M-08): la bandeja a la izquierda; el texto arriba y los botones abajo, a su derecha. En el código, el mismo orden de siempre (texto, bandeja, botones).
-          <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 p-3">
+          <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 p-3 pointer-coarse:pb-7">
             <div className="col-start-2 row-start-1 flex min-w-0 items-start gap-2">
               {heading}
               {aside}
@@ -280,7 +294,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
             {row ? <div className="col-start-2 row-start-2 min-w-0">{row}</div> : null}
           </div>
         ) : (
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3 pointer-coarse:pb-7">
             <div className="flex min-w-0 shrink-0 items-start gap-2">
               {heading}
               {aside}

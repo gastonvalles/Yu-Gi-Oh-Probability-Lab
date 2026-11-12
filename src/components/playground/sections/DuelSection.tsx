@@ -21,6 +21,7 @@ import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
 import { BAR_SEAT, DuelLine, DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { LifeBadge } from '../../duel/LifeScore'
+import { OptionsGear } from '../../auto/AutoBar'
 import { ChainLine, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { IconButton } from '../../ui/IconButton'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
@@ -142,7 +143,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
   const [turn, setTurn] = useState<'mine' | 'rival'>('mine')
   const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
   const mineTurn = turn !== 'rival'
-  const lane: LaneNotice | null = line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : line === 'moment' ? { kind: 'ask', text: 'Gene-Warped Warwolf ataca a Sky Striker Ace - Zeke · Rival −500', actions: [] } : null
+  const lane: LaneNotice | null = line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : line === 'moment' ? { kind: 'ask', text: 'Gene-Warped Warwolf ataca a Sky Striker Ace - Zeke', actions: [] } : null
   const content = line === 'chain' ? <ChainLine rows={SEAT_CHAIN} focus={1} onPick={() => {}} /> : lane ? <DuelLine lane={lane} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} /> : null
   const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} compact active={!mineTurn} />
   const mine = <LifeBadge name="Vos" label="Vos" life={life.mine} mine active={mineTurn} />
@@ -151,9 +152,9 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
       <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
         <Icon name="list" />
       </IconButton>
-      <IconButton tone="tile" size="sm" aria-label="Chat">
-        <Icon name="chat" />
-      </IconButton>
+      <OptionsGear concede={{ onConcede: () => {}, text: t('duel.options.concedeSolo') }}>
+        <p className="m-0 text-body text-muted">Acá va lo propio de cada duelo (la cadena, la casilla, el rival…).</p>
+      </OptionsGear>
     </span>
   )
 
@@ -164,7 +165,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
       className="col-span-full"
       note={
         <>
-          Las vidas: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color); en el celular la del rival va en la fila de los íconos de la barra, con el número un paso más chico (<Tag>compact</Tag>: entra en sus 44 px), y la tuya abajo con la botonera cuadrada. El turno lo dice sólo el borde: grueso (3 px) en la chapa de quien juega y tenue en la otra, sin texto. No hay línea entre el campo y tu mano: un aviso (o «Momento», lo que pasó al invocar, atacar o recibir daño, 1,5 s) flota sobre el borde de arriba de tu mano sólo mientras está, y la cadena va en una capa centrada sobre el campo. El cambio de vidas, todo adentro de la chapa: tiembla, el número baja contando (700 ms como mucho) y el «−N» chico toma el lugar de la etiqueta 1,6 s (rojo tu daño, menta el del rival); no sale ningún número afuera. Las fases van en el botón del medio del campo. A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
+          Las vidas: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color); en el celular la del rival va en la fila de los íconos de la barra, con el número un paso más chico (<Tag>compact</Tag>: entra en sus 44 px), y la tuya abajo con las herramientas: ≡ (pasos) y ⚙ (Opciones: la vista 3D, los menús flotantes, lo de cada duelo y, al final, Rendirse; tocalo para verlo). El turno lo dice sólo el borde: grueso (3 px) en la chapa de quien juega y tenue en la otra, sin texto. No hay línea entre el campo y tu mano: un aviso (o «Momento», lo que pasó al invocar o atacar, 1,5 s: el daño no sale acá, lo cuenta la chapa) flota sobre el borde de arriba de tu mano sólo mientras está, y la cadena va en una capa centrada sobre el campo. El cambio de vidas, todo adentro de la chapa: tiembla, el número baja contando (700 ms como mucho) y el «−N» chico toma el lugar de la etiqueta 1,6 s (rojo tu daño, menta el del rival); no sale ningún número afuera. Las fases van en el botón del medio del campo. A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/AutoBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }
     >

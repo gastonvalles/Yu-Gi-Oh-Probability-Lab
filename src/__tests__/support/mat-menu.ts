@@ -18,3 +18,9 @@ export function menuRow(name: string | RegExp): HTMLElement {
 
 /** Toca una fila del ⋯ de la mesa (lo abre si hace falta). */
 export const tapMenu = (name: string | RegExp) => fireEvent.click(menuRow(name))
+
+/** Abre Opciones, el ⚙ de abajo a la derecha de un duelo automático (si no está abierto), y devuelve su diálogo. */
+export function openOptions(): HTMLElement {
+  if (!screen.queryByRole('dialog', { name: 'Opciones' })) fireEvent.click(screen.getByRole('button', { name: 'Opciones' }))
+  return screen.getByRole('dialog', { name: 'Opciones' })
+}

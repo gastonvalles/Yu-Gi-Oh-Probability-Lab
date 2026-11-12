@@ -34,6 +34,7 @@ import { respondersText } from './PassPrompt'
 import { ResultStrip } from './DuelResult'
 import { LifeBadge, LifeScore, SIGNAL_MS } from './LifeScore'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
+import { TypeMark } from './TypeMark'
 import { isEmojiSignal } from '../../app/duel-signals'
 
 export { SIGNAL_MS }
@@ -110,8 +111,10 @@ interface DuelBarProps {
   onLeave: () => void
   /** Salir de un duelo en curso es abandonarlo: se rinde y se sale (se pide confirmar). Sin esto, salir sólo deja el duelo en pausa. */
   onAbandon?: () => void
-  /** Rendirme: el duelo termina y gana el rival (se pide confirmar). */
-  onConcede: () => void
+  /** Rendirme: el duelo termina y gana el rival (se pide confirmar). Sin esto (`inOptions`) no está en el ⋯. */
+  onConcede?: () => void
+  /** El duelo automático: la vista 3D, sus ajustes y Rendirse están en Opciones (el ⚙ de abajo a la derecha: `OptionsGear`), no en el ⋯. */
+  inOptions?: boolean
   /** La línea del registro (sólo en el celular): lo último que pasó; tocarla abre el chat con el registro. */
   log?: ReactNode
   /** Volver a conectarme a la sala ya: lo toca cualquiera de los dos si el duelo quedó en pausa por un aviso que no llegó, y el relay vuelve a decirle a cada uno si el otro está. */
@@ -302,7 +305,7 @@ const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
  * («Turno de Ana · 3», en el color de quién es; la fase la dice sólo el botón del campo) y las del rival (`LifeScore`: en el manual se tocan y abren la calculadora), y la línea del registro. En escritorio
  * cada vida va en su esquina (las pone la pantalla: `RivalLife` en `corner` y `DuelLife` en `life`) y el turno debajo de los íconos; con laterales, las del rival en el izquierdo.
  */
-export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, rivalSignalKey, mySignal = null, mySignalKey, chat, lane = null, onOpenLife, turnNumber = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null), extraSettings, resultReason }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRematch, onLeave, onAbandon, onConcede, inOptions = false, onReconnect, log, resultOpen = false, rivalSignal = null, rivalSignalKey, mySignal = null, mySignalKey, chat, lane = null, onOpenLife, turnNumber = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null), extraSettings, resultReason }: DuelBarProps) {
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
   // Reconectar, Rendirse y Salir se tocan poco (y los dos últimos arruinan un duelo si se aprietan sin querer): en el celular van juntos detrás de un solo botón; en escritorio, a la vista.
@@ -336,12 +339,13 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   const dialogs = (
     <>
       {/* «Opciones del duelo» del ⋯ (el duelo automático: las respuestas a la cadena y la casilla). */}
-      {extraSettings ? (
+      {extraSettings && !inOptions ? (
         <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" anchor="mat" veil={false} title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
           <div className="grid gap-4">{typeof extraSettings === 'function' ? extraSettings(() => setMoreOpen(false)) : extraSettings}</div>
         </Modal>
       ) : null}
 
+      {onConcede && !inOptions ? (
       <ConfirmDialog
         veil={false}
         anchor="mat"
@@ -357,6 +361,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
           onConcede()
         }}
       />
+      ) : null}
 
       <ConfirmDialog
         veil={false}
@@ -381,10 +386,11 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   const actions = (
     <>
       <MatMoreMenu
+        view={!inOptions}
         items={[
           { group: t('practice.mat.groupDuel'), label: t('duel.bar.reconnect'), icon: 'refresh', hint: t('duel.bar.reconnectHint'), onSelect: onReconnect },
-          { label: t('duel.bar.concede'), icon: 'flag', disabled: Boolean(result) || !peerPresent, onSelect: () => setConceding(true) },
-          ...(extraSettings ? [{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: () => setMoreOpen(true) } satisfies OverflowItem] : []),
+          ...(inOptions ? [] : [{ label: t('duel.bar.concede'), icon: 'flag', disabled: Boolean(result) || !peerPresent, onSelect: () => setConceding(true) } satisfies OverflowItem]),
+          ...(extraSettings && !inOptions ? [{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: () => setMoreOpen(true) } satisfies OverflowItem] : []),
         ]}
       />
       <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
@@ -642,6 +648,7 @@ export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
         {lines.map((line) => (
           <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">
             <i aria-hidden="true" className={cx('size-1.5 shrink-0', line.side === 'mine' ? 'bg-accent' : 'bg-info')} />
+            {line.frame ? <TypeMark kind={line.frame} /> : null}
             <span className="min-w-0 truncate">{line.text}</span>
           </span>
         ))}

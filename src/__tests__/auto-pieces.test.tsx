@@ -9,14 +9,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DuelRailsContext } from '../app/duel-rails'
 import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
-import { AutoBar } from '../components/auto/AutoBar'
+import { AutoBar, AutoDock } from '../components/auto/AutoBar'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../components/auto/CardPicker'
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
 import { PassPrompt } from '../components/duel/PassPrompt'
 import { applyLocale } from '../i18n'
-import { menuRow, tapMenu } from './support/mat-menu'
+import { menuRow, openOptions, tapMenu } from './support/mat-menu'
 
 // Las piezas del duelo automático (fuera del campo): cada una con sus estados, su teclado y sus topes. Son presentacionales: lo que contestan sale por props.
 // El arte de las cartas lee el formato del store (el límite de copias).
@@ -65,9 +65,10 @@ describe('AskPrompt', () => {
 
     expect(prompt).toHaveTextContent('¿Activás el efecto?')
     expect(container.ownerDocument.querySelector('[data-card-art]')).not.toBeNull()
-    // La ventana no lleva flecha de bajar (M-08): Escape la minimiza.
-    expect(names(buttons)).toEqual(['No activar', 'Activar efecto'])
-    expect(buttons[1]).toHaveFocus()
+    // La ventana no lleva flecha de bajar (M-08): Escape la minimiza y su barra, un botón de 44 px (con el mouse).
+    expect(names(buttons)).toEqual(['Minimizar', 'No activar', 'Activar efecto'])
+    expect(buttons[0]).toHaveClass('size-11')
+    expect(buttons[2]).toHaveFocus()
 
     escape()
     expect(yes).not.toHaveBeenCalled()
@@ -108,17 +109,18 @@ describe('AskPrompt', () => {
     // La pregunta, un paso más chica de la escala (`text-body`).
     expect(within(prompt).getByText('¿Activás el efecto?')).toHaveClass('font-semibold', 'text-body')
     expect(prompt).not.toHaveTextContent(/Ponix|Qué hace/)
-    expect(names(buttons)).toEqual(['Seguir en modo manual', 'No activar', 'Activar efecto'])
-    expect(buttons[2]).toHaveFocus()
+    expect(names(buttons)).toEqual(['Minimizar', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
+    expect(buttons[3]).toHaveFocus()
     // Los tres en una sola fila y en un renglón, siempre: el pie no se parte; la principal al final (a la derecha) y rellena, lo que descarta sin caja.
-    const footer = buttons[0]!.parentElement!
+    const footer = buttons[1]!.parentElement!
     expect(footer).toHaveClass('flex', '*:whitespace-nowrap')
     expect(footer).not.toHaveClass('flex-wrap')
     expect(buttons[1]!.parentElement).toBe(footer)
     expect(buttons[2]!.parentElement).toBe(footer)
-    expect(buttons[2]).toHaveClass('bg-primary', 'min-h-11')
+    expect(buttons[3]!.parentElement).toBe(footer)
+    expect(buttons[3]).toHaveClass('bg-primary', 'min-h-11')
     expect(buttons[1]).toHaveClass('bg-transparent', 'min-h-11')
-    fireEvent.click(buttons[0]!)
+    fireEvent.click(buttons[1]!)
     expect(manual).toHaveBeenCalledTimes(1)
   })
 })
@@ -339,7 +341,7 @@ describe('PickBand', () => {
     // La bandeja: una sola fila de cartas de 1/6 del ancho (con pocas no se agrandan); con más de seis, se desliza.
     expect(within(group).getByRole('listbox')).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]', 'overflow-x-auto')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
-    expect(names(within(group).getAllByRole('button'))).toEqual(['Cancelar', 'Listo'])
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Cancelar', 'Listo'])
     expect(within(group).getByRole('button', { name: 'Listo' })).toBeDisabled()
     // Con «Cancelar», Escape es de la mesa (cancela): la banda no se minimiza.
     escape()
@@ -374,7 +376,7 @@ describe('PickBand', () => {
     cleanup()
 
     band({ multi: false, title: 'Elegí 1 carta' })
-    expect(names(screen.queryAllByRole('button'))).toEqual([])
+    expect(names(screen.queryAllByRole('button'))).toEqual(['Minimizar'])
     // Sin «Cancelar», Escape la minimiza.
     escape()
     expect(screen.getByRole('group', { name: 'Elegí 1 carta' })).toHaveAttribute('data-minimized')
@@ -409,7 +411,7 @@ describe('RespondBand', () => {
     expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano').parentElement).toHaveClass('rounded-tag', 'whitespace-nowrap')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
     // Las acciones, debajo de las candidatas (también en el celular): primero se ve qué se encadena.
-    expect(names(within(group).getAllByRole('button'))).toEqual(['Pasar', 'Activar'])
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Pasar', 'Activar'])
     expect(within(group).getByRole('listbox').compareDocumentPosition(within(group).getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(within(group).getByRole('button', { name: 'Activar' })).toBeDisabled()
     // Sin `mode`, sin el selector.
@@ -436,11 +438,11 @@ describe('RespondBand', () => {
     expect(onChain).toHaveBeenCalledTimes(1)
     const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
 
-    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila del título: a su derecha, sin un renglón propio (el alto es de las cartas). Sin «Minimizar» (M-08).
+    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila del título: a su derecha, sin un renglón propio (el alto es de las cartas). «Minimizar» va en la barra.
     const title = within(group).getByText('Responder a la cadena')
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
     expect(modes.parentElement?.parentElement).toBe(title.parentElement?.parentElement)
-    expect(within(group).queryByRole('button', { name: 'Minimizar' })).toBeNull()
+    expect(within(group).getByRole('button', { name: 'Minimizar' })).toHaveAttribute('data-window-minimize')
     expect(title.compareDocumentPosition(modes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // Texto, bandeja y botones, en ese orden en el código (en la ventana, la bandeja se dibuja a la izquierda); las cartas, de 4,5 rem en la ventana.
     const listbox = within(group).getByRole('listbox')
@@ -664,7 +666,7 @@ describe('AutoBar', () => {
     window.matchMedia = matchMedia
   })
 
-  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar», deshacer (apagado sin nada que deshacer) y el ⋯, que lleva al final «Opciones del duelo»; debajo (de 640 a 1100 px también), el marcador plano', () => {
+  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar», deshacer (apagado sin nada que deshacer) y el ⋯ (sin la vista 3D ni «Opciones del duelo»: están en el ⚙ de abajo); debajo (de 640 a 1100 px también), el marcador plano', () => {
     const onExit = vi.fn()
     const onUndo = vi.fn()
     const onNewHand = vi.fn()
@@ -676,7 +678,9 @@ describe('AutoBar', () => {
     expect(screen.getByTestId('auto-score')).toHaveTextContent('Vos8000Tu turno · 3Rival7000')
     expect(screen.queryByText('Turno 3')).toBeNull()
     expect(within(toolbar).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
-    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
+    expect(menuRow('Sonidos')).toBeInTheDocument()
+    expect(() => menuRow('Vista 3D')).toThrow()
+    expect(() => menuRow('Opciones del duelo')).toThrow()
 
     fireEvent.click(within(toolbar).getByRole('button', { name: 'Volver a Jugar' }))
     tapMenu('Nueva mano')
@@ -712,11 +716,11 @@ describe('AutoBar', () => {
     expect(screen.getByTestId('auto-turn')).toHaveClass('text-info-soft')
   })
 
-  it('en escritorio sin laterales las vidas no van en la barra (van planas en las esquinas del campo: las pone la pantalla) y no hay renglón del turno (lo dice la chapa de quien juega), ni chip ni fase; con la botonera (`dock`), el engranaje sale de la barra sólo en escritorio', () => {
-    const { unmount } = render(<AutoBar {...props} dock />)
+  it('en escritorio sin laterales las vidas no van en la barra (van planas en las esquinas del campo: las pone la pantalla) y no hay renglón del turno (lo dice la chapa de quien juega), ni chip ni fase; el ⋯ no lleva Opciones (es el ⚙ de abajo)', () => {
+    const { unmount } = render(<AutoBar {...props} />)
 
     expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
-    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
+    expect(() => menuRow('Opciones del duelo')).toThrow()
     unmount()
 
     desktop()
@@ -728,9 +732,8 @@ describe('AutoBar', () => {
     expect(screen.queryByText('Turno 3')).toBeNull()
     expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Deshacer', 'Más opciones'])
     expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
-    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
-    rerender(<AutoBar {...props} dock />)
     expect(() => menuRow('Opciones del duelo')).toThrow()
+    rerender(<AutoBar {...props} />)
   })
 
   it('con laterales, las vidas van planas y grandes cada una de su lado del lateral izquierdo: el rival arriba (junto a la flecha) y vos abajo; sin placa ni cartas en la mano', () => {
@@ -748,15 +751,15 @@ describe('AutoBar', () => {
     expect(container.querySelector('.life-plate, [role="meter"]')).toBeNull()
   })
 
-  it('«Opciones del duelo»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son de «La mesa», en el ⋯, como en la práctica)', () => {
+  it('Opciones (el ⚙): la vista 3D y los menús flotantes arriba, las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son de «La mesa», en el ⋯, como en la práctica)', () => {
     const onChain = vi.fn()
     const onPlace = vi.fn()
-    render(<AutoBar {...props} onChain={onChain} onPlace={onPlace} />)
+    render(<AutoDock {...props} onChain={onChain} onPlace={onPlace} />)
 
-    tapMenu('Opciones del duelo')
-    const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+    const dialog = openOptions()
 
-    expect(within(dialog).queryByRole('switch')).toBeNull()
+    // Arriba, la vista 3D y los menús flotantes (prendida la primera, apagados los otros); sin «A ciegas» con el pasivo.
+    expect(within(dialog).getAllByRole('switch').map((item) => item.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Menús flotantes'])
     // Dos modos, y la línea chica dice qué hace el elegido.
     expect(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Nunca'])
     expect(dialog).toHaveTextContent('Te pregunta cada vez que tenés un efecto rápido o uno con su condición cumplida.')
@@ -773,10 +776,9 @@ describe('AutoBar', () => {
   it('«Más opciones» con handtraps: lo que tiene, «Cambiar rival» (cierra y abre la hoja) y «A ciegas»; ya no dice que el rival no juega', () => {
     const onChange = vi.fn()
     const onBlind = vi.fn()
-    render(<AutoBar {...props} rival={{ kind: 'handtraps', summary: 'Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano', onChange }} onBlind={onBlind} />)
+    render(<AutoDock {...props} rival={{ kind: 'handtraps', summary: 'Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano', onChange }} onBlind={onBlind} />)
 
-    tapMenu('Opciones del duelo')
-    const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+    const dialog = openOptions()
 
     expect(dialog).toHaveTextContent('Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano')
     expect(dialog).not.toHaveTextContent('El rival no juega')
@@ -784,16 +786,22 @@ describe('AutoBar', () => {
     expect(onBlind).toHaveBeenCalledWith(true)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cambiar rival' }))
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('dialog', { name: 'Más opciones del duelo' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Opciones' })).toBeNull()
   })
 
   it('«Más opciones» con el bot: «Bot · su mazo» y «Mostrar la mano del bot» (lo contrario de la mano de dorso), en vez de «A ciegas»; el ⋯ dice «Rival · Bot»', () => {
     const onBlind = vi.fn()
-    render(<AutoBar {...props} rival={{ kind: 'bot', summary: 'Bot · Sky Striker', onChange: () => {} }} blind onBlind={onBlind} />)
+    const bot = { kind: 'bot' as const, summary: 'Bot · Sky Striker', onChange: () => {} }
+
+    render(
+      <>
+        <AutoBar {...props} rival={bot} blind onBlind={onBlind} />
+        <AutoDock {...props} rival={bot} blind onBlind={onBlind} />
+      </>,
+    )
 
     expect(menuRow('Rival')).toHaveTextContent('Bot')
-    tapMenu('Opciones del duelo')
-    const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+    const dialog = openOptions()
 
     expect(dialog).toHaveTextContent('RivalBot · Sky Striker')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()

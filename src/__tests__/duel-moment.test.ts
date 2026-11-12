@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isMoment, lifeText, momentText } from '../app/duel-moment'
+import { isMoment, momentText } from '../app/duel-moment'
 import { createMatState, type MatAction } from '../app/practice-mat'
 
 const nameOf = (id: string) => ({ a1: 'Gene-Warped Warwolf', b1: 'Dark Blade', r1: 'Sky Striker Ace - Zeke' })[id] ?? id
@@ -41,11 +41,5 @@ describe('los momentos de la línea (`duel-moment.ts`)', () => {
     expect(momentText(initial, actions, 2, nameOf)).toBeNull()
     expect(momentText(initial, actions, 3, nameOf)).toContain('Sky Striker Ace - Zeke')
     expect(momentText(initial, actions, 0, nameOf)).toBeNull()
-  })
-
-  it('el daño se dice como en la chapa, de cada lado que cambió', () => {
-    expect(lifeText([{ label: 'Rival', delta: -500 }, { label: 'Vos', delta: 0 }])).toBe('Rival −500')
-    expect(lifeText([{ label: 'Rival', delta: -500 }, { label: 'Vos', delta: 1000 }])).toBe('Rival −500 · Vos +1000')
-    expect(lifeText([{ label: 'Rival', delta: 0 }])).toBeNull()
   })
 })

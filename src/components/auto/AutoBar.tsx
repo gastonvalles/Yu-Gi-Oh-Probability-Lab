@@ -1,20 +1,23 @@
-import { useContext, useLayoutEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { useContext, useLayoutEffect, useState, type ReactNode } from 'react'
 
 import type { AutoPrefs } from '../../app/auto-prefs'
 import type { RivalKind } from '../../app/handtraps'
 import { useDuelRails } from '../../app/duel-rails'
+import { setMatMenus, useMatMenus } from '../../app/mat-menus'
+import { setMatView, useMatView } from '../../app/mat-view'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t, type MessageKey } from '../../i18n'
 import { BAR_SEAT, LaneBanner, RAIL_LANE_STYLE, Setting, type LaneNotice } from '../duel/DuelBar'
 import { LifeScore } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext } from '../probability/MatBarActions'
+import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
-import { Icon, type IconName } from '../ui/Icon'
-import { TileButton } from '../ui/IconButton'
+import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Segmented, type SegmentedOption } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
@@ -42,6 +45,8 @@ export interface AutoOptions {
   onPlace: (mode: AutoPlaceMode) => void
   /** «Reiniciar el mismo duelo» de «Más opciones»: desde el principio, con las mismas cartas (sin esto, no se ofrece). */
   onRestart?: () => void
+  /** «Rendirse» de Opciones (Solo): pide confirmar y termina el duelo como derrota (sin esto, no se ofrece). */
+  onConcede?: () => void
   /** «Seguir en modo manual»: abre el diálogo para seguir la partida en la mesa manual (sin esto, no se ofrece). */
   onManual?: () => void
   /** «Guardar replay»: abre el diálogo para guardar el duelo como está (sin esto, no se ofrece). */
@@ -61,8 +66,6 @@ interface AutoBarProps extends AutoOptions {
   life: { mine: number; theirs: number }
   /** Si la mesa va con laterales (las vidas, en el izquierdo): sin ellos, la pantalla pone las vidas en la mesa. */
   onRails?: (rails: boolean) => void
-  /** En escritorio el engranaje va en la botonera de la mesa (`AutoDock`), no en la barra. */
-  dock?: boolean
   /** El turno del duelo (desde 1) y si es tuyo. */
   turn: number
   myTurn: boolean
@@ -82,167 +85,210 @@ interface AutoBarProps extends AutoOptions {
 
 export { Setting }
 
-/**
- * «Más opciones» del duelo: las respuestas a la cadena, la casilla, el rival y su mano de dorso, reiniciar el mismo duelo y seguir en modo manual. Desde la botonera (`inDock`) no repite lo
- * que ahí tiene su botón (las respuestas y el modo manual). Sin velo: la mesa se sigue viendo.
- */
-function MoreOptions({ isOpen, onClose, inDock = false, chain, onChain, place, onPlace, onRestart, onManual, onSaveReplay, onBotLog, rival, blind, onBlind }: AutoOptions & { isOpen: boolean; onClose: () => void; inDock?: boolean }) {
+/** Una fila de ajuste con su interruptor (Opciones): el nombre, lo que hace en una línea chica y el interruptor a la derecha. */
+function SwitchRow({ title, hint, checked, onChange }: { title: string; hint: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="keypad" anchor="mat" veil={false} title={t('duel.bar.more')}>
-      <div className="grid gap-5">
-        {inDock ? null : (
-          <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
-            <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
-          </Setting>
-        )}
-        <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
-          <Segmented label={t('auto.bar.place')} value={place} onChange={onPlace} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
-        </Setting>
-        <Setting title={t('auto.rival.label')} hint={rival.summary}>
+    <div className="flex items-center justify-between gap-3">
+      <span className="grid min-w-0 gap-0.5">
+        <span className="text-body font-semibold text-foreground">{title}</span>
+        <span className="text-micro text-soft">{hint}</span>
+      </span>
+      <Switch checked={checked} onChange={onChange} label={title} />
+    </div>
+  )
+}
+
+/** «Rendirse» de Opciones: qué pasa (`text`, en la confirmación) y cómo se pide; `disabled`, sin duelo en juego o sin rival a quien ganarle. */
+export interface ConcedeOption {
+  onConcede: () => void
+  text: string
+  disabled?: boolean
+}
+
+/**
+ * El ⚙ de abajo a la derecha (44 px, en el celular y en escritorio) y sus Opciones (M-10): arriba «Vista 3D» y «Menús flotantes» (se prenden y apagan en medio del duelo: la pregunta abierta cambia en el
+ * acto), después lo propio de cada duelo (`children`: la cadena, la casilla, el rival, reiniciar, el replay, el bot, seguir en manual) y, al final, «Rendirse» (pide confirmar). Sin velo: la mesa se
+ * sigue viendo. Es lo único que lleva la vista 3D y las ventanas en un duelo automático: su ⋯ ya no. El estado es de toda la app (`mat-view`, `mat-menus`).
+ */
+export function OptionsGear({ children, concede }: { children: ReactNode | ((close: () => void) => ReactNode); concede?: ConcedeOption }) {
+  const [open, setOpen] = useState(false)
+  const [conceding, setConceding] = useState(false)
+  const view = useMatView()
+  const menus = useMatMenus()
+  const close = () => setOpen(false)
+
+  return (
+    <>
+      <IconButton tone="tile" size="sm" data-mat-gear="" aria-haspopup="dialog" aria-label={t('auto.dock.options')} title={t('auto.dock.options')} onClick={() => setOpen(true)}>
+        <Icon name="gear" />
+      </IconButton>
+      <Modal isOpen={open} onClose={close} size="keypad" anchor="mat" veil={false} title={t('duel.options.title')}>
+        <div className="grid gap-5">
+          <SwitchRow title={t('practice.view.3d')} hint={t('duel.options.viewHint')} checked={view === '3d'} onChange={(on) => setMatView(on ? '3d' : 'top')} />
+          <SwitchRow title={t('duel.options.floating')} hint={t('duel.options.floatingHint')} checked={menus === 'floating'} onChange={(on) => setMatMenus(on ? 'floating' : 'docked')} />
+          {typeof children === 'function' ? children(close) : children}
+          {concede ? (
+            <Button
+              variant="tertiary"
+              color="danger"
+              icon="flag"
+              className="justify-self-start"
+              disabled={concede.disabled === true}
+              aria-haspopup="dialog"
+              onClick={() => {
+                close()
+                setConceding(true)
+              }}
+            >
+              {t('duel.options.concede')}
+            </Button>
+          ) : null}
+        </div>
+      </Modal>
+      {concede ? (
+        <ConfirmDialog
+          veil={false}
+          anchor="mat"
+          isOpen={conceding}
+          title={t('duel.bar.concedeTitle')}
+          description={concede.text}
+          confirmLabel={t('duel.options.concede')}
+          cancelLabel={t('duel.bar.keepPlaying')}
+          confirmColor="danger"
+          onCancel={() => setConceding(false)}
+          onConfirm={() => {
+            setConceding(false)
+            concede.onConcede()
+          }}
+        />
+      ) : null}
+    </>
+  )
+}
+
+/** Lo de Opciones que es de «Jugar solo automático»: las respuestas a la cadena, la casilla, el rival y su mano de dorso, reiniciar el mismo duelo, el replay, el bot y seguir en modo manual. */
+function SoloSettings({ chain, onChain, place, onPlace, onRestart, onManual, onSaveReplay, onBotLog, rival, blind, onBlind, close }: AutoOptions & { close: () => void }) {
+  return (
+    <>
+      <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
+        <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
+      </Setting>
+      <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
+        <Segmented label={t('auto.bar.place')} value={place} onChange={onPlace} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
+      </Setting>
+      <Setting title={t('auto.rival.label')} hint={rival.summary}>
+        <Button
+          variant="secondary"
+          className="justify-self-start"
+          aria-haspopup="dialog"
+          onClick={() => {
+            close()
+            rival.onChange()
+          }}
+        >
+          {t('auto.rival.change')}
+        </Button>
+      </Setting>
+      {rival.kind === 'bot' ? (
+        <SwitchRow title={t('auto.rival.botHand')} hint={t('auto.rival.botHandHint')} checked={!blind} onChange={(shown) => onBlind(!shown)} />
+      ) : rival.kind === 'handtraps' ? (
+        <SwitchRow title={t('auto.bar.blind')} hint={t('auto.bar.blindHint')} checked={blind} onChange={onBlind} />
+      ) : (
+        <Callout tone="neutral">{t('auto.rival.passive')}</Callout>
+      )}
+      {onRestart ? (
+        <Setting title={t('auto.bar.restart')} hint={t('auto.bar.restartHint')}>
           <Button
             variant="secondary"
+            icon="refresh"
+            className="justify-self-start"
+            onClick={() => {
+              close()
+              onRestart()
+            }}
+          >
+            {t('auto.bar.restart')}
+          </Button>
+        </Setting>
+      ) : null}
+      {onSaveReplay ? (
+        <Setting title={t('meta.duels.save.title')} hint={t('auto.bar.saveReplayHint')}>
+          <Button
+            variant="secondary"
+            icon="save"
             className="justify-self-start"
             aria-haspopup="dialog"
             onClick={() => {
-              onClose()
-              rival.onChange()
+              close()
+              onSaveReplay()
             }}
           >
-            {t('auto.rival.change')}
+            {t('meta.duels.save.button')}
           </Button>
         </Setting>
-        {rival.kind === 'bot' ? (
-          <div className="flex items-center justify-between gap-3">
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-body font-semibold text-foreground">{t('auto.rival.botHand')}</span>
-              <span className="text-micro text-soft">{t('auto.rival.botHandHint')}</span>
-            </span>
-            <Switch checked={!blind} onChange={(shown) => onBlind(!shown)} label={t('auto.rival.botHand')} />
-          </div>
-        ) : rival.kind === 'handtraps' ? (
-          <div className="flex items-center justify-between gap-3">
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-body font-semibold text-foreground">{t('auto.bar.blind')}</span>
-              <span className="text-micro text-soft">{t('auto.bar.blindHint')}</span>
-            </span>
-            <Switch checked={blind} onChange={onBlind} label={t('auto.bar.blind')} />
-          </div>
-        ) : (
-          <Callout tone="neutral">{t('auto.rival.passive')}</Callout>
-        )}
-        {onRestart ? (
-          <Setting title={t('auto.bar.restart')} hint={t('auto.bar.restartHint')}>
-            <Button
-              variant="secondary"
-              icon="refresh"
-              className="justify-self-start"
-              onClick={() => {
-                onClose()
-                onRestart()
-              }}
-            >
-              {t('auto.bar.restart')}
-            </Button>
-          </Setting>
-        ) : null}
-        {onSaveReplay ? (
-          <Setting title={t('meta.duels.save.title')} hint={t('auto.bar.saveReplayHint')}>
-            <Button
-              variant="secondary"
-              icon="save"
-              className="justify-self-start"
-              aria-haspopup="dialog"
-              onClick={() => {
-                onClose()
-                onSaveReplay()
-              }}
-            >
-              {t('meta.duels.save.button')}
-            </Button>
-          </Setting>
-        ) : null}
-        {onBotLog ? (
-          <Setting title={t('auto.bot.log.title')} hint={t('auto.bot.log.optionHint')}>
-            <Button
-              variant="secondary"
-              icon="chat"
-              className="justify-self-start"
-              aria-haspopup="dialog"
-              onClick={() => {
-                onClose()
-                onBotLog()
-              }}
-            >
-              {t('auto.bot.log.open')}
-            </Button>
-          </Setting>
-        ) : null}
-        {onManual && !inDock ? (
-          <Setting title={t('auto.bar.manual')} hint={t('auto.bar.manualHint')}>
-            <Button
-              variant="secondary"
-              icon="hand"
-              className="justify-self-start"
-              onClick={() => {
-                onClose()
-                onManual()
-              }}
-            >
-              {t('auto.bar.manual')}
-            </Button>
-          </Setting>
-        ) : null}
-      </div>
-    </Modal>
-  )
-}
-
-/** Un botón de la botonera (`TileButton`, el de la línea de fases): la caja de la mesa con su ícono y el nombre debajo. Prendido (`aria-pressed`: el modo de ahora, los pasos abiertos), en lima. */
-function DockButton({ icon, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string }) {
-  return (
-    <TileButton {...props}>
-      <Icon name={icon} />
-    </TileButton>
+      ) : null}
+      {onBotLog ? (
+        <Setting title={t('auto.bot.log.title')} hint={t('auto.bot.log.optionHint')}>
+          <Button
+            variant="secondary"
+            icon="chat"
+            className="justify-self-start"
+            aria-haspopup="dialog"
+            onClick={() => {
+              close()
+              onBotLog()
+            }}
+          >
+            {t('auto.bot.log.open')}
+          </Button>
+        </Setting>
+      ) : null}
+      {onManual ? (
+        <Setting title={t('auto.bar.manual')} hint={t('auto.bar.manualHint')}>
+          <Button
+            variant="secondary"
+            icon="hand"
+            className="justify-self-start"
+            onClick={() => {
+              close()
+              onManual()
+            }}
+          >
+            {t('auto.bar.manual')}
+          </Button>
+        </Setting>
+      ) : null}
+    </>
   )
 }
 
 /**
- * La botonera redonda de «Jugar solo automático» en escritorio (abajo a la derecha de la mesa, lámina 07), con lo que se toca del duelo y no es una jugada; cada botón con su nombre debajo:
- * «Automático» (el modo de ahora, prendido: tocarlo abre «Seguir en modo manual»; la vuelta es «Seguir en automático», del ⋯ de la práctica), «Cadena» (las respuestas: Siempre · Nunca), «Pasos» (muestra u
- * oculta el panel de la derecha) y «Opciones» (el resto de «Más opciones», que sale de la barra de arriba). Lo que ya está en la barra (deshacer, la vista, los sonidos) no se repite.
- * Mide 56 px de alto y sube 12 sobre el borde de la mano (`-mt-3`, como las vidas): la fila de abajo no crece y el campo no se mueve.
+ * Las herramientas de la mesa en «Jugar solo automático» (abajo a la derecha, dos cuadrados de 44 px; Gastón, 2026-11-12: «los botones son horribles»): ≡ «Pasos» (muestra u oculta el panel de la derecha;
+ * sólo en escritorio, `steps`: en el celular ≡ es el de la mesa) y ⚙ «Opciones» (`OptionsGear`). La cadena, el modo manual y lo demás ya no tienen ficha: viven en Opciones.
  */
-export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: boolean; onToggle: () => void } }) {
-  const [open, setOpen] = useState<'chain' | 'more' | null>(null)
-  const close = () => setOpen(null)
-  const { chain, onChain, onManual } = options
+export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps?: { open: boolean; onToggle: () => void } }) {
+  const concede = onConcede ? { onConcede, text: t('duel.options.concedeSolo') } : undefined
 
   return (
-    <div role="group" aria-label={t('auto.dock.label')} data-mat-dock="" className="-mt-3 flex items-start gap-1">
-      {onManual ? <DockButton icon="play" label={t('auto.dock.auto')} aria-pressed="true" aria-haspopup="dialog" aria-label={t('auto.dock.autoName')} onClick={onManual} /> : null}
-      <DockButton icon="link" label={t('auto.dock.chain')} aria-haspopup="dialog" aria-label={t('auto.dock.chainName', { mode: t(CHAIN_MODES[chain][0]) })} onClick={() => setOpen('chain')} />
-      <DockButton icon="list" label={t('auto.dock.steps')} aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} onClick={steps.onToggle} />
-      <DockButton icon="gear" label={t('auto.dock.options')} aria-haspopup="dialog" aria-label={t('duel.bar.more')} onClick={() => setOpen('more')} />
-      <Modal isOpen={open === 'chain'} onClose={close} size="keypad" anchor="mat" veil={false} title={t('auto.dock.chainTitle')}>
-        <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
-          <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
-        </Setting>
-      </Modal>
-      <MoreOptions isOpen={open === 'more'} onClose={close} inDock {...options} />
+    <div role="group" aria-label={t('auto.dock.label')} data-mat-tools="" className="flex items-center gap-2">
+      {steps ? (
+        <IconButton tone="tile" size="sm" aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} onClick={steps.onToggle}>
+          <Icon name="list" />
+        </IconButton>
+      ) : null}
+      <OptionsGear {...(concede ? { concede } : {})}>{(close) => <SoloSettings {...options} close={close} />}</OptionsGear>
     </div>
   )
 }
 
 /**
  * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace. Es la barra de la práctica: la flecha de
- * «Volver a Jugar» a la izquierda y, a la derecha, deshacer y el ⋯ (`MatBarActions`), y lo propio del automático: «Opciones del duelo» al final del ⋯ (en escritorio, con `dock`, va en la botonera
- * de la mesa: `AutoDock`), el turno, dicho una sola vez y sólo hasta 1100 px («Tu turno · 3», en el color de quién es; desde 1101 px lo dice la chapa de quien juega y la fase, sólo el botón del campo) y las vidas, planas (`LifeScore`): hasta 1100 px en el marcador debajo
+ * «Volver a Jugar» a la izquierda y, a la derecha, deshacer y el ⋯ (`MatBarActions`), y lo propio del automático: «Rival» en el ⋯ (las Opciones del duelo van en el ⚙ de abajo, `AutoDock`), el turno, dicho una sola vez y sólo hasta 1100 px («Tu turno · 3», en el color de quién es; desde 1101 px lo dice la chapa de quien juega y la fase, sólo el botón del campo) y las vidas, planas (`LifeScore`): hasta 1100 px en el marcador debajo
  * de los íconos («VOS 8000 · Tu turno · 1 · RIVAL 8000»), con laterales en el izquierdo y, en escritorio sin ellos, en las esquinas del campo (las pone la pantalla). Hasta 1100 px la línea del registro va
  * debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se
  * mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, onExit, onUndo, canUndo, onNewHand, lane = null, log, seat, ...options }: AutoBarProps) {
-  const [moreOpen, setMoreOpen] = useState(false)
+export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, onUndo, canUndo, onNewHand, lane = null, log, seat, ...options }: AutoBarProps) {
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const rails = useDuelRails()
@@ -260,12 +306,10 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
     </span>
   )
 
-  // Los íconos de la práctica (deshacer y el ⋯) y, al final del ⋯, «Opciones del duelo» (lo propio del automático). En escritorio con la botonera, las opciones van en ella.
-  const gear = !(dock && docked)
+  // Los íconos de la práctica (deshacer y el ⋯, sin la vista 3D: está en Opciones, el ⚙ de abajo a la derecha, que arma la pantalla).
   const actions = (first?: string) => (
-    <MatBarActions className={first} onUndo={onUndo} canUndo={canUndo} onNewHand={onNewHand} rival={{ meta: t(`auto.rival.kind.${options.rival.kind}`), onSelect: options.rival.onChange }} more={gear ? [{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: () => setMoreOpen(true) }] : []} />
+    <MatBarActions className={first} onUndo={onUndo} canUndo={canUndo} onNewHand={onNewHand} rival={{ meta: t(`auto.rival.kind.${options.rival.kind}`), onSelect: options.rival.onChange }} view={false} />
   )
-  const dialogs = gear ? <MoreOptions isOpen={moreOpen} onClose={() => setMoreOpen(false)} {...options} /> : null
 
   // Con laterales (escritorio ancho), las piezas van a la grilla de la mesa como las de `DuelBar`: arriba a la izquierda la flecha y las vidas, y los avisos debajo; arriba a la derecha los íconos
   // (de 40 px, como los de `DuelBar`: el lateral más angosto tiene lugar para cinco por fila).
@@ -288,7 +332,6 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
         {/* El aviso, en lo que el campo agrandado deja libre del lateral (`--field-overhang`, de la mesa) y por encima del tablero (`z-20`): nunca cortado ni debajo. Con menos de 11 rem libres se apoya sobre el borde del campo.
             La caja no ataja toques, sólo el aviso: ocupa todo el lateral y, encima del campo, tapaba el Extra Deck (`RAIL_LANE_STYLE`). */}
         <div className="pointer-events-none relative z-20 col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4 *:pointer-events-auto" style={RAIL_LANE_STYLE}>{lane ? <LaneBanner lane={lane} rivalName={rivalName} rail /> : null}</div>
-        {dialogs}
       </>
     )
   }
@@ -310,7 +353,6 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
             <LaneBanner lane={lane} rivalName={rivalName} />
           </div>
         ) : null}
-        {dialogs}
       </div>
     )
   }
@@ -350,7 +392,6 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
           </div>
         </>
       )}
-      {dialogs}
     </div>
   )
 }

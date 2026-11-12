@@ -9,6 +9,7 @@ import { useMatSession } from '../app/use-mat-session'
 import { AutoSoloScreen, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
 import { PracticeMat } from '../components/probability/PracticeMat'
 import { CARDS as AUTO_CARDS, fakeSession, type FakeSession } from './support/auto-session-fake'
+import { openOptions } from './support/mat-menu'
 import { core, dispatches, renderAuto } from './support/auto-screen-harness'
 import { CARDS, INITIAL, render } from './support/practice-mat-harness'
 
@@ -114,7 +115,7 @@ describe('la barra de la mesa es una sola', () => {
       expect(practice.map((button) => button.name)).toEqual(['Volver a Jugar', 'Deshacer', 'Más opciones', 'Pasos y combos'])
       // Ningún ícono de la barra queda en ámbar por un ajuste prendido: ninguno lleva `aria-pressed`.
       expect([...practice, ...auto].filter((button) => button.pressed !== null)).toEqual([])
-      // En el ⋯, lo mismo en las dos y en el mismo orden: «La mesa» con sus interruptores (la vista 3D y los sonidos vienen prendidos) y «El duelo»; el automático suma sus opciones en el celular (en escritorio están en la botonera).
+      // En el ⋯, lo mismo en las dos y en el mismo orden: «La mesa» con sus interruptores (la vista 3D y los sonidos vienen prendidos) y «El duelo»; el automático no lleva la vista 3D ni «Opciones del duelo» (van en el ⚙ de abajo).
       expect(practiceRows).toEqual([
         { text: 'Vista 3D', checked: 'true', disabled: false },
         { text: 'Sonidos', checked: 'true', disabled: false },
@@ -127,9 +128,9 @@ describe('la barra de la mesa es una sola', () => {
       const steps = layout === 'escritorio' ? [] : [{ text: 'Pasos y combos', checked: null, disabled: false }]
 
       // En el automático, «Handtraps del rival» es «Rival» (contra quién: el pasivo, el de handtraps o el bot), que abre su hoja.
-      const rivalRows = practiceRows.map((row) => (row.text.startsWith('Handtraps del rival') ? { ...row, text: 'RivalPasivo' } : row))
+      const rivalRows = practiceRows.filter((row) => row.text !== 'Vista 3D').map((row) => (row.text.startsWith('Handtraps del rival') ? { ...row, text: 'RivalPasivo' } : row))
 
-      expect(autoRows).toEqual([...steps, ...rivalRows, ...(layout === 'escritorio' ? [] : [{ text: 'Opciones del duelo', checked: null, disabled: false }])])
+      expect(autoRows).toEqual([...steps, ...rivalRows])
       expect(within(screen.getByRole('menu')).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['La mesa', 'El duelo'])
       cleanup()
     }
@@ -163,8 +164,7 @@ describe('la barra de la mesa es una sola', () => {
     expect(calls[1]!.rival!.main).toContainEqual([ASH.id, 2])
     expect(first.destroyed).toBe(true)
 
-    fireEvent.click(menuRow(/^Opciones del duelo/))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Más opciones del duelo' })).getByRole('button', { name: 'Reiniciar el mismo duelo' }))
+    fireEvent.click(within(openOptions()).getByRole('button', { name: 'Reiniciar el mismo duelo' }))
     expect(fakes[1]!.restart).toHaveBeenCalledWith()
     expect(dispatches).toBe(0)
   })
@@ -267,26 +267,16 @@ describe('la barra de la mesa es una sola', () => {
     expect(screen.getByRole('dialog', { name: 'Pasos y combos' })).toBeInTheDocument()
   })
 
-  it('la botonera de escritorio: «Automático» (prendido) abre «Seguir en modo manual», «Cadena» cambia las respuestas, «Pasos» oculta y muestra el panel, «Opciones» trae el resto de «Más opciones»', () => {
+  it('las herramientas de escritorio, dos cuadrados de 44 px: ≡ oculta y muestra los pasos y ⚙ abre Opciones (la vista 3D, los menús flotantes, la cadena, la casilla, el modo manual, reiniciar y, al final, Rendirse)', () => {
     desktop()
     const onManual = vi.fn()
     renderAuto(fakeSession(), () => {}, onManual)
-    const dock = screen.getByRole('group', { name: 'Botonera del duelo' })
-    const button = (name: RegExp) => within(dock).getByRole('button', { name })
+    const tools = screen.getByRole('group', { name: 'Botonera del duelo' })
+    const button = (name: RegExp) => within(tools).getByRole('button', { name })
 
-    expect(within(dock).getAllByRole('button').map((element) => element.textContent)).toEqual(['Automático', 'Cadena', 'Pasos', 'Opciones'])
-    // El modo de ahora: prendido (la vuelta, «Seguir en automático», está en el ⋯ de la práctica): tocarlo es «Seguir en modo manual» (sin una jugada tuya todavía, una mano nueva en la mesa manual, sin diálogo).
-    expect(button(/^Automático/)).toHaveAccessibleName('Automático: seguir en modo manual')
-    expect(button(/^Automático/)).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(button(/^Automático/))
-    expect(onManual).toHaveBeenCalledWith(null)
-
-    fireEvent.click(button(/^Cadena/))
-    const chain = screen.getByRole('dialog', { name: 'Respuestas a la cadena' })
-
-    fireEvent.click(within(chain).getByRole('radio', { name: 'Siempre' }))
-    expect(button(/^Cadena/)).toHaveAccessibleName('Cadena: Siempre')
-    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(within(tools).getAllByRole('button').map((element) => element.getAttribute('aria-label'))).toEqual(['Pasos y combos', 'Opciones'])
+    for (const element of within(tools).getAllByRole('button')) expect(element).toHaveClass('size-11')
+    expect(screen.queryByText('Automático')).toBeNull()
 
     expect(screen.getByRole('region', { name: 'Pasos y combos' })).toBeInTheDocument()
     fireEvent.click(button(/^Pasos/))
@@ -295,14 +285,17 @@ describe('la barra de la mesa es una sola', () => {
     fireEvent.click(button(/^Pasos/))
     expect(screen.getByRole('region', { name: 'Pasos y combos' })).toBeInTheDocument()
 
-    // Lo que tiene botón en la botonera no se repite en «Opciones».
-    fireEvent.click(button(/opciones/i))
-    const more = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+    // Opciones trae todo, con Rendirse al final.
+    fireEvent.click(button(/^Opciones/))
+    const more = screen.getByRole('dialog', { name: 'Opciones' })
 
+    expect(within(more).getAllByRole('switch').slice(0, 2).map((element) => element.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Menús flotantes'])
+    expect(within(more).getByRole('radiogroup', { name: 'Respuestas' })).toBeInTheDocument()
     expect(within(more).getByRole('radiogroup', { name: 'Casilla' })).toBeInTheDocument()
-    expect(within(more).queryByRole('radiogroup', { name: 'Respuestas' })).toBeNull()
-    expect(within(more).queryByRole('button', { name: 'Seguir en modo manual' })).toBeNull()
     expect(within(more).getByRole('button', { name: 'Reiniciar el mismo duelo' })).toBeInTheDocument()
+    expect(within(more).getAllByRole('button').at(-1)).toHaveAccessibleName('Rendirse')
+    fireEvent.click(within(more).getByRole('button', { name: 'Seguir en modo manual' }))
+    expect(onManual).toHaveBeenCalledWith(null)
   })
 
   it('la hoja de las handtraps de la práctica sigue diciendo que aplicar reparte otra mano', () => {

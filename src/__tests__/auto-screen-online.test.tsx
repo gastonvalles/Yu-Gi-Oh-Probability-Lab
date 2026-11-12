@@ -20,7 +20,7 @@ import { core, dispatches, handCard, lane, phaseButton } from './support/auto-sc
 import { CARDS, fakeSession, loc } from './support/auto-session-fake'
 import { createMemoryRoom } from './support/memory-room'
 import { render, tap } from './support/practice-mat-harness'
-import { tapMenu } from './support/mat-menu'
+import { openOptions } from './support/mat-menu'
 
 vi.mock(import('../app/use-toast-message'), async (importOriginal) => ({ ...(await importOriginal()), showToastMessage: vi.fn() }))
 
@@ -495,9 +495,9 @@ describe('auto-screen-online · la mesa', () => {
 
 describe('auto-screen-online · pasar a manual', () => {
   const moreOptions = () => {
-    tapMenu('Opciones del duelo')
+    openOptions()
 
-    return within(screen.getByRole('dialog', { name: 'Más opciones del duelo' }))
+    return within(screen.getByRole('dialog', { name: 'Opciones' }))
   }
   const prompt = () => screen.getByText(/quiere seguir el duelo en modo manual/).closest<HTMLElement>('[data-prompt]')!
 

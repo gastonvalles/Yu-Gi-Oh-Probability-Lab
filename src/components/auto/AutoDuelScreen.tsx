@@ -31,12 +31,13 @@ import { ResultCard } from '../duel/DuelResult'
 import type { FeedEntry } from '../duel/use-duel-feed'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNotice, useSignals } from '../duel/use-duel-table'
 import { cardIdOfDrawId } from '../probability/practice'
+import { PileGroupContext } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { Button } from '../ui/Button'
 import { SaveReplayDialog } from '../replays/SaveReplayDialog'
 import { Segmented } from '../ui/Segmented'
 import { AskPrompt } from './AskPrompt'
-import { chainModeHint, chainModeOptions, Setting } from './AutoBar'
+import { chainModeHint, chainModeOptions, OptionsGear, Setting } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckOf } from './deck-list'
 import { sentinel, useAutoAsks } from './use-auto-asks'
@@ -572,6 +573,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   )
   // El celular: las chapas, la línea (el registro con el aviso encima) y el chat en la botonera de abajo, no en la barra.
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
+  // El ⚙ de abajo a la derecha: Opciones (la vista 3D, los menús flotantes, lo de arriba y Rendirse al final: el mismo `concede` de la sala).
+  const gear = <OptionsGear concede={{ onConcede: duel.concede, text: t('duel.bar.concedeText', { name: rivalName }), disabled: result !== null || !snapshot.peerPresent }}>{settings}</OptionsGear>
   const chatToggle = <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} tile={phone} />
   const logTicker = <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />
   // Un duelo que sigue a uno manual arranca en el turno 1 del núcleo: se le suma lo que llevaban las mesas de arranque (en uno de cero, nada).
@@ -607,7 +610,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         onRematch={onRematch}
         onLeave={onLeave}
         onAbandon={onAbandon}
-        onConcede={duel.concede}
+        inOptions
         onReconnect={duel.reconnect}
         log={docked ? undefined : logTicker}
         resultOpen={resultOpen}
@@ -615,7 +618,6 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         rivalSignalKey={signals.theirsKey}
         lane={lane}
         turnNumber={turnNumber}
-        extraSettings={settings}
         {...(reason ? { resultReason: reason } : {})}
       />
     ),
@@ -630,7 +632,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     ) : null,
     ...(docked ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge active={!asks.turnMine} /> } : {}),
     ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
-    ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: chatToggle } : {}),
+    ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: <>{chatToggle}{gear}</> } : { dock: gear }),
     tools: null,
     // El chat: en escritorio, fijo a la derecha (con las reacciones); hasta 1100 px, en su panel (lo abre su botón de la barra), con las reacciones.
     aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
@@ -649,7 +651,9 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     // Tocar la mesa mientras cuenta una tanda la salta al final.
     <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
       <LifeHold value={asks.lifeHeld}>
-        <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={askUndo ? () => askUndo(true) : NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} rivalViewer={asks.rivalViewer} />
+        <PileGroupContext value>
+          <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={askUndo ? () => askUndo(true) : NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} rivalViewer={asks.rivalViewer} />
+        </PileGroupContext>
       </LifeHold>
       {asks.pieces}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />

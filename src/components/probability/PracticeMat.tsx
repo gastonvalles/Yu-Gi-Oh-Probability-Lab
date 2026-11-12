@@ -3247,6 +3247,12 @@ function PracticeMatBody({
                 </span>
               </div>
             ) : null}
+            {/* De 640 a 1100 px (sin la fila de abajo del celular): el ⚙ de Opciones, a la derecha de la franja de abajo de tu mano. */}
+            {!phone && duel?.dock && !splitReplay ? (
+              <div inert={choosing} className="absolute inset-y-0 right-0 flex items-center gap-2 *:pointer-events-auto">
+                {duel.dock}
+              </div>
+            ) : null}
             {splitReplay ? (
               <div className="pointer-events-auto absolute inset-x-0 bottom-0 grid">
                 <ReplayTransport total={replayMarks.length} cursor={session.cursor} playing={autoplay} playLabel={replayLabel} speed={speed} onTogglePlay={togglePlay} onRestart={restart} onPrevious={previousStep} onNext={nextStep} onSpeed={setSpeed} />

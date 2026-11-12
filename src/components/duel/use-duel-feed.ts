@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { ChatLine } from '../../app/duel-games'
+import { FRAME_FILL, frameKindOf, type FrameKind } from '../../app/card-frame'
 import { isChatLine, readDuelLog, writeDuelLog } from '../../app/duel-save'
 import type { DuelRole, DuelSnapshot } from '../../app/duel-session'
 import { opaqueOfForeign } from '../../app/mat-control'
@@ -16,7 +17,7 @@ import type { PlayerSide } from './player-color'
  * mi jugada; `peer`, cuántas jugadas llevaba el rival al anotarla; `turn`, el número del turno.
  */
 export type FeedEntry =
-  | { id: string; kind: 'event'; side: PlayerSide; text: string; act?: number; peer?: number }
+  | { id: string; kind: 'event'; side: PlayerSide; text: string; act?: number; peer?: number; /** El tipo de la carta de la jugada (su color de marco: `TypeMark`), si se sabe. */ frame?: FrameKind }
   | { id: string; kind: 'turn'; text: string; turn?: number }
   | { id: string; kind: 'chat'; line: ChatLine }
 
@@ -44,7 +45,7 @@ export function parseFeed(raw: unknown): FeedEntry[] | null {
 
     const text = typeof row.text === 'string' && row.text.length <= MAX_TEXT
 
-    return row.kind === 'turn' ? text && isCount(row.turn) : row.kind === 'event' && text && (row.side === 'mine' || row.side === 'theirs') && isCount(row.act) && isCount(row.peer)
+    return row.kind === 'turn' ? text && isCount(row.turn) : row.kind === 'event' && text && (row.side === 'mine' || row.side === 'theirs') && isCount(row.act) && isCount(row.peer) && (row.frame === undefined || (typeof row.frame === 'string' && Object.hasOwn(FRAME_FILL, row.frame)))
   })
 }
 
@@ -149,7 +150,11 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
 
       if (SILENT_ACTIONS.has(action.type)) continue
 
-      lines.push({ kind: 'event', side: 'mine', text: describeMatAction(replayMat(initial, actions, index), action, nameOf), act: index })
+      const card = 'id' in action ? cardsById.get(action.id) : undefined
+      const kind = card?.apiCard ? frameKindOf(card.apiCard.frameType, card.apiCard.cardType).kind : 'neutral'
+      const frame = kind === 'neutral' ? null : kind
+
+      lines.push({ kind: 'event', side: 'mine', text: describeMatAction(replayMat(initial, actions, index), action, nameOf), act: index, ...(frame ? { frame } : {}) })
     }
 
     if (lines.length > 0) push(...lines)

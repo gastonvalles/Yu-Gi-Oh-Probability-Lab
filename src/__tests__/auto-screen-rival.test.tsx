@@ -13,7 +13,7 @@ import { FLIGHT_MS } from '../app/use-card-flights'
 import { CARDS, fakeSession, pos, SPOTS, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, renderAuto, status } from './support/auto-screen-harness'
 import { render } from './support/practice-mat-harness'
-import { tapMenu } from './support/mat-menu'
+import { openOptions } from './support/mat-menu'
 
 // El rival de handtraps en la pantalla: con qué rival se arma el duelo, su mano boca arriba (o de dorso, «A ciegas») y cambiar las handtraps desde «Más opciones», que arma
 // el duelo de nuevo con la misma semilla.
@@ -52,9 +52,9 @@ function mount() {
 
 const rivalHand = () => screen.getByLabelText(/^Mano del rival:/)
 const more = () => {
-  tapMenu('Opciones del duelo')
+  openOptions()
 
-  return screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+  return screen.getByRole('dialog', { name: 'Opciones' })
 }
 
 afterEach(() =>

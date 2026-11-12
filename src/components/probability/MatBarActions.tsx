@@ -48,23 +48,23 @@ export const MatUndoContext = createContext<ReactNode>(null)
  * «La mesa», el primer grupo del menú ⋯ de toda mesa (la práctica, «Jugar solo automático» y el duelo por enlace): la vista 3D, los sonidos y la ventana grande (sólo en escritorio: en el celular la mesa
  * ya ocupa todo), cada uno con su interruptor. Vienen prendidos de fábrica (la vista 3D y los sonidos) y por eso no van a la vista ni en color: su estado se lee en el interruptor.
  */
-export function useMatTableItems(): OverflowItem[] {
+export function useMatTableItems(view3d = true): OverflowItem[] {
   const view = useMatView()
   const sounds = useSoundsOn()
   const bigWindow = useDuelFullscreen()
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
 
   return [
-    { group: t('practice.mat.groupTable'), label: t('practice.view.3d'), icon: 'cube', checked: view === '3d', onSelect: () => setMatView(view === '3d' ? 'top' : '3d') },
-    { label: t('practice.mat.sounds'), icon: sounds ? 'volume' : 'volume-off', checked: sounds, onSelect: () => setSoundsOn(!sounds) },
+    ...(view3d ? [{ group: t('practice.mat.groupTable'), label: t('practice.view.3d'), icon: 'cube', checked: view === '3d', onSelect: () => setMatView(view === '3d' ? 'top' : '3d') } satisfies OverflowItem] : []),
+    { ...(view3d ? {} : { group: t('practice.mat.groupTable') }), label: t('practice.mat.sounds'), icon: sounds ? 'volume' : 'volume-off', checked: sounds, onSelect: () => setSoundsOn(!sounds) },
     // Ventana grande: sin el menú lateral y, si el navegador deja, en pantalla completa. Es de la mesa: se apaga al salir de ella.
     ...(isDesktop ? [{ label: t('duel.bar.bigWindowOn'), icon: bigWindow ? 'minimize' : 'maximize', checked: bigWindow, onSelect: toggleDuelFullscreen } satisfies OverflowItem] : []),
   ]
 }
 
 /** El ⋯ de la barra de la mesa (blanco de 44 px; lima al apuntarlo, al enfocarlo o abierto): «La mesa» y lo de cada una, en grupos. */
-export function MatMoreMenu({ items, lead = [], defaultOpen = false }: { items: OverflowItem[]; /** Lo que va antes de «La mesa» («Pasos y combos»). */ lead?: OverflowItem[]; /** Abierto de entrada (la muestra del catálogo). */ defaultOpen?: boolean }) {
-  return <OverflowMenu trigger="bar" label={t('practice.mat.more')} items={[...lead, ...useMatTableItems(), ...items]} defaultOpen={defaultOpen} />
+export function MatMoreMenu({ items, lead = [], defaultOpen = false, view = true }: { items: OverflowItem[]; /** Lo que va antes de «La mesa» («Pasos y combos»). */ lead?: OverflowItem[]; /** Abierto de entrada (la muestra del catálogo). */ defaultOpen?: boolean; /** Sin esto, no lleva la vista 3D (en un duelo automático va en Opciones, el ⚙). */ view?: boolean }) {
+  return <OverflowMenu trigger="bar" label={t('practice.mat.more')} items={[...lead, ...useMatTableItems(view), ...items]} defaultOpen={defaultOpen} />
 }
 
 const NOTHING = () => {}
@@ -88,6 +88,8 @@ interface MatBarActionsProps {
   className?: string
   /** El ⋯ abierto de entrada (la muestra del catálogo). */
   menuOpen?: boolean
+  /** Sin esto, el ⋯ no lleva la vista 3D (un duelo automático la tiene en Opciones). */
+  view?: boolean
 }
 
 /**
@@ -103,7 +105,7 @@ interface MatBarActionsProps {
  * - Usos: la barra de la práctica (`PracticeMat`), la de «Jugar solo automático» (`AutoBar`: en el celular, en escritorio y con laterales) y la muestra del catálogo; la del duelo por enlace (`DuelBar`)
  *   arma su ⋯ con el mismo grupo «La mesa» (`MatMoreMenu`).
  */
-export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, rival, onSave, canSave = false, more = [], className, menuOpen = false }: MatBarActionsProps) {
+export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, rival, onSave, canSave = false, more = [], className, menuOpen = false, view = true }: MatBarActionsProps) {
   const fromMat = useContext(MatSaveContext)
   const rules = useContext(MatRulesContext)
   const openSteps = useContext(MatStepsContext)
@@ -119,6 +121,7 @@ export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, rival, 
       </IconButton>
       <MatMoreMenu
         defaultOpen={menuOpen}
+        view={view}
         lead={openSteps ? [{ label: t('practice.mat.stepsAndCombos'), icon: 'list', opens: true, onSelect: openSteps }] : []}
         items={[
           rival
