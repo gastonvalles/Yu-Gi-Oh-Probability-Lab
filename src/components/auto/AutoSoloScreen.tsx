@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
-import type { ChainLink } from '../../app/auto/adapter'
+import type { CardRef, ChainLink } from '../../app/auto/adapter'
+import type { MatSession } from '../../app/use-mat-session'
 import { namesList } from '../../app/auto/ask-ui'
 import { createDataLoader, httpSource } from '../../app/auto/auto-data'
 import { createAutoSession, workerTransport, type AutoSession, type SessionOptions } from '../../app/auto/auto-session'
@@ -17,12 +18,13 @@ import { autoRival, BOT_DECK_MENU, dealRival, isBotModified, poolCount, readHand
 import { botDeckList } from '../../app/bot-deck-lists'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { LifeHold } from '../../app/life-effects'
+import { lifeText, MOMENT_MS, momentText } from '../../app/duel-moment'
 import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
 import type { ReplayView } from '../../app/duel-replay'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { ResultHero } from '../duel/DuelBanner'
-import { DuelLine } from '../duel/DuelBar'
+import { DuelLine, type LaneNotice } from '../duel/DuelBar'
 import { LifeBadge } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { HandtrapPicker } from '../duel/HandtrapPool'
@@ -388,8 +390,10 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     [phone, rails, docked, life.mine, turnText, turnMine],
   )
   const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} active={phone ? !turnMine : undefined} /> : undefined), [seated, rivalName, life.theirs, phone, turnMine])
-  // La línea, sólo con un aviso: sin él, la mesa pone la pista de fases (nunca queda vacía).
-  const line = useMemo(() => (phone && lane ? <DuelLine lane={lane} rivalName={rivalName} /> : undefined), [phone, lane, rivalName])
+  // La línea, sólo con un aviso o un momento (invocar, atacar, el daño: `duel-moment.ts`, 1,5 s): sin ellos, la mesa pone la pista de fases (nunca queda vacía). El momento sólo se dice: nada lo espera.
+  const moment = useMoment(asks.matSession, life, snap.initial, reviewing, cardsById, nameOf)
+  const shownLane = useMemo<LaneNotice | null>(() => lane ?? (moment ? { kind: 'ask', text: moment, actions: [] } : null), [lane, moment])
+  const line = useMemo(() => (phone && shownLane ? <DuelLine lane={shownLane} rivalName={rivalName} /> : undefined), [phone, shownLane, rivalName])
   const toggleSteps = useCallback(() => setStepsOpen((open) => !open), [])
   const dock = useMemo(() => (docked ? <AutoDock {...options} steps={{ open: stepsOpen, onToggle: toggleSteps }} /> : undefined), [docked, options, stepsOpen, toggleSteps])
   const link: DuelMatLink = {
@@ -477,6 +481,37 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       />
     </div>
   )
+}
+
+/**
+ * El momento que dice la línea (`duel-moment.ts`): cuando la mesa avanza una jugada que es invocar o atacar, su frase; cuando cambian las vidas, el daño, sumado al momento que todavía se lee
+ * («… · Rival −500»). Cada uno, `MOMENT_MS`. Repasar, saltar varias jugadas de una o rearmar la mesa (otra mano, deshacer) no dicen nada.
+ */
+function useMoment(session: MatSession, life: { mine: number; theirs: number }, initial: unknown, reviewing: boolean, cardsById: ReadonlyMap<string, MatCard>, nameOf: (ref: CardRef | null, code?: number) => string): string | null {
+  const [moment, setMoment] = useState<{ text: string; at: number } | null>(null)
+  const seen = useRef({ cursor: session.cursor, life, initial })
+  const { cursor } = session
+
+  useEffect(() => {
+    const before = seen.current
+
+    seen.current = { cursor, life, initial }
+    if (reviewing || before.initial !== initial) return
+    const play = cursor === before.cursor + 1 ? momentText(session.initial, session.actions, cursor, (id) => cardsById.get(id)?.name ?? nameOf({ side: 'theirs', id })) : null
+    const hurt = before.life.mine > 0 && before.life.theirs > 0 ? lifeText([{ label: t('duel.bar.rivalTag'), delta: life.theirs - before.life.theirs }, { label: t('duel.bar.you'), delta: life.mine - before.life.mine }]) : null
+
+    if (play) setMoment({ text: hurt ? `${play} · ${hurt}` : play, at: Date.now() })
+    else if (hurt) setMoment((last) => ({ text: last && Date.now() - last.at < MOMENT_MS ? `${last.text} · ${hurt}` : hurt, at: Date.now() }))
+  }, [cursor, life, initial, reviewing, session, cardsById, nameOf])
+
+  useEffect(() => {
+    if (!moment) return
+    const timer = window.setTimeout(() => setMoment(null), MOMENT_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [moment])
+
+  return reviewing ? null : (moment?.text ?? null)
 }
 
 /** El final: quién ganó y por qué, «Qué hizo el bot», «Guardar replay» y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */

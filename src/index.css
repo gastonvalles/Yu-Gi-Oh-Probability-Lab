@@ -40,6 +40,11 @@
   --text-stat--line-height: 1.15;
   --text-display: 2.75rem;
   --text-display--line-height: 1.1;
+  /* Aparte (como `text-score`), el daño de un golpe junto a la chapa de vidas (`LifeBadge`): 64 px en el celular y 84 desde 1101. */
+  --text-hit: 4rem;
+  --text-hit--line-height: 1;
+  --text-hit-lg: 5.25rem;
+  --text-hit-lg--line-height: 1;
 
   /* Radios: etiqueta (8) · control (12: chips, botones chicos, campos) · tarjeta (16) · panel (24: tarjeta destacada, barra inferior, diálogos) · píldora. */
   --radius-tag: 0.5rem;
@@ -198,9 +203,12 @@
   --animate-slash-in: slash-in 120ms var(--ease-out) forwards;
   /* Se apaga: el trazo de un eslabón que se fue y lo que queda de la cadena al final. */
   --animate-fade-out: fade-out 200ms var(--ease-out) forwards;
-  /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida) y el «−N ▼» sube 30 px y se funde. */
+  /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida) y el «−N ▼» entra grande (1,6 → 1), se sostiene, sube 24 px y se funde. */
   --animate-life-bump: life-bump 240ms var(--ease-out);
-  --animate-life-delta: life-delta 1400ms var(--ease-out) both;
+  --animate-life-delta: life-delta 1500ms var(--ease-out) both;
+  /* La carta que un ataque saca del campo se parte en dos (`AttackFx`): las mitades del eslabón, más lentas. */
+  --animate-card-split-a: split-a 520ms var(--ease-out) forwards;
+  --animate-card-split-b: split-b 520ms var(--ease-out) forwards;
 
   /* Brillo de carga: sólo se mueve un degradé con transform (compuesto en la GPU, sin repintar). */
   @keyframes shimmer {
@@ -1171,14 +1179,24 @@
   }
 
   @keyframes life-delta {
-    from {
+    0% {
+      opacity: 0;
+      transform: scale(1.6);
+    }
+
+    12% {
       opacity: 1;
       transform: none;
     }
 
-    to {
+    70% {
+      opacity: 1;
+      transform: none;
+    }
+
+    100% {
       opacity: 0;
-      transform: translateY(-30px);
+      transform: translateY(-24px);
     }
   }
 }

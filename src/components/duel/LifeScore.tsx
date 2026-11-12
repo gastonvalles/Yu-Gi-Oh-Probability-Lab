@@ -157,8 +157,9 @@ const BADGE_TAG = { mine: 'bg-primary text-white', theirs: 'bg-info text-backgro
  * La chapa de vidas del duelo (Gastón, 2026-11-10: el diseño de la mesa del celular, como Master Duel): junto a cada lado de la mesa, la del rival arriba a la derecha y la tuya abajo a la izquierda (en
  * escritorio, a los costados del campo). Recta, con fondo carbón al 82 % en alfa plano (sin desenfoque: el texto blanco pasa AA sobre el remolino) y el borde del dueño; arriba la etiqueta («Vos» violeta,
  * «Rival» lima) y, si se da, el turno (`turn`); abajo, el número de 33 px.
- * - **El cambio de vidas:** el número crece a 1,08 y vuelve (`animate-life-bump`) y al lado sale «−1100 ▼» que sube y se funde (`animate-life-delta`): rojo si te conviene poco (tu daño, lo que el rival
- *   gana), menta si te conviene (el daño al rival, lo que ganás). Sólo `transform`/`opacity`; con movimiento reducido el «−1100» queda quieto y se va solo. Lo anuncia el lector de pantalla (`aria-live`).
+ * - **El cambio de vidas:** el número crece a 1,08 y vuelve (`animate-life-bump`) y sale «−1100 ▼» en grande (`text-hit`, 64 px; 84 desde 1101), que entra de 1,6, se sostiene, sube y se funde en 1,5 s
+ *   (`animate-life-delta`): el del rival a la izquierda de su chapa, sobre su mano; el tuyo arriba de tu chapa (nunca sobre el botón del turno). Rojo si te conviene poco (tu daño, lo que el rival
+ *   gana), menta si te conviene (el daño al rival, lo que ganás). Sólo `transform`/`opacity`; con movimiento reducido aparece quieto y se va solo. Lo anuncia el lector de pantalla (`aria-live`).
  * - Crítico (2000 o menos) y en 0, el número en rojo. `onClick` (el duelo manual): un botón de 44 px que abre la calculadora. `bubble`: la señal de su dueño, como en `LifeScore`.
  * - Usos: los duelos (manual, por enlace y automático) en el celular y en las esquinas del campo en escritorio; la marca y la fila de 640 a 1100 px siguen con `LifeScore`.
  */
@@ -227,9 +228,19 @@ export const LifeBadge = memo(function LifeBadge({
           </span>
         </span>
         {change ? (
-          // Flota al costado del número (no ensancha la chapa ni corre nada): hacia la mesa, a la derecha la tuya y a la izquierda la del rival.
-          <span key={`delta-${change.key}`} aria-hidden="true" data-life-delta={good ? 'good' : 'bad'} className={cx('pointer-events-none absolute z-30 animate-life-delta whitespace-nowrap text-lead font-extrabold tabular-nums motion-reduce:animate-none', align === 'end' ? 'right-full mr-3' : 'left-full ml-3', good ? 'text-success' : 'text-danger-soft')}>
-            {deltaText} {change.delta < 0 ? '▼' : '▲'}
+          // En grande y sin ocupar lugar (no ensancha la chapa ni corre nada): el del rival a su izquierda, sobre su mano (son dorsos); el tuyo arriba de tu chapa, nunca sobre el botón del turno.
+          <span
+            key={`delta-${change.key}`}
+            aria-hidden="true"
+            data-life-delta={good ? 'good' : 'bad'}
+            className={cx(
+              'pointer-events-none absolute z-30 flex animate-life-delta items-center gap-1 whitespace-nowrap text-hit font-extrabold tabular-nums drop-shadow-[0_2px_6px_rgb(0_0_0/0.7)] motion-reduce:animate-none min-[1101px]:text-hit-lg',
+              mine ? 'bottom-full left-0 mb-6 origin-bottom-left' : 'right-full mr-3 origin-right',
+              good ? 'text-success' : 'text-danger-soft',
+            )}
+          >
+            {deltaText}{' '}
+            <span className="text-title min-[1101px]:text-stat">{change.delta < 0 ? '▼' : '▲'}</span>
           </span>
         ) : null}
       </span>

@@ -30,7 +30,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 
 ## 3. Tokens
 
-- **Texto:** `text-foreground` → `text-muted` → `text-soft` (`*-soft` sobre fondos teñidos), en seis tamaños (`text-micro`, de 12 px, … `text-display`; aparte, `text-score`, el número de la calculadora de vidas) y nunca `text-[…]`.
+- **Texto:** `text-foreground` → `text-muted` → `text-soft` (`*-soft` sobre fondos teñidos), en seis tamaños (`text-micro`, de 12 px, … `text-display`; aparte, `text-score` (calculadora) y `text-hit` (daño)) y nunca `text-[…]`.
 - **Radios, sombras y espacio:** `rounded-tag/control/card/panel` (rectos en la mesa y sus hojas: `mat-square`); `shadow-card/overlay/focus` (un foco); la escala de Tailwind (base 4 px, 16 px entre bloques), `px-gutter` en el celular y `max-w-content`.
 - **Movimiento:** las curvas, qué se anima y cómo no trabar la mesa, en `docs/movimiento.md`.
 - **Objetivos táctiles de 44 px** con puntero táctil (`pointer-coarse`), salvo la mesa (las pilas, la mano no jugable y las fases miden por el campo) y los campos dentro de un `FieldBox` (el `label` es toda la tarjeta).
