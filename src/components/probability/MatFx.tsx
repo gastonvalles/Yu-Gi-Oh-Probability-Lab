@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { PickStat } from '../../app/auto/ask-ui'
@@ -573,9 +573,7 @@ function showArtAtOnce(face: HTMLElement): () => void {
  * resplandor y la onda esperan a que llegue. El CSS de la carta (`animate-card-activate-*`) queda sólo para la espera y la salida: `--stage-entered` le saca la
  * entrada. Sin ninguna carta a la vista (o con movimiento reducido) no se toca nada: aparecen en el centro como siempre.
  */
-function useStageTravel(origin: SpotlightProps['origin']) {
-  const rootRef = useRef<HTMLDivElement | null>(null)
-
+function useStageTravel(rootRef: RefObject<HTMLDivElement | null>, origin: SpotlightProps['origin']) {
   useLayoutEffect(() => {
     const root = rootRef.current
 
@@ -586,7 +584,9 @@ function useStageTravel(origin: SpotlightProps['origin']) {
     root.style.setProperty('--stage-entered', '1')
 
     const bounds = root.getBoundingClientRect()
-    const inside = (pose: CardPose) => pose.width >= 1 && pose.height >= 1 && pose.x >= bounds.left && pose.x <= bounds.right && pose.y >= bounds.top && pose.y <= bounds.bottom
+    // En el celular la caja termina en la fila del medio (`useStageRoom`): una carta tuya, más abajo, igual sale de su lugar (abajo vale la mesa entera).
+    const bottom = Math.max(bounds.bottom, root.parentElement?.getBoundingClientRect().bottom ?? 0)
+    const inside = (pose: CardPose) => pose.width >= 1 && pose.height >= 1 && pose.x >= bounds.left && pose.x <= bounds.right && pose.y >= bounds.top && pose.y <= bottom
     const faces = [...root.querySelectorAll<HTMLElement>('[data-stage-card]')].map((face) => {
       const pose = origin(face.dataset.stageCard ?? '')
 
@@ -624,8 +624,19 @@ function useStageTravel(origin: SpotlightProps['origin']) {
     // Sólo al aparecer: el nombre que llega después (la carta del rival) no la hace viajar de nuevo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+}
 
-  return rootRef
+/**
+ * En el celular la carta grande va arriba de la fila del medio, nunca encima de la línea de la cadena (Gastón, «Las 7»: «la cadena siempre a la vista»): la caja termina donde empieza esa fila
+ * (`--stage-room`, que usa `max-sm:`; medida en pantalla, así en 3D es la fila como se ve). Sin campo (el catálogo), la mesa entera. Se mide una vez, antes del viaje: el campo no se mueve.
+ */
+function useStageRoom(rootRef: RefObject<HTMLDivElement | null>) {
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    const row = root?.parentElement?.querySelector('[data-drop="emz:0"]')
+
+    if (root && row) root.style.setProperty('--stage-room', `${Math.max(0, row.getBoundingClientRect().top - root.getBoundingClientRect().top)}px`)
+  }, [rootRef])
 }
 
 /** El resplandor de cada carta del centro (el color del paso, con una sombra abajo). */
@@ -646,21 +657,33 @@ const STAGE_CARD_WIDTH_WITH_DETAIL = 'w-[min(34cqw,10.5rem)]'
 export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, origin, className }: SpotlightProps) {
   const tone = STAGE_TONE[kind]
   const shown = cards.slice(0, 4)
-  const rootRef = useStageTravel(origin)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useStageRoom(rootRef)
+  useStageTravel(rootRef, origin)
 
   return (
-    <div ref={rootRef} data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className)} style={fxVars(tone)}>
+    <div
+      ref={rootRef}
+      data-activation={shown[0]?.id}
+      data-kind={kind}
+      aria-hidden="true"
+      // En el celular, apoyada sobre la fila del medio (como la lámina): arriba queda la barra a la vista.
+      className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className, 'max-sm:bottom-auto max-sm:h-[var(--stage-room,100%)] max-sm:items-end max-sm:pb-2')}
+      style={fxVars(tone)}
+    >
       <span data-stage-glow className="absolute left-1/2 top-1/2 aspect-square w-[min(100cqw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
       <span data-stage-glow className="absolute left-1/2 top-1/2 aspect-square w-[min(56cqw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 motion-reduce:hidden" />
-      <div className={cx('relative motion-reduce:animate-none', detail ? 'animate-card-activate-read' : linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
+      {/* En el celular el efecto escrito va al lado de la carta, no debajo: el conjunto entra arriba de la fila del medio. */}
+      <div className={cx('relative motion-reduce:animate-none', detail ? 'animate-card-activate-read max-sm:flex max-sm:items-start max-sm:gap-2' : linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
         {caption ? (
-          <span data-stage-text className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
+          <span data-stage-text className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] max-sm:mb-1.5 -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
             {caption}
           </span>
         ) : null}
         <div className="flex items-start justify-center gap-3">
           {shown.map((card) => (
-            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
+            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2 max-sm:max-w-23', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
               {/* Dos caras: la de adelante (la carta) y la de atrás (el dorso), que se muestra primero y se da vuelta en 3D. */}
               <div data-stage-card={card.id} className="relative aspect-[421/614] w-full [perspective:900px]">
                 <div className={cx('absolute inset-0 [transform-style:preserve-3d]', flip && 'animate-fx-flip-in motion-reduce:animate-none')}>
@@ -681,9 +704,10 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
         </div>
         {/* El efecto que activa el rival (Gastón, 2026-10-20: «sería ideal que el rival pueda ver qué efecto estoy activando»): cuándo se activa y qué hace, tal cual el texto de la carta. */}
         {detail ? (
-          <div data-stage-text className="mx-auto mt-3 grid w-[min(88cqw,24rem)] gap-0.5 rounded-card border border-[color:rgb(var(--fx-rgb)/0.6)] bg-background/92 px-3 py-2 text-left">
-            <p className="m-0 text-micro font-bold text-info-soft">{detail.lead}</p>
-            <p className="m-0 line-clamp-6 text-body font-semibold leading-snug text-foreground">{detail.text}</p>
+          <div data-stage-text className="mx-auto mt-3 grid w-[min(88cqw,24rem)] gap-0.5 rounded-card border border-[color:rgb(var(--fx-rgb)/0.6)] bg-background/92 px-3 py-2 text-left max-sm:mx-0 max-sm:mt-0 max-sm:w-[min(60cqw,16rem)]">
+            <p className="m-0 text-micro font-bold text-info-soft max-sm:line-clamp-2">{detail.lead}</p>
+            {/* En el celular, tres renglones: tiene que entrar arriba de la fila del medio (el texto entero está en la ficha). */}
+            <p className="m-0 line-clamp-6 text-body font-semibold leading-snug text-foreground max-sm:line-clamp-3">{detail.text}</p>
           </div>
         ) : null}
       </div>

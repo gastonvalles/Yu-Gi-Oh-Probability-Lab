@@ -36,8 +36,10 @@ export interface ChainNoticeRow {
 export const STATE_TONE: Record<ChainRowState, Tone> = { chained: 'neutral', solving: 'info', solved: 'success', negated: 'danger', disabled: 'warning' }
 /** El ícono de cada tono de estado: el chip se lee por el texto (en la cinta, por su nombre accesible); el ícono y el color lo refuerzan, y el color nunca va solo. */
 export const CHIP_ICON: Record<Tone, IconName> = { neutral: 'timer', brand: 'link', info: 'play', success: 'check', warning: 'ban', danger: 'x' }
-export const stateLabel = ({ state, by, outcome }: Pick<ChainNoticeRow, 'state' | 'by' | 'outcome'>) =>
-  outcome?.label ?? (by ? t('auto.chain.by', { state: t(`auto.chain.state.${state}`), by }) : t(`auto.chain.state.${state}`))
+/** Con `byName` (la línea del celular, que tiene lugar), quién lo negó se dice con el nombre de su carta: «Negada por Ash Blossom». */
+export const stateLabel = ({ state, by, outcome }: Pick<ChainNoticeRow, 'state' | 'by' | 'outcome'>, byName?: string) =>
+  outcome?.label ??
+  (by ? t(byName ? 'auto.chain.byCard' : 'auto.chain.by', { state: t(`auto.chain.state.${state}`), by, card: byName ?? '' }) : t(`auto.chain.state.${state}`))
 /** El chip de lo que hizo un eslabón resuelto («Añade 1 carta», «Invoca 2 monstruos»): verde como «Resuelta», que es lo que sigue siendo. */
 export const outcomeChip = ({ kind, count }: ChainOutcome): NonNullable<ChainNoticeRow['outcome']> => ({ label: t(`auto.chain.outcome.${kind}`, { count }), tone: 'success' })
 export const colorOf = (mine: boolean) => PLAYER_COLOR[mine ? 'mine' : 'theirs']
@@ -229,8 +231,8 @@ function lookAfter(looks: Looks, cue: Cue): Looks {
 /**
  * La cadena como cadena: cada efecto es un eslabón hexagonal recto, entrelazado con el siguiente (se pisan 14 px), de izquierda a derecha CL1, CL2… (en el DOM, en el orden en que se resuelven:
  * el último primero). Cada uno, un botón con su nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»): el número en el color de su dueño, la carta (si entran menos de cuatro), su
- * nombre recortado y su estado («Nuevo», «En espera», «Resolviendo», «Sin efecto · por CL3», «Destierra 1 carta»). El borde, del color del dueño; el que resuelve, con la capa lima; lo resuelto,
- * menta; lo negado, rojo con un tajo; «sin efecto», apagado. Hasta `LINKS_SHOWN` a la vista y «+N».
+ * nombre recortado y su estado («Nuevo», «En espera», «Resolviendo», «Sin efecto · por CL3», «Destierra 1 carta»). El borde, del color del dueño; el que resuelve, lleno de lima con el texto en
+ * carbón; lo resuelto, menta; lo negado, rojo con un tajo; «sin efecto», apagado (los dos se quedan `READ_MS` antes de soltarse, para leerlos). Hasta `LINKS_SHOWN` a la vista y «+N».
  * El movimiento (`useChainCues`, los tiempos en `app/chain-motion.ts`): encaja (`animate-link-in`); al resolverse sube y se ilumina (`animate-rise`, `animate-glow-in`) y los de cada lado tiran
  * hacia él (`animate-pull-l`/`-r`); se suelta partiéndose en dos (`animate-split-a`/`-b`, el rótulo con `animate-split-fade`), el negado tras su tajo (`animate-slash-in`), y el que quedó sin
  * efecto se desliza abajo (`animate-slide-off`); terminada, lo que queda se disuelve (`animate-fade-out`). Lo que se fue deja de dibujarse. Con movimiento reducido (o `still`, el catálogo) nada se
@@ -272,20 +274,22 @@ export function ChainLinks({ rows, onPick, done = false, id, className, still = 
             key={n}
             data-link={n}
             aria-current={solving ? 'step' : undefined}
-            className={cx('relative -ml-3.5 h-full max-h-16 min-w-0 max-w-32 flex-1 basis-0 last:ml-0', link.state === 'disabled' && 'opacity-45', slides ? 'animate-slide-off motion-reduce:animate-none' : (pull ?? (looks.entering.includes(n) && 'animate-link-in motion-reduce:animate-none')))}
+            className={cx('relative -ml-3.5 h-full max-h-16 min-w-0 max-w-32 flex-1 basis-0 last:ml-0', slides ? 'animate-slide-off motion-reduce:animate-none' : (pull ?? (looks.entering.includes(n) && 'animate-link-in motion-reduce:animate-none')))}
           >
             <span className={cx('absolute inset-0', solving && 'animate-rise motion-reduce:animate-none')}>
               {(['a', 'b'] as const).map((half) => (
-                <span key={half} aria-hidden="true" className={cx('absolute inset-0', HALF[half], splits && SPLIT[half])}>
+                // «Sin efecto» se apaga el eslabón, no su texto: se tiene que poder leer.
+                <span key={half} aria-hidden="true" className={cx('absolute inset-0', HALF[half], link.state === 'disabled' && 'opacity-45', splits && SPLIT[half])}>
                   <span className={cx('absolute inset-0', HEX, color.bar)} />
                   <span className={cx('absolute inset-0.75 bg-card-background', HEX)} />
                   <span className={cx('absolute top-1/2 h-2/5 w-4.5 -translate-y-1/2 bg-background', HOLE, half === 'a' ? 'left-1.5' : 'right-1.5')} />
                 </span>
               ))}
-              {/* La capa del estado, ya dibujada: se enciende con `opacity` (una por estado, así cada cambio la vuelve a encender). */}
+              {/* La capa del estado, ya dibujada: se enciende con `opacity` (una por estado, así cada cambio la vuelve a encender). El que resuelve, lleno de lima: lo único lima de la línea
+                  (el borde del rival también es lima: un aro no alcanzaba). Lo demás, un aro. */}
               {ring ? (
                 <span key={link.state} aria-hidden="true" className={cx('absolute -inset-0.75', HEX, ring, splits ? 'animate-split-fade motion-reduce:animate-none' : 'animate-glow-in motion-reduce:animate-none')}>
-                  <span className={cx('absolute inset-1 bg-card-background', HEX)} />
+                  {solving ? null : <span className={cx('absolute inset-1 bg-card-background', HEX)} />}
                 </span>
               ) : null}
               <button
@@ -294,15 +298,15 @@ export function ChainLinks({ rows, onPick, done = false, id, className, still = 
                 className={cx('absolute inset-0 z-1 flex items-center gap-1 pl-4 pr-3 text-left focus-visible:outline-none focus-visible:shadow-focus', splits && 'animate-split-fade motion-reduce:animate-none')}
                 onClick={(event) => onPick(rows.indexOf(link), event.currentTarget.getBoundingClientRect())}
               >
-                <span className={cx('shrink-0 px-0.5 text-micro font-extrabold tabular-nums text-white', color.bubble)}>{`CL${n}`}</span>
+                <span className={cx('shrink-0 px-0.5 text-micro font-extrabold tabular-nums text-white', solving ? 'bg-background' : color.bubble)}>{`CL${n}`}</span>
                 {shown.length < LINKS_SHOWN ? (
                   <span className="relative block aspect-[421/614] h-4/5 max-h-10 shrink-0 overflow-hidden bg-input">
                     <CardArt remoteUrl={link.art} name={link.name} className={cx('block h-full w-full object-cover', voided && VOIDED_ART)} />
                   </span>
                 ) : null}
                 <span className="grid min-w-0 leading-tight">
-                  <span className={cx('truncate text-micro font-semibold text-foreground', link.state === 'negated' && 'line-through')}>{link.name}</span>
-                  <span className={cx('truncate text-micro', solving ? 'text-info' : link.state === 'solved' ? 'text-success-soft' : voided ? 'text-danger-soft' : 'text-muted')}>{fresh ? t('auto.chain.fresh') : stateLabel(link)}</span>
+                  <span className={cx('truncate text-micro font-semibold', solving ? 'text-background' : 'text-foreground', link.state === 'negated' && 'line-through')}>{link.name}</span>
+                  <span className={cx('truncate text-micro', solving ? 'font-semibold text-background' : link.state === 'solved' ? 'text-success-soft' : voided ? 'text-danger-soft' : 'text-muted')}>{fresh ? t('auto.chain.fresh') : stateLabel(link)}</span>
                 </span>
               </button>
               {link.state === 'negated' ? (

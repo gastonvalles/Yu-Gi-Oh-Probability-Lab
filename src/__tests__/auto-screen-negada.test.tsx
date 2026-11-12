@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { CardRef } from '../app/auto/adapter'
-import { CHAIN_LINK_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
+import { CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { pos } from './support/auto-session-fake'
 import { core, handCard, lane, renderAuto } from './support/auto-screen-harness'
@@ -58,6 +58,8 @@ describe('auto-screen · la cadena negada', () => {
     core(() => fake.set({ chainSteps: chain }))
     act(() => vi.advanceTimersByTime(0))
     for (let i = 0; i < 4; i += 1) act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
+    // Cada negada se queda a leer (TI-172).
+    act(() => vi.advanceTimersByTime(2 * CHAIN_READ_MS))
     expect(handCard('Ash Blossom, eslabón 1 de la cadena, activada desde la mano. Negada').querySelector('.grayscale')).toHaveClass('motion-safe:animate-fx-void')
     expect(screen.getByRole('button', { name: 'GY: 1, eslabón 2 de la cadena. Negada' }).querySelector('.grayscale')).toHaveClass('motion-safe:animate-fx-void')
     expect(grayed()).toHaveLength(2)

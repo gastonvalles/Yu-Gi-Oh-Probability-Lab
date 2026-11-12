@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AskPrompt } from '../components/auto/AskPrompt'
 import type { PickCard } from '../components/auto/CardPicker'
-import { ChainNotice, type ChainNoticeRow } from '../components/auto/ChainNotice'
+import { ChainLine, ChainNotice, type ChainNoticeRow } from '../components/auto/ChainNotice'
 import { RespondBand } from '../components/auto/RespondBand'
 import { PLAYER_COLOR } from '../components/duel/player-color'
 import { SheetHost, type SheetYield } from '../components/ui/BottomSheet'
@@ -354,5 +354,23 @@ describe('ChainNotice desplegada en escritorio (como abre cada cadena)', () => {
   it('plegada: el eslabón y de quién arriba; debajo, su estado con quién lo negó, sin el nombre; la cuenta, porque no es ese número', () => {
     expect(pill([{ ...PONIX, state: 'disabled', by: 2 }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true, compact: false }).status).toHaveTextContent(/^Cadena · 2 · CL1 · VosSin efecto · por CL2$/)
     expect(screen.getByRole('button', { name: 'Ver la cadena' })).toHaveAttribute('aria-expanded', 'false')
+  })
+})
+
+describe('la línea del celular (`ChainLine`)', () => {
+  it('lo negado o sin efecto se lee con el nombre de la carta que lo hizo (TI-172): «Negada por Ash Blossom»; sin saber quién, sólo el estado', () => {
+    const line = (rows: ChainNoticeRow[], focus: number) =>
+      render(
+        <Provider store={store}>
+          <ChainLine rows={rows} focus={focus} still onPick={() => {}} />
+        </Provider>,
+      )
+
+    line([{ ...PONIX, state: 'negated', by: 2 }, { ...ASH, state: 'solving' }], 0)
+    expect(screen.getByRole('status')).toHaveTextContent(/^Cadena · 2CL1 · Negada por Ash Blossom$/)
+    // El eslabón, angosto, sigue diciendo «por CL2».
+    expect(screen.getByRole('button', { name: 'Eslabón 1: Ponix, tuyo. Negada · por CL2' })).toBeInTheDocument()
+    line([{ ...PONIX, state: 'disabled' }, { ...ASH, state: 'solving' }], 0)
+    expect(screen.getAllByRole('status')[1]).toHaveTextContent(/^Cadena · 2CL1 · Sin efecto$/)
   })
 })

@@ -48,7 +48,7 @@ type Ending = Variant | 'solved'
 
 /**
  * La cadena animada con el trazo en la mesa: «Encadenar» suma un eslabón (hasta cuatro), «Resolver» la resuelve de atrás para adelante con el guion de `resolveSchedule` (750 ms por eslabón y 200
- * de cierre: 2,45 s con tres) y «Repetir» la arma y la resuelve de nuevo. La línea es la del celular (`ChainLine`, 96 px de alto) y el campo, un tapete de siete por cinco de arriba o en 3D.
+ * de cierre: 2,45 s con tres; lo negado, 1,6 s más) y «Repetir» la arma y la resuelve de nuevo. La línea es la del celular (`ChainLine`, 96 px de alto) y el campo, un tapete de siete por cinco de arriba o en 3D.
  */
 function ChainMotionSample() {
   const [rows, setRows] = useState<ChainNoticeRow[]>([])
@@ -111,7 +111,8 @@ function ChainMotionSample() {
           trazo recto naranja numerado, un <Tag>span</Tag> rotado que crece con <Tag>scaleX</Tag> y se mide con <Tag>offsetLeft</Tag>/<Tag>offsetTop</Tag> en el plano del campo (en 3D se inclina con
           él). Armar: el eslabón encaja (entra de 40 px, se pasa 3 y se traba, 300 ms), la carta se levanta y el trazo crece. Resolver, de atrás para adelante, 750 ms por eslabón: se ilumina en lima y
           sube 4 px, la cadena se tensa hacia él (7 px), la carta ejecuta y cambia el estado (320 ms), y se suelta (480 ms): se parte en dos mitades que se separan y se funden; lo negado, en rojo tras
-          su tajo; «sin efecto», apagado y deslizándose abajo; su trazo se apaga. Al final lo que queda se disuelve (200 ms): 2,45 s con tres. Sólo <Tag>transform</Tag> y <Tag>opacity</Tag>; «Sin
+          su tajo; «sin efecto», apagado y deslizándose abajo, los dos después de 1,6 s quietos para leerlos (la línea dice «Negada por» y el nombre de la carta); su trazo se apaga. Al final lo
+          que queda se disuelve (200 ms): 2,45 s con tres que resuelven, 1,6 s más con uno negado. Sólo <Tag>transform</Tag> y <Tag>opacity</Tag>; «Sin
           movimiento» (como con la preferencia del sistema): nada se mueve ni se va, cambian el color y el texto, y lo dice la línea. Archivos: <Tag>auto/chain-parts.tsx</Tag>,{' '}
           <Tag>probability/MatFx.tsx</Tag> y <Tag>app/chain-motion.ts</Tag>
         </>

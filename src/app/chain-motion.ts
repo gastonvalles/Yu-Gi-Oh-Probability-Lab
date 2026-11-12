@@ -22,7 +22,10 @@ export const LINK_MS = 750
 /** Lo que tarda en irse el eslabón que se soltó (se parte o se desliza, 260 ms) antes del siguiente. */
 export const EXIT_MS = LINK_MS - RELEASE_AT
 export const CLOSE_MS = 200
+/** Lo negado o sin efecto se queda quieto, con su tajo y «por quién», este rato antes de soltarse: se lee (Gastón, «Las 7»). Sólo ahí: tres que resuelven siguen en 2,45 s. */
+export const READ_MS = 1600
 
+export const voided = (state: LinkState) => state === 'negated' || state === 'disabled'
 export const fated = (state: LinkState): state is LinkFate => state === 'solved' || state === 'negated' || state === 'disabled'
 
 export interface LinkLook {
@@ -46,7 +49,7 @@ export interface Timed<T> {
  * Lo que hay que hacer, y cuándo, al pasar la cadena de `prev` a `next` (por número de eslabón). Montada (`prev` null), lo ya resuelto se da por ido y nada entra.
  * - Un eslabón nuevo encaja.
  * - El que empieza a resolverse: la cadena se tensa a los `PULL_AT` y su carta ejecuta a los `ACT_AT`.
- * - El que llega a su final se suelta `RELEASE_AT − ACT_AT` después (lo que se ve su color nuevo) y se va `EXIT_MS` más tarde.
+ * - El que llega a su final se suelta `RELEASE_AT − ACT_AT` después (lo que se ve su color nuevo; lo negado o sin efecto, `READ_MS` más) y se va `EXIT_MS` más tarde.
  * - Terminada la cadena (`done`), lo que queda se disuelve.
  */
 export function cuesBetween(prev: readonly LinkLook[] | null, next: readonly LinkLook[], done = false, wasDone = false): Array<Timed<Cue>> {
@@ -65,7 +68,11 @@ export function cuesBetween(prev: readonly LinkLook[] | null, next: readonly Lin
     if (link.state === 'solving' && old?.state !== 'solving') {
       cues.push({ at: PULL_AT, cue: { kind: 'pull', link: n } }, { at: ACT_AT, cue: { kind: 'act', link: n } }, { at: PULL_AT + PULL_MS, cue: { kind: 'pulled', link: n } })
     }
-    if (fated(link.state) && !(old && fated(old.state))) cues.push({ at: release, cue: { kind: 'release', link: n } }, { at: release + EXIT_MS, cue: { kind: 'gone', link: n } })
+    if (fated(link.state) && !(old && fated(old.state))) {
+      const at = release + (voided(link.state) ? READ_MS : 0)
+
+      cues.push({ at, cue: { kind: 'release', link: n } }, { at: at + EXIT_MS, cue: { kind: 'gone', link: n } })
+    }
   }
   if (done && !wasDone) cues.push({ at: 0, cue: { kind: 'dissolve' } })
 
@@ -76,20 +83,22 @@ export type ScheduleStep = { at: number; link: number; state: LinkState } | { at
 
 /**
  * La resolución entera de una cadena armada (`fates[0]` es CL1), de atrás para adelante: cada eslabón empieza a resolverse a los `LINK_MS` del anterior y llega a su final a los
- * `ACT_AT`; a los `fates.length × LINK_MS`, terminó (`done`), y `total` (con el cierre) es cuándo ya no queda nada: 2.450 ms con tres.
+ * `ACT_AT`; lo negado o sin efecto suma `READ_MS` antes del siguiente. Al final, terminó (`done`), y `total` (con el cierre) es cuándo ya no queda nada: 2.450 ms con tres que resuelven.
  */
 export function resolveSchedule(fates: readonly LinkFate[]): { steps: ScheduleStep[]; total: number } {
   const steps: ScheduleStep[] = []
+  let start = 0
 
   fates.forEach((_, i) => {
     const index = fates.length - 1 - i
-    const start = i * LINK_MS
+    const fate = fates[index]!
 
-    steps.push({ at: start, link: index + 1, state: 'solving' }, { at: start + ACT_AT, link: index + 1, state: fates[index]! })
+    steps.push({ at: start, link: index + 1, state: 'solving' }, { at: start + ACT_AT, link: index + 1, state: fate })
+    start += LINK_MS + (voided(fate) ? READ_MS : 0)
   })
-  steps.push({ at: fates.length * LINK_MS, done: true })
+  steps.push({ at: start, done: true })
 
-  return { steps, total: fates.length * LINK_MS + CLOSE_MS }
+  return { steps, total: start + CLOSE_MS }
 }
 
 /** El reloj de `play`: el de la ventana o uno de prueba. */

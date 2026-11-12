@@ -368,6 +368,8 @@ export const auto = {
   'auto.chain.state.disabled': 'Sin efecto',
   // Negada o sin efecto, con el eslabón que lo hizo (el núcleo no lo dice: lo deduce el adaptador).
   'auto.chain.by': '{state} · por CL{by}',
+  // Lo mismo con el nombre de la carta que lo negó, donde entra (la línea del celular): se lee mientras el eslabón se queda quieto.
+  'auto.chain.byCard': '{state} por {card}',
   // Resuelta, lo que hizo su efecto si el núcleo lo dice sin duda (`chainOutcome`): reemplaza a «Resuelta» en su chip.
   'auto.chain.outcome.add': { one: 'Añade {count} carta', other: 'Añade {count} cartas' },
   'auto.chain.outcome.draw': { one: 'Roba {count} carta', other: 'Roba {count} cartas' },

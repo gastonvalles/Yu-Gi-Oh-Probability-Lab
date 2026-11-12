@@ -48,8 +48,8 @@ export function ChainLine({ rows, focus, done = false, still = false, onPick }: 
         <p role="status" className="m-0 flex min-w-0 items-center gap-1.5 px-2 pt-1 text-micro font-semibold leading-tight">
           <Icon name="link" size={14} className="shrink-0 text-info" aria-hidden="true" />
           <span className="shrink-0">{t('auto.chain.count', { count: rows.length })}</span>
-          {/* Lo anuncia el lector de pantalla al cambiar («CL3 · Destierra 1 carta», «CL2 · Negada · por CL3»): con movimiento reducido es lo que dice qué pasó. */}
-          <span className="truncate text-info">{`${t('auto.link.badge', { numbers: row.number })} · ${stateLabel(row)}`}</span>
+          {/* Lo anuncia el lector de pantalla al cambiar («CL3 · Destierra 1 carta», «CL2 · Negada por Ash Blossom»): con movimiento reducido es lo que dice qué pasó. */}
+          <span className="truncate text-info">{`${t('auto.link.badge', { numbers: row.number })} · ${stateLabel(row, rows.find((link) => link.number === row.by)?.name)}`}</span>
         </p>
         <ChainLinks id={listId} rows={rows} done={done} still={still} onPick={onPick} className="flex-1" />
       </div>
