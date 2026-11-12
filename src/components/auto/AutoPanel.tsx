@@ -1,4 +1,4 @@
-﻿import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { cardTypeLabel, frameKindOf, frameTextClass } from '../../app/card-frame'
@@ -38,8 +38,8 @@ const onPhone = (key: string) => `${key}:phone`
  * (44; dos botones de `min-w-32` y su aire piden 18 rem) y los márgenes (12; con el dedo 28 abajo: por eso el celular pide 200 y el escritorio, 186: lo que mide al abrir, así achicar nunca la corre: lo que no entra es el contenido, que se desplaza, y los botones nunca quedan fuera del marco.
  */
 const WINDOW_MIN = { width: 420, height: 186 }
-/** En el celular (390 px de pantalla; la ventana sale de 19 rem) el mínimo es el ancho de dos botones en un renglón. */
-const WINDOW_MIN_PHONE = { width: 296, height: 200 }
+/** En el celular (390 px de pantalla; la ventana sale de 19 rem) dos botones largos («Colocar» e «Invocación Normal») no entran en un renglón: el alto mínimo alcanza para dos filas, así ninguna queda fuera del marco. */
+const WINDOW_MIN_PHONE = { width: 296, height: 256 }
 const ARROW_KEYS: Record<string, readonly [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }
 const WINDOW_KEYS = 'ArrowUp ArrowDown ArrowLeft ArrowRight Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Enter'
 

@@ -218,12 +218,12 @@ describe('«Menús flotantes» (Opciones) en el celular', () => {
     pull(bar(), -100, -300, finger)
     expect(drag(win())).toEqual({ x: -100, y: -300 })
     const before = corner()
-    pull(win().querySelector('[data-window-corner]')!, 40, 30, finger)
-    expect(sizeOf(win())).toEqual({ width: 660, height: 230 })
+    pull(win().querySelector('[data-window-corner]')!, 40, 80, finger)
+    expect(sizeOf(win())).toEqual({ width: 660, height: 280 })
     expect(corner()).toEqual(before)
     // Estirada, la esquina de arriba a la izquierda quedó quieta: el corrimiento que se guardó es el de ahora.
     expect(saved(phoneKey(autoWindowKey('ask')))).toEqual(drag(win()))
-    expect(saved(sizeKey(phoneKey(autoWindowKey('ask'))))).toEqual({ width: 660, height: 230 })
+    expect(saved(sizeKey(phoneKey(autoWindowKey('ask'))))).toEqual({ width: 660, height: 280 })
     // El de escritorio no se tocó.
     expect(saved(autoWindowKey('ask'))).toEqual({ x: -40, y: -200 })
     // Apagado, vuelve a la hoja de abajo.
@@ -240,7 +240,7 @@ describe('«Menús flotantes» (Opciones) en el celular', () => {
 })
 
 describe('el mínimo de la ventana', () => {
-  it('achicada a lo más chico que deja, la ventana mide lo que pide la fila de botones en un renglón (el celular, 296×200; el escritorio, 420×186)', () => {
+  it('achicada a lo más chico que deja, la ventana mide lo que pide la fila de botones entera (el celular, 296×256, dos filas; el escritorio, 420×186)', () => {
     localStorage.setItem(sizeKey(autoWindowKey('ask')), JSON.stringify({ width: 50, height: 50 }))
     const view = ask()
 
@@ -252,7 +252,7 @@ describe('el mínimo de la ventana', () => {
     localStorage.setItem(sizeKey(`${autoWindowKey('ask')}:phone`), JSON.stringify({ width: 50, height: 50 }))
     ask()
     expect(Number.parseFloat(win().style.width)).toBe(296)
-    expect(Number.parseFloat(win().style.height)).toBe(200)
+    expect(Number.parseFloat(win().style.height)).toBe(256)
   })
 })
 
