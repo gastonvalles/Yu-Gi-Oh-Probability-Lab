@@ -116,9 +116,9 @@ describe('la ventana del escritorio', () => {
     expect(sizeOf(win())).toEqual({ width: 636, height: 264 })
     expect(corner()).toEqual(before)
     expect(saved(sizeKey(autoWindowKey('ask')))).toEqual({ width: 636, height: 264 })
-    // Hasta el mínimo, nunca menos.
+    // Hasta el mínimo (la fila de botones en un renglón), nunca menos.
     for (let i = 0; i < 20; i += 1) key({ key: 'ArrowLeft', altKey: true, shiftKey: true })
-    expect(sizeOf(win()).width).toBe(360)
+    expect(sizeOf(win()).width).toBe(420)
   })
 
   it('con el mouse: la barra la lleva y la esquina la estira; se guarda al soltar y la próxima pregunta sale ahí, con ese tamaño; doble clic (o Enter) la vuelve a su lugar y su tamaño', () => {
@@ -236,6 +236,23 @@ describe('«Menús flotantes» (Opciones) en el celular', () => {
     pull(bar(), -100, -300, finger)
     expect(drag(win())).toEqual({ x: -100, y: -300 })
     expect(saved(autoWindowKey('ask'))).toEqual({ x: -100, y: -300 })
+  })
+})
+
+describe('el mínimo de la ventana', () => {
+  it('achicada a lo más chico que deja, la ventana mide lo que pide la fila de botones en un renglón (el celular, 296×200; el escritorio, 420×186)', () => {
+    localStorage.setItem(sizeKey(autoWindowKey('ask')), JSON.stringify({ width: 50, height: 50 }))
+    const view = ask()
+
+    expect(Number.parseFloat(win().style.width)).toBe(420)
+    expect(Number.parseFloat(win().style.height)).toBe(186)
+    view.unmount()
+    desktop = false
+    act(() => setMatMenus('floating'))
+    localStorage.setItem(sizeKey(`${autoWindowKey('ask')}:phone`), JSON.stringify({ width: 50, height: 50 }))
+    ask()
+    expect(Number.parseFloat(win().style.width)).toBe(296)
+    expect(Number.parseFloat(win().style.height)).toBe(200)
   })
 })
 

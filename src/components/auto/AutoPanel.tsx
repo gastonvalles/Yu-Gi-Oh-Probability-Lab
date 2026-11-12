@@ -33,10 +33,13 @@ const OWN_PLACE = new Set(['card', 'playground', 'options'])
 export const autoWindowKey = (kind: string) => `ygo-lab:auto-window:v1:${OWN_PLACE.has(kind) ? kind : 'ask'}`
 /** El lugar de la ventana en el celular: aparte del de escritorio (otra pantalla, otras medidas). */
 const onPhone = (key: string) => `${key}:phone`
-/** Lo más chica que se deja estirar una ventana (la de siempre: 30 rem de ancho, apaisada, y el alto de su contenido); lo más grande, la pantalla. */
-const WINDOW_MIN = { width: 360, height: 160 }
-/** En el celular (390 px de pantalla) la ventana se achica más: 15 rem. */
-const WINDOW_MIN_PHONE = { width: 240, height: 140 }
+/**
+ * Lo más chica que se deja estirar una ventana; lo más grande, la pantalla. El mínimo alcanza para la barra (44), la cabeza de la ficha (64: la miniatura), la fila de botones entera en **un** renglón
+ * (44; dos botones de `min-w-32` y su aire piden 18 rem) y los márgenes (12; con el dedo 28 abajo: por eso el celular pide 200 y el escritorio, 186: lo que mide al abrir, así achicar nunca la corre: lo que no entra es el contenido, que se desplaza, y los botones nunca quedan fuera del marco.
+ */
+const WINDOW_MIN = { width: 420, height: 186 }
+/** En el celular (390 px de pantalla; la ventana sale de 19 rem) el mínimo es el ancho de dos botones en un renglón. */
+const WINDOW_MIN_PHONE = { width: 296, height: 200 }
 const ARROW_KEYS: Record<string, readonly [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }
 const WINDOW_KEYS = 'ArrowUp ArrowDown ArrowLeft ArrowRight Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Enter'
 

@@ -897,6 +897,19 @@ describe('la carta del menú se toca (sin «Ver carta» visible)', () => {
     expect(sheet.querySelector('[data-panel-body]')).toBeNull()
   })
 
+  it('Sincronía lleva el aro claro en el chip (para no confundirse con la Ficha), como Xyz y Enlace; la Ficha no', () => {
+    const chip = (frameType: string, cardType: string) => {
+      const view = render(<AutoCardSheet name="X" art={null} apiCard={{ ygoprodeckId: 1, frameType, cardType, race: 'Dragon', attribute: 'DARK', level: 4, atk: '1000', def: '1000', description: null } as never} items={plays} onClose={() => {}} />)
+      const found = view.container.ownerDocument.querySelector('[data-type-chip]')!.className
+
+      view.unmount()
+      return found
+    }
+
+    for (const [frameType, cardType] of [['synchro', 'Synchro Monster'], ['xyz', 'XYZ Monster'], ['link', 'Link Monster'], ['dark_synchro', 'Synchro Monster']]) expect(chip(frameType, cardType), frameType).toContain('inset-ring-1')
+    expect(chip('token', 'Token')).not.toContain('inset-ring-1')
+  })
+
   it('ficha sin onInspect (con el panel de detalle a la vista): la miniatura no es un botón', () => {
     render(<AutoCardSheet name="Ash Blossom" art={null} items={plays} onClose={() => {}} />)
     expect(screen.queryByRole('button', { name: 'Ver carta' })).toBeNull()

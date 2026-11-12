@@ -2884,7 +2884,8 @@ function PracticeMatBody({
   // El duelo automático: la ficha con todas las jugadas que da el núcleo, la misma en el celular y en escritorio (la mesa manual sigue con `CardSheet` y `CardMenu`); en escritorio, una sola jugada sigue
   // siendo su etiqueta (`PlayTag`).
   const cardSheet =
-    autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay && !menuShelved ? (
+    // Con la carta en grande a la vista (`inspected`), la ficha se esconde sin cerrarse: al cerrar el visor, vuelve.
+    autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay && !menuShelved && !inspected ? (
       <autoMenus.Card
         key={menu.kind === 'card' ? menu.id : menu.kind}
         name={menuTitle}
@@ -2897,7 +2898,7 @@ function PracticeMatBody({
         empty={whyNot ? <NoPlays reasons={whyNot} /> : undefined}
         {...toManual}
         // «Ver carta», salvo con el detalle fijo (tocar la carta ya la muestra ahí).
-        onInspect={isDesktop ? menuInspect : menu.kind === 'card' && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        onInspect={menu.kind === 'card' && !menu.drop && !isToken(menu.id) && (!isDesktop || menuInspect) ? () => setInspected({ id: menu.id, rect: menu.rect }) : undefined}
         onClose={() => setMenu(null)}
         // Tapa el visor de una pila (celular): «‹ GY · 2» la cierra y el visor vuelve como estaba (si la carta ya no está ahí, igual).
         {...(pileYield && pileTitle !== null ? { crumb: { label: pileTitle, onBack: () => setMenu(null) } } : {})}

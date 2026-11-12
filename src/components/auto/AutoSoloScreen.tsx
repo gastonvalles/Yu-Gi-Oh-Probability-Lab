@@ -572,7 +572,8 @@ function EndCover({ end, conceded = false, lp, seat, rival, onAgain, onSave, onL
       tone={end.winner === 2 ? 'draw' : won ? 'win' : 'lose'}
       title={title}
       reason={reason}
-      score={{ mine, theirs, rival }}
+      // Rendirse no es un marcador: «8000 a 8000» se lee como un empate. Quedan el título y el motivo.
+      {...(conceded ? {} : { score: { mine, theirs, rival } })}
       onLeave={onExit}
       actions={
         <>

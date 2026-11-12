@@ -94,7 +94,8 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
       title={view.title}
       reason={view.reason}
       note={view.note}
-      score={{ mine: snapshot.life.lp[snapshot.me], theirs: snapshot.life.lp[snapshot.me === 0 ? 1 : 0], rival }}
+      // Rendirse (vos o el rival) no es un marcador: «8000 a 8000» se lee como un empate. Por tiempo o por vidas, sí.
+      {...(snapshot.conceded !== null && !snapshot.timeUp ? {} : { score: { mine: snapshot.life.lp[snapshot.me], theirs: snapshot.life.lp[snapshot.me === 0 ? 1 : 0], rival } })}
       onLeave={onLeave}
       actions={
         <>

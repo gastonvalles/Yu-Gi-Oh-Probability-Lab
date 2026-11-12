@@ -326,6 +326,11 @@ describe('auto-screen · las jugadas', () => {
     expect(sheet).toHaveTextContent('Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora.')
     fireEvent.click(within(sheet).getByRole('button', { name: 'Ver carta' }))
     expect(screen.getByRole('dialog', { name: 'Detalle de Ash Blossom' })).toBeInTheDocument()
+    // La ficha se esconde mientras la carta está en grande y, al cerrar el visor, vuelve (no se cierra con él).
+    expect(screen.queryByRole('region', { name: 'Ash Blossom' })).toBeNull()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Detalle de Ash Blossom' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(status()).toBeInTheDocument()
     expect(fake.answers).toEqual([])
     expect(dispatches).toBe(0)
