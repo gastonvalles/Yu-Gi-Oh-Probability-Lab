@@ -1,6 +1,8 @@
 // QA de SÓLO LECTURA contra el sitio publicado (`npm run test:prod`): la mesa del duelo con el kit aprobado (TI-190 a TI-198; QA del conjunto, TI-199) y la práctica manual, en celular (390×844, con toque) y en escritorio (1440×900).
 // Ronda `fase-duelo-4` (TI-205 a TI-208; QA del conjunto, TI-209): la cadena en grande sólo al encadenar y los medallones al resolver, los botones de los menús pegados abajo y sin «Ver carta» (la miniatura se toca), las letras blancas sobre el
 // color del tipo (contraste ≥ 4,5:1), la banda de fases del color de quien juega y el cartel de resultado nuevo (una sola principal abajo, esquinas rectas).
+// Ronda `fase-duelo-5` (TI-214 a TI-225; QA del conjunto, TI-226): las pilas sólo número y el botón de fase cuadrado con el menú de las seis fases (también en el automático), «Colores» Carbón | Índigo en ⚙, sin «⋯» en Solo y Online, deshacer abajo
+// en el celular, el aviso de arriba que se desliza, «Cambio de turno» al pasar el turno, la palabra del resultado enorme sobre el campo (la hoja no la repite) y el botón principal de los menús en lima.
 // Nunca crea una sala ni envía un formulario: las rutas con # son locales al navegador y el deck se siembra en el `localStorage` de la prueba. El catálogo de YGOPRODeck se responde vacío y las imágenes de cartas se cortan.
 // Dos grupos: la práctica MANUAL (`ygo-lab:auto-duel` en «off»: «Solo» → «Jugar contra las handtraps» abre la mesa sin núcleo ni relay) y el duelo AUTOMÁTICO (necesita `/auto-data/*` y el núcleo: el sitio publicado o un dev server,
 // p. ej. `BASE_URL=http://ti199.localhost:5299`; contra `127.0.0.1`/`localhost` se saltea).
@@ -406,7 +408,7 @@ async function expectActionRow(page: Page, what: string, windowed: boolean) {
     const panel = menu.closest('[data-auto-panel]')!.getBoundingClientRect()
     const buttons = Array.from(menu.querySelectorAll('button')).map((node) => {
       const b = node.getBoundingClientRect()
-      return { text: node.textContent!.trim(), w: b.width, h: b.height, right: b.right, oneLine: node.scrollHeight <= node.clientHeight + 1, bg: getComputedStyle(node).backgroundColor }
+      return { text: node.textContent!.trim(), w: b.width, h: b.height, right: b.right, oneLine: node.scrollHeight <= node.clientHeight + 1, bg: getComputedStyle(node).backgroundColor, fg: getComputedStyle(node).color }
     })
     return { buttons, panel: { right: panel.right, w: panel.width } }
   })
@@ -421,6 +423,10 @@ async function expectActionRow(page: Page, what: string, windowed: boolean) {
   const rightmost = Math.max(...buttons.map((button) => button.right))
   expect(buttons.at(-1)!.right, `${what}: la principal es la de más a la derecha`).toBe(rightmost)
   if (buttons.length > 1) expect(buttons.at(-1)!.bg, `${what}: la principal va rellena (distinta de las otras)`).not.toBe(buttons[0]!.bg)
+  // TI-225: la principal de los menús del duelo es lima con letras oscuras (la barra de la ventana queda en violeta: no compiten).
+  const lima = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.backgroundColor = 'var(--color-info)'; document.body.append(probe); const color = getComputedStyle(probe).backgroundColor; probe.remove(); return color })
+  expect(buttons.at(-1)!.bg, `${what}: la principal es lima`).toBe(lima)
+  expect(buttons.at(-1)!.fg, `${what}: letras oscuras sobre el lima`).not.toBe('rgb(253, 255, 255)')
   if (windowed) expect(Math.max(...buttons.map((button) => button.w)), `${what}: los botones van a su ancho y no a toda la ventana`).toBeLessThan(panel.w * 0.6)
 }
 
@@ -673,18 +679,22 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       await expect(viewer).toHaveCount(0)
     })
 
-    await test.step('M-04: el menú de fases se abre pegado al botón con sólo adónde se puede ir (y «Terminar el turno»); no hay otra lista de fases; Escape lo cierra', async () => {
+    await test.step('TI-214 / M-04: el menú de fases (el del manual) muestra las SEIS fases, la de ahora marcada y las que no se pueden apagadas, «End» termina el turno; se abre pegado al botón; no hay otra lista de fases; Escape lo cierra', async () => {
       const phase = (await boxOf(page, PHASE))!
       await press(phaseButton(page), isMobile)
-      const menu = page.getByRole('menu', { name: 'Elegí la fase a la que pasás' })
+      const menu = page.getByRole('menu', { name: 'Pasar a la fase' })
       await expect(menu).toBeVisible()
       const box = (await menu.boundingBox())!
       const gap = box.y >= phase.y + phase.h - 2 ? box.y - (phase.y + phase.h) : phase.y - (box.y + box.height)
-      expect(gap, 'distancia del menú al botón de fase').toBeLessThanOrEqual(8)
+      // El menú es el del manual (`PhaseRow`): se ancla con su propio hueco (≈ 15,6 px medidos en la rama integrada; antes, ≤ 8 px).
+      expect(gap, 'distancia del menú al botón de fase').toBeLessThanOrEqual(20)
       const items = menu.getByRole('menuitem')
-      expect((await items.allTextContents()).at(-1), 'la última: terminar el turno').toBe('Terminar el turno')
-      expect(await items.count(), 'sólo las fases elegibles').toBeLessThanOrEqual(3)
-      await expect(menu.locator('[aria-disabled="true"], [disabled]'), 'ninguna opción apagada: sólo adónde se puede ir').toHaveCount(0)
+      await expect(items, 'las seis fases').toHaveCount(6)
+      expect(await items.evaluateAll((nodes) => nodes.map((node) => node.querySelector('span[aria-hidden] + span')?.textContent)), 'en orden: Draw, Standby, Main 1, Battle, Main 2, End').toEqual(['Draw', 'Standby', 'Main 1', 'Battle', 'Main 2', 'End'])
+      await expect(menu.locator('[aria-current="true"]'), 'la fase de ahora, marcada (Main 1)').toHaveCount(1)
+      await expect(menu.locator('[aria-current="true"]')).toHaveAccessibleName('Fase actual: Main Phase 1')
+      await expect(menu.locator('[aria-disabled="true"]'), 'las que no se pueden, apagadas (Draw, Standby, Battle, Main 2)').toHaveCount(4)
+      await expect(items.last(), 'End se puede: termina el turno').toHaveAccessibleName('Ir a End Phase')
       // Con poll: el menú entra con una animación de escala.
       await expect.poll(async () => Math.min(...(await items.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height)))), { message: 'alto de cada opción del menú de fases' }).toBeGreaterThanOrEqual(44)
       await expect(page.getByRole('menu'), 'no hay ninguna otra lista de fases en pantalla').toHaveCount(1)
@@ -705,7 +715,7 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
             if (seen.bands.some((entry) => entry.id === id)) continue
             const box = band.getBoundingClientRect()
             const button = document.querySelector('button[aria-label^="Fases: "]').getBoundingClientRect()
-            seen.bands.push({ id, side: band.dataset.side, text: band.textContent, pe: getComputedStyle(band).pointerEvents, hidden: band.getAttribute('aria-hidden'), image: getComputedStyle(band.firstElementChild).backgroundImage, color: getComputedStyle(band.firstElementChild).color, mid: Math.abs(box.top + box.height / 2 - (button.top + button.height / 2)), height: box.height })
+            seen.bands.push({ id, side: band.dataset.side, turn: band.hasAttribute('data-turn'), text: band.textContent, pe: getComputedStyle(band).pointerEvents, hidden: band.getAttribute('aria-hidden'), image: getComputedStyle(band.firstElementChild).backgroundImage, color: getComputedStyle(band.firstElementChild).color, mid: Math.abs(box.top + box.height / 2 - (button.top + button.height / 2)), height: box.height })
           }
           for (const node of document.querySelectorAll('[aria-label="Mesa de práctica"] *')) {
             if (node.children.length || node.closest('.sr-only, [data-life-badge], [data-fx=banner], [role=status], ol, li')) continue
@@ -718,13 +728,16 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
         tick()
       })()`)
       await press(phaseButton(page), isMobile)
-      await press(page.getByRole('menu', { name: 'Elegí la fase a la que pasás' }).getByRole('menuitem', { name: 'Terminar el turno' }), isMobile)
+      await press(page.getByRole('menu', { name: 'Pasar a la fase' }).getByRole('menuitem', { name: 'Ir a End Phase' }), isMobile)
+      // En el celular, End pregunta si se termina el turno (no hay «Pasar turno»).
+      const endConfirm = page.getByRole('alertdialog').getByRole('button', { name: 'Terminar turno' })
+      if (await endConfirm.waitFor({ timeout: 2000 }).then(() => true, () => false)) await press(endConfirm, isMobile)
       await expect.poll(() => page.locator('[data-life-badge][data-lp=theirs]').evaluate((node) => getComputedStyle(node).borderTopWidth), { timeout: 60_000, message: 'la chapa del rival en su turno' }).toBe('3px')
       expect(await page.locator('[data-life-badge][data-lp=mine]').evaluate((node) => getComputedStyle(node).borderTopWidth), 'tu chapa en el turno del rival').not.toBe('3px')
       // TI-208: la fase se anuncia con una banda que cruza el campo por la fila del botón de fase, del color de quien juega (la tuya violeta, la del rival lima), sólo con el nombre de la fase, sin atajar toques; el turno lo dice
       // el color y la chapa (ningún otro texto escribe la fase ni «Turno de…»), y se anuncia además en un `role="status"` oculto.
       await expect.poll(() => page.evaluate(() => (window as unknown as { __phase: { bands: { side: string }[] } }).__phase.bands.filter((band) => band.side === 'theirs').length), { message: 'la banda de fase del rival' }).toBeGreaterThan(0)
-      const phaseSeen = (await page.evaluate(() => (window as unknown as { __phase: unknown }).__phase)) as { texts: string[]; bands: { side: string; text: string; pe: string; hidden: string | null; image: string; color: string; mid: number; height: number }[]; status: string[] }
+      const phaseSeen = (await page.evaluate(() => (window as unknown as { __phase: unknown }).__phase)) as { texts: string[]; bands: { side: string; turn: boolean; text: string; pe: string; hidden: string | null; image: string; color: string; mid: number; height: number }[]; status: string[] }
       expect(phaseSeen.texts, 'ningún texto suelto escribe la fase ni de quién es el turno').toEqual([])
       const colorOf = (token: string) =>
         page.evaluate((name) => {
@@ -737,7 +750,16 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
         }, token)
       const lime = await colorOf('--color-info')
       const violet = await colorOf('--color-primary')
-      for (const band of phaseSeen.bands) {
+      // TI-223: al pasar el turno cruza antes «Cambio de turno» (más alta que la de fase, del color de quien empieza a jugar: lima si pasa al rival), decorativa y sin atajar toques.
+      const turnBands = phaseSeen.bands.filter((band) => band.turn)
+      expect(turnBands.map((band) => `${band.side}:${band.text}`), 'al pasar el turno al rival sale su «Cambio de turno»').toContain('theirs:Cambio de turno')
+      const phaseOnly = phaseSeen.bands.filter((band) => !band.turn)
+      for (const band of turnBands) {
+        expect(band.pe, 'la banda del turno no ataja toques').toBe('none')
+        expect(band.hidden, 'la banda del turno es decorativa').toBe('true')
+        expect(band.height, 'la banda del turno es más alta que la de fase').toBeGreaterThan(Math.max(...phaseOnly.map((other) => other.height)) + 4)
+      }
+      for (const band of phaseOnly) {
         expect(band.text, `la banda dice sólo el nombre de la fase («${band.text}»)`).toMatch(/^(Draw|Standby|Battle|End) Phase$|^Main Phase [12]$/)
         expect(band.pe, 'la banda no ataja toques').toBe('none')
         expect(band.hidden, 'la banda es decorativa: el anuncio va en el role="status" oculto').toBe('true')
@@ -745,11 +767,106 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
         expect(band.height, 'alto de la banda').toBeGreaterThanOrEqual(isMobile ? 44 : 56)
         expect(band.image, `la banda del lado «${band.side}» es del color de quien juega`).toContain(band.side === 'theirs' ? lime : violet)
       }
-      expect(phaseSeen.bands.find((band) => band.side === 'theirs')!.color, 'sobre el lima, texto oscuro').not.toBe('rgb(253, 255, 255)')
+      expect(phaseOnly.find((band) => band.side === 'theirs')!.color, 'sobre el lima, texto oscuro').not.toBe('rgb(253, 255, 255)')
       expect(phaseSeen.status.length, 'el anuncio de la fase va en un role="status" oculto a la vista').toBeGreaterThan(0)
     })
 
     expectStill(await readYs(page), 'en todo el turno: la ficha, la casilla, la placa, la cadena, el visor, las fases y el turno del rival')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'desborde horizontal del documento').toBeLessThanOrEqual(0)
+    expect(errors, 'errores de página propios').toEqual([])
+  })
+
+  // Ronda `fase-duelo-5` (TI-214, TI-215, TI-220, TI-225): las pilas sólo número, el botón de fase cuadrado, sin «⋯» (un solo menú: ⚙), deshacer abajo en el celular, «Colores» con Índigo y el aviso de arriba que se desliza.
+  test('ronda 5: pilas sólo número, botón de fase cuadrado, sin «⋯», deshacer abajo (celular), ⚙ con sus grupos y «Colores» Carbón | Índigo, y el aviso de arriba que se desliza sin mover el campo', async ({ page, isMobile }) => {
+    test.setTimeout(180_000)
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
+    await startAuto(page)
+    await watchYs(page)
+
+    await test.step('TI-214: el conteo de cada pila es sólo un número blanco, sin cuadro ni color; el botón de fase es cuadrado (≥ 44 px)', async () => {
+      const counts = await mat(page).locator('[data-drop="deck"], [data-drop="extra"], [data-drop="gy"], [data-drop="banish"]').evaluateAll((zones) =>
+        zones.map((zone) => {
+          const number = Array.from(zone.querySelectorAll('span')).find((span) => /^\d+$/.test(span.textContent!.trim()) && !span.children.length)
+          if (!number) return null
+          const style = getComputedStyle(number)
+          const parent = getComputedStyle(number.parentElement!)
+          return { color: style.color, bg: style.backgroundColor, parentBg: parent.backgroundColor, border: parent.borderTopWidth }
+        }),
+      )
+      expect(counts.filter(Boolean).length, 'las pilas muestran su número').toBeGreaterThanOrEqual(3)
+      for (const count of counts.filter(Boolean)) {
+        expect(count!.color, 'el número, blanco').toBe('rgb(253, 255, 255)')
+        expect([count!.bg, count!.parentBg], 'sin cuadro de color').toEqual(['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'])
+        expect(count!.border, 'sin borde').toBe('0px')
+      }
+      const sides = await phaseButton(page).evaluate((node) => [(node as HTMLElement).offsetWidth, (node as HTMLElement).offsetHeight])
+      expect(Math.abs(sides[0]! - sides[1]!), `el botón de fase es cuadrado (${sides.join('×')})`).toBeLessThanOrEqual(1)
+      expect(Math.min(...sides), 'el botón de fase mide ≥ 44 px').toBeGreaterThanOrEqual(44)
+    })
+
+    await test.step('TI-220: un solo menú de opciones (sin «⋯»), y deshacer abajo en el celular (arriba en escritorio, como siempre)', async () => {
+      await expect(page.getByRole('button', { name: 'Más opciones' }), 'Solo no tiene «⋯»').toHaveCount(0)
+      const undo = (await boxOf(page, 'button[aria-label="Deshacer"]'))!
+      const field = (await boxOf(page, '[aria-label="Campo"]'))!
+      if (isMobile) {
+        expect(undo.y, 'deshacer abajo, en la botonera').toBeGreaterThan(field.y + field.h)
+        expect(Math.min(undo.w, undo.h), 'deshacer mide 44 px').toBeGreaterThanOrEqual(43.5)
+        const gear = (await boxOf(page, '[data-mat-gear]'))!
+        expect(undo.x, 'deshacer, el primero de la derecha (antes de ≡ y ⚙)').toBeLessThan(gear.x)
+        expect(Math.abs(undo.cy - gear.cy), 'en la misma fila que ⚙').toBeLessThanOrEqual(2)
+        await expect(page.locator('[data-undo-chip], [data-testid="undo-chip"]'), 'sin el aviso «Deshacer» con miniatura').toHaveCount(0)
+      } else expect(undo.y, 'en escritorio deshacer sigue arriba').toBeLessThan(field.y)
+    })
+
+    await test.step('TI-220 / TI-215: ⚙ Opciones con «La mesa» y «El duelo»; «Colores» cambia la paleta y se recuerda', async () => {
+      await press(page.locator('[data-mat-gear]'), isMobile)
+      const options = page.locator('[data-auto-panel]').filter({ hasText: 'Vista 3D' })
+      await expect(options).toBeVisible()
+      const text = await options.innerText()
+      const order = ['LA MESA', 'Vista 3D', 'Sonidos', 'Colores', 'Menús flotantes', 'EL DUELO', 'Nueva mano', 'Guardar combo', 'Rendirse'].map((label) => text.indexOf(label))
+      expect(order, 'los grupos y sus filas, en orden').toEqual([...order].sort((a, b) => a - b))
+      expect(order.every((index) => index >= 0), `están todas las filas (${order.join(',')})`).toBe(true)
+      expect((text.match(/Rival/g) ?? []).length, '«Rival» (el cambio de rival) una sola vez').toBeLessThanOrEqual(2)
+      const group = options.getByRole('group', { name: 'Colores' })
+      await expect(group.getByRole('button')).toHaveText(['Carbón', 'Índigo'])
+      // Con el dedo (celular), 44 px; con el mouse, la variante de fichas de 32 px (pointer-coarse:h-11).
+      if (isMobile) expect(Math.min(...(await group.getByRole('button').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height)))), 'los botones de colores miden 44 px').toBeGreaterThanOrEqual(43.5)
+      await press(group.getByRole('button', { name: 'Índigo' }), isMobile)
+      await expect(page.locator('html'), 'Índigo se aplica en <html>').toHaveAttribute('data-palette', 'indigo')
+      expect(await page.evaluate(() => localStorage.getItem('ygo-lab:palette')), 'y se recuerda').toBe('indigo')
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--background').trim().toLowerCase()), 'los tokens de Índigo (fondo #150a24)').toBe('#150a24')
+      await press(group.getByRole('button', { name: 'Carbón' }), isMobile)
+      await expect(page.locator('html')).not.toHaveAttribute('data-palette', /./)
+      await page.keyboard.press('Escape')
+      await expect(options).toHaveCount(0)
+    })
+
+    if (isMobile) {
+      await test.step('TI-220: el aviso de arriba (el momento) va debajo de la barra, sin tapar la chapa del rival, y se saca deslizándolo; el campo no se mueve', async () => {
+        await press(handList(page).getByRole('listitem', { name: 'Gene-Warped Warwolf', exact: true }).first(), isMobile)
+        await press(page.locator('[data-auto-panel]').getByRole('menuitem', { name: 'Invocación Normal', exact: true }), isMobile)
+        const zones = mat(page).locator('[aria-label="Campo"] [aria-label$=": elegir"]')
+        await expect(zones.first()).toBeVisible()
+        await press(zones.nth(Math.min(2, (await zones.count()) - 1)), isMobile)
+        const notice = page.locator('[data-swipe-away]').first()
+        await expect(notice, 'el aviso del momento').toBeVisible({ timeout: 15_000 })
+        const box = (await notice.boundingBox())!
+        const rival = (await boxOf(page, '[data-lp=theirs]'))!
+        const field = (await boxOf(page, '[aria-label="Campo"]'))!
+        expect(box.y, 'debajo de la barra y de la chapa del rival').toBeGreaterThanOrEqual(rival.y + rival.h - 1)
+        expect(box.y, 'arriba, sobre la mano del rival (antes del campo)').toBeLessThan(field.y)
+        // El gesto: mientras se arrastra acompaña al dedo y al soltar se va (el momento dura 1,5 s: se arrastra enseguida).
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await page.mouse.down()
+        for (let step = 1; step <= 8; step++) await page.mouse.move(box.x + box.width / 2 + step * 30, box.y + box.height / 2)
+        expect(await notice.evaluate((node) => (node as HTMLElement).style.transform), 'acompaña al dedo').toMatch(/translateX\(2\d\dpx\)/)
+        await page.mouse.up()
+        await expect(page.locator('[data-swipe-away]'), 'al soltar, el aviso se saca').toHaveCount(0, { timeout: 3000 })
+      })
+    }
+
+    expectStill(await readYs(page), 'con Opciones, el cambio de paleta y el aviso')
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'desborde horizontal del documento').toBeLessThanOrEqual(0)
     expect(errors, 'errores de página propios').toEqual([])
   })
@@ -885,8 +1002,13 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     const [save, manual, log, again] = boxes as [Box2, Box2, Box2, Box2]
     for (const secondary of [save, manual, log]) {
       expect(secondary.width, 'las secundarias miden lo mismo').toBeCloseTo(save.width, 0)
-      expect(secondary.height, 'alto de una secundaria').toBeGreaterThanOrEqual(44)
+      // 43,99997 px de escritorio es 44 px con el redondeo del navegador.
+      expect(secondary.height, 'alto de una secundaria').toBeGreaterThanOrEqual(43.9)
     }
+    // TI-223: la palabra del resultado, enorme sobre el campo («Derrota»), y la hoja no la repite (el título accesible queda oculto).
+    await expect(hero.locator('[data-result-word="lose"] p'), 'la palabra del resultado').toHaveText('Derrota')
+    await expect(hero.locator('section'), 'la hoja no repite la palabra del resultado').not.toContainText(/Derrota|Perdiste/)
+    expect(await hero.locator('[data-result-word="lose"] p').evaluate((node) => parseFloat(getComputedStyle(node).fontSize)), 'la palabra es enorme (≥ 44 px)').toBeGreaterThanOrEqual(44)
     expect(again.width, 'la principal va de lado a lado, como las demás').toBeGreaterThanOrEqual(save.width - 1)
     expect(again.height, 'la principal es la más grande').toBeGreaterThan(save.height)
     expect(again.y, 'la principal, abajo de todo').toBeGreaterThan(log.y)
@@ -950,9 +1072,10 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
         }
         // Sin Ookazi en la mano (o sin poder activarla todavía): a la Main Phase 1 o a terminar el turno.
         await press(phaseButton(page), isMobile)
-        const main = page.getByRole('menuitem', { name: /Main Phase 1/ })
+        // El menú de fases (TI-214) trae las seis: de la Draw o la Standby se pasa a «Ir a Main Phase 1»; desde la Main 1 (la de ahora no es un destino), «Ir a End Phase» termina el turno.
+        const main = page.getByRole('menuitem', { name: /^Ir a Main Phase 1/ })
         if (await main.count()) await press(main.first(), isMobile)
-        else await press(page.getByRole('menuitem', { name: 'Terminar el turno' }), isMobile)
+        else await press(page.getByRole('menuitem', { name: 'Ir a End Phase' }), isMobile)
         const confirm = page.getByRole('alertdialog').getByRole('button', { name: 'Terminar turno' })
         if (await confirm.isVisible().catch(() => false)) await press(confirm, isMobile)
         await page.waitForTimeout(1200)
@@ -960,6 +1083,15 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     }
     await expect(hero, 'el duelo se ganó por vidas').toBeVisible({ timeout: 20_000 })
     await expect(hero).toHaveAttribute('data-tone', 'win')
+    // TI-223: la palabra enorme sobre el campo, en lima, y la hoja ya no la repite: su cabeza es el motivo y el marcador.
+    await expect(hero.locator('[data-result-word="win"] p'), 'la palabra del resultado').toHaveText('Victoria')
+    await expect(hero.locator('section'), 'la hoja no repite la palabra').not.toContainText(/Victoria|¡Ganaste!/)
+    await expect(hero.locator('section'), 'la cabeza de la hoja: el motivo').toContainText('Rival se quedó sin puntos de vida.')
+    expect(await hero.locator('[data-result-word="win"] p').evaluate((node) => parseFloat(getComputedStyle(node).fontSize)), 'la palabra es enorme (≥ 44 px)').toBeGreaterThanOrEqual(44)
+    const word = (await hero.locator('[data-result-word="win"] p').boundingBox())!
+    expect(word.x, 'la palabra entra de lado a lado, sin cortarse').toBeGreaterThanOrEqual(0)
+    expect(word.x + word.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+    expect(word.y + word.height, 'no tapa la hoja').toBeLessThan((await hero.locator('section').boundingBox())!.y)
     const rec = (await page.evaluate(() => (window as unknown as { __end: unknown }).__end)) as { t: number; blow: boolean; stage: boolean; hero: boolean; lp: string }[]
     const blowAt = rec.findIndex((frame) => frame.blow)
     expect(blowAt, 'hubo golpe letal').toBeGreaterThanOrEqual(0)
@@ -1105,10 +1237,12 @@ test.describe('V-02, elegir varias (muestra de /playground)', () => {
   test('un solo cartel con las copias agrupadas («×N»), el orden numerado, el contador «N de M» y una sola principal a la derecha que se prende al completar', async ({ page, isMobile }) => {
     // /playground monta cientos de muestras y la traza que Playwright toma en cada toque tumba el renderizador del celular de la prueba (×3, con toque): en celular se midió por script (390×844, con toque).
     test.skip(isMobile, 'sólo escritorio: con la traza, el celular (×3) tumba la página de /playground')
+    // /playground en un dev server con la máquina cargada tarda más de un minuto en montar (la ronda 5 lo midió): sin esperas cortas.
+    test.setTimeout(240_000)
     await page.goto('/playground')
     // La muestra «Elegir varias · copias juntas»: su botón «Abrir la hoja» es el primero que le sigue al título.
     const title = page.locator('h3', { hasText: 'Elegir varias · copias juntas' })
-    await expect(title, '/playground monta todas sus muestras (en un dev server tarda)').toBeAttached({ timeout: 50_000 })
+    await expect(title, '/playground monta todas sus muestras (en un dev server tarda)').toBeAttached({ timeout: 180_000 })
     await title.scrollIntoViewIfNeeded()
     await press(title.locator('xpath=following::button[normalize-space()="Abrir la hoja"][1]'), isMobile)
     const sheet = page.locator('[data-prompt]').filter({ hasText: 'Branded Fusion' }).first()
