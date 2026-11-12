@@ -53,15 +53,15 @@ const FALLBACK_WIDTH = 340
 /** Carta de la mano: el estado (arrastre, brillo, atenuada, destello, objetivo) llega por data-attributes. */
 const HAND_CARD = [
   // El ancho manda (`style`) y el alto sale de la proporción de la carta: nunca los dos fijos.
-  'pointer-events-auto absolute left-0 top-0 aspect-[421/614] cursor-grab touch-none select-none overflow-hidden outline-none will-change-transform',
+  'pointer-events-auto absolute left-0 top-0 aspect-[421/614] cursor-grab touch-none select-none overflow-hidden outline-none',
   '[-webkit-touch-callout:none] [-webkit-user-select:none]',
   '[--card-shadow:0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   // La sombra sale de `--card-shadow`: así el borde blanco de pasar el mouse y los aros de color se suman sin pisarse.
   '[box-shadow:var(--card-shadow)]',
-  // Sólo lo que se mueve. Sin `box-shadow`: el aro de un brillo, el del menú y la sombra al levantarla cambian de una (una transición de sombra corre en el hilo principal, y con
+  // Sólo lo que se mueve, con una sola curva (el abanico se reacomoda y la carta se eleva igual). Sin `box-shadow`: el aro de un brillo, el del menú y la sombra al levantarla cambian de una (una transición de sombra corre en el hilo principal, y con
   // cada pregunta del núcleo cambian varias cartas a la vez). Sin `filter`: lo gris y lo atenuado también cambian de una, porque la carta que se enciende destella con su propio
   // `filter` (`animate-card-glow`) y dos animaciones de la misma propiedad en un elemento sacan a la de la GPU (Chromium: «incompatible»).
-  '[transition:transform_var(--motion-duration)_var(--ease-out),translate_var(--motion-duration)_var(--ease-snap),scale_var(--motion-duration)_var(--ease-snap)]',
+  '[transition:transform_var(--motion-duration)_var(--ease-out),translate_var(--motion-duration)_var(--ease-out),scale_var(--motion-duration)_var(--ease-out)]',
   // Pasar el mouse: se eleva y su borde se enciende en blanco, tenue.
   HAND_CARD_HOVER,
   // El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes.

@@ -185,7 +185,7 @@ describe('Modal: el foco vuelve sin esperar la salida', () => {
   it('al cerrarse, mientras todavía sale, el foco ya está en lo que lo abrió y el velo no ataja toques', () => {
     fakeAnimate()
     // jsdom no carga index.css: las dos entradas, como en la app.
-    const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter }' })
+    const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-veil-in { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter }' })
     style.dataset.test = ''
     document.head.append(style)
 
@@ -298,7 +298,7 @@ describe('Presence: lo que el padre monta sólo abierto', () => {
   it('un diálogo que el padre monta sólo abierto (un Modal con `isOpen={!useLeaving()}`) sigue en el DOM mientras sale, inerte y con data-leaving, se desmonta al terminar, y reabrirlo mientras sale vuelve el mismo nodo', async () => {
     const { calls, finish } = fakeAnimate()
     // jsdom no carga index.css: las dos entradas, como en la prueba del Modal.
-    const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter }' })
+    const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-veil-in { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter }' })
     style.dataset.test = ''
     document.head.append(style)
 

@@ -86,6 +86,8 @@ describe('la pantalla del replay de un duelo', () => {
       expect(banner()).toHaveTextContent(/^Standby Phase$/)
       expect(banner()).toHaveAttribute('data-side', 'theirs')
       act(() => vi.advanceTimersByTime(1100))
+      // Su salida cuenta desde que empieza (un salto de reloj de una vez es un atraso del hilo principal).
+      act(() => vi.advanceTimersByTime(250))
       expect(banner()).toBeNull()
       // La línea de tiempo salta (tocarla o arrastrarla): ni un cartel.
       fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))

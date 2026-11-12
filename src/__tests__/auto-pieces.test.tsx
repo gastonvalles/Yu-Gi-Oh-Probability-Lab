@@ -10,7 +10,7 @@ import { DuelRailsContext } from '../app/duel-rails'
 import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
 import { AutoBar, AutoDock } from '../components/auto/AutoBar'
-import { AutoCardSheet } from '../components/auto/AutoPanel'
+import { AutoCardSheet, AutoPanel } from '../components/auto/AutoPanel'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../components/auto/CardPicker'
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
@@ -467,12 +467,93 @@ describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
     render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
-    expect(group).toHaveClass('fixed', 'bottom-0', 'left-[var(--mat-x,50%)]', 'w-[min(30rem,var(--mat-w,100vw))]')
-    expect(group.querySelector('[data-panel-body]')!.parentElement).toHaveClass('gap-y-2', 'grid-cols-[auto_minmax(0,1fr)]')
-    expect(group.querySelector('[data-panel-body]')).toHaveClass('col-start-1')
+    expect(group).toHaveClass('fixed', 'bottom-0', 'left-[var(--mat-x,50%)]', 'w-[min(var(--window-w,30rem),var(--mat-w,100vw))]')
+    expect(group).toHaveAttribute('data-window')
+    // La pregunta en la barra; abajo, una fila: las cartas a la izquierda (del tamaño de las de tu mano, `--desk-card`, con su pestaña sobre el arte y sin nombre) y los botones a su derecha, al pie.
+    expect(within(group.querySelector<HTMLElement>('[data-window-bar]')!).getByRole('heading', { name: 'Responder a la cadena' })).toBeInTheDocument()
+    const body = group.querySelector('[data-panel-body]')!
+    expect(body.parentElement).toHaveClass('grid-cols-[minmax(0,max-content)_minmax(min-content,1fr)]')
+    expect(body.parentElement!.lastElementChild!.contains(screen.getByRole('button', { name: 'Pasar' }))).toBe(true)
+    expect(within(group).getByRole('listbox')).toHaveClass('group-data-[window]/panel:auto-cols-(--desk-card)!')
+    expect(group.querySelector('[data-pick-name]')).toHaveClass('group-data-[window]/panel:hidden')
+    expect(group.className).toContain('[--desk-card:min(var(--hand-card,5.5rem),')
     // Los botones a su ancho y a la derecha (B-04).
     expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:justify-end')
     expect(group.querySelector('.gap-3')).toBeNull()
+  })
+
+  describe('medido contra la mesa', () => {
+    const original = Element.prototype.getBoundingClientRect
+    const box = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
+    let mesa: HTMLElement
+
+    beforeEach(() => {
+      // La columna (arriba en 96), el borde del campo (600), tu mano (de 100 a 700, cartas de 80 y 86 girada), tu chapa (termina en 150) y la botonera (empieza en 690), abajo.
+      mesa = document.createElement('div')
+      mesa.innerHTML = '<div data-col><div data-duel-line></div><div data-drop="hand"><div data-card-id="a"></div><div data-card-id="b"></div></div></div><div data-life-badge></div><div data-mat-tools></div>'
+      document.body.append(mesa)
+      const rects = new Map<string, DOMRect>([
+        ['[data-col]', box(100, 96, 600, 600)],
+        ['[data-duel-line]', box(100, 600, 600, 0)],
+        ['[data-drop="hand"]', box(100, 600, 600, 140)],
+        ['[data-card-id="a"]', box(300, 610, 80, 117)],
+        ['[data-card-id="b"]', box(390, 610, 86, 117)],
+        ['[data-life-badge]', box(40, 650, 110, 60)],
+        ['[data-mat-tools]', box(690, 660, 96, 44)],
+      ])
+      Element.prototype.getBoundingClientRect = function (this: Element) {
+        for (const [selector, rect] of rects) if (this.matches(selector)) return rect
+        return box(0, 0, 0, 0)
+      }
+    })
+    afterEach(() => {
+      Element.prototype.getBoundingClientRect = original
+      mesa.remove()
+    })
+
+    it('de fábrica, el ancho de tu mano sin pisar tu chapa ni la botonera (parejo a los dos lados), las cartas como las de tu mano y el techo en el borde del campo', () => {
+      render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
+      const style = screen.getByRole('group', { name: 'Responder a la cadena' }).style
+
+      // Centro 400: la chapa deja 400 − 150 − 8 = 242 de cada lado; la botonera, 282.
+      expect(style.getPropertyValue('--window-w')).toBe('484px')
+      expect(style.getPropertyValue('--hand-card')).toBe('80px')
+      expect(style.getPropertyValue('--panel-ceiling')).toBe('600px')
+    })
+
+    it('Opciones usa todo el alto de la columna de la mesa (su borde de arriba), no la mitad de la pantalla', () => {
+      render(
+        <AutoPanel kind="options" label="Opciones" tall onDismiss={() => {}}>
+          <p>Filas</p>
+        </AutoPanel>,
+      )
+      const dialog = screen.getByRole('dialog', { name: 'Opciones' })
+
+      expect(dialog.style.getPropertyValue('--panel-ceiling')).toBe('96px')
+      expect(within(dialog.querySelector<HTMLElement>('[data-window-bar]')!).getByRole('heading', { name: 'Opciones' })).toBeInTheDocument()
+    })
+  })
+
+  it('la ficha con el panel de detalle a la vista: el nombre en la barra y las jugadas, sin repetir la miniatura, el tipo ni los números', () => {
+    const dock = document.createElement('section')
+    dock.setAttribute('data-card-dock', '')
+    dock.getClientRects = () => [dock.getBoundingClientRect()] as unknown as DOMRectList
+    document.body.append(dock)
+    const apiCard = { ygoprodeckId: 1, frameType: 'effect', cardType: 'Effect Monster', race: 'Zombie', attribute: 'FIRE', level: 3, atk: '0', def: '1800', description: 'Texto' } as never
+
+    render(<AutoCardSheet name="Ash Blossom" art={null} apiCard={apiCard} items={[{ label: 'Activar', onSelect: () => {} }]} onClose={() => {}} />)
+    const region = screen.getByRole('region', { name: 'Ash Blossom' })
+
+    expect(within(region.querySelector<HTMLElement>('[data-window-bar]')!).getByRole('heading', { name: 'Ash Blossom' })).toBeInTheDocument()
+    expect(region.querySelector('[data-type-chip], figure')).toBeNull()
+    expect(within(region).getByRole('menuitem', { name: 'Activar' })).toBeInTheDocument()
+    cleanup()
+    dock.remove()
+
+    // Sin el panel (de 1101 a 1439 px), la ficha lleva su miniatura, el tipo y los números; el nombre, en la barra.
+    render(<AutoCardSheet name="Ash Blossom" art={null} apiCard={apiCard} items={[{ label: 'Activar', onSelect: () => {} }]} onClose={() => {}} />)
+    expect(document.querySelector('[data-type-chip]')).toBeInTheDocument()
+    expect(within(document.querySelector<HTMLElement>('[data-window-bar]')!).getByRole('heading', { name: 'Ash Blossom' })).toBeInTheDocument()
   })
 })
 
@@ -741,7 +822,7 @@ describe('AutoBar', () => {
     expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
   })
 
-  it('con laterales, las vidas van planas y grandes cada una de su lado del lateral izquierdo: el rival arriba (junto a la flecha) y vos abajo; sin placa ni cartas en la mano', () => {
+  it('con laterales, una sola chapa en escritorio: las dos son `LifeBadge` (no el plano) en los lugares de siempre, la del rival arriba a la derecha y la tuya abajo a la izquierda, con el turno en el borde y el golpe adentro de la caja', () => {
     desktop()
     const { container } = render(
       <DuelRailsContext.Provider value>
@@ -749,10 +830,20 @@ describe('AutoBar', () => {
       </DuelRailsContext.Provider>,
     )
     const rival = screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000' })
+    const mine = screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' })
 
-    expect(rival.parentElement).toHaveClass('col-start-1', 'row-start-1')
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' }).parentElement).toHaveClass('col-start-1', 'row-start-3')
+    expect(rival.parentElement).toHaveClass('col-start-3', 'row-start-1')
+    expect(mine.parentElement).toHaveClass('col-start-1', 'row-start-3')
     expect(rival.querySelector('.text-stat')).toHaveTextContent('7000')
+    // Las dos, chapas: ninguna vida plana con laterales (antes, plegar ≡ cambiaba de una a otra).
+    const scores = [...container.querySelectorAll('[data-life-score]')]
+    expect(scores).toHaveLength(2)
+    scores.forEach((score) => expect(score).toHaveAttribute('data-life-badge'))
+    // El turno es tuyo (`myTurn`): tu chapa con el borde grueso y la del rival tenue.
+    expect(mine).toHaveAttribute('data-active', 'true')
+    expect(rival).toHaveAttribute('data-active', 'false')
+    // Nada sale de la caja: el fogonazo del plano (`-inset-y-4`) hacía scrollear la columna 8 px y el campo se corría.
+    scores.forEach((score) => expect(score.querySelector('[class*="-inset-"]')).toBeNull())
     expect(container.querySelector('.life-plate, [role="meter"]')).toBeNull()
   })
 

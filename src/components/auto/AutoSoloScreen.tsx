@@ -22,7 +22,8 @@ import { LifeHold } from '../../app/life-effects'
 import { MOMENT_MS, momentText } from '../../app/duel-moment'
 import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
 import type { DuelReplay, ReplayView } from '../../app/duel-replay'
-import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { readStepsOpen, writeStepsOpen } from '../../app/mat-panels'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { ResultHero, ResultPeek } from '../duel/DuelBanner'
 import { DuelLine, type LaneNotice } from '../duel/DuelBar'
@@ -206,8 +207,10 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Con laterales (lo sabe la barra) las vidas van en el izquierdo; sin ellos, en escritorio, en las esquinas del campo.
   const [rails, setRails] = useState(false)
-  // «Pasos» de la botonera (escritorio): muestra u oculta el panel de la derecha.
-  const [stepsOpen, setStepsOpen] = useState(true)
+  // «Pasos» de la botonera (escritorio): muestra u oculta el panel de la derecha. De fábrica, abierto desde 1440 px; lo elegido con ≡ se recuerda y manda (`mat-panels`).
+  const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
+  const [stepsChosen, setStepsChosen] = useState(readStepsOpen)
+  const stepsOpen = stepsChosen ?? wide
   const rivalName = t('duel.bar.rival')
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
   // El rival de handtraps (con el simulador encendido y alguna carta): su mano boca arriba, como en el simulador manual (así se sabe qué tiene), salvo «A ciegas»: de dorso, y cada carta se ve al usarla.
@@ -434,9 +437,13 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const moment = useMoment(asks.matSession, snap.initial, reviewing, cardsById, nameOf)
   const shownLane = useMemo<LaneNotice | null>(() => (back ? null : (lane ?? (moment ? { kind: 'ask', text: moment, actions: [] } : null))), [back, lane, moment])
   const line = useMemo(() => (phone && shownLane ? <DuelLine lane={shownLane} rivalName={rivalName} /> : undefined), [phone, shownLane, rivalName])
-  const toggleSteps = useCallback(() => setStepsOpen((open) => !open), [])
-  // ≡ y ⚙ abajo a la derecha: en escritorio los dos (≡ muestra u oculta los pasos); en el celular, sólo ⚙ (≡ es el de la mesa).
-  const dock = useMemo(() => <AutoDock {...options} {...(docked ? { steps: { open: stepsOpen, onToggle: toggleSteps } } : {})} />, [docked, options, stepsOpen, toggleSteps])
+  const toggleSteps = useCallback(() => {
+    setStepsChosen(!stepsOpen)
+    writeStepsOpen(!stepsOpen)
+  }, [stepsOpen])
+  // ≡ y ⚙ abajo a la derecha: en escritorio los dos (≡ muestra u oculta los pasos y, plegado, cuántos hay); en el celular, sólo ⚙ (≡ es el de la mesa).
+  const stepCount = asks.matSession.actions.length
+  const dock = useMemo(() => <AutoDock {...options} {...(docked ? { steps: { open: stepsOpen, onToggle: toggleSteps, count: stepCount } } : {})} />, [docked, options, stepsOpen, toggleSteps, stepCount])
   const link: DuelMatLink = {
     ...asks.mat,
     header,

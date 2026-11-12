@@ -268,7 +268,7 @@ export function TheirHand({
               style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${-raise}px) rotate(${-fanAngle(index, shown, 2.2)}deg)` }}
             >
               {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
-              {card?.public ? <i aria-hidden="true" data-public="" className="pointer-events-none absolute inset-0 border-2 border-warning motion-safe:animate-pulse" /> : null}
+              {card?.public ? <i aria-hidden="true" data-public="" className="pointer-events-none absolute inset-0 border-2 border-warning motion-safe:animate-pulse-twice" /> : null}
               {card && open ? (
                 <button
                   type="button"

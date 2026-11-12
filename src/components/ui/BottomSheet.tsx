@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, useState, type HTMLAttributes, type ReactNode, type Ref } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type HTMLAttributes, type ReactNode, type Ref } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useEscapeKey } from '../../app/use-overlay'
@@ -113,6 +113,22 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
   // El fondo de `onDismiss` cierra sólo si el toque empezó ahí (como el del `Modal`): el clic que sigue al toque que la abrió no la cierra.
   const pressed = useRef(false)
   const asTab = lowered && (tab || !peek)
+  // El alto del pie (con lo que le prestan), en la hoja como `--sheet-foot`: lo baja la tira. Se escribe sin volver a dibujar.
+  const setSlot = hostsFooter ? host?.setSlot : undefined
+  const footerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setSlot?.(node)
+      if (!node || typeof ResizeObserver === 'undefined') return
+      const observer = new ResizeObserver(() => node.parentElement?.style.setProperty('--sheet-foot', `${node.offsetHeight}px`))
+
+      observer.observe(node)
+      return () => {
+        observer.disconnect()
+        setSlot?.(null)
+      }
+    },
+    [setSlot],
+  )
 
   const sheet = (
     <div
@@ -125,8 +141,10 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
         'mat-square pointer-events-none inset-x-0 bottom-0 flex flex-col motion-safe:animate-sheet-up',
         inline ? 'absolute top-0' : tall ? 'fixed h-[min(70dvh,34rem)]' : 'fixed h-[55dvh]',
         over ? 'z-180' : 'z-[135]',
-        // Cediendo, el asa se apoya sobre la línea de estado de la mesa (44 px a 8 del borde): «Cancelar» y «Listo» quedan a la vista.
-        yieldTo === 'grip' && '-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]',
+        // Cediendo, el asa se apoya sobre la línea de estado de la mesa (44 px a 8 del borde): «Cancelar» y «Listo» quedan a la vista. Sube y baja deslizándose, como la hoja de adentro. Como tira,
+        // el pie sigue en su lugar (transparente, `--sheet-foot` de alto): la hoja baja ese alto en vez de que el pie se esconda y el asa salte.
+        'motion-safe:transition-[translate] motion-safe:duration-200 motion-safe:ease-snap',
+        tab ? 'translate-y-[calc(var(--sheet-foot,0px)-3.25rem-env(safe-area-inset-bottom,0px))]' : yieldTo === 'grip' && '-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]',
         className,
       )}
     >
@@ -166,7 +184,8 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
             {status}
             {peek && lowered && !tab ? <div className="h-14">{peek}</div> : null}
             {head ? (
-              <div hidden={lowered} inert={lowered}>
+              // Como tira sigue en su lugar (inerte, recortado debajo del asa): esconderlo achicaba la hoja y el asa saltaba antes de deslizarse.
+              <div hidden={lowered && !tab} inert={lowered}>
                 {head}
               </div>
             ) : null}
@@ -180,7 +199,14 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
         </div>
       </div>
       {/* El pie: lo que se decide y el borde del sistema. Sigue a la hoja sin borde de arriba ni radio: es la misma superficie. */}
-      <div ref={hostsFooter ? host?.setSlot : undefined} hidden={tab} inert={tab} className="pointer-events-auto flex-none border-x border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)]">
+      <div
+        ref={footerRef}
+        inert={tab}
+        className={cx(
+          'flex-none border-x border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] transition-opacity duration-200 motion-reduce:transition-none',
+          tab ? 'pointer-events-none opacity-0' : 'pointer-events-auto',
+        )}
+      >
         {footer}
       </div>
     </div>

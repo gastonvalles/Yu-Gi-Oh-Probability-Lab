@@ -167,6 +167,10 @@ describe('la mesa de práctica', () => {
       act(() => {
         vi.advanceTimersByTime(1500)
       })
+      // La banda termina de salir: su salida cuenta desde que empieza (un salto de reloj de una vez es un atraso del hilo principal).
+      act(() => {
+        vi.advanceTimersByTime(250)
+      })
       expect(document.querySelector('[data-fx="landing"]')).toBeNull()
       expect(document.querySelector('[data-fx="banner"]')).toBeNull()
     } finally {

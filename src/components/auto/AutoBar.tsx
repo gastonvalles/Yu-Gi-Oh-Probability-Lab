@@ -9,7 +9,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { Presence } from '../../app/use-presence'
 import { t, type MessageKey } from '../../i18n'
 import { BAR_SEAT, LaneBanner, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
-import { LifeScore } from '../duel/LifeScore'
+import { LifeBadge, LifeScore } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { MAT_BAR_ROW, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext, useMatTableItems } from '../probability/MatBarActions'
 import { PaletteSwitcher } from '../ui/PaletteSwitcher'
@@ -65,7 +65,7 @@ export interface AutoOptions {
 
 interface AutoBarProps {
   rivalName: string
-  /** Los puntos de vida de los dos, planos (`LifeScore`): en el marcador debajo de los íconos hasta 1100 px y en el lateral izquierdo con laterales. En escritorio sin laterales van en las esquinas del campo: las pone la pantalla. */
+  /** Los puntos de vida de los dos: planos (`LifeScore`) en el marcador debajo de los íconos hasta 1100 px y, con laterales, las chapas (`LifeBadge`: la del rival arriba a la derecha, la tuya abajo a la izquierda). En escritorio sin laterales van en las esquinas del campo: las pone la pantalla. */
   life: { mine: number; theirs: number }
   /** Si la mesa va con laterales (las vidas, en el izquierdo): sin ellos, la pantalla pone las vidas en la mesa. */
   onRails?: (rails: boolean) => void
@@ -275,14 +275,20 @@ function SoloSettings({ chain, onChain, place, onPlace, onRestart, onNewHand, on
  * Las herramientas de la mesa en «Jugar solo automático» (abajo a la derecha, dos cuadrados de 44 px; Gastón, 2026-11-12: «los botones son horribles»): ≡ «Pasos» (muestra u oculta el panel de la derecha;
  * sólo en escritorio, `steps`: en el celular ≡ es el de la mesa) y ⚙ «Opciones» (`OptionsGear`). La cadena, el modo manual y lo demás ya no tienen ficha: viven en Opciones.
  */
-export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps?: { open: boolean; onToggle: () => void } }) {
+export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps?: { open: boolean; onToggle: () => void; count?: number } }) {
   const concede = onConcede ? { onConcede, text: t('duel.options.concedeSolo') } : undefined
 
   return (
     <div role="group" aria-label={t('auto.dock.label')} data-mat-tools="" className="flex items-center gap-2">
       {steps ? (
-        <IconButton tone="tile" size="sm" aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} onClick={steps.onToggle}>
+        <IconButton tone="tile" size="sm" aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="relative" onClick={steps.onToggle}>
           <Icon name="list" />
+          {/* Plegado, cuántos pasos lleva el duelo (abierto ya lo dice la pestaña «Pasos»): el registro queda a un toque y se ve que sigue. */}
+          {!steps.open && steps.count ? (
+            <span aria-hidden="true" data-steps-count="" className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center border border-border-subtle bg-background px-1 text-micro font-bold leading-none tabular-nums text-foreground">
+              {steps.count}
+            </span>
+          ) : null}
         </IconButton>
       ) : null}
       <OptionsGear {...(concede ? { concede } : {})}>{(close) => <SoloSettings {...options} close={close} />}</OptionsGear>
@@ -293,8 +299,8 @@ export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps
 /**
  * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace: la flecha de «Volver a Jugar» a la
  * izquierda y, sólo en escritorio, Deshacer a la derecha (`MatUndoContext`: hasta 1100 px va abajo, en la botonera). Sin ⋯: todo lo demás va en el ⚙ de abajo (`AutoDock`). En el celular, la chapa del
- * rival a la derecha (repasando, «Volver al duelo» en su lugar). El turno, dicho una sola vez y sólo hasta 1100 px («Tu turno · 3», en el color de quién es; desde 1101 px lo dice la chapa de quien juega y la fase, sólo el botón del campo) y las vidas, planas (`LifeScore`): hasta 1100 px en el marcador debajo
- * de los íconos («VOS 8000 · Tu turno · 1 · RIVAL 8000»), con laterales en el izquierdo y, en escritorio sin ellos, en las esquinas del campo (las pone la pantalla). Hasta 1100 px la línea del registro va
+ * rival a la derecha (repasando, «Volver al duelo» en su lugar). El turno, dicho una sola vez y sólo hasta 1100 px («Tu turno · 3», en el color de quién es; desde 1101 px lo dice la chapa de quien juega y la fase, sólo el botón del campo) y las vidas: hasta 1100 px, planas (`LifeScore`) en el marcador debajo
+ * de los íconos («VOS 8000 · Tu turno · 1 · RIVAL 8000»); en escritorio, las chapas (`LifeBadge`) en los mismos lugares con laterales o sin ellos: la del rival arriba a la derecha y la tuya abajo a la izquierda (sin laterales las pone la pantalla en las esquinas del campo). Hasta 1100 px la línea del registro va
  * debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se
  * mueve. Todo el estado entra por props.
  */
@@ -323,18 +329,18 @@ export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, lane =
   if (rails) {
     return (
       <>
-        {/* Las vidas, planas, cada una de su lado del lateral izquierdo: el rival arriba, junto a la flecha, y vos abajo (Gastón, 2026-10-26: «la vida de ambos jugadores junta»). */}
+        {/* Las chapas, en los mismos lugares que sin laterales y que en el celular: la del rival arriba a la derecha (debajo de Deshacer) y la tuya abajo a la izquierda. */}
         <div className="col-start-1 row-start-1 flex min-w-0 items-start gap-2">
           <MatExitButton onExit={onExit} />
-          <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} align="start" size="lg" />
         </div>
         <div className="col-start-1 row-start-3 flex min-w-0 items-end">
-          <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine size="lg" />
+          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine active={myTurn} />
         </div>
         <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
           <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-2', MAT_BAR_ROW)}>
             {undo}
           </div>
+          <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} active={!myTurn} />
         </div>
         {/* El aviso, en lo que el campo agrandado deja libre del lateral (`--field-overhang`, de la mesa) y por encima del tablero (`z-20`): nunca cortado ni debajo. Con menos de 11 rem libres se apoya sobre el borde del campo.
             La caja no ataja toques, sólo el aviso: ocupa todo el lateral y, encima del campo, tapaba el Extra Deck (`RAIL_LANE_STYLE`). */}

@@ -134,7 +134,7 @@ describe('sacar un aviso deslizándolo', () => {
 })
 
 describe('las chapas de vidas', () => {
-  it('al cambiar, el número late y el «−N» chico queda adentro de la chapa (sin número afuera; sólo `transform`/`opacity`, quieto con movimiento reducido), rojo si es tu daño y menta si es el del rival, y se anuncia', () => {
+  it('al cambiar, el número late (sin volver a montarse) y el «−N» chico queda adentro de la chapa (sin número afuera; sólo `transform`/`opacity`, quieto con movimiento reducido), rojo si es tu daño y menta si es el del rival, y se anuncia', () => {
     const view = renderBare(
       <>
         <LifeBadge name="Vos" label="Vos" life={8000} mine />
@@ -162,14 +162,13 @@ describe('las chapas de vidas', () => {
     // Ningún número de daño fuera de una chapa.
     expect(document.querySelectorAll('[data-life-delta]')).toHaveLength(2)
     for (const number of document.querySelectorAll('[data-life-delta]')) expect(number.closest('[data-life-badge]')).not.toBeNull()
-    expect(mine.querySelector('.animate-life-bump')).toHaveClass('motion-reduce:animate-none')
     expect(mine.querySelector('[aria-live="polite"]')).toHaveTextContent('Vos −1100')
     expect(mine).toHaveClass('bg-background/82')
     expect(mine.className).not.toMatch(/backdrop-blur|rounded/)
 
-    // Los dos movimientos sólo tocan `transform` y `opacity` (los registra `index.css`).
+    // El «−N» sólo toca `transform` y `opacity` (lo registra `index.css`); el golpe del número es `scale` por Web Animations (`BUMP_FRAMES`).
     const css = readFileSync(path.resolve(__dirname, '..', 'index.css'), 'utf8')
-    for (const name of ['life-bump', 'linger']) {
+    for (const name of ['linger']) {
       const body = new RegExp(`@keyframes ${name} \\{([\\s\\S]*?)\\n  \\}`).exec(css)![1]!
       const props = [...body.matchAll(/([a-z-]+):/g)].map(([, prop]) => prop).filter((prop) => prop !== 'animation-timing-function')
 

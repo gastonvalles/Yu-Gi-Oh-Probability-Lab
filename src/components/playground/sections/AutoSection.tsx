@@ -26,7 +26,7 @@ import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { BotDeckEditor } from '../../duel/BotDeckEditor'
 import { BotDeckSheet } from '../../duel/BotDeckSheet'
 import { SoloScreen } from '../../duel/SoloScreen'
-import { LifeScore } from '../../duel/LifeScore'
+import { LifeBadge, LifeScore } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatUndoContext } from '../../probability/MatBarActions'
 import { CardMenu, type MenuItem } from '../../probability/MatDialogs'
@@ -325,11 +325,19 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const frame = (width: string, label: string, variant?: 'floating') => (
     <div className={cx('grid content-start gap-2', width)}>
       <p className="m-0 text-micro text-muted">{label}</p>
-      <div className={cx('grid gap-3 border border-border-subtle bg-background py-3', variant && 'min-h-[36rem] justify-items-center overflow-hidden')}>
+      <div className={cx('grid gap-3 border border-border-subtle bg-background py-3', variant && 'min-h-[36rem] content-start justify-items-center overflow-hidden')}>
         <AutoCardSheet name={ASH.name} kicker={t('auto.picker.place.mine.hand')} art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} variant={variant} />
         {variant ? null : <PhasesSample items={phases} />}
         {/* Abierta desde el visor del GY (celular): lo reemplaza, y «‹ GY · 2» la cierra y lo deja a la vista. */}
         {variant ? null : <AutoCardSheet name={ASH.name} kicker="GY" art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} crumb={{ label: 'GY · 2', onBack: reply('Volver a GY · 2') }} />}
+        {/* Las preguntas en la ventana: la pregunta en la barra; las cartas, del tamaño de las de tu mano, y los botones en su fila, abajo a la derecha. */}
+        {variant ? (
+          <>
+            <RespondBand variant={variant} title={t('auto.respond.activated', { name: ASH.name })} about={ASH.name} link={2} cards={[{ key: 'veiler', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', false) }]} chosen="veiler" onToggle={() => {}} onChain={reply(t('auto.respond.start'))} onPass={reply(t('auto.lane.pass'))} />
+            <AskPrompt variant={variant} text={t('auto.ask.effect')} card={PONIX} place={t('practice.mat.field')} kicker={t('auto.ask.afterEvent', { event: t('auto.ask.event.special') })} yes={{ label: t('practice.menu.activateEffect'), onSelect: reply(t('practice.menu.activateEffect')) }} no={{ label: t('auto.ask.skipEffect'), onSelect: reply(t('auto.ask.skipEffect')) }} />
+            <PickBand variant={variant} title={t('auto.pick.cards', { count: 1 })} place={t('auto.band.from', { place: t('practice.place.gy'), count: GRAVE.length })} cards={GRAVE} chosen={[]} eligible={new Set(GRAVE.map((grave) => grave.key))} multi={false} done={false} onToggle={(key) => onAnswer(key)} onPick={() => {}} onCancel={reply(t('common.cancel'))} />
+          </>
+        ) : null}
       </div>
     </div>
   )
@@ -966,7 +974,7 @@ function LifePlateSample() {
 }
 
 /**
- * El marcador de «Jugar solo automático» hasta 1100 px (`LifeScore` en `AutoBar`): tus vidas, el turno una sola vez y las del rival, planos; debajo, el tamaño de escritorio (`size="lg"`), cada una en su esquina.
+ * El marcador de «Jugar solo automático» hasta 1100 px (`LifeScore` en `AutoBar`): tus vidas, el turno una sola vez y las del rival, planos; debajo, las chapas de escritorio (`LifeBadge`), cada una en su esquina.
  * «Recibir 1000» baja las del rival de verdad (el conteo y el golpe: la sacudida, el número que se infla, el fogonazo y el «−N» que sube); el otro botón cambia el turno y su color.
  */
 function LifeScoreSample() {
@@ -974,7 +982,7 @@ function LifeScoreSample() {
   const [mineTurn, setMineTurn] = useState(true)
 
   return (
-    <Specimen title="LifeScore · el marcador y las esquinas" layout="column" className="col-span-full" note={<>Plano, sin caja, chapa ni barra (Gastón, 2026-10-27: las placas «no le gustan»): el nombre chico en el color del dueño (<Tag>PLAYER_COLOR</Tag>: lavanda vos, ámbar el rival) y el número blanco, lo que decide: 24 px en el marcador de la barra (hasta 1100 px) y 33 en escritorio (<Tag>size="lg"</Tag>, cada una en su esquina del campo o en su lateral). Cuenta hasta el valor nuevo; al bajar, el golpe (se sacude, el número se infla, un fogonazo rojo y el «−N» sube) y al subir, un fogonazo verde; en 2000 o menos queda rojo y late, y en 0, rojo. El turno va una vez (en el medio del marcador o debajo de los íconos), en el color de quién es; la fase la dice el botón del campo. Archivo: <Tag>duel/LifeScore.tsx</Tag></>}>
+    <Specimen title="LifeScore · el marcador y las esquinas" layout="column" className="col-span-full" note={<>Plano, sin caja, chapa ni barra (Gastón, 2026-10-27: las placas «no le gustan»): el nombre chico en el color del dueño (<Tag>PLAYER_COLOR</Tag>: lavanda vos, ámbar el rival) y el número blanco, lo que decide: 24 px, en el marcador de la barra (de 640 a 1100 px). En escritorio, con laterales o sin ellos, van siempre las chapas (<Tag>LifeBadge</Tag>, debajo): la del rival arriba a la derecha y la tuya abajo a la izquierda, con el golpe adentro de la caja (el fogonazo del plano se salía de la columna). Cuenta hasta el valor nuevo; al bajar, el golpe (se sacude, el número se infla, un fogonazo rojo y el «−N» sube) y al subir, un fogonazo verde; en 2000 o menos queda rojo y late, y en 0, rojo. El turno va una vez (en el medio del marcador o debajo de los íconos), en el color de quién es; la fase la dice el botón del campo. Archivo: <Tag>duel/LifeScore.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => setTheirs((life) => Math.max(0, life - 1000))}>
           Recibir 1000
@@ -997,9 +1005,11 @@ function LifeScoreSample() {
       <div className="relative isolate grid h-44 w-full max-w-md content-between overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
         <span className="justify-self-end">
-          <LifeScore name={t('duel.bar.rival')} label={t('duel.bar.rivalTag')} life={theirs} size="lg" />
+          <LifeBadge name={t('duel.bar.rival')} label={t('duel.bar.rivalTag')} life={theirs} active={!mineTurn} />
         </span>
-        <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={3200} mine size="lg" />
+        <span className="justify-self-start">
+          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={3200} mine active={mineTurn} />
+        </span>
       </div>
     </Specimen>
   )
@@ -1089,7 +1099,7 @@ function DockSample() {
       title="AutoDock · la botonera y las esquinas (escritorio)"
       layout="column"
       className="col-span-full"
-      note={<>Desde 1101 px, en «Jugar solo automático»: las vidas del rival arriba a la derecha del campo y las tuyas abajo a la izquierda, cada una con las cartas de su mano (<Tag>LifeTile</Tag> <Tag>hand</Tag>); abajo a la derecha, dos cuadrados de 44 px: ≡ «Pasos» (oculta y muestra el panel) y ⚙ «Opciones». Opciones abre la hoja recta de siempre (en escritorio, su ventana, que se lleva de la barra): filas de 44 px con su interruptor o su segmentado a la derecha (Vista 3D, Menús flotantes, Respuestas, Casilla, el rival, reiniciar, replay, bot, modo manual) y «Rendirse ›» al final; no mueve el campo. Archivo: <Tag>auto/AutoBar.tsx</Tag></>}
+      note={<>Desde 1101 px, en «Jugar solo automático»: las vidas del rival arriba a la derecha del campo y las tuyas abajo a la izquierda, cada una con las cartas de su mano (<Tag>LifeTile</Tag> <Tag>hand</Tag>); abajo a la derecha, dos cuadrados de 44 px: ≡ «Pasos» (oculta y muestra el panel; plegado lleva cuántos pasos hay, y de fábrica va plegado debajo de 1440 px) y ⚙ «Opciones». Opciones abre la hoja recta de siempre (en escritorio, su ventana, que se lleva de la barra): filas de 44 px con su interruptor o su segmentado a la derecha (Vista 3D, Menús flotantes, Respuestas, Casilla, el rival, reiniciar, replay, bot, modo manual) y «Rendirse ›» al final; no mueve el campo. Archivo: <Tag>auto/AutoBar.tsx</Tag></>}
     >
       <div className="relative isolate grid min-h-48 grid-cols-[minmax(0,1fr)_auto] content-between gap-3 overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
@@ -1110,7 +1120,7 @@ function DockSample() {
             rival={{ kind: 'passive', summary: t('auto.rival.kind.passive'), onChange: () => undefined }}
             blind={false}
             onBlind={() => undefined}
-            steps={{ open: steps, onToggle: () => setSteps((open) => !open) }}
+            steps={{ open: steps, onToggle: () => setSteps((open) => !open), count: 7 }}
           />
         </span>
       </div>

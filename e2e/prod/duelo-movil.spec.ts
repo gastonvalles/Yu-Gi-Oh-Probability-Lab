@@ -498,10 +498,13 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       // TI-206: no existe «Ver carta» (ni botón ni fila); los botones son el borde de abajo del menú; el chip del tipo lleva letra blanca con ≥ 4,5:1 y no repite el dato.
       await expect(sheet.getByText('Ver carta', { exact: true }), 'sin «Ver carta» visible').toHaveCount(0)
       await expect(sheet.getByRole('menuitem', { name: /Ver carta/ }), 'sin «Ver carta» entre las jugadas').toHaveCount(0)
-      expect(await contrastOf(sheet.locator('[data-type-chip]').first()), 'contraste de la letra del chip del tipo sobre su fondo').toBeGreaterThanOrEqual(4.5)
-      expect(await sheet.locator('[data-type-chip]').first().evaluate((node) => getComputedStyle(node).color), 'la letra del chip es blanca').toMatch(/^rgb\(25[0-5], 25[0-5], 25[0-5]\)$/)
-      await expect(sheet.locator('[data-type-chip]').first(), 'el chip dice «Normal»').toHaveText('Normal')
-      expect(((await sheet.locator('[data-type-chip]').first().locator('xpath=../..').innerText()).match(/\bNormal\b/g) ?? []).length, 'el tipo se dice una sola vez en la cabeza').toBe(1)
+      // TI-229: en escritorio la ventana de la ficha es el nombre en la barra y sus jugadas; el tipo y el resto del detalle van en el panel de la izquierda (`[data-card-dock]`).
+      const typeChip = isMobile ? sheet.locator('[data-type-chip]').first() : page.locator('[data-card-dock] [data-type-chip]').first()
+      if (!isMobile) await expect(sheet.locator('[data-type-chip]'), 'la ventana de escritorio no repite el chip del tipo (está en el panel de detalle)').toHaveCount(0)
+      expect(await contrastOf(typeChip), 'contraste de la letra del chip del tipo sobre su fondo').toBeGreaterThanOrEqual(4.5)
+      expect(await typeChip.evaluate((node) => getComputedStyle(node).color), 'la letra del chip es blanca').toMatch(/^rgb\(25[0-5], 25[0-5], 25[0-5]\)$/)
+      await expect(typeChip, 'el chip dice «Normal»').toHaveText('Normal')
+      if (isMobile) expect(((await typeChip.locator('xpath=../..').innerText()).match(/\bNormal\b/g) ?? []).length, 'el tipo se dice una sola vez en la cabeza').toBe(1)
       expect(await actionsAtBottom(sheet), 'los botones son el borde de abajo del menú: fuera de lo que se desplaza y a no más que su relleno del borde').toBe(true)
       if (isMobile) {
         expect(await alphaOf(sheet), 'alfa del fondo de la ficha').toBe(1)
@@ -716,7 +719,7 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
             if (seen.bands.some((entry) => entry.id === id)) continue
             const box = band.getBoundingClientRect()
             const button = document.querySelector('button[aria-label^="Fases: "]').getBoundingClientRect()
-            seen.bands.push({ id, side: band.dataset.side, turn: band.hasAttribute('data-turn'), text: band.textContent, pe: getComputedStyle(band).pointerEvents, hidden: band.getAttribute('aria-hidden'), image: getComputedStyle(band.firstElementChild).backgroundImage, color: getComputedStyle(band.firstElementChild).color, mid: Math.abs(box.top + box.height / 2 - (button.top + button.height / 2)), height: box.height })
+            seen.bands.push({ id, side: band.dataset.side, turn: band.hasAttribute('data-turn'), text: band.textContent, pe: getComputedStyle(band).pointerEvents, hidden: band.getAttribute('aria-hidden'), image: getComputedStyle(band.firstElementChild).backgroundImage, color: getComputedStyle(band.firstElementChild).color, mid: Math.abs(box.top + box.height / 2 - (button.top + button.height / 2)), height: band.offsetHeight })
           }
           for (const node of document.querySelectorAll('[aria-label="Mesa de práctica"] *')) {
             if (node.children.length || node.closest('.sr-only, [data-life-badge], [data-fx=banner], [role=status], ol, li')) continue
@@ -1265,6 +1268,140 @@ test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-da
     expect(resolved.places['1']![0], 'el «1» queda en su casilla de Mágica/Trampa').toMatch(/^st:/)
     expectStill(await readYs(page), 'al responder, minimizar y la cadena')
   })
+
+  // Ronda `fase-duelo-6` (TI-227, TI-228, TI-229; QA del conjunto, TI-236): el escritorio en tres anchos (1101×800, 1280×720, 1440×900). Una sola chapa (`LifeBadge`) en los mismos lugares, Pasos plegado de fábrica bajo 1440 px con su número
+  // en el botón, el campo 3D entero dentro de su columna y quieto (x e y), la columna que no desborda, la mano que no tapa tu Deck, tu Extra ni tu chapa, la ventana de la pregunta abajo al centro con la pregunta escrita en la barra violeta y «Activar» en lima
+  // sin tapar el campo, y el final del duelo en su columna sin tapar ⚙, Pasos ni deshacer.
+  test('TI-236, escritorio en 1101, 1280 y 1440: una sola chapa, Pasos plegado bajo 1440, el campo 3D en su columna y quieto, la mano sin tapar el Deck, la ventana de la pregunta con la pregunta en la barra, y el final en su columna', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'sólo escritorio')
+    test.setTimeout(240_000)
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
+    await startAuto(page)
+    type R = { x: number; y: number; r: number; b: number }
+    // Todo lo que se mide de la mesa de escritorio en un cuadro: el campo, su columna (el primer ancestro que recorta en x), qué casillas quedan fuera de ella, el desborde de la columna y de qué se tapa con la mano.
+    const measure = () =>
+      page.evaluate(() => {
+        const rect = (el: Element | null): R | null => {
+          if (!el || !el.getClientRects().length) return null
+          const b = el.getBoundingClientRect()
+          return { x: Math.round(b.left * 10) / 10, y: Math.round(b.top * 10) / 10, r: Math.round(b.right * 10) / 10, b: Math.round(b.bottom * 10) / 10 }
+        }
+        const hit = (a: R, b: R) => a.x < b.r - 1 && b.x < a.r - 1 && a.y < b.b - 1 && b.y < a.b - 1
+        const field = document.querySelector('[aria-label="Campo"]')!
+        let column: Element | null = field.parentElement
+        while (column && !/overflow-x-hidden/.test(column.getAttribute('class') ?? '')) column = column.parentElement
+        const col = column!.getBoundingClientRect()
+        const outside = Array.from(field.querySelectorAll('[data-drop]'))
+          .filter((cell) => cell.getClientRects().length)
+          .filter((cell) => { const b = cell.getBoundingClientRect(); return b.left < col.left - 0.5 || b.right > col.right + 0.5 || b.top < col.top - 0.5 })
+          .map((cell) => cell.getAttribute('data-drop'))
+        const hand = Array.from(document.querySelectorAll('[aria-label="Mano"] [role=listitem]')).map((card) => rect(card)!).filter(Boolean)
+        const covered = ['deck', 'extra'].filter((id) => { const zone = rect(document.querySelector(`[data-drop="${id}"]`)); return zone && hand.some((card) => hit(card, zone)) })
+        const mine = rect(document.querySelector('[data-life-badge][data-lp=mine]'))
+        if (mine && hand.some((card) => hit(card, mine))) covered.push('chapa')
+        const badges = Array.from(document.querySelectorAll('[data-life-badge]')).filter((node) => node.getClientRects().length)
+        const steps = document.querySelector('section[aria-label="Pasos y combos"]')
+        return {
+          field: rect(field), col: { x: col.left, r: col.right, cx: (col.left + col.right) / 2 }, outside, colOverflow: (column as HTMLElement).scrollHeight - (column as HTMLElement).clientHeight, covered,
+          badges: badges.length, mine, theirs: rect(document.querySelector('[data-life-badge][data-lp=theirs]')), stepsOpen: Boolean(steps && steps.getClientRects().length),
+          stepsButton: Array.from(document.querySelectorAll('button[aria-label="Pasos y combos"]')).filter((node) => node.getClientRects().length).map((node) => (node.textContent ?? '').trim()),
+          hscroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        }
+      })
+    type M = Awaited<ReturnType<typeof measure>>
+    const sameField = (a: M, b: M, when: string) => {
+      expect(Math.abs(a.field!.x - b.field!.x), `${when}: el campo se corrió en x`).toBeLessThanOrEqual(0.5)
+      expect(Math.abs(a.field!.y - b.field!.y), `${when}: el campo se corrió en y`).toBeLessThanOrEqual(0.5)
+    }
+
+    const sizes: [number, number, boolean][] = [[1101, 800, false], [1280, 720, false], [1440, 900, true]]
+    for (const [width, height, stepsOpen] of sizes) {
+      await test.step(`${width}×${height}: ${stepsOpen ? 'Pasos abierto' : 'Pasos plegado con su número'}, una sola chapa, el campo en su columna, la mano sin tapar`, async () => {
+        await page.setViewportSize({ width, height })
+        await expect.poll(async () => (await measure()).covered, { message: `${width}×${height}: la mano tapa tu Deck, tu Extra o tu chapa`, timeout: 10_000 }).toEqual([])
+        const at = await measure()
+        expect(at.badges, 'una sola chapa por jugador (la misma del celular), no el marcador plano').toBe(2)
+        expect(at.theirs!.y, 'la del rival, arriba').toBeLessThan(at.field!.y + (at.field!.b - at.field!.y) / 2)
+        expect(at.theirs!.r, 'la del rival, a la derecha de la columna').toBeGreaterThan(at.col.cx)
+        expect(at.mine!.y, 'la tuya, abajo').toBeGreaterThan(at.field!.y + (at.field!.b - at.field!.y) / 2)
+        expect(at.mine!.x, 'la tuya, a la izquierda de la columna').toBeLessThan(at.col.cx)
+        expect(at.stepsOpen, stepsOpen ? 'Pasos abierto a 1440' : 'Pasos plegado de fábrica bajo 1440').toBe(stepsOpen)
+        if (!stepsOpen) {
+          expect(at.stepsButton.length, 'el botón «Pasos y combos» de la botonera').toBeGreaterThanOrEqual(1)
+          expect(at.stepsButton.join(' '), 'con su número').toMatch(/\d/)
+        }
+        expect(at.outside, 'ninguna casilla ni pila fuera de su columna').toEqual([])
+        expect(at.colOverflow, 'la columna no desborda (scrollHeight = clientHeight)').toBeLessThanOrEqual(0)
+        expect(at.hscroll, 'sin scroll horizontal').toBeLessThanOrEqual(0)
+        expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight), 'sin scroll vertical del documento').toBeLessThanOrEqual(0)
+      })
+    }
+
+    // Los tres anchos comparten la mano de la partida: se trabaja a 1280×720 (Pasos plegado: el caso más ajustado) y el campo no se mueve en ningún estado.
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await expect.poll(async () => (await measure()).covered).toEqual([])
+    const rest = await measure()
+    await test.step('la ventana de la pregunta: abajo al centro de la columna, sin tapar el campo, con la pregunta en la barra violeta y «Activar» en lima', async () => {
+      await press(handList(page).getByRole('listitem', { name: 'Foolish Burial', exact: true }).first(), false)
+      await press(page.locator('[data-auto-panel]').getByRole('menuitem', { name: 'Activar', exact: true }), false)
+      const zones = mat(page).locator('[aria-label="Campo"] [aria-label$=": elegir"]')
+      await expect(zones.first()).toBeVisible()
+      await press(zones.nth(Math.min(2, (await zones.count()) - 1)), false)
+      const ask = page.locator('[data-auto-panel]').filter({ hasText: '¿Respondés?' })
+      await expect(ask).toBeVisible({ timeout: 30_000 })
+      await expect(ask).toHaveAttribute('data-auto-panel', 'floating')
+      await expect.poll(async () => { const b = (await ask.boundingBox())!; return Math.round(b.y + b.height) }, { message: 'la ventana se asienta abajo' }).toBeGreaterThanOrEqual(page.viewportSize()!.height - 2)
+      const win = (await ask.boundingBox())!
+      const during = await measure()
+      expect(Math.abs(win.x + win.width / 2 - rest.col.cx), 'centrada en la columna del campo').toBeLessThanOrEqual(8)
+      expect(win.y, 'sin tapar el campo (empieza bajo su última fila)').toBeGreaterThanOrEqual(during.field!.b - 1)
+      const title = ask.getByText('Se activó «Foolish Burial». ¿Respondés?')
+      await expect(title, 'la pregunta va escrita en la barra').toBeVisible()
+      const violet = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.backgroundColor = 'var(--color-primary)'; document.body.append(probe); const color = getComputedStyle(probe).backgroundColor; probe.remove(); return color })
+      expect(await title.evaluate((node) => { for (let el: Element | null = node; el; el = el.parentElement) { const bg = getComputedStyle(el).backgroundColor; if (bg !== 'rgba(0, 0, 0, 0)') return bg } return '' }), 'la barra de la ventana es violeta').toBe(violet)
+      const handCard = (await handList(page).getByRole('listitem').first().boundingBox())!
+      const option = (await ask.getByRole('option').first().boundingBox())!
+      expect(Math.abs(option.width - handCard.width), 'las cartas de la ventana, del tamaño de las de tu mano (±16 px: las de la mano van inclinadas y su caja es más ancha)').toBeLessThanOrEqual(16)
+      const lima = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.backgroundColor = 'var(--color-info)'; document.body.append(probe); const color = getComputedStyle(probe).backgroundColor; probe.remove(); return color })
+      expect(await ask.getByRole('button', { name: 'Activar', exact: true }).evaluate((node) => getComputedStyle(node).backgroundColor), '«Activar» en lima').toBe(lima)
+      expect(during.badges, 'con la ventana abierta sigue habiendo una sola chapa por jugador').toBe(2)
+      expect(win.x, 'no pisa tu chapa').toBeGreaterThanOrEqual(during.mine!.r - 1)
+      sameField(rest, during, 'con la ventana de la pregunta')
+      expect(during.colOverflow, 'la columna no desborda con la pregunta').toBeLessThanOrEqual(0)
+      // Tu Ash niega tu Foolish: la cadena de dos se resuelve sola (pasar dejaría a Foolish pidiendo una carta del deck).
+      await press(ask.getByRole('button', { name: 'Activar', exact: true }), false)
+      await expect(ask).toHaveCount(0, { timeout: 30_000 })
+      await expect(page.locator('[data-chain-stage]')).toHaveCount(0, { timeout: 30_000 })
+      await expect(phaseButton(page)).toBeEnabled({ timeout: 30_000 })
+    })
+
+    await test.step('⚙ y la ficha no corren el campo; el final del duelo queda en su columna sin tapar ⚙, Pasos ni deshacer', async () => {
+      await press(page.locator('[data-mat-gear]'), false)
+      const options = page.locator('[data-auto-panel]').filter({ hasText: 'Vista 3D' })
+      await expect(options).toBeVisible()
+      await expect.poll(async () => Math.round((await options.boundingBox())!.y + (await options.boundingBox())!.height)).toBeGreaterThanOrEqual(page.viewportSize()!.height - 2)
+      sameField(rest, await measure(), 'con Opciones')
+      const rendirse = options.getByRole('button', { name: 'Rendirse', exact: true })
+      await rendirse.scrollIntoViewIfNeeded()
+      await press(rendirse, false)
+      await press(page.getByRole('alertdialog', { name: '¿Rendirte en este duelo?' }).getByRole('button', { name: 'Rendirse', exact: true }), false)
+      const hero = page.getByTestId('result-hero')
+      await expect(hero).toBeVisible({ timeout: 10_000 })
+      const end = await measure()
+      sameField(rest, end, 'con el final del duelo')
+      const block = (await hero.locator('[data-result-block]').boundingBox())!
+      expect(Math.abs(block.x + block.width / 2 - end.col.cx), 'el bloque del final, centrado en su columna').toBeLessThanOrEqual(8)
+      expect(block.x, 'dentro de su columna (izquierda)').toBeGreaterThanOrEqual(end.col.x)
+      expect(block.x + block.width, 'dentro de su columna (derecha)').toBeLessThanOrEqual(end.col.r)
+      const overlaps = (name: string, box: { x: number; y: number; width: number; height: number } | null) => expect(box && box.x < block.x + block.width && block.x < box.x + box.width && box.y < block.y + block.height && block.y < box.y + box.height, `el final no tapa ${name}`).toBeFalsy()
+      overlaps('⚙', await page.locator('[data-mat-gear]').boundingBox())
+      overlaps('deshacer', await page.getByRole('button', { name: 'Deshacer', exact: true }).first().boundingBox())
+      overlaps('Pasos', await page.locator('button[aria-label="Pasos y combos"]').filter({ visible: true }).first().boundingBox())
+      expect(await roundCorners(page), 'el final de escritorio: esquinas rectas').toEqual([])
+    })
+    expect(errors, 'errores de página propios').toEqual([])
+  })
 })
 
 // V-02 (M-03, elegir varias): la muestra de /playground (la misma hoja de CardPicker que usa el duelo; un efecto real que pida varias cartas en el deck de la prueba no se arma de forma estable).
@@ -1272,14 +1409,14 @@ test.describe('V-02, elegir varias (muestra de /playground)', () => {
   test.beforeEach(async ({ context }) => prepare(context, true))
 
   test('un solo cartel con las copias agrupadas («×N»), el orden numerado, el contador «N de M» y una sola principal a la derecha que se prende al completar', async ({ page, isMobile }) => {
-    // /playground monta cientos de muestras y la traza que Playwright toma en cada toque tumba el renderizador del celular de la prueba (×3, con toque): en celular se midió por script (390×844, con toque).
+    // Con la traza de cada toque, el celular de la prueba (×3, con toque) se cae en /playground: en celular se midió por script (390×844, con toque).
     test.skip(isMobile, 'sólo escritorio: con la traza, el celular (×3) tumba la página de /playground')
-    // /playground en un dev server con la máquina cargada tarda más de un minuto en montar (la ronda 5 lo midió): sin esperas cortas.
+    // /playground monta sólo la sección del ancla (la del duelo automático).
     test.setTimeout(240_000)
-    await page.goto('/playground')
+    await page.goto('/playground#automatico')
     // La muestra «Elegir varias · copias juntas»: su botón «Abrir la hoja» es el primero que le sigue al título.
     const title = page.locator('h3', { hasText: 'Elegir varias · copias juntas' })
-    await expect(title, '/playground monta todas sus muestras (en un dev server tarda)').toBeAttached({ timeout: 180_000 })
+    await expect(title, '/playground#automatico monta la muestra').toBeAttached({ timeout: 180_000 })
     await title.scrollIntoViewIfNeeded()
     await press(title.locator('xpath=following::button[normalize-space()="Abrir la hoja"][1]'), isMobile)
     const sheet = page.locator('[data-prompt]').filter({ hasText: 'Branded Fusion' }).first()

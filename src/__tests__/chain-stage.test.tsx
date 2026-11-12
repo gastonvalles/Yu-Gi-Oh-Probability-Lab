@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { frameKindOf, frameOfType } from '../app/card-frame'
 import type { ChainMedal } from '../app/card-glow'
 import { CHAIN_LEAVE_MS, ChainStage, glyphCells, type ChainNoticeRow } from '../components/auto/ChainNotice'
+import { Presence } from '../app/use-presence'
 import { ChainBadge } from '../components/probability/MatFx'
 
 // La cadena en grande (K-01 a K-03), sólo al encadenar: cartas grandes inclinadas con su número enorme y el borde de su tipo, unidas por una cadena de metal; resolviendo, no está
@@ -219,6 +220,25 @@ describe('la cadena en grande', () => {
     expect(leaving).not.toHaveAttribute('data-resolving')
     act(() => vi.advanceTimersByTime(250))
     expect(document.querySelector('[data-chain-medal-leaving]')).toBeNull()
+  })
+
+  it('el último medallón de un lugar sale con la misma rotura que los demás (dentro de `Presence`), no de golpe', () => {
+    vi.useFakeTimers()
+    // `Presence` sólo deja salir donde hay Web Animations (el navegador): en jsdom, se simula.
+    Object.defineProperty(Element.prototype, 'animate', { value: () => ({}), configurable: true })
+    try {
+      const medal: ChainMedal = { number: 1, mine: true, voided: false, resolving: true }
+      const view = render(<Presence>{<ChainBadge medals={[medal]} />}</Presence>)
+
+      view.rerender(<Presence>{null}</Presence>)
+      const leaving = document.querySelector('[data-chain-medal-leaving="1"]')
+      expect(leaving).toHaveClass('scale-125', 'opacity-0', 'transition-[translate,scale,opacity]', 'duration-200')
+      expect(leaving).not.toHaveAttribute('data-resolving')
+      act(() => vi.advanceTimersByTime(250))
+      expect(document.querySelector('[data-chain-medal-leaving]')).toBeNull()
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'animate')
+    }
   })
 
   it('con más de cuatro, las viejas se achican y se van hacia arriba', () => {

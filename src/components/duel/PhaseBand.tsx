@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type TransitionEvent } from 'react'
 
 import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { t } from '../../i18n'
@@ -108,35 +108,47 @@ export function PhaseBand({ cue, hold = false }: { cue: PhaseCue | null; hold?: 
   useEffect(() => {
     if (!turn) return
     const leave = window.setTimeout(() => setTurnLeaving(true), TURN_BAND_HOLD_MS)
-    const gone = window.setTimeout(() => setTurn(null), TURN_BAND_MS)
 
-    return () => {
-      window.clearTimeout(leave)
-      window.clearTimeout(gone)
-    }
+    return () => window.clearTimeout(leave)
   }, [turn])
+
+  // La salida termina con su transición (`transitionend` de la opacidad); el reloj es sólo la red, y cuenta desde que empieza a salir: si el hilo principal se atrasa (al cambiar de turno, cuando
+  // la mesa se redibuja), los dos plazos ya no pasan juntos y la banda no se va sin salida.
+  useEffect(() => {
+    if (!turnLeaving) return
+    const gone = window.setTimeout(() => setTurn(null), TURN_BAND_MS - TURN_BAND_HOLD_MS)
+
+    return () => window.clearTimeout(gone)
+  }, [turnLeaving])
 
   // La de la fase cuenta desde que se ve: mientras está la del turno, espera (y se queda con la más nueva).
   const waiting = turn !== null
   useEffect(() => {
     if (!shown || waiting) return
     const leave = window.setTimeout(() => setLeaving(true), PHASE_BAND_HOLD_MS)
-    const gone = window.setTimeout(() => setShown(null), PHASE_BAND_MS)
 
-    return () => {
-      window.clearTimeout(leave)
-      window.clearTimeout(gone)
-    }
+    return () => window.clearTimeout(leave)
   }, [shown, waiting])
 
-  // Mientras una carta grande ocupa el centro (`hold`), la banda espera: no se dibuja, y su reloj sigue (si la carta se va antes, se ve lo que quede; si no, ya pasó).
-  if (hold) return null
+  useEffect(() => {
+    if (!leaving) return
+    const gone = window.setTimeout(() => setShown(null), PHASE_BAND_MS - PHASE_BAND_HOLD_MS)
+
+    return () => window.clearTimeout(gone)
+  }, [leaving])
+
+  const gone = (out: boolean, done: () => void) => (event: TransitionEvent<HTMLDivElement>) => {
+    if (out && event.target === event.currentTarget && event.propertyName === 'opacity') done()
+  }
+  // Mientras una carta grande ocupa el centro (`hold`), la banda espera montada e invisible (se funde; no se corta ni vuelve a entrar desde cero al soltarse), y su reloj sigue.
+  const layer = cx(LAYER, 'transition-opacity duration-200 motion-reduce:transition-none', hold && 'opacity-0')
+
   if (turn) {
     const fromLeft = turn.side === 'mine'
 
     return (
-      <div aria-hidden="true" data-fx="banner" data-turn="" data-side={turn.side} className={cx(LAYER, TURN_HEIGHT)} style={PLACE}>
-        <div key={turn.key} className={cx(BOX, 'relative', BAND[turn.side], 'transition-[translate,opacity] duration-250 starting:opacity-0 motion-reduce:transition-opacity', fromSide(fromLeft, turnLeaving))}>
+      <div aria-hidden="true" data-fx="banner" data-turn="" data-side={turn.side} className={cx(layer, TURN_HEIGHT)} style={PLACE}>
+        <div key={turn.key} className={cx(BOX, 'relative', BAND[turn.side], 'transition-[translate,opacity] duration-250 starting:opacity-0 motion-reduce:transition-opacity', fromSide(fromLeft, turnLeaving))} onTransitionEnd={gone(turnLeaving, () => setTurn(null))}>
           <TurnFace className={cx('transition-[translate,opacity] delay-100 duration-250 ease-out starting:opacity-0 motion-reduce:transition-opacity', fromLeft ? 'motion-safe:starting:-translate-x-12' : 'motion-safe:starting:translate-x-12')} />
         </div>
       </div>
@@ -146,8 +158,8 @@ export function PhaseBand({ cue, hold = false }: { cue: PhaseCue | null; hold?: 
   const fromLeft = shown.side === 'mine'
 
   return (
-    <div aria-hidden="true" data-fx="banner" data-side={shown.side} className={cx(LAYER, HEIGHT)} style={PLACE}>
-      <div key={shown.side} className={cx(BOX, BAND[shown.side], 'transition-[translate,opacity] duration-200 starting:opacity-0 motion-reduce:transition-opacity', fromSide(fromLeft, leaving))}>
+    <div aria-hidden="true" data-fx="banner" data-side={shown.side} className={cx(layer, HEIGHT)} style={PLACE}>
+      <div key={shown.side} className={cx(BOX, BAND[shown.side], 'transition-[translate,opacity] duration-200 starting:opacity-0 motion-reduce:transition-opacity', fromSide(fromLeft, leaving))} onTransitionEnd={gone(leaving, () => setShown(null))}>
         <span
           key={shown.key}
           className={cx(TEXT, 'transition-[translate,opacity] delay-100 duration-200 ease-out starting:opacity-0 motion-reduce:transition-opacity', fromLeft ? 'motion-safe:starting:-translate-x-8' : 'motion-safe:starting:translate-x-8')}

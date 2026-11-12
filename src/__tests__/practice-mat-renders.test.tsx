@@ -75,6 +75,10 @@ describe('los dibujos de la mesa por jugada', () => {
 
       fireEvent.click(phaseButton())
       expect(count(() => fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Main Phase 1' })))).toEqual({ play: 1, after: 1 })
+      // La banda termina de salir: su salida cuenta desde que empieza (los 2 s de una vez son un atraso del hilo principal), y eso la dibuja a ella sola, no a la mesa.
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
       expect(document.querySelector('[data-fx="banner"]')).toBeNull()
     } finally {
       vi.useRealTimers()

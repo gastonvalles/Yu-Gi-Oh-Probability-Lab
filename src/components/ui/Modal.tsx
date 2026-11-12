@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { matCardPositionKey, touchOr, useDraggableOffset } from '../../app/use-draggable-offset'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { useFoldMotion } from '../../app/use-fold-motion'
 import { useSwipeFold } from '../../app/use-swipe-fold'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
@@ -55,6 +56,8 @@ const MAT_SIZE_CLASS: Partial<Record<ModalSize, string>> = {
 
 /** Con el teclado del celular abierto la pantalla visible se achica (`visualViewport`) sin que se achique la de la página: más que esto, es el teclado (px). */
 const KEYBOARD_PX = 120
+/** El alto del asa minimizada (`PromptHandle`: su flecha de 44 px y el borde), en px. */
+const HANDLE_PX = 46
 
 interface ModalProps {
   isOpen: boolean
@@ -158,16 +161,34 @@ export function Modal({
   const [minimized, setMinimized] = useState(false)
   const [wasOpen, setWasOpen] = useState(isOpen)
   const lowered = minimizable && minimized
-  // Arrastrar el encabezado hacia abajo también la minimiza (como la flecha). El panel de la mesa sigue al dedo corriendo la variable de Tailwind que ya lo centra (`--tw-translate-y`), sin redibujar.
+  // Minimizar y abrir sin saltos (`useFoldMotion`): se funde bajando hasta el asa y recién ahí se minimiza; abierta, sube desde el asa apareciendo (el asa es una píldora, no la hoja).
+  const fold = useFoldMotion(panelRef, lowered, true)
+  const dragged = useRef(0)
+  // Hasta el asa: apoyada sobre la fila de las Zonas Extra (`--mat-extra`) o, sin mesa, sobre el borde de abajo.
+  const minimize = (from = 0) =>
+    fold.fold(
+      () => setMinimized(true),
+      (panel) => {
+        const extra = Number.parseFloat(getComputedStyle(panel).getPropertyValue('--mat-extra'))
+
+        return (Number.isFinite(extra) ? extra : window.innerHeight - 16) - HANDLE_PX - panel.getBoundingClientRect().top
+      },
+      from,
+    )
+  // Arrastrar el encabezado hacia abajo también la minimiza (como la flecha). El panel de la mesa sigue al dedo corriendo la variable de Tailwind que ya lo centra (`--tw-translate-y`), sin redibujar;
+  // soltado cerca, vuelve deslizándose.
   const swipe = useSwipeFold({
     dir: 'down',
-    onFold: () => setMinimized(true),
+    onFold: minimize,
     follow: (dy) => {
       const style = panelRef.current?.style
 
       if (!mat || !style) return
-      if (dy === null) style.removeProperty('--tw-translate-y')
-      else style.setProperty('--tw-translate-y', `calc(var(--drag-y, 0px) - 50% + ${dy}px)`)
+      if (dy === null) {
+        style.removeProperty('--tw-translate-y')
+        fold.settle(dragged.current)
+      } else style.setProperty('--tw-translate-y', `calc(var(--drag-y, 0px) - 50% + ${dy}px)`)
+      dragged.current = dy ?? 0
     },
   })
   // En escritorio, se lleva por el encabezado (`movable`). El de la mesa suma el corrimiento a su centrado (`--drag-x`, `--drag-y`); el de la pantalla, con su `translate`.
@@ -242,7 +263,7 @@ export function Modal({
       {minimizable || dismissible ? (
         <div className="flex shrink-0 items-center gap-1">
           {minimizable ? (
-            <IconButton tone="close" size="sm" data-sheet-minimize="" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setMinimized(true)}>
+            <IconButton tone="close" size="sm" data-sheet-minimize="" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => minimize()}>
               <Icon name="chevron-down" />
             </IconButton>
           ) : null}
@@ -278,8 +299,9 @@ export function Modal({
           : undefined
       }
     >
-      {/* El velo, aparte del panel para que se funda solo (entra y sale): no atrapa toques, así el fondo sigue siendo el que cierra. Minimizada se aclara: se ve la mesa. */}
-      {veil ? <div aria-hidden="true" className={cx('pointer-events-none absolute inset-0 animate-nav-scrim transition-[background-color] duration-200 motion-reduce:animate-none motion-reduce:transition-none', lowered ? 'bg-transparent' : 'bg-background/80')} /> : null}
+      {/* El velo, aparte del panel para que se funda solo (entra y sale): no atrapa toques, así el fondo sigue siendo el que cierra. Minimizada se funde (`opacity`, no su color: repintaría la
+          pantalla entera); su entrada no se queda en su último cuadro (`animate-veil-in`), si no taparía la transición. */}
+      {veil ? <div aria-hidden="true" className={cx('pointer-events-none absolute inset-0 animate-veil-in bg-background/80 transition-opacity duration-200 motion-reduce:animate-none motion-reduce:transition-none', lowered && 'opacity-0')} /> : null}
       <div
         ref={panelRef}
         tabIndex={-1}
@@ -304,7 +326,7 @@ export function Modal({
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        {lowered ? <PromptHandle label={typeof title === 'string' ? title : (ariaLabel ?? '')} onShow={() => setMinimized(false)} move={move.head} /> : null}
+        {lowered ? <PromptHandle label={typeof title === 'string' ? title : (ariaLabel ?? '')} onShow={() => fold.raise(() => setMinimized(false))} move={move.head} /> : null}
         {hasHeader ? (
           <div inert={lowered} hidden={lowered} className="contents">
             {header}

@@ -46,7 +46,7 @@ import {
   type MatTarget,
   type Placed,
 } from '../../app/practice-mat'
-import { mergeHandOrder } from '../../app/practice-hand-layout'
+import { growHand, handFloor, handInset, mergeHandOrder } from '../../app/practice-hand-layout'
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { comboBranches, comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, stepBranchesOf, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
@@ -105,7 +105,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -147,10 +147,8 @@ const DESKTOP_AUTO_RISE = 58
  * (24,95 rem), y nunca más de lo que entra a lo ancho de la columna del medio (`cqw` de su caja, `@container`: con el detalle y los pasos a los costados no queda mucho).
  */
 const DESKTOP_AUTO_CELL = 'max(3rem, min(12rem, calc((100dvh - 24.95rem) / 5), calc((100cqw - 3rem) / 6.3714)))'
-/** Y su mano: un poco más chica que la de los otros duelos de escritorio (100 px), para que la casilla crezca. */
+/** Y su mano: un poco más chica que la de los otros duelos de escritorio (100 px), para que la casilla crezca; es su presupuesto de alto, y crece sólo con lo que sobra debajo (`growHand`). */
 const DESKTOP_AUTO_HAND = 80
-/** Vista 3D de escritorio: cuánto más ancho que la columna puede quedar el campo agrandado (su borde de abajo; 7 % de cada lado se recorta). */
-const DESKTOP_3D_BLEED = 1.14
 /** Celular: cuánto se separan las manos del campo (la del rival sube, la tuya baja) sin moverlo: se corren con `transform` y `margin` de un elemento absoluto, que no cambian el alto de lo que se centra. */
 const MOBILE_HAND_GAP = 14
 /**
@@ -1092,8 +1090,8 @@ function PracticeMatBody({
       const zoom = fieldZoom({
         width: tracksWidth || box.width,
         height: box.bottom - Math.min(box.top, hand?.top ?? box.top),
-        // Escritorio, un duelo sin laterales: el campo puede salirse de la columna (se recorta, `overflow-x-hidden`) y tu Deck y tu Extra Deck, los más cercanos a la cámara, quedan cortados por los bordes.
-        availWidth: rails ? area.width - RAILS_SIDE_RESERVE_PX : isDuel ? area.width * DESKTOP_3D_BLEED : area.width - 32,
+        // Sin laterales, su borde de abajo (el más ancho) entra entero en la columna, sin su `px-4`: ni el Deck ni el Extra Deck se cortan detrás de los paneles.
+        availWidth: rails ? area.width - RAILS_SIDE_RESERVE_PX : area.width - 32,
         availHeight: box.bottom - Math.max(area.top, headerBottom) - 8,
       })
 
@@ -1117,6 +1115,58 @@ function PracticeMatBody({
       column.style.removeProperty('--field-overhang')
     }
   }, [fieldNode, view, isDesktop, isDuel, rails, hasRivalStrip])
+
+  // Escritorio automático: tu mano crece con el alto libre debajo del grupo del campo y la mano (hasta el borde de la columna o, sin laterales, hasta la fila de abajo), hasta una casilla
+  // (`growHand`). Sale del tamaño de la ventana y de los paneles, nunca de lo que pasa en el duelo; el alto que suma lo descuenta su margen negativo: el campo no se mueve. A lo ancho va entre tu Extra Deck y
+  // tu Deck como se ven (`handInset`), y crece sólo hasta arriba de tu chapa y los botones que le quedan debajo (`handFloor`): crecida, con muchas cartas o con una levantada, no tapa nada.
+  const groupRef = useRef<HTMLDivElement | null>(null)
+  const handSlots = Math.max(session.initial.hand.length, 1)
+  const [deskHand, setDeskHand] = useState({ cardWidth: DESKTOP_AUTO_HAND, extra: 0, inset: 0 })
+
+  useLayoutEffect(() => {
+    const group = groupRef.current
+    const column = columnRef.current
+    const field = fieldNode
+
+    if (!deskLine || !group || !column || !field) {
+      setDeskHand((now) => (now.extra === 0 && now.inset === 0 && now.cardWidth === DESKTOP_AUTO_HAND ? now : { cardWidth: DESKTOP_AUTO_HAND, extra: 0, inset: 0 }))
+      return
+    }
+
+    const measure = () => {
+      const next = rails ? null : group.nextElementSibling
+      const box = group.getBoundingClientRect()
+      const inset = handInset(box, ['extra', 'deck'].map((pile) => field.querySelector(`[data-drop="${pile}"]`)?.getBoundingClientRect()), MAT_GAP)
+      const floor = handFloor(
+        Math.min(column.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(column).paddingBottom) || 0), next ? next.getBoundingClientRect().top - MAT_GAP : Number.POSITIVE_INFINITY),
+        { left: box.left + inset, right: box.right - inset },
+        // Lo de la columna que queda más abajo que el arriba de tu mano y fuera de ella y del campo: tu chapa y los botones de abajo.
+        Array.from(column.querySelectorAll('button, [data-life-badge]'))
+          .filter((node) => !group.contains(node))
+          .map((node) => node.getBoundingClientRect())
+          .filter((rect) => rect.top > box.top),
+        MAT_GAP,
+      )
+      const grown = growHand({
+        base: DESKTOP_AUTO_HAND,
+        below: floor - box.bottom,
+        cell: parseFloat(getComputedStyle(field).gridTemplateColumns.split(' ')[1] ?? '') || 0,
+        width: group.clientWidth - 2 * inset,
+        slots: handSlots,
+      })
+
+      setDeskHand((now) => (now.cardWidth === grown.cardWidth && now.inset === inset ? now : { ...grown, inset }))
+    }
+
+    measure()
+
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+
+    observer?.observe(column)
+    observer?.observe(group)
+
+    return () => observer?.disconnect()
+  }, [fieldNode, deskLine, rails, handSlots])
   // El reparto de una mano nueva suena (el barajado y una carta por vez); las cartas que se suman después, por una jugada, ya suenan con ella.
   const initialDealRef = useRef(true)
 
@@ -2216,7 +2266,9 @@ function PracticeMatBody({
   }
   // «Guardar combo» para la barra que arma la pantalla de «Jugar solo automático» (la de la práctica lo recibe por props): el diálogo y la lista siguen siendo de la mesa.
   const canSave = session.cursor > 0
-  const saveLink = useMemo(() => (duel?.steps ? { onSave: () => setSaving(true), canSave } : null), [duel?.steps, canSave])
+  // También con el panel de Pasos plegado (`steps: false`, de fábrica por debajo de 1440 px): el diálogo es de la mesa, no del panel.
+  const hasSteps = duel?.steps !== undefined
+  const saveLink = useMemo(() => (hasSteps ? { onSave: () => setSaving(true), canSave } : null), [hasSteps, canSave])
 
   const renameCombo = useCallback(
     (combo: SavedCombo, name: string) => {
@@ -2389,7 +2441,7 @@ function PracticeMatBody({
         {spot === 'field' ? null : <ZoneLines kind={spot === 'st' ? 'spell' : 'monster'} />}
         {pickableZone || pickableTribute ? <PickMarks diamond={pickableZone && !shown} /> : null}
         {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45', gem)} /> : null}
-        {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-muted @container min-[1101px]:text-[0.6rem]"><span className="@max-[2rem]:hidden">{t('practice.zone.fieldLabel')}</span></span> : null}
+        {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-muted @container min-[1101px]:text-micro min-[1101px]:text-foreground min-[1101px]:text-shadow-lg min-[1101px]:text-shadow-background"><span className="@max-[2rem]:hidden">{t('practice.zone.fieldLabel')}</span></span> : null}
         {shown ? (
           <PlacedCard
             key={shown.id}
@@ -2940,7 +2992,8 @@ function PracticeMatBody({
       )}
     >
       {/* El fondo de la mesa (la arena): la columna de la mesa, a todo el alto. Es decoración: va detrás de todo y no ocupa lugar en la grilla. */}
-      <MatScene className={cx('absolute inset-0 -z-10 col-start-1 row-span-2 row-start-1', Boolean(detail) && 'min-[1440px]:col-start-2')} />
+      {/* Termina donde termina la columna (`col-end-2`): sin eso, un hijo absoluto de la grilla llega hasta su borde y el remolino pasa por debajo del panel de la derecha. */}
+      <MatScene className={cx('absolute inset-0 -z-10 col-start-1 col-end-2 row-span-2 row-start-1', Boolean(detail) && 'min-[1440px]:col-start-2 min-[1440px]:col-end-3')} />
       {/* Barra (práctica): el turno a la izquierda y, a la derecha, los íconos de la mesa (`MatBarActions`, los mismos que en «Jugar solo automático») y (en el celu) el panel. En un duelo la barra es la de la pantalla (`duel.header`). */}
       {duel ? null : (
         // En un celular angosto los botones y el turno no entran en una fila: se achican (`MAT_BAR_ROW`) y el turno se esconde.
@@ -3009,7 +3062,7 @@ function PracticeMatBody({
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
         {/* En el celular el grupo va pegado abajo, sobre tu fila de 60 px (`mb-15`, en `PHONE_BOTTOM`), y cada pieza mide lo que dice `phoneDuelLayout`: su lugar sale sólo del alto de la pantalla. */}
-        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative flex flex-col', phone ? 'mt-auto mb-15' : 'my-auto gap-2', deskLine && '@container', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
+        <div ref={groupRef} className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative flex flex-col', phone ? 'mt-auto mb-15' : 'my-auto gap-2', deskLine && '@container', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
         {/* Escritorio sin laterales: las vidas del rival en la esquina de arriba a la derecha, apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren
             nada. En el celular van en la barra de arriba (las pone la pantalla). */}
         {duel?.corner && !rails && isDesktop ? (
@@ -3175,7 +3228,7 @@ function PracticeMatBody({
         {/* Repasando un combo en un duelo de escritorio, tu mano se achica como `REVIEW_HAND`: la barra del replay va debajo, a lo largo de la mesa, y le tapaba la franja de abajo. Con poco
             alto (46 rem o menos, la mesa angosta: 1101 × 700), al 66 % y sin bajar: al 72 % le asomaban 9 px debajo de la barra. En el celular, con una hoja abierta (la ficha, una pregunta, un
             visor), tu mano se atenúa: la hoja es lo que se lee (pieza P-03). */}
-        <div className={cx('relative', duel && 'pointer-events-none z-10', phone && 'transition-opacity duration-150 motion-reduce:transition-none', phone && ((menu !== null && menu.kind !== 'phases') || pileSheet || asking) && 'opacity-35', duel && isDesktop && replayBar && 'origin-top translate-y-1 scale-72 [@media(max-height:46rem)]:translate-y-0 [@media(max-height:46rem)]:scale-66')} style={phone ? { height: phone.handHeight, flexShrink: 0, ...(splitReplay ? REVIEW_HAND : null) } : duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
+        <div className={cx('relative', duel && 'pointer-events-none z-10', phone && 'transition-opacity duration-150 motion-reduce:transition-none', phone && ((menu !== null && menu.kind !== 'phases') || pileSheet || asking) && 'opacity-35', duel && isDesktop && replayBar && 'origin-top translate-y-1 scale-72 [@media(max-height:46rem)]:translate-y-0 [@media(max-height:46rem)]:scale-66')} style={phone ? { height: phone.handHeight, flexShrink: 0, ...(splitReplay ? REVIEW_HAND : null) } : duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(deskLine && deskHand.extra > 0 ? { marginBottom: -deskHand.extra } : null), ...(deskLine && deskHand.inset > 0 ? { marginInline: deskHand.inset } : null), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"
@@ -3188,8 +3241,8 @@ function PracticeMatBody({
           ) : null}
           <PracticeHand
             cards={handCards}
-            sizeSlots={Math.max(session.initial.hand.length, 1)}
-            maxCardWidth={phone ? phone.handCard : isDesktop ? (deskLine ? DESKTOP_AUTO_HAND : duel ? 100 : 124) : duel ? 84 : 110}
+            sizeSlots={handSlots}
+            maxCardWidth={phone ? phone.handCard : isDesktop ? (deskLine ? deskHand.cardWidth : duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
             glowOf={glowKindOf}
             {...(duel?.links?.size ? { links: duel.links } : {})}
@@ -3283,8 +3336,8 @@ function PracticeMatBody({
                   {isDesktop || duel.undoInHeader ? null : undoButton}
                   {duel.tools}
                   {duel.steps ? stepsButton : null}
-                  {/* Con la botonera, o con Deshacer arriba (el duelo por enlace), tus vidas van a la izquierda: en la esquina opuesta a las del rival. */}
-                  {isDesktop && (duel.dock || duel.undoInHeader) ? duel.life : null}
+                  {/* Con la botonera, o con Deshacer arriba (el duelo por enlace), tus vidas van a la izquierda: en la esquina opuesta a las del rival (con laterales, las pone la barra). */}
+                  {isDesktop && !rails && (duel.dock || duel.undoInHeader) ? duel.life : null}
                 </span>
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
                   {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
@@ -3323,7 +3376,7 @@ function PracticeMatBody({
       {/* El detalle fijo (la carta que se tocó) de un duelo y de la práctica, a la izquierda y a todo el alto, sólo en escritorio: la columna está siempre (vacía hasta la primera carta), así la mesa no se corre. */}
       {detail ? (
         <>
-          <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-primary/30 bg-linear-to-b from-card-background to-background px-4 pb-4 pt-4 shadow-[inset_0_1px_0_rgb(var(--foreground-rgb)/0.06),10px_0_28px_-14px_rgb(0_0_0/0.7)] min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
+          <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-border-subtle bg-background px-4 pb-4 pt-4 min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
           {/* Su borde derecho se arrastra (como el del panel de la derecha: `rightHandle`). */}
           <ResizeHandle panel="left" {...panels.left} label={t('practice.mat.resizeDetail')} title={t('practice.mat.resizeHint')} className="hidden left-[var(--mat-left,20rem)] -translate-x-1/2 min-[1440px]:block" />
         </>
@@ -3334,7 +3387,7 @@ function PracticeMatBody({
       {stepsPanel ? (
         <>
           {rightHandle}
-          <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3', Boolean(detail) && 'min-[1440px]:col-start-3')} aria-label={t('practice.mat.stepsAndCombos')}>
+          <section className={cx('hidden min-h-0 border-l border-border-subtle bg-background px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3', Boolean(detail) && 'min-[1440px]:col-start-3')} aria-label={t('practice.mat.stepsAndCombos')}>
             {panel}
             {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
           </section>
@@ -3493,9 +3546,10 @@ function PracticeMatBody({
 
       {/* En el automático, activar no sale acá (ni lo propio ni lo del rival): lo muestra la cadena en grande, en su capa (lámina C). Un combo guardado no trae cadena: ahí sí (`session.replay`). */}
       {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin los paneles de los costados (`--mat-left` / `--mat-right`, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
+      {/* Si llega otra mientras se ve una, la anterior sale antes (`SpotlightSwap`): nunca se reemplaza en seco. */}
       <Deferred value={stage}>
-        {(shown) =>
-          shown && !(isAuto && shown.kind === 'activate' && !session.replay) ? (
+        {(shown) => (
+          <SpotlightSwap>{shown && !(isAuto && shown.kind === 'activate' && !session.replay) ? (
             <Spotlight
               key={shown.key}
               kind={shown.kind}
@@ -3505,12 +3559,12 @@ function PracticeMatBody({
               origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
               className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
             />
-          ) : null
-        }
+          ) : null}</SpotlightSwap>
+        )}
       </Deferred>
 
       {/* Lo que hace el rival y se anima: sus cartas aparecen grandes en el centro con un cartel que dice qué pasó, como en un combo guardado. Salen de su carta (de cabeza, como se ven) o del medio de su mano y se enderezan en el camino. */}
-      {duel?.rivalEffect && !duel.rivalEffect.quiet && !(isAuto && duel.rivalEffect.kind === 'activate') ? (
+      <SpotlightSwap>{duel?.rivalEffect && !duel.rivalEffect.quiet && !(isAuto && duel.rivalEffect.kind === 'activate') ? (
         <Spotlight
           key={duel.rivalEffect.key}
           kind={duel.rivalEffect.kind}
@@ -3523,7 +3577,7 @@ function PracticeMatBody({
           origin={(id) => cardPose(sectionRef.current, duel.rivalFlights?.state ?? null, id, 'theirs')}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
         />
-      ) : null}
+      ) : null}</SpotlightSwap>
 
       {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}

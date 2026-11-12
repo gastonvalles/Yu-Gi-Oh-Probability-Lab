@@ -41,7 +41,7 @@ describe('la placa de vidas', () => {
     expect(within(mine).getByText('6000')).toHaveClass('text-foreground')
     expect(bar(mine)).toHaveClass('bg-accent')
     expect(bar(rival)).toHaveClass('bg-info')
-    expect((bar(mine) as HTMLElement).style.width).toBe('75%')
+    expect((bar(mine) as HTMLElement).style.transform).toBe('scaleX(0.75)')
     expect(mine).toHaveClass('life-plate', 'border-accent/60')
   })
 
@@ -52,9 +52,9 @@ describe('la placa de vidas', () => {
     expect(bar(tile())).toHaveClass('bg-danger-soft')
     rerender(<LifeTile name="Rival" life={0} />)
     expect(bar(tile())).toHaveClass('bg-danger-soft')
-    expect((bar(tile()) as HTMLElement).style.width).toBe('0%')
+    expect((bar(tile()) as HTMLElement).style.transform).toBe('scaleX(0)')
     rerender(<LifeTile name="Rival" life={9500} />)
-    expect((bar(tile()) as HTMLElement).style.width).toBe('100%')
+    expect((bar(tile()) as HTMLElement).style.transform).toBe('scaleX(1)')
     expect(within(tile()).getByRole('meter')).toHaveAttribute('aria-valuetext', '9500')
   })
 

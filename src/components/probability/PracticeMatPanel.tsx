@@ -113,9 +113,13 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
 
       {tab === 'steps' || !showCombos ? (
         steps.length === 0 ? (
-          <EmptyState icon="hand" title={t('practice.panel.noPlays')}>
-            {emptyHint ?? t('practice.panel.noPlaysHint')}
-          </EmptyState>
+          <>
+            {/* El duelo automático (`emptyHint`) en el panel de escritorio: el vacío en una línea; la hoja del celular sigue con su título y su pista. */}
+            <EmptyState icon="hand" title={t('practice.panel.noPlays')} className={emptyHint ? 'min-[1101px]:hidden' : undefined}>
+              {emptyHint ?? t('practice.panel.noPlaysHint')}
+            </EmptyState>
+            {emptyHint ? <p className="m-0 hidden px-1 text-body text-muted min-[1101px]:block">{t('auto.steps.emptyLine')}</p> : null}
+          </>
         ) : (
           <>
             <div className="flex items-center justify-end gap-3">
