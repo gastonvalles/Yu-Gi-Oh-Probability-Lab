@@ -28,7 +28,7 @@ import { BotDeckSheet } from '../../duel/BotDeckSheet'
 import { SoloScreen } from '../../duel/SoloScreen'
 import { LifeScore } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext } from '../../probability/MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatUndoContext } from '../../probability/MatBarActions'
 import { CardMenu, type MenuItem } from '../../probability/MatDialogs'
 import { PhaseRow } from '../../probability/PhaseRow'
 import type { PracticeHandMatch } from '../../probability/practice'
@@ -37,6 +37,7 @@ import { RulesPill, type RulesSummary } from '../../probability/RulesPill'
 import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probability/UndoChip'
 import { SheetHost } from '../../ui/BottomSheet'
 import { Button } from '../../ui/Button'
+import { Icon } from '../../ui/Icon'
 import { IconButton } from '../../ui/IconButton'
 import { Segmented } from '../../ui/Segmented'
 import { cx } from '../../ui/cx'
@@ -1010,7 +1011,7 @@ function BarActionsSample() {
   const tap = () => setTaps((count) => count + 1)
 
   return (
-    <Specimen title="MatBarActions · tres a la vista y el ⋯" layout="column" className="col-span-full" note={<>A la vista sólo salir, deshacer y el ⋯ (blancos de 44 px; ámbar al apuntar, al enfocar o con el menú abierto: nada queda en ámbar por estar prendido). En el ⋯, <Tag>MatMoreMenu</Tag>: «La mesa» (la vista 3D, los sonidos y la ventana grande, sólo en escritorio, cada uno con su interruptor) y «El duelo» (las handtraps del rival —en el automático, «Rival», que abre su hoja—, «Nueva mano», «Guardar combo», apagado «sin jugadas», y lo de cada mesa: el automático suma «Opciones del duelo» en el celular). El duelo por enlace arma su ⋯ con el mismo grupo «La mesa». Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Cambiá el idioma para verlo en inglés. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
+    <Specimen title="MatBarActions · tres a la vista y el ⋯" layout="column" className="col-span-full" note={<>A la vista sólo salir, deshacer y el ⋯ (blancos de 44 px; ámbar al apuntar, al enfocar o con el menú abierto: nada queda en ámbar por estar prendido). En el ⋯, <Tag>MatMoreMenu</Tag>: «La mesa» (la vista 3D, los sonidos y la ventana grande, sólo en escritorio, cada uno con su interruptor) y «El duelo» (las handtraps del rival, «Nueva mano», «Guardar combo», apagado «sin jugadas», y lo de cada mesa). El duelo por enlace manual arma su ⋯ con el mismo grupo «La mesa»; los automáticos no tienen ⋯ (todo en ⚙). Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Cambiá el idioma para verlo en inglés. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Segmented label="Jugadas" variant="track" value={played ? 'some' : 'none'} onChange={(value) => setPlayed(value === 'some')} options={[{ value: 'none', label: 'Sin jugadas' }, { value: 'some', label: 'Con jugadas' }]} />
         <Tag>{`Toques: ${taps}`}</Tag>
@@ -1022,11 +1023,11 @@ function BarActionsSample() {
           <MatExitButton onExit={tap} />
           <MatBarActions className="ml-auto" onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={played} />
         </div>
-        <span className="text-micro text-soft">Jugar solo automático, con el ⋯ abierto (en el celular suma «Opciones del duelo» al final)</span>
+        <span className="text-micro text-soft">La práctica, con el ⋯ abierto (los duelos automáticos no lo llevan: todo va en su ⚙)</span>
         {/* El menú abierto cae debajo de la barra: se le deja su alto para que no tape la muestra siguiente. */}
-        <div role="toolbar" aria-label="Muestra del automático" className={cx('mb-96', MAT_BAR_ROW)}>
+        <div role="toolbar" aria-label="Muestra del ⋯ abierto" className={cx('mb-96', MAT_BAR_ROW)}>
           <MatExitButton onExit={tap} />
-          <MatBarActions className="ml-auto" menuOpen onUndo={tap} canUndo={played} onNewHand={tap} rival={{ meta: t('auto.rival.kind.bot'), onSelect: tap }} more={[{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: tap }]} />
+          <MatBarActions className="ml-auto" menuOpen onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={played} />
         </div>
       </div>
     </Specimen>
@@ -1120,39 +1121,31 @@ function DockSample() {
 /** La barra con la vida que cambia, los ajustes de verdad (en el estado de la muestra) y la vista con laterales (la grilla de la mesa en una ventana ancha). */
 function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode; lane: 'thinking' | 'chain' }) {
   const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
-  const [chain, setChain] = useState<AutoChainMode>('ask')
-  const [place, setPlace] = useState<AutoPlaceMode>('ask')
   const [layout, setLayout] = useState<'top' | 'rails'>('top')
   const [passed, setPassed] = useState(0)
-  // El rival en «Más opciones»: el bot (con «Mostrar la mano del bot») en la de la cadena; el pasivo en la del núcleo resolviendo.
-  const [blind, setBlind] = useState(true)
-  const rival = { kind: kind === 'chain' ? ('bot' as const) : ('passive' as const), summary: kind === 'chain' ? t('auto.rival.botSummary', { deck: 'Sky Striker' }) : t('auto.rival.kind.passive'), onChange: () => setPassed((count) => count + 1) }
   const lane: LaneNotice =
     kind === 'thinking'
       ? { kind: 'thinking', onCancel: () => setPassed((count) => count + 1) }
       : { kind: 'ask', text: t('auto.lane.respondTo', { card: 'Branded Fusion', cards: 'Ash Blossom & Joyous Spring' }), actions: [{ label: t('auto.lane.pass'), onSelect: () => setPassed((count) => count + 1) }] }
+  // Deshacer lo pone la mesa, sólo en escritorio (hasta 1100 px va en la botonera de abajo, con el ⚙).
   const bar = (
-    <AutoBar
-      rivalName={t('duel.bar.rival')}
-      life={life}
-      turn={3}
-      myTurn={kind === 'chain'}
-      onExit={() => setPassed((count) => count + 1)}
-      onUndo={() => setPassed((count) => count + 1)}
-      canUndo={kind === 'chain'}
-      onNewHand={() => setPassed((count) => count + 1)}
-      lane={lane}
-      log={<DuelLogTicker feed={[{ id: 'e1', kind: 'event', side: 'mine', text: 'Activás Branded Fusion' }]} onOpen={() => undefined} />}
-      chain={chain}
-      onChain={setChain}
-      place={place}
-      onPlace={setPlace}
-      onRestart={() => setPassed((count) => count + 1)}
-      onManual={() => setPassed((count) => count + 1)}
-      rival={rival}
-      blind={blind}
-      onBlind={setBlind}
-    />
+    <MatUndoContext
+      value={
+        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} disabled={kind !== 'chain'} className="disabled:opacity-35" onClick={() => setPassed((count) => count + 1)}>
+          <Icon name="undo" />
+        </IconButton>
+      }
+    >
+      <AutoBar
+        rivalName={t('duel.bar.rival')}
+        life={life}
+        turn={3}
+        myTurn={kind === 'chain'}
+        onExit={() => setPassed((count) => count + 1)}
+        lane={lane}
+        log={<DuelLogTicker feed={[{ id: 'e1', kind: 'event', side: 'mine', text: 'Activás Branded Fusion' }]} onOpen={() => undefined} />}
+      />
+    </MatUndoContext>
   )
 
   return (

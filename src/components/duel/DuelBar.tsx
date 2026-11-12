@@ -113,7 +113,7 @@ interface DuelBarProps {
   onAbandon?: () => void
   /** Rendirme: el duelo termina y gana el rival (se pide confirmar). Sin esto (`inOptions`) no está en el ⋯. */
   onConcede?: () => void
-  /** El duelo automático: la vista 3D, sus ajustes y Rendirse están en Opciones (el ⚙ de abajo a la derecha: `OptionsGear`), no en el ⋯. */
+  /** El duelo automático: «La mesa», sus ajustes, Reconectar y Rendirse están en Opciones (el ⚙ de abajo a la derecha: `OptionsGear`) y la barra no lleva ⋯. */
   inOptions?: boolean
   /** La línea del registro (sólo en el celular): lo último que pasó; tocarla abre el chat con el registro. */
   log?: ReactNode
@@ -382,17 +382,19 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
     </>
   )
   // La barra (Gastón, 2026-10-26: «muchos íconos juntos»): a la vista el ⋯ y salir; en el ⋯, «La mesa» (la vista 3D, los sonidos, la ventana grande) y lo del duelo: reconectar (lo tocan los dos y el
-  // duelo sigue en cuanto el relay le dice a cada uno que el otro está), rendirme (pide confirmar; terminado el duelo, o sin rival, no hay a quién) y, en el automático, sus opciones. Antes, el chat y deshacer.
+  // duelo sigue en cuanto el relay le dice a cada uno que el otro está), rendirme (pide confirmar; terminado el duelo, o sin rival, no hay a quién) y sus opciones. El automático (`inOptions`) no lleva ⋯:
+  // todo eso va en su ⚙ (Gastón, 2026-11-12: «el botón de 3 puntos compite con el de configuración»).
   const actions = (
     <>
-      <MatMoreMenu
-        view={!inOptions}
-        items={[
-          { group: t('practice.mat.groupDuel'), label: t('duel.bar.reconnect'), icon: 'refresh', hint: t('duel.bar.reconnectHint'), onSelect: onReconnect },
-          ...(inOptions ? [] : [{ label: t('duel.bar.concede'), icon: 'flag', disabled: Boolean(result) || !peerPresent, onSelect: () => setConceding(true) } satisfies OverflowItem]),
-          ...(extraSettings && !inOptions ? [{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: () => setMoreOpen(true) } satisfies OverflowItem] : []),
-        ]}
-      />
+      {inOptions ? null : (
+        <MatMoreMenu
+          items={[
+            { group: t('practice.mat.groupDuel'), label: t('duel.bar.reconnect'), icon: 'refresh', hint: t('duel.bar.reconnectHint'), onSelect: onReconnect },
+            { label: t('duel.bar.concede'), icon: 'flag', disabled: Boolean(result) || !peerPresent, onSelect: () => setConceding(true) },
+            ...(extraSettings ? [{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: () => setMoreOpen(true) } satisfies OverflowItem] : []),
+          ]}
+        />
+      )}
       <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
         <Icon name="x" />
       </IconButton>
@@ -557,19 +559,49 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   )
 }
 
+/** Un aviso con botones se contesta ahí (no se desliza): el pedido del rival, una pregunta del núcleo, «Cancelar» de lo que resuelve. */
+const laneAsks = (lane: LaneNotice) => lane.kind === 'undoAsked' || (lane.kind === 'ask' && lane.actions.length > 0) || (lane.kind === 'thinking' && lane.onCancel !== undefined)
+
+/** Qué dice un aviso: dos con lo mismo son el mismo (el que se sacó no vuelve). */
+const laneKey = (lane: LaneNotice, name: string) => (lane.kind === 'looking' ? `looking:${lane.what}` : `${lane.kind}:${laneText(lane, name)}`)
+
 /**
- * Lo de la línea del celular, que flota sobre el borde de arriba de tu mano sólo mientras hay algo (no ocupa lugar): un aviso (el pedido de volver atrás, el del rival de pasar de fase, lo que está haciendo, el
- * núcleo que resuelve), encima de la última jugada (`log`) si se la da. Repasando un combo, el aviso dice el paso que se mira.
+ * Lo de la línea del celular, que flota debajo de la barra (sobre la mano del rival) sólo mientras hay algo (no ocupa lugar): un aviso (el pedido de volver atrás, el del rival de pasar de fase, lo que está
+ * haciendo, el núcleo que resuelve), encima de la última jugada (`log`) si se la da. Repasando un combo, el aviso dice el paso que se mira.
+ * **Se saca deslizándolo** (Gastón, 2026-11-12: «no se pueden eliminar deslizandolos a la izquierda o derecha como antes»): uno sin botones se arrastra de costado (`useSwipeAway`; con teclado, Supr) y no
+ * vuelve hasta que la línea diga otra cosa. Uno con botones no se desliza: se contesta.
  */
 export function DuelLine({ lane, rivalName, log = null }: { lane: LaneNotice | null; rivalName: string; log?: ReactNode }) {
   const replay = useContext(MatReplayContext)
+  const key = lane ? laneKey(lane, rivalName) : null
+  // El aviso que se sacó; otro aviso (o ninguno) lo olvida.
+  const [gone, setGone] = useState<string | null>(null)
+
+  if (gone !== null && gone !== key) setGone(null)
+  const swipe = useSwipeAway(() => setGone(key))
+  const shown = lane && key !== gone ? lane : null
+  const banner = shown ? <LaneBanner lane={shown} rivalName={rivalName} detail={replay?.step} /> : null
 
   return (
     <div data-testid="duel-line" className="relative h-full">
-      <div inert={lane !== null} className={cx('h-full', lane && 'invisible')}>
+      <div inert={shown !== null} className={cx('h-full', shown && 'invisible')}>
         {log}
       </div>
-      {lane ? <LaneBanner lane={lane} rivalName={rivalName} detail={replay?.step} /> : null}
+      {shown && !laneAsks(shown) ? (
+        <div
+          tabIndex={0}
+          aria-keyshortcuts="Delete"
+          title={t('duel.log.dismiss')}
+          data-swipe-away=""
+          className="pointer-events-auto absolute inset-0 touch-pan-y transition-[transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none"
+          style={swipe.style}
+          {...swipe.props}
+        >
+          {banner}
+        </div>
+      ) : (
+        banner
+      )}
     </div>
   )
 }

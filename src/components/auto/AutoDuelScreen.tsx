@@ -533,7 +533,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   const control = underControl(snap.mine) || underControl(snap.theirs)
   const manualHint = switching ? t('auto.online.manualSwitching') : manual === 'asking' ? t('auto.online.manualAsking', { name: rivalName }) : control ? t('auto.online.manualControlHint') : t('auto.online.manualHint', { name: rivalName })
 
-  // Opciones (el ⚙): lo mismo que en solo (las respuestas a la cadena y la casilla), el replay y pasar a manual; cada uno, una fila. Los sonidos y reconectar ya están.
+  // Opciones (el ⚙, el único menú: no hay ⋯): lo mismo que en solo (las respuestas a la cadena y la casilla), el replay, reconectar y pasar a manual; cada uno, una fila. «La mesa» la pone el panel.
   const settings = (close: () => void) => (
     <>
       <ChainRow chain={prefs.chain} onChain={(mode) => setAutoPref('chain', mode)} />
@@ -545,6 +545,14 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         onClick={() => {
           close()
           setSaving(true)
+        }}
+      />
+      <ActionRow
+        title={t('duel.bar.reconnect')}
+        hint={t('duel.bar.reconnectHint')}
+        onClick={() => {
+          close()
+          duel.reconnect()
         }}
       />
       {canSwitch ? (
@@ -610,7 +618,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
       />
     ),
     // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): en el celular, las chapas (la tuya abajo con el turno y la botonera, la del rival en la barra: `DuelBar`) y el aviso, que
-    // flota sobre tu mano sólo mientras está (la última jugada queda en el chat); de 640 a 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, cada chapa en su esquina (D2).
+    // va debajo de la barra sólo mientras está (la última jugada queda en el chat); de 640 a 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, cada chapa en su esquina (D2).
     life: phone ? (
       <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge active={asks.turnMine} />
     ) : docked ? (
@@ -624,8 +632,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     tools: null,
     // El chat: en escritorio, fijo a la derecha (con las reacciones); hasta 1100 px, en su panel (lo abre su botón de la barra), con las reacciones.
     aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
-    // Deshacer (le pide permiso al rival: `useLinkUndo`) va en la barra de arriba (`MatUndoContext`).
-    undoInHeader: true,
+    // Deshacer (le pide permiso al rival: `useLinkUndo`): hasta 1100 px abajo, el primero de la botonera (↶ chat ⚙); en escritorio, en la barra de arriba (`MatUndoContext`).
+    undoInHeader: docked,
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(notice ? { notice } : {}),
     ...(clock ? { clock: <TurnDial clock={snapshot.turnClock} owner={snapshot.turnClock.running ?? clock.turnPlayer} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} /> } : {}),

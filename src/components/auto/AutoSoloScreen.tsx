@@ -358,7 +358,14 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   // esperan a «Volver al duelo».
   const reviewing = asks.review.active
   const botName = BOT_DECK_MENU.find((deck) => deck.id === handtraps.botDeck)?.name ?? ''
-  // Lo que se ajusta: en «Más opciones» de la barra (celular) y en la botonera (escritorio).
+  // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en Opciones.
+  const newHand = useCallback(() => {
+    setGaveUp(false)
+    if (resumed) resumed.onNewHand()
+    else if (redeal) redeal()
+    else session.restart(randomSeed())
+  }, [resumed, redeal, session])
+  // Lo que se ajusta: en Opciones, el ⚙ de la botonera (el único menú del duelo).
   const options = useMemo<AutoOptions>(
     () => ({
       chain: prefs.chain,
@@ -366,6 +373,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       place: prefs.place,
       onPlace: (mode) => setAutoPref('place', mode),
       onRestart: restart,
+      onNewHand: newHand,
       onSaveReplay: openSave,
       onBotLog: openLog,
       ...(status === 'ended' || gaveUp ? {} : { onConcede: giveUp }),
@@ -383,22 +391,15 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       blind: facedown,
       onBlind: (on) => (kind === 'bot' ? setAutoPref('botHand', !on) : setAutoPref('blind', on)),
     }),
-    [prefs.chain, prefs.place, restart, openSave, openLog, openManual, kind, facedown, handtraps, botName, status, gaveUp, giveUp],
+    [prefs.chain, prefs.place, restart, newHand, openSave, openLog, openManual, kind, facedown, handtraps, botName, status, gaveUp, giveUp],
   )
   const turn = reviewing ? asks.state.turn : asks.turn
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
   const { turnMine, lane } = asks
-  // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
-  const newHand = useCallback(() => {
-    setGaveUp(false)
-    if (resumed) resumed.onNewHand()
-    else if (redeal) redeal()
-    else session.restart(randomSeed())
-  }, [resumed, redeal, session])
   // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
   // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 20 px sobre el borde de la mano (`-mt-5`, la chapa: la fila no crece y el campo no se corre). Con
   // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
-  // En el celular, las chapas: la del rival en la fila de los íconos de la barra (`seat`) y la tuya abajo a la izquierda con el turno; el aviso flota sobre tu mano.
+  // En el celular, las chapas: la del rival a la derecha de la barra (`seat`) y la tuya abajo a la izquierda con el turno; el aviso va debajo de la barra.
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const seated = docked || phone
   const myLife = useMemo(
@@ -413,13 +414,15 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     [phone, rails, docked, life.mine, turnMine],
   )
   const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} compact={phone} active={!turnMine} /> : undefined), [seated, rivalName, life.theirs, phone, turnMine])
+  // Repasando en el celular, «Volver al duelo» va en la barra, en el lugar de la chapa del rival (y el aviso del repaso no sale en la línea).
+  const back = phone && reviewing ? asks.review.back : undefined
   const header = useMemo(
-    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} lane={lane} {...(phone ? { seat: corner } : {})} {...options} />,
-    [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, lane, options, phone, corner],
+    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} lane={lane} {...(phone ? { seat: corner } : {})} {...(back ? { back } : {})} />,
+    [rivalName, life, turn, turnMine, onExit, lane, phone, corner, back],
   )
-  // La línea, sólo con un aviso o un momento (invocar, atacar, el daño: `duel-moment.ts`, 1,5 s), flotando sobre tu mano; sin ellos no hay nada. El momento sólo se dice: nada lo espera.
+  // La línea, sólo con un aviso o un momento (invocar, atacar, el daño: `duel-moment.ts`, 1,5 s), debajo de la barra; sin ellos no hay nada. El momento sólo se dice: nada lo espera.
   const moment = useMoment(asks.matSession, snap.initial, reviewing, cardsById, nameOf)
-  const shownLane = useMemo<LaneNotice | null>(() => lane ?? (moment ? { kind: 'ask', text: moment, actions: [] } : null), [lane, moment])
+  const shownLane = useMemo<LaneNotice | null>(() => (back ? null : (lane ?? (moment ? { kind: 'ask', text: moment, actions: [] } : null))), [back, lane, moment])
   const line = useMemo(() => (phone && shownLane ? <DuelLine lane={shownLane} rivalName={rivalName} /> : undefined), [phone, shownLane, rivalName])
   const toggleSteps = useCallback(() => setStepsOpen((open) => !open), [])
   // ≡ y ⚙ abajo a la derecha: en escritorio los dos (≡ muestra u oculta los pasos); en el celular, sólo ⚙ (≡ es el de la mesa).
@@ -436,8 +439,9 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(asks.notice ? { notice: asks.notice } : {}),
     ...(told?.effect && toldNow && !reviewing ? { rivalEffect: told.effect } : {}),
-    // Deshacer va arriba, con los íconos de la práctica.
-    undoInHeader: true,
+    // Deshacer: hasta 1100 px abajo, el primero de la botonera (el pulgar); en escritorio, arriba. Apagado sin una orden que deshacer o con el núcleo pensando.
+    undoInHeader: docked,
+    undoAvailable: canUndo,
     // El panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos. En escritorio, «Pasos» de la botonera lo oculta.
     steps: stepsOpen || !docked,
     ...(cover === undefined || reviewing ? {} : { cover }),

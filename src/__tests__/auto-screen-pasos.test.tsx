@@ -78,13 +78,13 @@ describe('auto-screen · los pasos de la práctica', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('hasta 1100 px (sin fila de abajo) la lista se abre desde lo primero del ⋯ de la barra, en una hoja con «Pasos» y «Combos»', () => {
+  it('hasta 1100 px (sin fila de abajo) la lista se abre desde ≡, abajo a la derecha entre Deshacer y el ⚙, en una hoja con «Pasos» y «Combos»', () => {
     const fake = renderAuto(openingSession())
 
     rearm(fake, START, IDLE)
-    // No es un botón suelto (ni arriba ni abajo): va en el ⋯.
-    expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
-    fireEvent.click(menuRow(/^Pasos y combos$/))
+    // Un solo ≡, abajo (la barra de arriba ya no lleva ⋯).
+    expect(screen.getAllByRole('button', { name: 'Pasos y combos' })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Pasos y combos' }))
     const sheet = screen.getByRole('dialog', { name: 'Pasos y combos' })
 
     expect(within(sheet).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Pasos2', 'Combos0'])
@@ -313,7 +313,7 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('repasando, la mira que deja un combo no se quita sola (la mesa no despacha); reiniciar el duelo cierra el repaso', () => {
+  it('repasando, la mira que deja un combo no se quita sola (la mesa no despacha); la fila de abajo es del replay (sin el ⚙): «Volver al duelo» y, ahí, «Nueva mano» arma otro duelo', () => {
     const marked = createSavedCombo({ name: 'Con mira', deckName: 'Test', initial: createMatState(['card-101-1', 'card-102-1'], [], 2), actions: [{ type: 'target', id: 'card-101-1' }], nameOf }, [])
 
     writeSavedCombos([marked])
@@ -326,7 +326,9 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(handCard('Droll (target)')).toBeInTheDocument()
     expect(dispatches).toBe(0)
 
-    // Repasando, la fila de abajo es del replay (sin el ⚙): «Nueva mano» del ⋯ arma otro duelo y cierra el repaso.
+    // Repasando, la fila de abajo es del replay (sin el ⚙, el único menú): se vuelve al duelo y «Nueva mano» de Opciones arma otro.
+    expect(screen.queryByRole('button', { name: 'Opciones' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al duelo' }))
     tapMenu('Nueva mano')
     expect(fake.restarts).toBe(1)
     expect(lane()?.textContent ?? '').not.toMatch(/Repasás/)

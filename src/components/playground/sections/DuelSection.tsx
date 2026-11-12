@@ -152,6 +152,9 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
   const mine = <LifeBadge name="Vos" label="Vos" life={life.mine} mine active={mineTurn} />
   const buttons = (
     <span className="flex items-center gap-2">
+      <IconButton tone="tile" size="sm" aria-label={t('practice.mat.undo')}>
+        <Icon name="undo" />
+      </IconButton>
       <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
         <Icon name="list" />
       </IconButton>
@@ -168,7 +171,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
       className="col-span-full"
       note={
         <>
-          Las vidas: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color); en el celular la del rival va en la fila de los íconos de la barra, con el número un paso más chico (<Tag>compact</Tag>: entra en sus 44 px), y la tuya abajo con las herramientas: ≡ (pasos) y ⚙ (Opciones: la vista 3D, los menús flotantes, lo de cada duelo y, al final, Rendirse; tocalo para verlo). El turno lo dice sólo el borde: grueso (3 px) en la chapa de quien juega y tenue en la otra, sin texto. No hay línea entre el campo y tu mano: un aviso (o «Momento», lo que pasó al invocar o atacar, 1,5 s: el daño no sale acá, lo cuenta la chapa) flota sobre el borde de arriba de tu mano sólo mientras está, y la cadena va en una capa centrada sobre el campo. El cambio de vidas, todo adentro de la chapa: tiembla, el número baja contando (700 ms como mucho) y el «−N» chico toma el lugar de la etiqueta 1,6 s (rojo tu daño, menta el del rival); no sale ningún número afuera. Las fases van en el botón del medio del campo. A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/AutoBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
+          Las vidas: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color); en el celular la del rival va en la fila de los íconos de la barra, con el número un paso más chico (<Tag>compact</Tag>: entra en sus 44 px), y la tuya abajo con las herramientas: ↶ (Deshacer, el primero: el pulgar), ≡ (pasos) y ⚙ (Opciones, el único menú: «La mesa» con la vista 3D, los sonidos, los colores y los menús flotantes, lo de cada duelo y, al final, Rendirse; tocalo para verlo). El turno lo dice sólo el borde: grueso (3 px) en la chapa de quien juega y tenue en la otra, sin texto. No hay línea entre el campo y tu mano: un aviso (o «Momento», lo que pasó al invocar o atacar, 1,5 s: el daño no sale acá, lo cuenta la chapa) va debajo de la barra, sobre la mano del rival, sólo mientras está; uno sin botones («Momento») se saca deslizándolo de costado (o con Supr) y uno con botones («Aviso») no. La cadena va en una capa centrada sobre el campo. El cambio de vidas, todo adentro de la chapa: tiembla, el número baja contando (700 ms como mucho) y el «−N» chico toma el lugar de la etiqueta 1,6 s (rojo tu daño, menta el del rival); no sale ningún número afuera. Las fases van en el botón del medio del campo. A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/AutoBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }
     >
@@ -200,16 +203,15 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
         </Button>
       </div>
       <div className="mat-square relative grid w-[24.375rem] max-w-full gap-2 bg-background p-1 [--cell:3.57rem]">
-        <div className="flex h-11 items-center justify-end">
+        <div className="relative flex h-11 items-center justify-end">
           <span className={BAR_SEAT}>{rival}</span>
+          {lane ? <div className="pointer-events-none absolute inset-x-0.5 top-full z-20 mt-1 h-11">{content}</div> : null}
         </div>
         <div className="relative">
           <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
           {line === 'chain' ? <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-4">{content}</div> : null}
         </div>
-        <div data-duel-line="" className="relative h-0">
-          {lane ? <div className="absolute inset-x-0 top-0 z-20 h-11">{content}</div> : null}
-        </div>
+        <div data-duel-line="" className="relative h-0" />
         <div aria-hidden="true" className="h-24 bg-tint/8" />
         <div className="flex h-15 items-center justify-between gap-2">
           {mine}

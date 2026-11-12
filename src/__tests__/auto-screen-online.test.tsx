@@ -501,7 +501,21 @@ describe('auto-screen-online · pasar a manual', () => {
   }
   const prompt = () => screen.getByText(/quiere seguir el duelo en modo manual/).closest<HTMLElement>('[data-prompt]')!
 
-  it('«Más opciones» lo pide; mientras espera, la línea lo dice con «Cancelar pedido» (y la fila también lo ofrece)', () => {
+  it('un solo menú (Gastón, 2026-11-12: «el botón de 3 puntos compite con el de configuración»): sin ⋯ arriba; Opciones lleva «La mesa» y, en «El duelo», «Reconectar» y «Rendirse» al final', () => {
+    const { start } = setup('guest')
+
+    start()
+    expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
+    const more = moreOptions()
+
+    expect(more.getByRole('group', { name: 'La mesa' })).toContainElement(more.getByRole('switch', { name: 'Sonidos' }))
+    expect(more.getByRole('group', { name: 'El duelo' })).toContainElement(more.getByRole('button', { name: 'Reconectar' }))
+    expect(more.getAllByRole('button').at(-1)).toHaveAccessibleName('Rendirse')
+    fireEvent.click(more.getByRole('button', { name: 'Reconectar' }))
+    expect(screen.queryByRole('dialog', { name: 'Opciones' })).toBeNull()
+  })
+
+  it('Opciones lo pide; mientras espera, la línea lo dice con «Cancelar pedido» (y la fila también lo ofrece)', () => {
     vi.useFakeTimers()
     const { start, link } = setup('guest')
 

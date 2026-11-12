@@ -102,7 +102,7 @@ import { stepTone } from './step-tone'
 import { CardBack, CardMenu, LayerBackContext, NoPlays, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
@@ -240,7 +240,7 @@ export interface DuelMatLink {
   prompt?: ReactNode
   /** La cadena en grande (duelo automático: `ChainStage`), en todos los anchos una capa centrada sobre el campo (en escritorio, sobre la columna del medio) que deja pasar los toques. */
   chain?: ReactNode
-  /** Lo de la línea en el celular (`DuelLine`): un aviso o un pedido del rival, que flota sobre tu mano sólo mientras está. Sin nada, no se pasa. */
+  /** Lo de la línea en el celular (`DuelLine`): un aviso o un pedido del rival, que flota debajo de la barra (sobre la mano del rival) sólo mientras está. Sin nada, no se pasa. */
   line?: ReactNode
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
   pointed?: { card?: string; pile?: MatPile } | null
@@ -256,11 +256,11 @@ export interface DuelMatLink {
   undoAvailable?: boolean
   /** La última jugada de la mesa cambió de manos un monstruo (la otra mesa ya la completó): no se deshace. */
   undoBlocked?: boolean
-  /** Deshacer va arriba, en la barra de la pantalla (`header`, con los íconos de la práctica: `MatBarActions`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). */
+  /** Escritorio: Deshacer va arriba, en la barra de la pantalla (`header`, por `MatUndoContext`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). Hasta 1100 px va abajo (`scoreInHeader`). */
   undoInHeader?: boolean
   /**
-   * «Jugar solo automático» hasta 1100 px (sin efecto en escritorio): las vidas y el turno van en el marcador de la barra (`header`) y no hay fila de abajo (ni `life` ni `corner`). «Pasos y combos» va
-   * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra y lo que falta elegir sobre el borde de abajo de tu mano; el replay se parte (la línea de tiempo arriba, `MatReplayContext`; los botones abajo).
+   * Los duelos hasta 1100 px (sin efecto en escritorio): las vidas y el turno van en la barra (`header`) y no hay fila de abajo (ni `corner`). Deshacer, «Pasos y combos» y `dock` van abajo a la derecha (tu chapa a
+   * la izquierda en el celular) y lo que falta elegir, sobre el borde de abajo de tu mano; el replay se parte (la línea de tiempo arriba, `MatReplayContext`; los botones abajo).
    */
   scoreInHeader?: boolean
   /** Con `scoreInHeader`, las vidas del marcador son botones de 44 px (el duelo por enlace: abren la calculadora) y no de 40: lo que no es campo suma 4 px hasta 1100 px. */
@@ -2744,7 +2744,7 @@ function PracticeMatBody({
   const pickedIds = autoPick?.chosen ?? []
   const viewerList = byName ? [...viewerIds].sort((a, b) => Number(pickedIds.includes(b)) - Number(pickedIds.includes(a)) || nameOf(a).localeCompare(nameOf(b))) : viewerIds
 
-  // Deshacer de un duelo, abajo, donde llega el pulgar (en la práctica y en «Jugar solo automático» va arriba, con los íconos de la mesa: `MatBarActions`), y la ficha y la lista de pasos.
+  // Deshacer de un duelo, abajo, donde llega el pulgar hasta 1100 px (en escritorio va arriba, `undoInHeader`; en la práctica, con los íconos de su barra: `MatBarActions`), y la ficha y la lista de pasos.
   // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, sin caja.
   const dockTone = duel ? 'tile' : 'flat'
   // El mismo Deshacer en la barra, abajo y en el aviso de lo que acabás de activar (`undoChip`).
@@ -2778,6 +2778,15 @@ function PracticeMatBody({
     <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
       <Icon name="list" />
     </IconButton>
+  )
+  // La botonera del duelo (`dock`, el ⚙): «Guardar combo» vive en sus Opciones, así que lleva el de la mesa. Hasta 1100 px va con Deshacer primero (el pulgar: chapa … ↶ ≡ ⚙) y los pasos.
+  const dock = duel?.dock ? <MatSaveContext.Provider value={saveLink}>{duel.dock}</MatSaveContext.Provider> : null
+  const dockRow = (
+    <>
+      {duel?.undoInHeader ? null : undoButton}
+      {duel?.steps ? stepsButton : null}
+      {dock}
+    </>
   )
   const replayBar =
     session.replay && !choosing ? (
@@ -2879,8 +2888,6 @@ function PracticeMatBody({
     </div>
   )
 
-  // Lo de la línea del celular: un aviso que flota sobre tu mano mientras está (repasando, dice el paso). La cadena va en su capa, sobre el campo, en todos los anchos.
-  const lineContent = <MatReplayContext.Provider value={replayLink}>{duel?.line}</MatReplayContext.Provider>
 
   // Los bordes de los paneles de los costados se arrastran para cambiarles el ancho (Gastón, 2026-10-22), sólo donde hay panel: el del detalle desde 1440 px y el de la derecha (los pasos o el chat)
   // desde 1101. Cada agarre va sobre su borde, fuera de la grilla (no ocupa lugar ni corre nada) y encima de la mesa y de los paneles; en el orden del foco, junto a su panel.
@@ -2979,14 +2986,22 @@ function PracticeMatBody({
       >
         <DuelRailsContext.Provider value={rails}>
           <MatSaveContext.Provider value={saveLink}>
-            {/* Sin la fila de abajo (`bare`): «Pasos y combos» va primero en el ⋯ y el aviso de lo que acabás de activar, en la barra antes de Deshacer (las salidas ya se fueron con la primera jugada). */}
-            <MatStepsContext.Provider value={bare && !phone ? openSteps : null}>
-              <MatRulesContext.Provider value={rulesPill ?? (bare && undoPlay && !choosing ? <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} className="ml-auto" /> : null)}>
-                <MatUndoContext.Provider value={duel?.undoInHeader ? undoButton : null}>
-                  <MatReplayContext.Provider value={replayLink}>{duel?.header}</MatReplayContext.Provider>
-                </MatUndoContext.Provider>
-              </MatRulesContext.Provider>
-            </MatStepsContext.Provider>
+            {/* Hasta 1100 px Deshacer va abajo, en la botonera (`dock`), y no hay aviso de lo que acabás de activar (eran dos Deshacer): la barra lleva sólo las salidas. */}
+            <MatRulesContext.Provider value={rulesPill}>
+              <MatUndoContext.Provider value={duel?.undoInHeader ? undoButton : null}>
+                <MatReplayContext.Provider value={replayLink}>
+                  {/* Celular: los avisos van debajo de la barra, sobre la mano del rival (como el resultado): flotan, no suman alto ni tapan la barra; la cadena va por encima (`z-[125]`). */}
+                  {phone ? (
+                    <div className="relative">
+                      {duel?.header}
+                      {duel?.line ? <div data-mat-line="" className="pointer-events-none absolute inset-x-0.5 top-full z-20 mt-1 h-11">{duel.line}</div> : null}
+                    </div>
+                  ) : (
+                    duel?.header
+                  )}
+                </MatReplayContext.Provider>
+              </MatUndoContext.Provider>
+            </MatRulesContext.Provider>
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
@@ -3144,11 +3159,9 @@ function PracticeMatBody({
         </div>
 
         {/* Celular: sin línea entre el campo y tu mano (Gastón, 2026-11-12: «evitar espacio vacío entre campo y mano»). `data-duel-line` queda como marca de 0 px en el borde de abajo del campo (el
-            techo de las hojas, `AutoPanel`) y lo de la línea (un aviso del rival, lo que pasó) flota sobre el borde de arriba de tu mano sólo mientras está: no ocupa lugar ni corre nada. */}
+            techo de las hojas, `AutoPanel`); los avisos van arriba, debajo de la barra. */}
         {phone ? (
-          <div data-duel-line="" className="relative h-0 shrink-0" style={{ marginBottom: phone.gap }}>
-            {duel?.line ? <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-11">{lineContent}</div> : null}
-          </div>
+          <div data-duel-line="" className="relative h-0 shrink-0" style={{ marginBottom: phone.gap }} />
         ) : deskLine ? (
           // Escritorio automático: tampoco hay línea. La marca de 0 px (con `-mb-2`, que anula su `gap-2`) queda en el borde de abajo del campo: es el techo de las ventanas (`AutoPanel`).
           <div data-duel-line="" aria-hidden="true" className="-mb-2 h-0 shrink-0" />
@@ -3216,7 +3229,7 @@ function PracticeMatBody({
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
         {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven. */}
         {/* Sin fila de abajo («Jugar solo automático» hasta 1100 px: tus vidas van en el marcador de la barra): lo que falta elegir se apoya sobre los 44 px de abajo de tu
-            mano sólo mientras está (no ocupa alto ni ataja toques si no); los botones del replay van ahí, debajo de tu mano achicada (`REVIEW_HAND`); el aviso de lo que acabás de activar va en la barra. */}
+            mano sólo mientras está (no ocupa alto ni ataja toques si no); los botones del replay van ahí, debajo de tu mano achicada (`REVIEW_HAND`); Deshacer, los pasos y el ⚙, abajo a la derecha. */}
         {bare ? (
           <div className={cx('pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55', phone && !splitReplay ? 'h-15' : 'h-11')} data-mat-float="">
             {/* El celular: tu fila de abajo (60 px), tu chapa a la izquierda y la botonera cuadrada a la derecha; lo que falta elegir se apoya encima (`status`). */}
@@ -3224,16 +3237,13 @@ function PracticeMatBody({
               // Tu chapa cede el ancho que le falta a la botonera (recorta su turno con «…»). El turno se termina desde el botón de la fase, al medio del campo.
               <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto [&>[data-life-badge]]:min-w-0 [&>[data-life-badge]]:shrink">
                 {duel?.life}
-                <span className="flex items-center gap-2">
-                  {duel?.steps ? stepsButton : null}
-                  {duel?.dock}
-                </span>
+                <span className="flex items-center gap-2">{dockRow}</span>
               </div>
             ) : null}
-            {/* De 640 a 1100 px (sin la fila de abajo del celular): el ⚙ de Opciones, a la derecha de la franja de abajo de tu mano. */}
-            {!phone && duel?.dock && !splitReplay ? (
+            {/* De 640 a 1100 px (sin la fila de abajo del celular): Deshacer, los pasos y el ⚙, a la derecha de la franja de abajo de tu mano. */}
+            {!phone && !splitReplay ? (
               <div inert={choosing} className="absolute inset-y-0 right-0 flex items-center gap-2 *:pointer-events-auto">
-                {duel.dock}
+                {dockRow}
               </div>
             ) : null}
             {splitReplay ? (
@@ -3276,7 +3286,7 @@ function PracticeMatBody({
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
                   {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
                   {isDesktop && !duel.undoInHeader ? undoButton : null}
-                  {isDesktop && duel.dock ? duel.dock : isDesktop && duel.undoInHeader ? null : duel.life}
+                  {isDesktop && duel.dock ? dock : isDesktop && duel.undoInHeader ? null : duel.life}
                 </span>
               </div>
               )}

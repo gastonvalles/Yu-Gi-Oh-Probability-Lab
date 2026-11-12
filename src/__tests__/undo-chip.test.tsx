@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { UNDO_CHIP_MS } from '../components/probability/UndoChip'
@@ -28,11 +28,33 @@ const CHAIN: CoreAsk = { type: 'select_chain', player: 0, spe_count: 1, forced: 
 const chip = () => screen.queryByRole('button', { name: 'Deshacer la última jugada' })
 const activateSpell = () => {
   tap(handCard('Called by the Grave'))
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
+  choose('Activar')
+}
+/** Una jugada de la carta tocada: en el celular, su menú; en escritorio, el panel del detalle («Activar · Called by the Grave»). */
+const choose = (name: string) => fireEvent.click(screen.queryByRole('menuitem', { name }) ?? screen.getByRole('button', { name: new RegExp(`^${name} · `) }))
+/** En el automático el aviso sale sólo en escritorio (desde 1101 px): hasta 1100 px el ↶ ya va abajo, donde llega el pulgar (eran dos Deshacer). */
+const desktop = () => {
+  const original = window.matchMedia
+
+  onTestFinished(() => {
+    window.matchMedia = original
+  })
+  window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)' || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 }
 
 describe('el aviso de «Deshacer»', () => {
+  it('automático hasta 1100 px: activar no muestra el aviso (el ↶ de la botonera es el único Deshacer)', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(IDLE))
+    activateSpell()
+    core(() => fake.ask(IDLE))
+    expect(chip()).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
+  })
+
   it('automático: activar muestra el arte y «Deshacer» (sin el nombre); tocarlo deshace como la barra y el aviso se va', () => {
+    desktop()
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -55,6 +77,7 @@ describe('el aviso de «Deshacer»', () => {
   })
 
   it('automático: se va solo a los UNDO_CHIP_MS', () => {
+    desktop()
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -67,28 +90,30 @@ describe('el aviso de «Deshacer»', () => {
   })
 
   it('automático: una jugada que no es una activación no lo muestra, y otra jugada saca el de la activación (Deshacer volvería a ésa)', () => {
+    desktop()
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
     tap(handCard('Ash Blossom'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    choose('Invocación Normal')
     core(() => fake.ask(IDLE))
     expect(chip()).toBeNull()
     activateSpell()
     core(() => fake.ask(IDLE))
     expect(chip()).toBeInTheDocument()
     tap(handCard('Ash Blossom'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    choose('Invocación Normal')
     core(() => fake.ask(IDLE))
     expect(chip()).toBeNull()
   })
 
   it('automático: responder en una cadena es una activación (con aviso); pasar no lo saca', () => {
+    desktop()
     const fake = renderAuto()
 
     core(() => fake.ask(CHAIN))
     tap(handCard('Called by the Grave'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
+    choose('Activar')
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
     core(() => fake.ask(IDLE))
     expect(chip()).toBeInTheDocument()

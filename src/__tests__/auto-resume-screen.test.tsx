@@ -10,6 +10,7 @@ import { useMatSession } from '../app/use-mat-session'
 import { AutoSoloScreen, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
 import { PracticeMat } from '../components/probability/PracticeMat'
 import { CARDS as AUTO_CARDS, fakeSession } from './support/auto-session-fake'
+import { optionRow } from './support/mat-menu'
 import { CARDS, INITIAL, render } from './support/practice-mat-harness'
 
 // «Seguir en automático» de la práctica manual (el camino inverso de «Seguir en modo manual»): en el ⋯, apagado con el porqué fuera de un punto limpio, un diálogo de una línea y la
@@ -111,8 +112,9 @@ describe('la pantalla automática que sigue de la mesa manual', () => {
     expect(resume.codeOf('mine', 'card-14558127-2')).toBe(14558127)
     expect(resume.rivalHand).toEqual([14558127, 23434538])
 
-    fireEvent.click(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Más opciones' }))
-    act(() => fireEvent.click(screen.getByRole('menuitem', { name: /^Nueva mano/ })))
+    const newHand = optionRow('Nueva mano')
+
+    act(() => fireEvent.click(newHand))
     expect(calls.at(-1)!.resume).toBeUndefined()
   })
 })
