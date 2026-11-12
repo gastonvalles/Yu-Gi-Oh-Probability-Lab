@@ -271,6 +271,10 @@ export const auto: Translated<typeof es> = {
   // The automatic duel's phase selector (`AutoPhases`): its title and the word under the current phase.
   'auto.phase.title': 'Select the phase to switch to',
   'auto.phase.now': 'now',
+  // One sheet at the bottom on the phone: what the card sheet or a prompt covers and brings back.
+  'auto.layer.card': '{name} card',
+  'auto.layer.back': 'Back to {place}',
+  'auto.layer.after': 'After you answer, back to',
 
   // The desktop window of the prompts: the title bar is the handle; the edge and the corner resize it.
   'auto.window.move': 'Move the window',

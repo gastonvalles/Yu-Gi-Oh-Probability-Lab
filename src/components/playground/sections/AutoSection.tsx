@@ -327,6 +327,8 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       <div className={cx('grid gap-3 border border-border-subtle bg-background py-3', variant && 'min-h-[36rem] justify-items-center overflow-hidden')}>
         <AutoCardSheet name={ASH.name} kicker={t('auto.picker.place.mine.hand')} art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} variant={variant} />
         <AutoPhases items={phases} onClose={reply(t('common.cancel'))} variant={variant} />
+        {/* Abierta desde el visor del GY (celular): lo reemplaza, y «‹ GY · 2» la cierra y lo deja a la vista. */}
+        {variant ? null : <AutoCardSheet name={ASH.name} kicker="GY" art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} crumb={{ label: 'GY · 2', onBack: reply('Volver a GY · 2') }} />}
       </div>
     </div>
   )
@@ -336,7 +338,7 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       title="La familia del automático · la ficha y las fases"
       layout="column"
       className="col-span-full"
-      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo; apoyado sobre la mano con techo en la línea; 92 % en alfa plano, esquinas rectas. En escritorio es una ventana: barra de título violeta (el asa: flechas la mueven, Alt + flechas la estiran, Enter o doble clic la vuelven), se estira del borde derecho, del de abajo y de la esquina, y recuerda lugar y tamaño por tipo. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
+      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo; apoyado sobre la mano con techo en la línea; opaco, esquinas rectas. En el celular, una sola hoja abajo: gana la pregunta del núcleo, después la ficha y después el visor de una pila; lo que pierde vuelve como estaba y la cabeza lo dice con su flecha (la tercera: la ficha abierta desde el GY, con «‹ GY · 2»). En escritorio es una ventana: barra de título violeta (el asa: flechas la mueven, Alt + flechas la estiran, Enter o doble clic la vuelven), se estira del borde derecho, del de abajo y de la esquina, y recuerda lugar y tamaño por tipo. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
     >
       <SheetHost phone>
         <div className="flex flex-wrap items-start gap-4">
