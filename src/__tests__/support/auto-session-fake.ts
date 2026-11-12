@@ -79,6 +79,8 @@ export interface FakeSession extends AutoSession {
   undos: number
   cancels: number
   restarts: number
+  /** La semilla de cada `restart` (`undefined`: la misma del duelo de antes). */
+  restartSeeds: (number | undefined)[]
   destroyed: boolean
   /** El duelo por enlace: las respuestas del asiento remoto que se aceptaron y las re-emisiones pedidas (`expectReplay`). */
   remoteAnswers: { askId: number; answer: CoreAnswer }[]
@@ -156,6 +158,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     undos: 0,
     cancels: 0,
     restarts: 0,
+    restartSeeds: [],
     destroyed: false,
     getSnapshot: () => snapshot,
     subscribe(listener) {
@@ -183,8 +186,9 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
       fake.cancels += 1
       set({ ask: null, replaying: true, status: 'thinking', fault: null })
     },
-    restart() {
+    restart(seed?: number) {
       fake.restarts += 1
+      fake.restartSeeds.push(seed)
       set({ status: 'loading', ask: null, fault: null, faults: [], answers: [], replaying: true })
     },
     remoteAnswers: [],

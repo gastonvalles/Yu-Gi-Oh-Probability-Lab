@@ -144,7 +144,7 @@ describe('auto-screen · los estados', () => {
     expect(cover).not.toHaveTextContent('Failed to fetch')
   })
 
-  it('el fin: quién ganó y por qué (los códigos del núcleo: 1 las vidas, 2 sin robar), y «Jugar otra vez»', () => {
+  it('el fin: quién ganó y por qué (los códigos del núcleo: 1 las vidas, 2 sin robar), y «Jugar otra vez», que reparte otra mano (otra semilla)', () => {
     const fake = renderAuto()
 
     core(() => fake.end(0, 2))
@@ -153,6 +153,8 @@ describe('auto-screen · los estados', () => {
     expect(cover).toHaveTextContent('El rival no pudo robar.')
     fireEvent.click(within(cover).getByRole('button', { name: 'Jugar otra vez' }))
     expect(fake.restarts).toBe(1)
+    // Otra mano: una semilla nueva; repetir el mismo duelo (sin semilla) es «Reiniciar» de Opciones.
+    expect(fake.restartSeeds).toEqual([expect.any(Number)])
     expect(dispatches).toBe(0)
   })
 

@@ -349,6 +349,15 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     setEndHidden(false)
     session.restart()
   }, [session])
+  // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo: es «Jugar otra vez» del final (Gastón, 2026-11-12: «no debe dar la misma mano, debe dar otra») y
+  // «Nueva mano» de Opciones; «Reiniciar el mismo duelo» queda en Opciones.
+  const newHand = useCallback(() => {
+    setGaveUp(false)
+    setEndHidden(false)
+    if (resumed) resumed.onNewHand()
+    else if (redeal) redeal()
+    else session.restart(randomSeed())
+  }, [resumed, redeal, session])
   // Cada pieza que la mesa recibe se arma de nuevo sólo cuando cambia lo que muestra: los avisos del núcleo que no la tocan no vuelven a dibujar la mesa (`PracticeMat` compara sus props).
   const cover = useMemo(
     () =>
@@ -357,11 +366,11 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       ) : (gaveUp || (asks.endShown && end)) && endHidden ? (
         <ResultPeek onOpen={showEnd} />
       ) : gaveUp || (asks.endShown && end) ? (
-        <EndCover end={gaveUp || !end ? { winner: 1 - seat, reason: 0 } : end} conceded={gaveUp} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} onReplay={watchReplay} {...(openManual ? { onManual: openManual } : {})} onHide={hideEnd} />
+        <EndCover end={gaveUp || !end ? { winner: 1 - seat, reason: 0 } : end} conceded={gaveUp} lp={lp} seat={seat} rival={rivalName} onAgain={newHand} onSave={openSave} onReplay={watchReplay} {...(openManual ? { onManual: openManual } : {})} onHide={hideEnd} />
       ) : status === 'loading' ? (
         <LoadingCover progress={progress} note={rivalLine(handtraps)} />
       ) : undefined,
-    [fault, restart, recoverable, undo, openManual, onExit, status, end, asks.endShown, gaveUp, lp, seat, rivalName, progress, handtraps, openSave, watchReplay, endHidden, hideEnd, showEnd],
+    [fault, restart, newHand, recoverable, undo, openManual, onExit, status, end, asks.endShown, gaveUp, lp, seat, rivalName, progress, handtraps, openSave, watchReplay, endHidden, hideEnd, showEnd],
   )
 
   // Las vidas van por asiento (las tuyas son las de `seat`): las de lo que la mesa ya contó (`asks.lp`).
@@ -371,13 +380,6 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   // esperan a «Volver al duelo».
   const reviewing = asks.review.active
   const botName = BOT_DECK_MENU.find((deck) => deck.id === handtraps.botDeck)?.name ?? ''
-  // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en Opciones.
-  const newHand = useCallback(() => {
-    setGaveUp(false)
-    if (resumed) resumed.onNewHand()
-    else if (redeal) redeal()
-    else session.restart(randomSeed())
-  }, [resumed, redeal, session])
   // Lo que se ajusta: en Opciones, el ⚙ de la botonera (el único menú del duelo).
   const options = useMemo<AutoOptions>(
     () => ({
@@ -567,7 +569,7 @@ function useMoment(session: MatSession, initial: unknown, reviewing: boolean, ca
 
 /**
  * El final (sale cuando la mesa lo mostró todo y la chapa contó hasta 0: `asks.endShown`): la palabra y por qué, al medio del campo, con «Guardar replay», seguir la partida en la mesa
- * manual (con `onManual`), «Ver el replay» (el duelo recién jugado, con lo que hizo el bot) y «Jugar otra vez» (la misma semilla: el mismo duelo). La ✕ lo esconde (`onHide`).
+ * manual (con `onManual`), «Ver el replay» (el duelo recién jugado, con lo que hizo el bot) y «Jugar otra vez» (otra semilla: otra mano; repetir el mismo duelo es «Reiniciar» en Opciones). La ✕ lo esconde (`onHide`).
  */
 function EndCover({ end, conceded = false, lp, seat, rival, onAgain, onSave, onReplay, onManual, onHide }: { end: { winner: number; reason: number }; /** Te rendiste (Opciones): la derrota dice eso y no las vidas. */ conceded?: boolean; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onReplay: () => void; onManual?: () => void; onHide: () => void }) {
   const won = end.winner === seat
