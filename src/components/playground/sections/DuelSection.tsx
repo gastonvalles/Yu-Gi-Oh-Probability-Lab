@@ -995,65 +995,70 @@ const MEDALS: Array<{ tone: MedalTone; label: string; numeral?: string }> = [
 ]
 
 /** Los finales, con las acciones de cada pantalla: el automático solo (`solo`), un duelo con otro (`room`, con lo que dice el botón de seguir) y quien mira (`watch`). */
-const RESULTS: Array<{ label: string; tone: 'win' | 'lose' | 'draw'; title: string; reason: string; score?: [number, number]; note?: string; kind: 'solo' | 'room' | 'watch'; next?: string }> = [
-  { label: 'ganar por vidas', tone: 'win', title: '¡Ganaste!', reason: 'Rival se quedó sin puntos de vida.', score: [7700, 0], kind: 'solo' },
-  { label: 'perder por vidas', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida.', score: [0, 3100], kind: 'solo' },
-  { label: 'empate', tone: 'draw', title: 'Empate', reason: 'Los dos se quedaron sin puntos de vida a la vez.', score: [0, 0], kind: 'solo' },
+const RESULTS: Array<{ label: string; tone: 'win' | 'lose' | 'draw'; title: string; reason: string; note?: string; kind: 'solo' | 'room' | 'watch'; next?: string }> = [
+  { label: 'ganar por vidas', tone: 'win', title: '¡Ganaste!', reason: 'Rival se quedó sin puntos de vida.', kind: 'solo' },
+  { label: 'perder por vidas', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida.', kind: 'solo' },
+  { label: 'empate', tone: 'draw', title: 'Empate', reason: 'Los dos se quedaron sin puntos de vida a la vez.', kind: 'solo' },
   { label: 'te rendiste', tone: 'lose', title: 'Perdiste', reason: 'Te rendiste.', kind: 'solo' },
-  { label: 'sin cartas', tone: 'win', title: '¡Ganaste!', reason: 'El rival no pudo robar.', score: [5200, 1800], kind: 'solo' },
+  { label: 'sin cartas', tone: 'win', title: '¡Ganaste!', reason: 'El rival no pudo robar.', kind: 'solo' },
   { label: 'se rindió el rival', tone: 'win', title: '¡Ganaste!', reason: 'Beto se rindió.', kind: 'room', next: 'Revancha' },
-  { label: 'por tiempo', tone: 'lose', title: 'Perdiste', reason: 'Se te acabó el tiempo.', score: [3000, 2500], kind: 'room', next: 'Revancha' },
-  { label: 'serie: partida 1 de 3', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida. Match 0–1.', score: [0, 1200], note: 'Beto quiere la revancha.', kind: 'room', next: 'Siguiente duelo' },
+  { label: 'por tiempo', tone: 'lose', title: 'Perdiste', reason: 'Se te acabó el tiempo.', kind: 'room', next: 'Revancha' },
+  { label: 'serie: partida 1 de 3', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida. Match 0–1.', note: 'Beto quiere la revancha.', kind: 'room', next: 'Siguiente duelo' },
   { label: 'espectador', tone: 'win', title: 'Ganó Ana', reason: 'Ganó Ana. Beto se quedó sin puntos de vida.', note: 'Volvés al inicio en unos segundos.', kind: 'watch' },
 ]
 
 function ResultSample({ sample }: { sample: (typeof RESULTS)[number] }) {
-  const { kind, score } = sample
+  const { kind } = sample
+  const duel = useMemo(sampleDuel, [])
   const actions =
     kind === 'solo' ? (
       <>
-        <Button variant="secondary" icon="save" fullWidth>
-          Guardar replay
+        <Button variant="secondary" size="sm" icon="save" fullWidth>
+          Guardar
         </Button>
-        <Button variant="secondary" icon="hand" fullWidth>
-          Seguir en modo manual
+        <Button variant="secondary" size="sm" icon="hand" fullWidth>
+          Modo manual
         </Button>
-        <Button variant="secondary" icon="chat" fullWidth>
-          Qué hizo el bot
+        <Button variant="secondary" size="sm" icon="play" fullWidth>
+          Ver el replay
         </Button>
       </>
     ) : kind === 'room' ? (
       <>
-        <Button variant="secondary" icon="eye" fullWidth>
+        <Button variant="secondary" size="sm" icon="eye" fullWidth>
           Ver la mesa
         </Button>
-        <Button variant="secondary" icon="save" fullWidth>
-          Guardar replay
+        <Button variant="secondary" size="sm" icon="save" fullWidth>
+          Guardar
+        </Button>
+        <Button variant="secondary" size="sm" icon="play" fullWidth>
+          Ver el replay
         </Button>
       </>
     ) : undefined
   const primary =
     kind === 'watch' ? (
-      <Button variant="secondary" size="lg" fullWidth>
+      <Button variant="secondary" size="sm" icon="home" fullWidth>
         Volver al inicio
       </Button>
     ) : (
-      <Button variant="primary" size="lg" icon="refresh" fullWidth>
+      <Button variant="primary" size="sm" icon="refresh" fullWidth>
         {kind === 'solo' ? 'Jugar otra vez' : sample.next}
       </Button>
     )
 
+  // Sobre la mesa de muestra: el campo se ve alrededor del bloque.
   return (
     <div className="grid w-full max-w-[24.375rem] gap-2">
       <Tag>{sample.label}</Tag>
-      <div className="relative h-[36rem] overflow-hidden border border-border-subtle bg-background">
+      <div className="relative overflow-hidden border border-border-subtle bg-background [--cell:3.57rem]">
+        <DuelTable mine={duel.mine} theirs={duel.theirs} turn="mine" />
         <ResultHero
           tone={sample.tone}
           title={sample.title}
           reason={sample.reason}
           {...(sample.note ? { note: sample.note } : {})}
-          {...(score ? { score: { mine: score[0], theirs: score[1], rival: kind === 'solo' ? 'Rival' : 'Beto' } } : {})}
-          {...(kind === 'watch' ? {} : { onLeave: () => {} })}
+          {...(kind === 'watch' ? {} : kind === 'solo' ? { onHide: () => {} } : { onLeave: () => {} })}
           {...(actions ? { actions } : {})}
           primary={primary}
         />
@@ -1075,7 +1080,7 @@ function BannerSamples() {
       className="col-span-full"
       note={
         <>
-          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, sin degradados ni brillos) del cartel del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos). El final (<Tag>ResultHero</Tag>) es la palabra enorme cruzando el campo («Victoria», «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos; entra creciendo) sobre la mesa con un velo, y abajo (en escritorio, al centro, debajo de la palabra) una hoja opaca y recta que no la repite: el porqué como cabeza (el nombre del cartel, «¡Ganaste!», queda para el lector de pantalla), las vidas «7700 a 0» en grande, las secundarias del mismo ancho y la principal grande abajo; la ✕ va dentro. Antes, el golpe letal en cámara lenta (<Tag>LethalBlow</Tag>: destello, rayos y el daño en grande, 1,5 s); después la chapa del que perdió cuenta hasta 0, una pausa y recién ahí el final (<Tag>app/end-reveal.ts</Tag>). Entra subiendo; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
+          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, sin degradados ni brillos) del cartel del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos). El final (<Tag>ResultHero</Tag>) es un solo bloque al medio del campo, que se ve entero alrededor (sin velo ni hoja; sólo una franja oscura detrás del bloque): la palabra enorme («Victoria», «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos; entra creciendo), el porqué en una línea (el nombre del cartel, «¡Ganaste!», queda para el lector de pantalla) y las acciones en botones chicos iguales, dos por fila en el celular y en una sola en escritorio. Sin vidas: las dicen las chapas. En Solo la ✕ lo esconde (y «Ver el resultado» lo vuelve a abrir); «Ver el replay» abre el duelo recién jugado en el visor de replays. Antes, el golpe letal en cámara lenta (<Tag>LethalBlow</Tag>: destello, rayos y el daño en grande, 1,5 s); después la chapa del que perdió cuenta hasta 0, una pausa y recién ahí el final (<Tag>app/end-reveal.ts</Tag>). Con <Tag>prefers-reduced-motion</Tag> aparece quieto. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
         </>
       }
     >

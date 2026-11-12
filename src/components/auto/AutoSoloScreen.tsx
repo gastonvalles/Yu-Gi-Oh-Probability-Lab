@@ -21,10 +21,10 @@ import { frameKindOf, type FrameKind } from '../../app/card-frame'
 import { LifeHold } from '../../app/life-effects'
 import { MOMENT_MS, momentText } from '../../app/duel-moment'
 import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
-import type { ReplayView } from '../../app/duel-replay'
+import type { DuelReplay, ReplayView } from '../../app/duel-replay'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
-import { ResultHero } from '../duel/DuelBanner'
+import { ResultHero, ResultPeek } from '../duel/DuelBanner'
 import { DuelLine, type LaneNotice } from '../duel/DuelBar'
 import { LethalBlow } from '../duel/LethalBlow'
 import { LifeBadge } from '../duel/LifeScore'
@@ -36,6 +36,7 @@ import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/Prac
 import { cardIdOfDrawId } from '../probability/practice'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
 import { Button } from '../ui/Button'
+import { ReplayLayer } from '../replays/ReplayLayer'
 import { SaveReplayDialog } from '../replays/SaveReplayDialog'
 import { AutoBar, AutoDock, type AutoOptions } from './AutoBar'
 import { BotLogSheet, botTurns } from './BotLog'
@@ -334,8 +335,15 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   // «Rendirse» (Opciones): el duelo termina como derrota, con su pantalla final (el núcleo no se entera); reiniciar o repartir otra mano lo borra.
   const [gaveUp, setGaveUp] = useState(false)
   const giveUp = useCallback(() => setGaveUp(true), [])
+  // El final se esconde con su ✕ (el campo queda solo, con «Ver el resultado» para volver) y «Ver el replay» abre el duelo recién jugado, con los dos lados, sin guardarlo.
+  const [endHidden, setEndHidden] = useState(false)
+  const hideEnd = useCallback(() => setEndHidden(true), [])
+  const showEnd = useCallback(() => setEndHidden(false), [])
+  const [watching, setWatching] = useState<DuelReplay | null>(null)
+  const watchReplay = useCallback(() => setWatching(buildReplay('mine')), [buildReplay])
   const restart = useCallback(() => {
     setGaveUp(false)
+    setEndHidden(false)
     session.restart()
   }, [session])
   // Cada pieza que la mesa recibe se arma de nuevo sólo cuando cambia lo que muestra: los avisos del núcleo que no la tocan no vuelven a dibujar la mesa (`PracticeMat` compara sus props).
@@ -343,12 +351,14 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     () =>
       fault ? (
         <FaultCover fault={fault} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+      ) : (gaveUp || (asks.endShown && end)) && endHidden ? (
+        <ResultPeek onOpen={showEnd} />
       ) : gaveUp || (asks.endShown && end) ? (
-        <EndCover end={gaveUp || !end ? { winner: 1 - seat, reason: 0 } : end} conceded={gaveUp} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} onLog={openLog} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+        <EndCover end={gaveUp || !end ? { winner: 1 - seat, reason: 0 } : end} conceded={gaveUp} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} onReplay={watchReplay} {...(openManual ? { onManual: openManual } : {})} onHide={hideEnd} />
       ) : status === 'loading' ? (
         <LoadingCover progress={progress} note={rivalLine(handtraps)} />
       ) : undefined,
-    [fault, restart, recoverable, undo, openManual, onExit, status, end, asks.endShown, gaveUp, lp, seat, rivalName, progress, handtraps, openSave, openLog],
+    [fault, restart, recoverable, undo, openManual, onExit, status, end, asks.endShown, gaveUp, lp, seat, rivalName, progress, handtraps, openSave, watchReplay, endHidden, hideEnd, showEnd],
   )
 
   // Las vidas van por asiento (las tuyas son las de `seat`): las de lo que la mesa ya contó (`asks.lp`).
@@ -501,6 +511,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       {asks.pieces}
       {asks.lethal && !reviewing ? <LethalBlow key={asks.lethal.key} damage={asks.lethal.damage} mine={asks.lethal.side === seat} /> : null}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
+      <ReplayLayer replay={watching} onClose={() => setWatching(null)} />
       <BotLogSheet isOpen={logOpen} onClose={() => setLogOpen(false)} turns={botLog} deciding={rivalOn} loading={snap.replaying} nameOf={codeName} artOf={codeArt} frameOf={frameOf} onPick={pickNote} />
       <ManualDialog
         key={opened}
@@ -548,10 +559,10 @@ function useMoment(session: MatSession, initial: unknown, reviewing: boolean, ca
 }
 
 /**
- * El final (sale cuando la mesa lo mostró todo y la chapa contó hasta 0: `asks.endShown`): quién ganó y por qué, «Guardar replay», seguir la partida en la mesa manual (con `onManual`)
- * y «Qué hizo el bot», del mismo ancho, y abajo «Jugar otra vez» (la misma semilla: el mismo duelo).
+ * El final (sale cuando la mesa lo mostró todo y la chapa contó hasta 0: `asks.endShown`): la palabra y por qué, al medio del campo, con «Guardar replay», seguir la partida en la mesa
+ * manual (con `onManual`), «Ver el replay» (el duelo recién jugado, con lo que hizo el bot) y «Jugar otra vez» (la misma semilla: el mismo duelo). La ✕ lo esconde (`onHide`).
  */
-function EndCover({ end, conceded = false, lp, seat, rival, onAgain, onSave, onLog, onManual, onExit }: { end: { winner: number; reason: number }; /** Te rendiste (Opciones): la derrota dice eso y no las vidas. */ conceded?: boolean; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onLog: () => void; onManual?: () => void; onExit: () => void }) {
+function EndCover({ end, conceded = false, lp, seat, rival, onAgain, onSave, onReplay, onManual, onHide }: { end: { winner: number; reason: number }; /** Te rendiste (Opciones): la derrota dice eso y no las vidas. */ conceded?: boolean; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onReplay: () => void; onManual?: () => void; onHide: () => void }) {
   const won = end.winner === seat
   const [mine, theirs] = [lp[seat], lp[1 - seat]!]
   const title = end.winner === 2 ? t('duel.result.title.draw') : won ? t('duel.result.title.win') : t('duel.result.title.lose')
@@ -576,26 +587,24 @@ function EndCover({ end, conceded = false, lp, seat, rival, onAgain, onSave, onL
       tone={end.winner === 2 ? 'draw' : won ? 'win' : 'lose'}
       title={title}
       reason={reason}
-      // Rendirse no es un marcador: «8000 a 8000» se lee como un empate. Quedan el título y el motivo.
-      {...(conceded ? {} : { score: { mine, theirs, rival } })}
-      onLeave={onExit}
+      onHide={onHide}
       actions={
         <>
-          <Button variant="secondary" icon="save" fullWidth aria-haspopup="dialog" onClick={onSave}>
-            {t('meta.duels.save.button')}
+          <Button variant="secondary" size="sm" icon="save" fullWidth aria-haspopup="dialog" aria-label={t('meta.duels.save.button')} onClick={onSave}>
+            {t('duel.result.save')}
           </Button>
           {onManual ? (
-            <Button variant="secondary" icon="hand" fullWidth onClick={onManual}>
-              {t('auto.bar.manual')}
+            <Button variant="secondary" size="sm" icon="hand" fullWidth onClick={onManual}>
+              {t('duel.result.manual')}
             </Button>
           ) : null}
-          <Button variant="secondary" icon="chat" fullWidth aria-haspopup="dialog" onClick={onLog}>
-            {t('auto.bot.log.open')}
+          <Button variant="secondary" size="sm" icon="play" fullWidth aria-haspopup="dialog" onClick={onReplay}>
+            {t('duel.result.watchReplay')}
           </Button>
         </>
       }
       primary={
-        <Button variant="primary" size="lg" icon="refresh" fullWidth onClick={onAgain}>
+        <Button variant="primary" size="sm" icon="refresh" fullWidth onClick={onAgain}>
           {t('auto.end.again')}
         </Button>
       }

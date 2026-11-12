@@ -268,7 +268,7 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
   })
 
   it('el final del duelo (`ResultHero`, también fuera de la mesa: quien mira) es una hoja recta, con su X y sus botones', () => {
-    render(<ResultHero fixed tone="win" title="¡Ganaste!" reason="Rival se quedó sin puntos de vida." score={{ mine: 7700, theirs: 0, rival: 'Rival' }} onLeave={() => {}} actions={<Button fullWidth>Guardar replay</Button>} primary={<Button variant="primary" size="lg" fullWidth>Jugar otra vez</Button>} />)
+    render(<ResultHero fixed tone="win" title="¡Ganaste!" reason="Rival se quedó sin puntos de vida." onLeave={() => {}} actions={<Button fullWidth>Guardar replay</Button>} primary={<Button variant="primary" size="lg" fullWidth>Jugar otra vez</Button>} />)
     const sheet = screen.getByRole('dialog', { name: '¡Ganaste!' })
 
     expect(sheet).toHaveClass('mat-square')

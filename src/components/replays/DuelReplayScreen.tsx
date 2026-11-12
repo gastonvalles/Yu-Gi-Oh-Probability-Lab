@@ -31,6 +31,10 @@ interface DuelReplayScreenProps {
   shared?: { onSave: () => void } | undefined
   /** Copiar el enlace (si entra) y descargar el archivo. */
   actions: OverflowItem[]
+  /** Desde qué jugada abre (si no, el final): el replay de un duelo recién jugado, desde el principio. */
+  startAt?: number
+  /** Lo que dice la flecha de volver (si no, «Volver a Replays»). */
+  backLabel?: string
 }
 
 /** Cuánto dura cada jugada al reproducir, a velocidad normal. */
@@ -69,9 +73,9 @@ function activationAt(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>
   return step && spotlight?.kind === 'activate' ? { key: to, side: step[0], id: spotlight.id } : null
 }
 
-export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelReplayScreenProps) {
+export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, backLabel = t('meta.duels.back') }: DuelReplayScreenProps) {
   const total = replay.steps.length
-  const [cursor, setCursor] = useState(total)
+  const [cursor, setCursor] = useState(startAt ?? total)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
   const [flipped, setFlipped] = useState(false)
@@ -166,7 +170,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
       ) : null}
       <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4">
         <div className="flex h-11 min-w-0 items-center gap-1.5">
-          <IconButton tone="flat" size="sm" className="-ml-2 shrink-0" aria-label={t('meta.duels.back')} title={t('meta.duels.back')} onClick={onClose}>
+          <IconButton tone="flat" size="sm" className="-ml-2 shrink-0" aria-label={backLabel} title={backLabel} onClick={onClose}>
             <Icon name="arrow-left" />
           </IconButton>
           <span className="min-w-0 flex-1 truncate text-body font-bold text-foreground">{title}</span>
@@ -178,7 +182,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
             <IconButton tone="flat" size="sm" aria-label={t('duel.watch.flip')} title={t('duel.watch.flip')} onClick={() => setFlipped((current) => !current)}>
               <Icon name="swap" />
             </IconButton>
-            <OverflowMenu label={t('meta.duels.more', { title })} items={actions} />
+            {actions.length > 0 ? <OverflowMenu label={t('meta.duels.more', { title })} items={actions} /> : null}
           </span>
         </div>
 

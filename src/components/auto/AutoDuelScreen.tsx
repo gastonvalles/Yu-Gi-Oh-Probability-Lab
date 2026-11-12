@@ -13,7 +13,7 @@ import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { duelResult, type DuelResult } from '../../app/duel-games'
 import { duelTurnNumber } from '../../app/duel-turn'
-import type { ReplayView } from '../../app/duel-replay'
+import type { DuelReplay, ReplayView } from '../../app/duel-replay'
 import type { AutoClock, Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import { isEmojiSignal } from '../../app/duel-signals'
 import type { SocketStatus } from '../../app/duel-socket'
@@ -34,6 +34,7 @@ import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNo
 import { cardIdOfDrawId } from '../probability/practice'
 import { PileGroupContext } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
+import { ReplayLayer } from '../replays/ReplayLayer'
 import { SaveReplayDialog } from '../replays/SaveReplayDialog'
 import { AskPrompt } from './AskPrompt'
 import { ActionRow, ChainRow, OptionsGear, PlaceRow } from './AutoBar'
@@ -510,13 +511,15 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
   ) : resultOpen && (snap.status !== 'ended' || asks.endShown) ? (
     // Un final del núcleo espera a que la mesa lo muestre (la chapa en 0); rendirse o el tiempo, ya.
-    <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} onSaveReplay={() => setSaving(true)} {...(reason ? { reason } : {})} />
+    <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} onSaveReplay={() => setSaving(true)} onWatchReplay={() => setWatching(buildReplay('mine'))} {...(reason ? { reason } : {})} />
   ) : snap.status === 'loading' || online.phase === 'starting' ? (
     <LoadingCover progress={snap.progress} note={null} />
   ) : undefined
 
   // «Guardar replay» (el resultado y «Más opciones»): el duelo como está al tocar, desde mi lado, con los dos nombres; si alguien se rindió (o se le acabó el tiempo), lo dice la sala.
   const [saving, setSaving] = useState(false)
+  // «Ver el replay» (el resultado): el mismo replay, en memoria, en el visor.
+  const [watching, setWatching] = useState<DuelReplay | null>(null)
   const buildReplay = (view: ReplayView) =>
     replayFromAuto(session.getSnapshot(), {
       seat,
@@ -654,6 +657,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
       {asks.pieces}
       {asks.lethal ? <LethalBlow key={asks.lethal.key} damage={asks.lethal.damage} mine={asks.lethal.side === seat} /> : null}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
+      <ReplayLayer replay={watching} onClose={() => setWatching(null)} />
       {banner ? <TurnOrderBanner first={seat === 0} rival={rivalName} onDone={hideBanner} /> : null}
       {docked ? <RivalEmoji burst={signals.burst} name={rivalName} onDismiss={signals.dismissBurst} /> : null}
     </div>

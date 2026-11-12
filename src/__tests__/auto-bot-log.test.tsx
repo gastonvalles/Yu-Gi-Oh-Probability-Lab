@@ -79,12 +79,21 @@ describe('Qué hizo el bot y por qué', () => {
     expect(screen.getByText(/^Practice sparring/)).toBeInTheDocument()
   })
 
-  it('desde el final del duelo: con el rival pasivo, lo dice', () => {
+  it('desde el final del duelo, «Ver el replay» abre el duelo recién jugado en el visor de replays, desde el principio y sin guardarlo; volver lleva al resultado', () => {
     const fake = renderAuto()
 
     core(() => fake.end(0, 2))
-    fireEvent.click(within(screen.getByRole('alertdialog', { name: '¡Ganaste!' })).getByRole('button', { name: 'Qué hizo el bot' }))
-    expect(screen.getByRole('dialog', { name: 'Qué hizo el bot y por qué' })).toHaveTextContent('Con el rival pasivo no hay decisiones que contar.')
+    fireEvent.click(within(screen.getByRole('alertdialog', { name: '¡Ganaste!' })).getByRole('button', { name: 'Ver el replay' }))
+    const layer = screen.getByRole('dialog', { name: 'Ver el replay' })
+    expect(within(layer).getByTestId('replay-step')).toBeInTheDocument()
+    fireEvent.click(within(layer).getByRole('button', { name: 'Volver al resultado' }))
+    expect(screen.queryByRole('dialog', { name: 'Ver el replay' })).toBeNull()
+    expect(screen.getByRole('alertdialog', { name: '¡Ganaste!' })).toBeInTheDocument()
+    // La ✕ deja el campo solo; «Ver el resultado» lo vuelve a abrir.
+    fireEvent.click(screen.getByRole('button', { name: 'Ver el campo' }))
+    expect(screen.queryByRole('alertdialog', { name: '¡Ganaste!' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Ver el resultado' }))
+    expect(screen.getByRole('alertdialog', { name: '¡Ganaste!' })).toBeInTheDocument()
   })
 
   it('desde «Opciones del duelo», con el de handtraps: tocar una decisión cierra la hoja y repasa tu mesa en ese momento', () => {

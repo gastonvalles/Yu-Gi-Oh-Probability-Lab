@@ -1838,7 +1838,7 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const undoResult = useUndoResult(snapshot)
   // «Guardar replay» (al terminar y en «Más opciones»), si este duelo se pudo grabar.
-  const { onSave: onSaveReplay, setting: replaySetting, dialog: replayDialog } = useManualReplay(snapshot, myName, cardsById)
+  const { onSave: onSaveReplay, onWatch: onWatchReplay, setting: replaySetting, dialog: replayDialog } = useManualReplay(snapshot, myName, cardsById)
   const passHeld = usePassHeld(snapshot)
   // Las cartas mías que pueden responder cuando el rival pregunta si hacés algo antes: brillan en la mesa y el aviso las nombra.
   const responders = useResponders(snapshot, cardsById)
@@ -1959,12 +1959,12 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (
-        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} {...(onSaveReplay ? { onSaveReplay } : {})} />
+        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} {...(onSaveReplay ? { onSaveReplay } : {})} {...(onWatchReplay ? { onWatchReplay } : {})} />
       ) : undefined,
       header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : chatToggle} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : logTicker} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} extraSettings={replaySetting || resume ? (close: () => void) => <>{replaySetting?.(close)}{resume ? <ResumeAutoSetting resume={resume} rivalName={rivalName} /> : null}</> : undefined} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, phone, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, replaySetting],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, phone, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, onWatchReplay, replaySetting],
   )
 
   const markTarget = markMenu?.target

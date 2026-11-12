@@ -67,7 +67,8 @@ describe('auto-screen · quién empieza', () => {
     const cover = screen.getByRole('alertdialog', { name: '¡Ganaste!' })
 
     expect(cover.querySelector('[data-result-word]')).toHaveTextContent(/^Victoria$/)
-    expect(cover).toHaveTextContent('Vos 6500 a Rival 0')
+    // Ganaste desde el asiento 1 (sin marcador: las vidas las dicen las chapas).
+    expect(cover).toHaveTextContent('Rival se quedó sin puntos de vida.')
     expect(cover).not.toHaveTextContent('Te quedaste sin puntos de vida.')
     setAutoPref('first', 'me')
   })

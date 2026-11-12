@@ -6,6 +6,7 @@ import { canReplay, replayFromManual, theirCodes } from '../../app/manual-replay
 import { t } from '../../i18n'
 import { fetchCardNamesByIds } from '../../ygoprodeck'
 import type { MatCard } from '../probability/PracticeMat'
+import { ReplayLayer } from '../replays/ReplayLayer'
 import { SaveReplayDialog } from '../replays/SaveReplayDialog'
 import { Button } from '../ui/Button'
 import { Setting } from './DuelBar'
@@ -15,12 +16,15 @@ import { Setting } from './DuelBar'
  * Sin registro (un duelo que siguió del automático, o de un guardado de antes) no se ofrece; con un corte, el diálogo dice hasta dónde llega. Los nombres de lo que el rival
  * mostró no están en mi deck: se piden al abrir el diálogo (si no llegan, el replay dice «Carta» en el texto; el arte sale igual).
  */
-export function useManualReplay(snapshot: DuelSnapshot, myName: string, cardsById: ReadonlyMap<string, MatCard>): { onSave?: () => void; setting: ((close: () => void) => ReactNode) | null; dialog: ReactNode } {
+export function useManualReplay(snapshot: DuelSnapshot, myName: string, cardsById: ReadonlyMap<string, MatCard>): { onSave?: () => void; onWatch?: () => void; setting: ((close: () => void) => ReactNode) | null; dialog: ReactNode } {
   const [saving, setSaving] = useState(false)
   const open = useCallback(() => setSaving(true), [])
+  // «Ver el replay» (el final): el mismo replay, en memoria, en el visor (se rearma si llegan los nombres de las cartas del rival).
+  const [watching, setWatching] = useState(false)
+  const watch = useCallback(() => setWatching(true), [])
   const [theirNames, setTheirNames] = useState<ReadonlyMap<number, string>>(new Map())
   const can = canReplay(snapshot)
-  const codes = saving ? theirCodes(snapshot).join(',') : ''
+  const codes = saving || watching ? theirCodes(snapshot).join(',') : ''
   const myNames = useMemo(() => new Map([...cardsById].flatMap(([id, card]) => (passcodeOf(id) === null ? [] : [[passcodeOf(id)!, card.name] as const]))), [cardsById])
 
   useEffect(() => {
@@ -60,9 +64,16 @@ export function useManualReplay(snapshot: DuelSnapshot, myName: string, cardsByI
     [can, open],
   )
 
+  const shown = useMemo(() => (watching && can ? build('mine') : null), [watching, can, snapshot, theirNames, myNames]) // eslint-disable-line react-hooks/exhaustive-deps -- `build` lee éstos
+
   return {
-    ...(can ? { onSave: open } : {}),
+    ...(can ? { onSave: open, onWatch: watch } : {}),
     setting,
-    dialog: <SaveReplayDialog isOpen={saving && can} onClose={() => setSaving(false)} build={build} {...(snapshot.record?.cut ? { note: t('meta.duels.save.cut') } : {})} />,
+    dialog: (
+      <>
+        <SaveReplayDialog isOpen={saving && can} onClose={() => setSaving(false)} build={build} {...(snapshot.record?.cut ? { note: t('meta.duels.save.cut') } : {})} />
+        <ReplayLayer replay={shown} onClose={() => setWatching(false)} />
+      </>
+    ),
   }
 }

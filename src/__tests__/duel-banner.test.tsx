@@ -129,20 +129,48 @@ describe('el cartel del final para quien mira', () => {
 })
 
 describe('el final del duelo', () => {
-  it('la palabra del resultado, enorme sobre el campo, y la hoja sin repetirla: el porqué, el marcador y las acciones', () => {
-    const { container } = render(<ResultHero tone="lose" title="Perdiste" reason="Te quedaste sin puntos de vida." score={{ mine: 0, theirs: 3100, rival: 'Rival' }} primary={<button type="button">Jugar otra vez</button>} />)
+  it('un solo bloque al medio, sin velo ni hoja ni marcador: la palabra, el porqué y los botones chicos (dos por fila; si son impares, el último de lado a lado)', () => {
+    const hide = vi.fn()
+    const { container } = render(
+      <ResultHero
+        tone="lose"
+        title="Perdiste"
+        reason="Te quedaste sin puntos de vida."
+        onHide={hide}
+        actions={
+          <>
+            <button type="button">Guardar replay</button>
+            <button type="button">Ver el replay</button>
+          </>
+        }
+        primary={<button type="button">Jugar otra vez</button>}
+      />,
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Perdiste' })
     const word = container.querySelector('[data-result-word]')!
-    const sheet = container.querySelector('section')!
+    const block = container.querySelector('[data-result-block]')!
 
     // El nombre del cartel sigue siendo cómo te fue; a la vista, la palabra (en su color, itálica y en mayúsculas), oculta al lector (no la oye dos veces).
-    expect(screen.getByRole('dialog', { name: 'Perdiste' })).toHaveAttribute('data-tone', 'lose')
+    expect(dialog).toHaveAttribute('data-tone', 'lose')
+    expect(dialog).toHaveClass('place-items-center')
     expect(word).toHaveAttribute('aria-hidden', 'true')
     expect(word).toHaveTextContent(/^Derrota$/)
     expect(word.querySelector('p')).toHaveClass('text-danger-soft', 'italic', 'uppercase', 'whitespace-nowrap')
-    expect(sheet).not.toContainElement(word as HTMLElement)
-    expect(sheet).not.toHaveTextContent(/Derrota|Perdiste/)
-    expect(within(sheet).getByRole('status')).toHaveTextContent('Te quedaste sin puntos de vida.')
-    expect(sheet).toHaveTextContent(/0\s*a\s*Rival\s*3100/)
+    expect(block).toContainElement(word as HTMLElement)
+    expect(within(dialog).getByRole('status')).toHaveTextContent('Te quedaste sin puntos de vida.')
+    // El campo se ve: ni velo que tape todo ni hoja opaca; tampoco el marcador de vidas.
+    expect(dialog.querySelector('.bg-card-background, .animate-sheet-up')).toBeNull()
+    expect([...dialog.querySelectorAll('span')].some((n) => n.className.includes('inset-0') && /\bbg-background\//.test(n.className))).toBe(false)
+    expect(dialog.querySelector('[data-score]')).toBeNull()
+    expect(dialog).not.toHaveTextContent(/\d+\s*a\s*\d+/)
+    // Tres botones: dos en la fila y el tercero (la principal) de lado a lado.
+    const cells = [...container.querySelectorAll('[data-result-block] .grid-cols-2 > div')]
+    expect(cells).toHaveLength(3)
+    expect(cells[2]).toHaveClass('col-span-2')
+    expect(cells[0]).not.toHaveClass('col-span-2')
+    // La ✕ esconde el cartel (el campo queda solo), no sale del duelo.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ver el campo' }))
+    expect(hide).toHaveBeenCalledTimes(1)
   })
 
   it('«Victoria» y «Empate» con su color', () => {
