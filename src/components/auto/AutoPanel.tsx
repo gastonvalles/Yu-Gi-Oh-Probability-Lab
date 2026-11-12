@@ -412,9 +412,10 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
   const nameId = useId()
   const [armed, setArmed] = useState(false)
   const plays = flatPlays(items)
-  const first = plays.findIndex((item) => !item.disabled)
-  // La principal, al final: las demás en su orden y ella abajo a la derecha.
-  const ordered = first < 0 ? plays : [...plays.filter((_, index) => index !== first), plays[first]!]
+  // La principal, al final: las demás jugadas en su orden y ella abajo a la derecha. Los efectos de una misma jugada («Efecto 2», «Efecto 3») van juntos y en su orden.
+  const groups = items.map((item) => item.children ?? [item])
+  const first = groups.findIndex((group) => group.some((play) => !play.disabled))
+  const ordered = (first < 0 ? groups : [...groups.filter((_, index) => index !== first), groups[first]!]).flat()
   // Sin imagen, la carta sobre el color de su tipo (lámina T), como el chip.
   const frame = apiCard ? frameKindOf(apiCard.frameType, apiCard.cardType) : null
   const stats = apiCard?.atk != null ? [`${t('duel.dock.atk')} ${apiCard.atk}`, ...(apiCard.def != null ? [`${t('duel.dock.def')} ${apiCard.def}`] : [])].join(' / ') : null
@@ -495,7 +496,7 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
           // Filas de a dos (con una suelta, la primera ocupa su fila: la principal queda con pareja, abajo a la derecha); en la ventana, a su ancho y a la derecha.
           <div className="grid grid-cols-2 gap-2 group-data-[auto-panel=floating]/panel:flex group-data-[auto-panel=floating]/panel:flex-wrap group-data-[auto-panel=floating]/panel:justify-end">
             {ordered.map((item, index) => {
-              const main = index === ordered.length - 1 && first >= 0
+              const main = index === ordered.length - 1 && first >= 0 && !item.disabled
 
               return (
                 <Button

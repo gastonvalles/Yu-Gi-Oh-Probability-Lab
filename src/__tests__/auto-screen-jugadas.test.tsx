@@ -54,10 +54,10 @@ describe('auto-screen · las jugadas', () => {
     const effects = within(sheet).getAllByRole('menuitem')
 
     // Cada efecto, un botón de la ficha con el número de su texto (en español), sin «Activar efecto» que abra otra lista ni un «Más».
-    expect(effects.map((effect) => effect.textContent)).toEqual(['Efecto 3', 'Efecto 2'])
+    expect(effects.map((effect) => effect.textContent)).toEqual(['Efecto 2', 'Efecto 3'])
     expect(within(sheet).queryByRole('menuitem', { name: /Activar efecto|Más/ })).toBeNull()
     expect(screen.queryByRole('dialog', { name: 'Activar efecto' })).toBeNull()
-    fireEvent.click(effects[0]!)
+    fireEvent.click(effects[1]!)
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 5, index: 2 }])
     expect(dispatches).toBe(0)
   })
