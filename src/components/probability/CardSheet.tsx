@@ -50,6 +50,7 @@ interface CardSheetProps {
  * Una sola grilla de dos columnas de botones iguales (mismo estilo, mismo alto) y siempre el mismo aire entre todos (`gap-2`, también entre las jugadas y las de apoyo); si sobra uno, ocupa la fila entera. Con `stacked`
  * (la lista de efectos de «Activar efecto»: frases largas, cada una con su línea chica debajo) van de a una por fila. Una opción con `hint` lleva el texto arriba y la línea chica debajo.
  * Una que abre un segundo paso de «cómo» (`children`) lleva una flecha a la derecha, en el borde: el texto lleva el mismo aire a los dos lados y sigue al medio.
+ * El texto va en un renglón («…» si no entra), salvo con `stacked`.
  */
 export function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: boolean }) {
   return (
@@ -62,7 +63,7 @@ export function Options({ items, stacked }: { items: readonly MenuItem[]; stacke
           aria-current={item.current ? 'true' : undefined}
           // Apagada: sin caja y sin atenuar todo el botón (al 40 % no se leía por qué), el texto en `muted` y la razón en `soft`; se enfoca y se lee, pero no se elige. La elegida, en lima con texto carbón.
           variant={item.disabled ? 'tertiary' : 'secondary'}
-          className={cx('relative min-w-0 px-2!', item.current && 'bg-info! text-background!',!stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left', item.disabled && 'cursor-default aria-disabled:hover:bg-transparent aria-disabled:active:translate-y-0')}
+          className={cx('relative min-w-0 px-2!', !stacked && 'whitespace-nowrap', item.current && 'bg-info! text-background!',!stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left', item.disabled && 'cursor-default aria-disabled:hover:bg-transparent aria-disabled:active:translate-y-0')}
           aria-disabled={item.disabled || undefined}
           data-initial-focus={index === 0 ? '' : undefined}
           onClick={item.disabled ? undefined : item.onSelect}
@@ -70,16 +71,16 @@ export function Options({ items, stacked }: { items: readonly MenuItem[]; stacke
           {item.hint || item.lead || item.disabled ? (
             <span className="grid min-w-0 gap-0.5">
               {item.lead ? <span className="block text-micro font-semibold opacity-70">{item.lead}</span> : null}
-              <span className={cx(item.lead && 'font-normal', item.disabled && 'text-muted')}>{item.label}</span>
-              {item.hint ? <span className={cx('block text-micro font-normal', item.disabled ? 'text-soft' : 'opacity-70')}>{item.hint}</span> : null}
+              <span className={cx(!stacked && 'truncate', item.lead && 'font-normal', item.disabled && 'text-muted')}>{item.label}</span>
+              {item.hint ? <span className={cx('block text-micro font-normal', !stacked && 'truncate', item.disabled ? 'text-soft' : 'opacity-70')}>{item.hint}</span> : null}
             </span>
           ) : item.children ? (
             <>
-              <span className="min-w-0 px-2 text-balance">{item.label}</span>
+              <span className="min-w-0 truncate px-2">{item.label}</span>
               <Icon name="chevron-right" size={12} strokeWidth={2} className="absolute right-1 top-1/2 -translate-y-1/2" />
             </>
           ) : (
-            item.label
+            <span className={cx('min-w-0', !stacked && 'truncate')}>{item.label}</span>
           )}
         </Button>
       ))}

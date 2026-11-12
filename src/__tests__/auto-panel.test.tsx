@@ -55,7 +55,7 @@ describe('la frontera entre la mesa manual y el duelo automático', () => {
 })
 
 describe('la ficha de una carta en el automático', () => {
-  it('todas las jugadas que da el núcleo a la vista, sin «Más», «⋯» ni submenú: la principal primero, violeta y de doble ancho; cada una con su ícono', () => {
+  it('M-01: todas las jugadas que da el núcleo a la vista, sin «Más», «⋯» ni submenú, de a dos por fila en un renglón y sin ícono: la principal al final, rellena; el tipo, en un chip de su color', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -63,18 +63,24 @@ describe('la ficha de una carta en el automático', () => {
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
     const plays = within(sheet).getAllByRole('menuitem')
 
-    expect(plays.map((play) => play.textContent)).toEqual(['Invocación Normal', 'Colocar'])
-    expect(plays[0]).toHaveClass('bg-primary', 'col-span-2')
-    expect(plays[1]).not.toHaveClass('bg-primary')
-    expect(plays.every((play) => play.querySelector('svg'))).toBe(true)
+    expect(plays.map((play) => play.textContent)).toEqual(['Colocar', 'Invocación Normal'])
+    expect(plays[1]).toHaveClass('bg-primary', 'whitespace-nowrap')
+    expect(plays[0]).not.toHaveClass('bg-primary')
+    expect(plays.some((play) => play.querySelector('svg'))).toBe(false)
     expect(within(sheet).queryByText(/Más|⋯/)).toBeNull()
-    expect(within(sheet).getByRole('menu').firstElementChild).toHaveClass('grid-cols-5', '@min-[36rem]:grid-cols-8')
+    expect(within(sheet).getByRole('menu').firstElementChild).toHaveClass('grid-cols-2')
+    // Ni «Mano» ni la fase ni el turno: ya la tocaste ahí (cada dato, una vez); sin flecha de bajar.
+    expect(sheet).not.toHaveTextContent(/Mano|Phase|Turno/)
+    expect(sheet.querySelector('[data-panel-fold], [data-prompt-turn]')).toBeNull()
     // Esquinas rectas (los radios de los tokens en 0) y fondo al 92 % sin desenfoque.
     expect(sheet).toHaveClass('mat-square', 'bg-card-background')
     expect(sheet.className).not.toMatch(/backdrop-/)
     expect(fixedRadii(sheet)).toEqual([])
 
-    fireEvent.click(plays[1]!)
+    // El tipo, en un chip del color de su marco (lámina T).
+    expect(sheet.querySelector('[data-type-chip]')!.className).toMatch(/bg-frame-/)
+
+    fireEvent.click(plays[0]!)
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 3, index: 0 }])
     expect(screen.queryByRole('region', { name: 'Ash Blossom' })).toBeNull()
   })
@@ -94,25 +100,22 @@ describe('la ficha de una carta en el automático', () => {
 })
 
 describe('las fases del automático', () => {
-  it('seis botones cuadrados en línea: la de ahora llena de lima, las que se pueden elegir con aro blanco y las que no, apagadas y punteadas; «Cancelar» abajo', () => {
+  it('M-04: un menú pegado al botón de fase con sólo adónde podés ir, en filas de 44 px («Ir a la Battle Phase», «Terminar el turno»); Escape lo cierra', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
     fireEvent.click(phaseButton())
-    const panel = screen.getByRole('dialog', { name: 'Elegí la fase a la que pasás' })
-    const phases = within(panel).getAllByRole('menuitem')
+    const menu = screen.getByRole('menu', { name: 'Elegí la fase a la que pasás' })
+    const phases = within(menu).getAllByRole('menuitem')
 
-    expect(phases).toHaveLength(6)
-    expect(phases[2]).toHaveAttribute('aria-current', 'true')
-    expect(phases[2]).toHaveTextContent('M1ahora')
-    expect(phases[3]).not.toHaveAttribute('aria-disabled')
-    expect(phases[0]).toHaveAttribute('aria-disabled', 'true')
-    expect(phases[0]).toHaveClass('[&[aria-disabled=true]>span:first-child]:border-dashed', '[&>span:first-child]:border-white', '[&[aria-current=true]>span:first-child]:bg-info')
-    expect(fixedRadii(panel)).toEqual([])
-    fireEvent.click(within(panel).getByRole('button', { name: 'Cancelar' }))
-    expect(screen.queryByRole('dialog', { name: 'Elegí la fase a la que pasás' })).toBeNull()
+    expect(phases.map((phase) => phase.textContent)).toEqual(['Ir a la Battle Phase', 'Terminar el turno'])
+    expect(phases[0]).toHaveClass('min-h-11', 'whitespace-nowrap')
+    expect(menu).toHaveClass('fixed', 'mat-square')
+    expect(fixedRadii(menu)).toEqual([])
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('menu', { name: 'Elegí la fase a la que pasás' })).toBeNull()
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a la Battle Phase' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 6, index: null }])
   })
 })
@@ -135,5 +138,8 @@ describe('los carteles: el contador sólo con un total mayor que 1', () => {
     render(<CardPicker title="Elegí 2 cartas" cards={CARDS} min={2} max={2} onPick={() => {}} />)
     fireEvent.click(screen.getByRole('option', { name: 'Fallen of Albaz' }))
     expect(screen.getByRole('status')).toHaveTextContent('1 de 2')
+    // El contador, a la derecha del título (no en la fila de los botones).
+    expect(screen.getByRole('status').closest('[data-panel-body]')).toBeNull()
+    expect(screen.getByRole('status').parentElement?.querySelector('h2')).not.toBeNull()
   })
 })

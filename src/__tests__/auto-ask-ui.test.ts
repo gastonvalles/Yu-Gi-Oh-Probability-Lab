@@ -803,8 +803,8 @@ describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qu�
 
   afterEach(() => applyLocale('es'))
 
-  it('responder a la cadena: el eslabón con su carta y su número; sin cadena, sólo la pregunta', () => {
-    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('Se activó «Ash Blossom & Joyous Spring» (CL2). ¿Encadenás otra carta o efecto?')
+  it('responder a la cadena: qué carta se activó (sin «CL»: decisión 6); sin cadena, sólo la pregunta', () => {
+    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('Se activó «Ash Blossom & Joyous Spring». ¿Respondés?')
     expect(respondTitle(offer(0), '')).toBe('¿Activás una carta o efecto?')
   })
 
@@ -847,7 +847,7 @@ describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qu�
     applyLocale('en')
     expect(effectText('Destroy a monster', stringId(400, 0))).toBe('Destroy a monster')
     expect(yesNoText('Tribute 1 monster?', stringId(400, 2), 'Kagari')).toBe('Tribute 1 monster?')
-    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('"Ash Blossom & Joyous Spring" was activated (CL2). Chain another card or effect?')
+    expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('"Ash Blossom & Joyous Spring" was activated. Respond?')
     expect(zoneTitle(zone(), 'Kagari')).toBe('Choose a zone for "Kagari"')
   })
 })

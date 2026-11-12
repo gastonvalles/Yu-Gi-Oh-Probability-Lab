@@ -37,7 +37,7 @@ describe('auto-screen · las jugadas', () => {
     tap(handCard('Ash Blossom'))
     const items = screen.getAllByRole('menuitem').map((item) => item.textContent)
 
-    expect(items).toEqual(['Invocación Normal', 'Colocar'])
+    expect(items).toEqual(['Colocar', 'Invocación Normal'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 0, index: 0 }])
     expect(screen.queryByRole('menuitem')).toBeNull()
@@ -54,10 +54,10 @@ describe('auto-screen · las jugadas', () => {
     const effects = within(sheet).getAllByRole('menuitem')
 
     // Cada efecto, un botón de la ficha con el número de su texto (en español), sin «Activar efecto» que abra otra lista ni un «Más».
-    expect(effects.map((effect) => effect.textContent)).toEqual(['Efecto 2', 'Efecto 3'])
+    expect(effects.map((effect) => effect.textContent)).toEqual(['Efecto 3', 'Efecto 2'])
     expect(within(sheet).queryByRole('menuitem', { name: /Activar efecto|Más/ })).toBeNull()
     expect(screen.queryByRole('dialog', { name: 'Activar efecto' })).toBeNull()
-    fireEvent.click(effects[1]!)
+    fireEvent.click(effects[0]!)
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 5, index: 2 }])
     expect(dispatches).toBe(0)
   })
@@ -76,7 +76,7 @@ describe('auto-screen · las jugadas', () => {
     expect(document.querySelector('[data-attack-mark]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Maxx C' })).not.toHaveAttribute('aria-description')
     tap(handCard('Ash Blossom'))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Invocación Normal'])
   })
 
   it('idle: una Mágica de la mano dice «Activar» (y «Colocar»)', () => {
@@ -84,12 +84,12 @@ describe('auto-screen · las jugadas', () => {
 
     core(() => fake.ask(IDLE))
     tap(handCard('Called by the Grave'))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Activar', 'Colocar'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Activar'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 5, index: 0 }])
   })
 
-  it('fases: el botón de la fase ofrece las que el núcleo deja (las demás, apagadas) y «Battle Phase» contesta', () => {
+  it('fases: el botón de la fase ofrece sólo adónde el núcleo deja ir (M-04) y «Ir a la Battle Phase» contesta', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -97,23 +97,18 @@ describe('auto-screen · las jugadas', () => {
     fireEvent.click(phaseButton())
     const items = screen.getAllByRole('menuitem')
 
-    expect(items).toHaveLength(6)
-    expect(items[0]).toHaveAccessibleName('Draw Phase · Todavía no')
-    expect(items[0]).toHaveAttribute('aria-disabled', 'true')
-    expect(items[2]).toHaveAttribute('aria-current', 'true')
-    expect(items[3]).toHaveAccessibleName('Ir a Battle Phase')
-    expect(items[3]).not.toHaveAttribute('aria-disabled')
-    fireEvent.click(items[3]!)
+    expect(items.map((item) => item.textContent)).toEqual(['Ir a la Battle Phase', 'Terminar el turno'])
+    fireEvent.click(items[0]!)
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 6, index: null }])
     expect(dispatches).toBe(0)
   })
 
-  it('terminar el turno: «End Phase» desde el botón de la fase contesta `to_ep` (el núcleo pasa el turno solo)', () => {
+  it('terminar el turno: «Terminar el turno» desde el botón de la fase contesta `to_ep` (el núcleo pasa el turno solo)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a End Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Terminar el turno' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 7, index: null }])
     // Sin pregunta, el botón de la fase se apaga: no hay nada que contestar.
     expect(phaseButton()).toBeDisabled()
@@ -124,8 +119,7 @@ describe('auto-screen · las jugadas', () => {
 
     core(() => fake.ask(BATTLE))
     fireEvent.click(phaseButton())
-    expect(screen.getByRole('menuitem', { name: 'Ir a Main Phase 2' })).not.toHaveAttribute('aria-disabled')
-    expect(screen.getByRole('menuitem', { name: /^Draw Phase/ })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Ir a la Main Phase 2', 'Terminar el turno'])
     fireEvent.keyDown(window, { key: 'Escape' })
     // Lo que puede atacar brilla en celeste y lleva la espada arriba; el lector la dice como descripción («Puede atacar»), no en el nombre.
     const attacker = screen.getByRole('button', { name: 'Maxx C' })
@@ -139,7 +133,7 @@ describe('auto-screen · las jugadas', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('cadena: la carta que puede responder brilla y el medio es la banda de responder (la línea queda libre): la única candidata, con su pestaña, ya elegida; «No responder» contesta null', () => {
+  it('cadena: la carta que puede responder brilla y el medio es la banda de responder (la línea queda libre): la única candidata, con su pestaña, ya elegida; «Pasar» contesta null', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(CHAIN))
@@ -149,26 +143,26 @@ describe('auto-screen · las jugadas', () => {
 
     expect(band.getByRole('option', { name: 'Called by the Grave, en tu mano' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('group', { name: '¿Activás una carta o efecto?' })).not.toHaveTextContent('Tu respuesta')
-    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'No responder', 'Activar como CL1'])
-    fireEvent.click(band.getByRole('button', { name: 'No responder' }))
+    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'Pasar', 'Activar'])
+    fireEvent.click(band.getByRole('button', { name: 'Pasar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
   })
 
-  it('cadena con un eslabón: a qué eslabón y de quién lo dice la pila de la cadena, desplegada arriba; la banda, debajo, qué pasó y qué se te pide («Se activó «Maxx C» (CL1). ¿Encadenás otra carta o efecto?», sin su arte ni su dueño) y la principal encadena con el número que tomaría', () => {
+  it('cadena con un eslabón: a qué eslabón y de quién lo dice la pila de la cadena, desplegada arriba; la banda, debajo, qué pasó y qué se te pide («Se activó «Maxx C». ¿Respondés?», sin su arte ni su dueño) y la principal dice «Activar»', () => {
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
 
     core(() => fake.set({ overlay: { ...overlay, chain: [{ card: { side: 'mine', id: 'card-200-1' }, code: 200, description: '0', state: 'chained' }] } }))
     core(() => fake.ask(CHAIN))
-    const band = screen.getByRole('group', { name: 'Se activó «Maxx C» (CL1). ¿Encadenás otra carta o efecto?' })
+    const band = screen.getByRole('group', { name: 'Se activó «Maxx C». ¿Respondés?' })
 
     expect(band).not.toHaveTextContent('Vos')
     expect(within(band).queryByRole('img', { name: 'Maxx C' })).toBeNull()
-    fireEvent.click(within(band).getByRole('button', { name: 'Encadenar como CL2' }))
+    fireEvent.click(within(band).getByRole('button', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('con una cadena a la vista, responder va en el pie de la hoja de la cadena (una sola hoja, abierta entera con la pila), con «No responder» y la principal; la única candidata ya viene elegida', () => {
+  it('con una cadena a la vista, responder va en el pie de la hoja de la cadena (una sola hoja, abierta entera con la pila), con «Pasar» y la principal; la única candidata ya viene elegida', () => {
     const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, top: 0, left: 0, bottom: 800, right: 400, width: 400, height: 800, toJSON: () => ({}) })
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
@@ -179,25 +173,29 @@ describe('auto-screen · las jugadas', () => {
     core(() => fake.ask(CHAIN))
     const notice = screen.getByTestId('chain-notice')
 
-    expect(notice).toContainElement(screen.getByRole('group', { name: 'Se activó «Maxx C» (CL1). ¿Encadenás otra carta o efecto?' }))
+    expect(notice).toContainElement(screen.getByRole('group', { name: 'Se activó «Maxx C». ¿Respondés?' }))
     expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
     expect(within(notice).getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).toBeInTheDocument()
     expect(within(notice).getByRole('button', { name: 'Bajar la hoja' })).toHaveAttribute('aria-expanded', 'true')
-    expect(within(notice).getByRole('button', { name: 'Encadenar como CL2' })).toBeEnabled()
-    fireEvent.click(within(notice).getByRole('button', { name: 'Encadenar como CL2' }))
+    expect(within(notice).getByRole('button', { name: 'Activar' })).toBeEnabled()
+    fireEvent.click(within(notice).getByRole('button', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
     spy.mockRestore()
   })
 
-  it('minimizada, la banda de responder es la tira con la pregunta y sus botones: la carta que brilla sigue respondiendo y la pregunta siguiente vuelve a abrirse entera', () => {
+  it('minimizada (M-07), la banda de responder es la tira con la pregunta y sus botones: tocar la tira la sube; la carta que brilla sigue respondiendo y la pregunta siguiente vuelve a abrirse entera', () => {
     const fake = renderAuto()
-    const lowered = () => document.querySelector('[data-prompt][data-minimized]')
+    const lowered = () => document.querySelector<HTMLElement>('[data-prompt][data-minimized]')
 
     core(() => fake.ask(CHAIN))
     fireEvent.click(within(screen.getByRole('group', { name: '¿Activás una carta o efecto?' })).getByRole('button', { name: 'Minimizar' }))
 
     expect(lowered()).not.toBeNull()
-    expect(within(lowered() as HTMLElement).getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'No responder', 'Activar como CL1'])
+    expect(within(lowered()!).getAllByRole('button').map((button) => button.textContent)).toEqual(['¿Activás una carta o efecto?', 'Pasar', 'Activar'])
+    // Toda la tira la sube (no sólo su texto).
+    fireEvent.click(lowered()!)
+    expect(lowered()).toBeNull()
+    fireEvent.click(within(screen.getByRole('group', { name: '¿Activás una carta o efecto?' })).getByRole('button', { name: 'Minimizar' }))
     tap(handCard('Called by the Grave'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
@@ -215,17 +213,17 @@ describe('auto-screen · las jugadas', () => {
     core(() => fake.ask({ ...CHAIN, selects: [...CHAIN.selects, select(stringId(400, 1)), select(stringId(400, 2))] }))
     const band = within(screen.getByRole('group', { name: '¿Activás una carta o efecto?' }))
 
-    expect(band.getByRole('button', { name: 'Activar como CL1' })).toBeDisabled()
+    expect(band.getByRole('button', { name: 'Activar' })).toBeDisabled()
     expect(band.queryByText(/Elegí con qué/)).toBeNull()
     fireEvent.click(band.getByRole('option', { name: 'Nibiru, en tu Cementerio' }))
     expect(screen.getByRole('dialog', { name: 'Activar efecto' })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     fireEvent.click(band.getByRole('option', { name: 'Called by the Grave, en tu mano' }))
-    fireEvent.click(band.getByRole('button', { name: 'Activar como CL1' }))
+    fireEvent.click(band.getByRole('button', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('el modo de respuesta en la banda (escritorio; en el celular va en «Más opciones»): «Siempre · Nunca»; con «Nunca» contesta «No responder» sola', () => {
+  it('el modo de respuesta en la banda (escritorio; en el celular va en «Más opciones»): «Siempre · Nunca»; con «Nunca» contesta «Pasar» sola', () => {
     const media = window.matchMedia
 
     window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
@@ -245,7 +243,7 @@ describe('auto-screen · las jugadas', () => {
     }
   })
 
-  it('cadena obligatoria: sin «No responder», la línea dice que hay que activarla; tocar la carta y «Activar» contesta', () => {
+  it('cadena obligatoria: sin «Pasar», la línea dice que hay que activarla; tocar la carta y «Activar» contesta', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ ...CHAIN, forced: true }))
@@ -256,7 +254,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('cadena vacía en tu Main Phase sin nada que responda de verdad (`spe_count` 0): el menú de la mesa ofrece lo mismo, así que contesta «No responder» sola, sin mostrar nada', () => {
+  it('cadena vacía en tu Main Phase sin nada que responda de verdad (`spe_count` 0): el menú de la mesa ofrece lo mismo, así que contesta «Pasar» sola, sin mostrar nada', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ ...CHAIN, spe_count: 0 }))
@@ -328,7 +326,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([])
   })
 
-  it('Escape es «No responder» en una cadena (no en la obligatoria ni en la ventana de una fase tuya) y cancela lo que se elige en la mesa', () => {
+  it('Escape es «Pasar» en una cadena (no en la obligatoria ni en la ventana de una fase tuya) y cancela lo que se elige en la mesa', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ ...CHAIN, forced: true }))
@@ -394,9 +392,9 @@ describe('auto-screen · soltar una carta de la mano en una casilla', () => {
     expect(inHand('Ash Blossom')).toBeNull()
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
 
-    // Con el nombre de la casilla arriba, como en la mesa manual.
-    expect(sheet).toHaveTextContent('Zona de monstruo 2')
-    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
+    // Sin el nombre de la casilla (M-01: la carta ya está ahí, a la vista).
+    expect(sheet).not.toHaveTextContent('Zona de monstruo 2')
+    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Invocación Normal'])
     fireEvent.click(within(sheet).getByRole('menuitem', { name: 'Invocación Normal' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 0, index: 0 }])
     core(() => fake.thinking())
@@ -438,7 +436,7 @@ describe('auto-screen · soltar una carta de la mano en una casilla', () => {
     }
     dragToZone('Called by the Grave', zone('Zona de magia y trampa 3'))
     expect(waitingIn(zone('Zona de magia y trampa 3'))).toHaveAttribute('data-card-id', 'card-900-1')
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Activar', 'Colocar'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Activar'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
     core(() => fake.ask(PLACE))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 4, index: 0 }, placed(L.SZONE, 2)])
@@ -508,7 +506,7 @@ describe('auto-screen · soltar una carta de la mano en una casilla', () => {
     fireEvent.pointerMove(dragged, { ...pointer, clientX: 80, clientY: 120 })
     fireEvent.pointerUp(dragged, { ...pointer, clientX: 80, clientY: 120 })
     expect(waitingIn(mz2)).toHaveAttribute('data-card-id', 'card-100-1')
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Invocación Normal'])
   })
 
   it('mientras se arrastra se enciende sólo la casilla donde la carta tiene jugada', () => {
@@ -591,7 +589,7 @@ describe('auto-screen · el visor de las pilas en escritorio', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('la ficha de una carta va al pie de la pestaña «Carta», debajo del detalle: la principal primero y destacada, sin «Ver carta» (el detalle ya la muestra) y ni el menú pegado a la carta ni la hoja de la manual', () => {
+  it('la ficha de una carta es la ventana (la columna ya no la lleva): la principal al final y rellena, ni el menú pegado a la carta ni la hoja de la manual', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -599,13 +597,9 @@ describe('auto-screen · el visor de las pilas en escritorio', () => {
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
     const plays = within(sheet).getAllByRole('menuitem')
 
-    expect(sheet).toHaveAttribute('data-auto-panel', 'column')
-    expect(screen.getByRole('tab', { name: 'Carta' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tabpanel', { name: 'Carta' })).toContainElement(sheet)
-    expect(within(screen.getByRole('tabpanel', { name: 'Carta' })).getByRole('region', { name: 'Detalle de la carta' })).toHaveTextContent('Ash Blossom')
-    expect(plays.map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
-    expect(plays[0]).toHaveClass('col-span-2')
-    expect(within(sheet).queryByRole('button', { name: 'Ver carta' })).toBeNull()
+    expect(sheet).toHaveAttribute('data-auto-panel', 'floating')
+    expect(plays.map((item) => item.textContent)).toEqual(['Colocar', 'Invocación Normal'])
+    expect(plays[1]).toHaveClass('bg-primary')
     expect(screen.queryByRole('menu', { name: 'Ash Blossom' })?.closest('[data-auto-panel]')).toBe(sheet)
   })
 })

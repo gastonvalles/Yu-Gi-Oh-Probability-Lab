@@ -167,6 +167,7 @@ export const auto = {
   'auto.picker.cards': 'Cartas para elegir',
   'auto.picker.choose': { one: 'Elegir {count} carta', other: 'Elegir {count} cartas' },
   'auto.picker.status': '{chosen} de {max}',
+  'auto.picker.copies': '{name}, {count} copias',
   // Con muchas cartas (las que se pueden declarar), un buscador por nombre arriba de la grilla.
   'auto.picker.search': 'Buscar por nombre',
   'auto.picker.noMatches': 'No hay cartas con «{query}».',
@@ -274,9 +275,8 @@ export const auto = {
   'auto.askWhy.cost': 'Costo de {name}',
   'auto.askWhy.activation': 'Al activar {name}',
   'auto.askWhy.effect': 'Efecto de {name}',
-  // La banda de una lista corta (hasta 6 cartas), en el medio de la mesa: de dónde salen y cómo se elige.
+  // La banda de una lista corta (hasta 6 cartas): de dónde salen.
   'auto.band.from': '{place} · {count}',
-  'auto.band.hint': 'Tocá una carta para elegirla; otra vez, para soltarla.',
   'auto.pick.done': 'Listo',
   'auto.pick.chosen': 'Elegida',
   'auto.pick.stat': '{name}, ATK {atk}, DEF {def}, elegible',
@@ -285,9 +285,10 @@ export const auto = {
   'auto.pick.statRank': '{name}, rango {rank}, ATK {atk}, DEF {def}, elegible',
   'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, elegible',
   'auto.phase.notYet': 'Todavía no',
-  // El selector de fases del automático (`AutoPhases`): el título y la palabra debajo de la fase de ahora.
+  // El menú de fases del automático (`AutoPhases`): su nombre y adónde se puede ir.
   'auto.phase.title': 'Elegí la fase a la que pasás',
-  'auto.phase.now': 'ahora',
+  'auto.phase.goTo': 'Ir a la {phase}',
+  'auto.phase.endTurn': 'Terminar el turno',
   // Una sola hoja abajo en el celular: lo que la ficha o una pregunta tapa y vuelve («‹ GY · 2», «‹ Ficha de «X»»).
   'auto.layer.card': 'Ficha de «{name}»',
   'auto.layer.back': 'Volver a {place}',
@@ -330,15 +331,14 @@ export const auto = {
   'auto.lane.thinking': 'El núcleo está resolviendo…',
   'auto.lane.rivalChoosing': 'El rival está eligiendo',
   'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
-  'auto.lane.pass': 'No responder',
+  'auto.lane.pass': 'Pasar',
   // La banda de responder a una cadena (a qué eslabón lo dice la pila de arriba): con qué cartas y qué número tomaría tu respuesta.
   'auto.respond.title': 'Responder a la cadena',
   'auto.respond.now': '¿Activás una carta o efecto?',
   // Qué pasó y qué se te pide (Master Duel): el eslabón al que respondés, con su carta y su número.
-  'auto.respond.activated': 'Se activó «{name}» (CL{link}). ¿Encadenás otra carta o efecto?',
+  'auto.respond.activated': 'Se activó «{name}». ¿Respondés?',
   'auto.respond.cards': 'Podés responder con',
-  'auto.respond.chain': 'Encadenar como CL{link}',
-  'auto.respond.start': 'Activar como CL1',
+  'auto.respond.start': 'Activar',
   'auto.respond.mode': 'Preguntarme',
   // Sin nombres: lo que hay que activar brilla en la mesa.
   'auto.lane.mustActivate': { one: 'Tenés que activar la carta que brilla: tocala', other: 'Tenés que activar las {count} cartas que brillan: tocá una' },

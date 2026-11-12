@@ -16,16 +16,13 @@ import { AutoCardSheet, AutoPhases } from '../../auto/AutoPanel'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
-import { ChainListRows } from '../../auto/chain-parts'
 import { ChainNotice } from '../../auto/ChainNotice'
 import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { AskWhy } from '../../duel/AskWhy'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
-import { DuelCardDock } from '../../duel/DuelCardDock'
 import { TheirHand } from '../../duel/DuelTable'
-import { PromptTurnContext } from '../../duel/MatPrompt'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { BotDeckEditor } from '../../duel/BotDeckEditor'
 import { BotDeckSheet } from '../../duel/BotDeckSheet'
@@ -40,8 +37,8 @@ import { RulesPill, type RulesSummary } from '../../probability/RulesPill'
 import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probability/UndoChip'
 import { SheetHost, type SheetYield } from '../../ui/BottomSheet'
 import { Button } from '../../ui/Button'
+import { IconButton } from '../../ui/IconButton'
 import { Segmented } from '../../ui/Segmented'
-import { Tabs } from '../../ui/Tabs'
 import { cx } from '../../ui/cx'
 import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
@@ -109,14 +106,13 @@ const OPTION_SAMPLES: Array<{ id: string; title: string; note: string; open: str
   {
     id: 'position',
     title: 'Opciones · la posición',
-    note: 'select_position: sólo las posiciones que deja el núcleo, con las palabras del menú de la mesa. Hay que contestar: sin X y Escape no la cierra.',
+    note: 'select_position (M-05): dos dibujos, la carta parada o acostada (boca abajo, el dorso); un toque contesta, sin confirmar. Sólo las posiciones que deja el núcleo. Hay que contestar: sin X y Escape no la cierra.',
     open: 'Abrir «Elegí la posición»',
     kicker: 'Fallen of Albaz',
     mode: 'one',
     options: () => [
-      { id: 'atk', label: t('practice.menu.attack') },
-      { id: 'def', label: t('practice.menu.defense') },
-      { id: 'set', label: t('practice.menu.turnFaceDown') },
+      { id: '1', label: t('practice.menu.attack') },
+      { id: '8', label: t('practice.menu.banishFaceDown') },
     ],
   },
   {
@@ -166,6 +162,7 @@ export function AutoSection() {
 
       <PickerSample title="Elegir cartas · de 1 a 2, cancelable" note="CardPicker con min 1 y max 2, de lugares distintos (cada una dice de dónde es) y una que todavía no tiene arte (el esqueleto quieto). La elegida, con el marco celeste que gira (el de la mano) y su número de orden; Mayús+clic, el tramo; nunca más de dos. «Cancelar» y Escape, porque la pregunta se puede cancelar. Flechas, Inicio y Fin recorren las cartas; Espacio elige." min={1} max={2} cancelable onAnswer={setAnswer} />
       <PickerSample title="Elegir cartas · una sola" note="Con max 1 el primer toque contesta, sin «Listo» (como en la mesa). No se puede cancelar: sin X ni pie." min={1} max={1} cancelable={false} onAnswer={setAnswer} />
+      <PickerSample title="Elegir varias · copias juntas" note="M-03: un solo cartel; las copias de la misma carta en el mismo lugar van en una, con «×3»: cada toque suma la próxima copia y lleva los números de orden de las elegidas (lleno, el toque suelta la última). «2 de 3» a la derecha del título y una sola principal, que se prende al completar." min={3} max={3} cancelable copies onAnswer={setAnswer} />
       <PickerSample title="Declarar una carta · con buscador" note="Con 13 cartas o más (declarar una carta ofrece el deck entero y lo visto), un buscador por nombre arriba de la grilla; sin coincidencias, lo dice. Un toque declara." min={1} max={1} cancelable={false} many onAnswer={setAnswer} />
 
       <BandSample max={2} onAnswer={setAnswer} />
@@ -202,7 +199,7 @@ export function AutoSection() {
       <LifeScoreSample />
       <DockSample />
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La barra de la práctica (la flecha y los íconos de <Tag>MatBarActions</Tag>) con lo propio del automático: el engranaje (en la mesa de escritorio va en la botonera), el turno, una sola vez, y las vidas planas (hasta 1100 px, en el marcador; con laterales, en el izquierdo; en escritorio sin ellos, en las esquinas del campo). La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
-      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (respuestas, la casilla, «Rival» con «Cambiar rival» y, con el bot, «Mostrar la mano del bot» —con handtraps, «A ciegas»; en la del núcleo resolviendo es el pasivo y dice que no juega—, «Reiniciar el mismo duelo» y «Jugar en modo manual»); en escritorio se lleva con el mouse por su título, como todo diálogo de la mesa. Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
+      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «Pasar». Va enmarcado en ámbar. El engranaje abre «Más opciones» (respuestas, la casilla, «Rival» con «Cambiar rival» y, con el bot, «Mostrar la mano del bot» —con handtraps, «A ciegas»; en la del núcleo resolviendo es el pasivo y dice que no juega—, «Reiniciar el mismo duelo» y «Jugar en modo manual»); en escritorio se lleva con el mouse por su título, como todo diálogo de la mesa. Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
     </SpecimenGrid>
   )
 }
@@ -310,8 +307,8 @@ function RivalSample() {
 }
 
 /**
- * La familia del automático a 390 y a 1440 px (el mismo cartel; en escritorio, 620 px de ancho máximo y centrado): la ficha de una carta con todas sus jugadas (la principal primero, sin «Más» ni
- * submenús: los dos efectos son dos botones) y las fases (la de ahora en lima, las elegibles con aro blanco, las que no, punteadas).
+ * La familia del automático a 390 y a 1440 px (el mismo cartel; en escritorio, una ventana de 30 rem): la ficha de una carta con todas sus jugadas en filas de a dos (la principal al final, abajo a
+ * la derecha; sin «Más» ni submenús: los dos efectos son dos botones) y el botón de fase con su menú pegado (sólo adónde se puede ir).
  */
 function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const reply = (label: string) => () => onAnswer(label)
@@ -323,13 +320,13 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   ]
   const phases: MenuItem[] = PHASES.map((phase, index) => ({ label: phase.name, current: index === 2, disabled: index < 2 || index === 4, onSelect: reply(phase.name) }))
   const card = { ...sampleDeckCard(14558127), cardType: 'Effect Monster', atk: '0', def: '1800', description: 'Texto de muestra del efecto, recortado a tres renglones: «Ver carta» abre el texto entero con sus números, su arte y sus impresiones.' }
-  // A 1440 px, la ventana (TI-145): en su lugar; se arrastra de la barra, se estira del borde y de la esquina (la ficha pasa de 8 a 6 columnas) y el doble clic la vuelve. Acotada a su marco.
+  // A 1440 px, la ventana: en su lugar; se arrastra de la barra, se estira del borde y de la esquina (las jugadas, a su ancho y a la derecha) y el doble clic la vuelve. Acotada a su marco.
   const frame = (width: string, label: string, variant?: 'floating') => (
     <div className={cx('grid content-start gap-2', width)}>
       <p className="m-0 text-micro text-muted">{label}</p>
       <div className={cx('grid gap-3 border border-border-subtle bg-background py-3', variant && 'min-h-[36rem] justify-items-center overflow-hidden')}>
         <AutoCardSheet name={ASH.name} kicker={t('auto.picker.place.mine.hand')} art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} variant={variant} />
-        <AutoPhases items={phases} onClose={reply(t('common.cancel'))} variant={variant} />
+        {variant ? null : <PhasesSample items={phases} />}
         {/* Abierta desde el visor del GY (celular): lo reemplaza, y «‹ GY · 2» la cierra y lo deja a la vista. */}
         {variant ? null : <AutoCardSheet name={ASH.name} kicker="GY" art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} crumb={{ label: 'GY · 2', onBack: reply('Volver a GY · 2') }} />}
       </div>
@@ -341,58 +338,38 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       title="La familia del automático · la ficha y las fases"
       layout="column"
       className="col-span-full"
-      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo; apoyado sobre la mano con techo en la línea; opaco, esquinas rectas. En el celular, una sola hoja abajo: gana la pregunta del núcleo, después la ficha y después el visor de una pila; lo que pierde vuelve como estaba y la cabeza lo dice con su flecha (la tercera: la ficha abierta desde el GY, con «‹ GY · 2»). En escritorio es una ventana: barra de título violeta (el asa: flechas la mueven, Alt + flechas la estiran, Enter o doble clic la vuelven), se estira del borde derecho, del de abajo y de la esquina, y recuerda lugar y tamaño por tipo. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
+      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo (de 44 px, en un renglón; la principal a la derecha y rellena, lo que descarta sin caja a la izquierda); sin fase, turno ni flecha de bajar: se baja del asa y la tira entera lo sube; apoyado sobre la mano con techo en la línea; opaco, esquinas rectas. Las fases: tocá «M1». En el celular, una sola hoja abajo: gana la pregunta del núcleo, después la ficha y después el visor de una pila; lo que pierde vuelve como estaba y la cabeza lo dice con su flecha (la tercera: la ficha abierta desde el GY, con «‹ GY · 2»). En escritorio es una ventana: barra de título violeta (el asa: flechas la mueven, Alt + flechas la estiran, Enter o doble clic la vuelven), se estira del borde derecho, del de abajo y de la esquina, y recuerda lugar y tamaño por tipo. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
     >
       <SheetHost phone>
         <div className="flex flex-wrap items-start gap-4">
           {frame('w-full max-w-[24.375rem]', '390 px')}
           {frame('min-w-0 flex-1 basis-[38.75rem]', '1440 px: la ventana (arrastrala de la barra violeta, estirala del borde o la esquina; doble clic, a su lugar)', 'floating')}
-          <ColumnSample card={card} plays={plays} onAnswer={onAnswer} />
         </div>
       </SheetHost>
     </Specimen>
   )
 }
 
-/**
- * Desde 1101 px, sólo en el automático: la columna de la derecha con pestañas (`PracticeMat`). «Carta», el detalle de la carta tocada y su ficha al pie (`AutoCardSheet variant="column"`); «Cadena», la pila
- * entera (`ChainListRows`); «Pasos», los pasos y combos de siempre (acá, vacío). Las flechas cambian de pestaña. Las preguntas siguen siendo ventanas.
- */
-function ColumnSample({ card, plays, onAnswer }: { card: ApiCardSearchResult; plays: MenuItem[]; onAnswer: (answer: string) => void }) {
-  const [tab, setTab] = useState<'card' | 'chain' | 'side'>('card')
-  const rows = (['solved', 'solving', 'chained'] as const).map((state, index) => ({ number: index + 1, who: index === 1 ? 'Rival' : t('duel.bar.you'), mine: index !== 1, name: ASH.name, art: ASH.art, state }))
+/** M-04: el botón de fase de la mesa y su menú pegado (`AutoPhases` con `anchor`): sólo adónde se puede ir; elegir cierra. */
+function PhasesSample({ items }: { items: MenuItem[] }) {
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  const now = PHASES.find((phase) => items.some((item) => item.current && item.label === phase.name))
 
   return (
-    <div className="grid w-80 content-start gap-2">
-      <p className="m-0 text-micro text-muted">Escritorio, sólo el automático: la columna</p>
-      <div className="mat-square flex h-[36rem] flex-col border border-border-subtle bg-background **:rounded-none! **:normal-case! **:tracking-normal!">
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          label={t('practice.panel.label')}
-          fullWidth
-          className="shrink-0 px-1"
-          options={[
-            { value: 'card', label: t('practice.column.card') },
-            { value: 'chain', label: t('auto.chain.title') },
-            { value: 'side', label: t('practice.panel.steps') },
-          ]}
-        />
-        {tab === 'card' ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3">
-            <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <DuelCardDock peek={{ name: ASH.name, card }} />
-            </section>
-            <AutoCardSheet name={ASH.name} art={ASH.art} apiCard={card} items={plays} onClose={() => onAnswer('Cerrar')} variant="column" />
-          </div>
-        ) : tab === 'chain' ? (
-          <ol className="m-0 grid min-h-0 flex-1 list-none content-start gap-1 overflow-y-auto p-3">
-            <ChainListRows rows={rows} onPick={(index) => onAnswer(`CL${index + 1}`)} />
-          </ol>
-        ) : (
-          <p className="m-0 p-3 text-micro text-muted">{t('auto.steps.empty')}</p>
-        )}
-      </div>
+    <div className="flex justify-center">
+      <IconButton
+        tone="tile"
+        size="sm"
+        aria-label={`${t('practice.mat.phases')}: ${now?.name ?? ''}`}
+        aria-haspopup="menu"
+        aria-expanded={anchor !== null}
+        data-active
+        className="text-micro font-extrabold leading-none"
+        onClick={(event) => setAnchor(event.currentTarget.getBoundingClientRect())}
+      >
+        {now?.short}
+      </IconButton>
+      <Presence>{anchor ? <AutoPhases items={items.map((item) => ({ ...item, onSelect: () => { setAnchor(null); item.onSelect() } }))} anchor={anchor} onClose={() => setAnchor(null)} /> : null}</Presence>
     </div>
   )
 }
@@ -415,7 +392,7 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
       layout="column"
       note={
         kind === 'card' ? (
-          <>select_effectyn: el arte de la carta chico a la izquierda y «¿Activás el efecto?», sin su nombre ni lo que hace (están en su detalle). En la mesa va en la ranura <Tag>duel.prompt</Tag>: sin fondo, deja pasar los toques y no mueve nada. La flecha de arriba (o Escape) la minimiza a un asa de una línea; la del asa la reabre. El foco va a la principal. Archivos: <Tag>auto/AskPrompt.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>
+          <>select_effectyn: el arte de la carta chico a la izquierda y «¿Activás el efecto?», sin su nombre ni lo que hace (están en su detalle). En la mesa va en la ranura <Tag>duel.prompt</Tag>: sin fondo, deja pasar los toques y no mueve nada. El asa de arriba (arrastrada o tocada) o Escape la bajan a una tira de un renglón; tocar la tira la sube. El foco va a la principal. Archivos: <Tag>auto/AskPrompt.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>
         ) : kind === 'context' ? (
           <>select_effectyn con desc 221: <Tag>kicker</Tag> con qué pasó, sin nombres (<Tag>effectAskText</Tag> de <Tag>ask-ui.ts</Tag>), la pestaña <Tag>place</Tag> sobre el arte y el atajo <Tag>manual</Tag> a la izquierda (con él, la mesa le da más ancho).</>
         ) : (
@@ -428,8 +405,6 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
         <Presence>
           {shown ? (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-              {/* La fase y el turno, como los da la mesa del duelo automático (`PromptTurnContext`): la línea chica de arriba. */}
-              <PromptTurnContext value={{ phase: kind === 'context' ? 'main1' : 'battle', mine: kind === 'context' }}>
                 <div className={PROMPT_BOX}>
                   {kind === 'context' ? (
                     <AskPrompt
@@ -445,7 +420,6 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
                     <AskPrompt text={withCard ? t('auto.ask.effect') : '¿Pagás 1000 LP?'} card={withCard ? ASH : undefined} why={withCard ? null : { text: 'Al activar Skill Drain', name: 'Skill Drain', art: art(82732705), mine: true }} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
                   )}
                 </div>
-              </PromptTurnContext>
             </div>
           ) : null}
         </Presence>
@@ -474,6 +448,7 @@ function OptionsSample({ sample, onAnswer }: { sample: (typeof OPTION_SAMPLES)[n
             why={sample.why ?? null}
             options={sample.options()}
             mode={sample.mode}
+            {...(sample.id === 'position' ? { of: 'position' } : {})}
             onPick={(ids) => {
               setOpen(false)
               onAnswer(ids.join(', '))
@@ -544,10 +519,11 @@ function EffectsSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   )
 }
 
-function PickerSample({ title, note, min, max, cancelable, many = false, onAnswer }: { title: string; note: string; min: number; max: number; cancelable: boolean; many?: boolean; onAnswer: (answer: string) => void }) {
+function PickerSample({ title, note, min, max, cancelable, many = false, copies = false, onAnswer }: { title: string; note: string; min: number; max: number; cancelable: boolean; many?: boolean; copies?: boolean; onAnswer: (answer: string) => void }) {
   // Las que se declaran sólo se nombran (por código): sin lugar.
   const named = mixed().map(({ key, name, art }) => ({ key, name, ...(art ? { art } : {}) }))
-  const cards = many ? [...named, ...GRAVE.map((card) => ({ ...card, key: `g${card.key}` })), ...named.map((card) => ({ ...card, key: `m${card.key}` }))] : max === 1 ? mixed().slice(0, 4) : mixed()
+  const deck = (key: string, card: { name: string; art: string }) => ({ key, ...card, ...pickPlace('deck', false) })
+  const cards = copies ? [deck('a1', ASH), deck('a2', ASH), deck('a3', ASH), deck('p1', PONIX), deck('p2', PONIX), { key: 'v', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', false) }] : many ? [...named, ...GRAVE.map((card) => ({ ...card, key: `g${card.key}` })), ...named.map((card) => ({ ...card, key: `m${card.key}` }))] : max === 1 ? mixed().slice(0, 4) : mixed()
 
   const [open, setOpen] = useState(false)
   const close = (answer: string) => {
@@ -636,7 +612,7 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     <Specimen
       title="Varias obligatorias · cuál va primero"
       layout="column"
-      note={<>Cuando el núcleo obliga a activar dos o más a la vez (cada una con un solo efecto), la banda pregunta cuál entra primero en la cadena: la primera ya elegida, tocar otra la cambia y la principal dice con qué número entra («Activar como CL1»). Sin «No responder»: Escape la minimiza. Con una sola, la línea de siempre («Tenés que activar la carta que brilla: tocala»). También se activa tocando la que brilla en la mesa. Archivo: <Tag>auto/CardPicker.tsx</Tag></>}
+      note={<>Cuando el núcleo obliga a activar dos o más a la vez (cada una con un solo efecto), la banda pregunta cuál entra primero en la cadena: la primera ya elegida, tocar otra la cambia y la principal la activa («Activar»). Sin «No responder»: Escape la minimiza. Con una sola, la línea de siempre («Tenés que activar la carta que brilla: tocala»). También se activa tocando la que brilla en la mesa. Archivo: <Tag>auto/CardPicker.tsx</Tag></>}
     >
       <div className="relative isolate h-96 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
@@ -719,7 +695,7 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     <Specimen
       title="Responder a una cadena"
       layout="column"
-      note={<>Una cadena que se puede pasar. La pila de la cadena, arriba, abre desplegada y dice a qué eslabón respondés (número, dueño, carta y estado); la banda, debajo, abre entera y dice sólo qué se decide («Responder a la cadena»): cada dato una vez. Las candidatas con la pestaña de dónde están (tocar una la elige, con el marco celeste; con una sola, ya viene elegida); «No responder» sin caja y «Encadenar como CL2» al final. En escritorio, el modo de respuesta arriba a la derecha (en el celular, en «Más opciones»). Nada se minimiza ni se esconde solo: la flecha de la banda la reduce a un asa («Responder a la cadena ▲», Escape es «No responder») y la de la pila, a su píldora. Tocar la carta que brilla en la mesa sigue valiendo. Desde 1101 px, la pila y la banda (también su asa) se llevan con el mouse a cualquier lado agarrándolas por su fila de arriba (o con el foco adentro, Alt + flechas), como las mascotas: quedan donde las soltás para las cadenas y preguntas que siguen, y doble clic en esa fila las devuelve a su lugar (<Tag>use-draggable-offset.ts</Tag>; probalo acá). En el celular (menos de 1101 px) el título no se ve (queda para el lector de pantalla: la cinta de la cadena, arriba, ya dice a qué eslabón respondés) y «No responder» y la principal suben a la fila de arriba, junto a la flecha; abajo quedan sólo las cartas, cada una con el ícono de dónde está. Archivos: <Tag>auto/RespondBand.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>}
+      note={<>Una cadena que se puede pasar. La pila de la cadena, arriba, abre desplegada y dice a qué eslabón respondés (número, dueño, carta y estado); la banda, debajo, abre entera y dice sólo qué se decide («Responder a la cadena»): cada dato una vez. Las candidatas con la pestaña de dónde están (tocar una la elige, con el marco celeste; con una sola, ya viene elegida); «Pasar» sin caja y «Activar» al final. En escritorio, el modo de respuesta arriba a la derecha (en el celular, en «Más opciones»). Nada se minimiza ni se esconde solo: el asa de la banda la baja a una tira que se sube tocándola (Escape es «Pasar») y la de la pila, a su píldora. Tocar la carta que brilla en la mesa sigue valiendo. Desde 1101 px, la pila y la banda (también su asa) se llevan con el mouse a cualquier lado agarrándolas por su fila de arriba (o con el foco adentro, Alt + flechas), como las mascotas: quedan donde las soltás para las cadenas y preguntas que siguen, y doble clic en esa fila las devuelve a su lugar (<Tag>use-draggable-offset.ts</Tag>; probalo acá). En el celular (menos de 1101 px) el título no se ve (queda para el lector de pantalla: la cinta de la cadena, arriba, ya dice a qué eslabón respondés) y «No responder» y la principal suben a la fila de arriba, junto a la flecha; abajo quedan sólo las cartas, cada una con el ícono de dónde está. Archivos: <Tag>auto/RespondBand.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>}
     >
       <div className="relative isolate h-128 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
@@ -730,7 +706,6 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
           {shown ? (
             // Todo el marco (en el celular la pregunta es la hoja de abajo, adentro de él: sin alto, su pie se salía por abajo); en escritorio el cartel, abajo al medio.
             <div className="pointer-events-none absolute inset-0 grid content-end justify-items-center px-4 pb-3">
-              <PromptTurnContext value={{ phase: 'draw', mine: false }}>
                 <div className={PROMPT_BOX}>
                   <RespondBand
                     title={t('auto.respond.title')}
@@ -743,7 +718,6 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
                     mode={{ value: mode, onChange: setMode }}
                   />
                 </div>
-              </PromptTurnContext>
             </div>
           ) : null}
         </Presence>
@@ -1187,7 +1161,7 @@ function ChainSample() {
       <div {...(squeezed ? { 'data-squeezed': '' } : {})} className={cx('group/chain relative isolate flex justify-center overflow-hidden rounded-card border border-border-subtle p-3', phone ? 'h-[40rem] max-w-[24.375rem]' : 'min-h-80')}>
         <MatScene className="absolute inset-0 -z-10" />
         {phone && yieldTo === 'grip' ? <p className="absolute inset-x-1.5 bottom-2 z-[136] m-0 flex h-11 items-center rounded-control bg-background px-2 text-micro text-muted">Elegí 1 carta para descartar · Costo de Angelechy Problem</p> : null}
-        {phone ? <PromptTurnContext value={{ phase: 'main1', mine: false }}>{ask}</PromptTurnContext> : null}
+        {phone ? ask : null}
         <ChainNotice
           rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: CHAIN_CARDS[index]!.mine, name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state, ...(state === 'negated' ? { by: 3 } : {}) }))}
           focus={frame.focus}

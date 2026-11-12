@@ -46,13 +46,13 @@ describe('auto-screen · una sola jugada es una etiqueta pegada a la carta', () 
     expect(fake.answers).toEqual([])
   })
 
-  it('con varias jugadas, la ficha del automático con todas, la principal primero', () => {
+  it('con varias jugadas, la ficha del automático con todas, la principal al final (M-01)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ ...IDLE, monster_sets: [loc(100, L.HAND, 0)] }))
     tap(handCard('Ash Blossom'))
     expect(screen.getByRole('region', { name: 'Ash Blossom' })).toHaveAttribute('data-auto-panel')
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Invocación Normal'])
     expect(screen.queryByRole('button', { name: /· Ash Blossom$/ })).toBeNull()
   })
 })

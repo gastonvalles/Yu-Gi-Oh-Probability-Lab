@@ -1276,7 +1276,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         done
         onToggle={setForcedPick}
         onPick={() => gesture({ kind: 'item', answer: forcedFirst.item.answer! })}
-        action={forced.length > 1 ? (chain.length === 0 ? t('auto.respond.start') : t('auto.respond.chain', { link: chain.length + 1 })) : forcedFirst.item.label}
+        action={forced.length > 1 ? t('auto.respond.start') : forcedFirst.item.label}
         {...(forced.length > 1 ? { note: t('auto.forced.hint') } : {})}
       />
     ) : band && listProps ? (
@@ -1325,6 +1325,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             why={why}
             options={options.options.map((option): AskOption => ({ id: String(option.value), label: optionLabel(option) }))}
             mode={options.count > 1 || options.of === 'race' || options.of === 'attribute' ? { count: options.count } : 'one'}
+            of={options.of}
             onPick={(ids) => gesture(...ids.map((id) => ({ kind: 'option' as const, value: Number(id) })))}
           />
         ) : null}

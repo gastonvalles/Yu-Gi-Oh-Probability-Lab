@@ -38,7 +38,7 @@ function rearm(fake: FakeSession, actions: MatAction[], ask: CoreAsk | null) {
 const phaseIs = (name: string) => expect(phaseButton()).toHaveAccessibleName(`Fases: ${name}`)
 const goTo = (name: string) => {
   fireEvent.click(phaseButton())
-  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
+  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a la ${name}` }))
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
 
@@ -50,9 +50,8 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     phaseIs('Main Phase 1')
     expect(phaseButton()).toBeEnabled()
     fireEvent.click(phaseButton())
-    // Ni vuelta atrás ni una Battle Phase que el núcleo no da (el turno 1 no ataca); la End Phase, sí.
-    for (const name of ['Draw Phase', 'Standby Phase', 'Battle Phase']) expect(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('menuitem', { name: 'Ir a End Phase' })).not.toHaveAttribute('aria-disabled')
+    // Ni vuelta atrás ni una Battle Phase que el núcleo no da (el turno 1 no ataca): sólo terminar el turno (M-04, sólo adónde se puede ir).
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Terminar el turno'])
     fireEvent.keyDown(window, { key: 'Escape' })
     tap(handCard('Ash Blossom'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
@@ -126,7 +125,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     }
     expect(seen).toEqual(['End Phase', 'Draw Phase', 'Draw Phase', 'Main Phase 1'].map((name) => `Fases: ${name}`))
     fireEvent.click(phaseButton())
-    expect(screen.getByRole('menuitem', { name: /^Battle Phase/ })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('menuitem', { name: /Battle Phase/ })).toBeNull()
   })
 
   it('la ventana de tu DP con una Rápida en la mano: brilla sin cartel, se activa con su menú y «Standby Phase» pasa; la de la SP, igual', () => {

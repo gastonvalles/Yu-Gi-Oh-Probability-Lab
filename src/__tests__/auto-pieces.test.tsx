@@ -14,7 +14,7 @@ import { CardPicker, PickBand, pickPlace, type PickCard } from '../components/au
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
-import { PromptTurnContext, promptTurnText } from '../components/duel/MatPrompt'
+import { PromptTurnContext } from '../components/duel/MatPrompt'
 import { PassPrompt } from '../components/duel/PassPrompt'
 import { applyLocale } from '../i18n'
 import { menuRow, tapMenu } from './support/mat-menu'
@@ -66,8 +66,9 @@ describe('AskPrompt', () => {
 
     expect(prompt).toHaveTextContent('¿Activás el efecto?')
     expect(container.ownerDocument.querySelector('[data-card-art]')).not.toBeNull()
-    expect(names(buttons)).toEqual(['Minimizar', 'No activar', 'Activar efecto'])
-    expect(buttons[2]).toHaveFocus()
+    // La ventana no lleva flecha de bajar (M-08): Escape la minimiza.
+    expect(names(buttons)).toEqual(['No activar', 'Activar efecto'])
+    expect(buttons[1]).toHaveFocus()
 
     escape()
     expect(yes).not.toHaveBeenCalled()
@@ -108,15 +109,17 @@ describe('AskPrompt', () => {
     // La pregunta, un paso más chica de la escala (`text-body`).
     expect(within(prompt).getByText('¿Activás el efecto?')).toHaveClass('font-semibold', 'text-body')
     expect(prompt).not.toHaveTextContent(/Ponix|Qué hace/)
-    expect(names(buttons)).toEqual(['Minimizar', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
-    expect(buttons[3]).toHaveFocus()
-    // Los tres en una sola fila, siempre (Gastón: «los 3 botones no están alineados»): el pie no se parte; el «no» y la principal van juntos al final (la principal, a la derecha).
-    const footer = buttons[1]!.parentElement!
-    expect(footer).toHaveClass('flex')
+    expect(names(buttons)).toEqual(['Seguir en modo manual', 'No activar', 'Activar efecto'])
+    expect(buttons[2]).toHaveFocus()
+    // Los tres en una sola fila y en un renglón, siempre: el pie no se parte; la principal al final (a la derecha) y rellena, lo que descarta sin caja.
+    const footer = buttons[0]!.parentElement!
+    expect(footer).toHaveClass('flex', '*:whitespace-nowrap')
     expect(footer).not.toHaveClass('flex-wrap')
-    expect(buttons[2]!.parentElement).toBe(buttons[3]!.parentElement)
-    expect(buttons[2]!.parentElement!.parentElement).toBe(footer)
-    fireEvent.click(buttons[1]!)
+    expect(buttons[1]!.parentElement).toBe(footer)
+    expect(buttons[2]!.parentElement).toBe(footer)
+    expect(buttons[2]).toHaveClass('bg-primary', 'min-h-11')
+    expect(buttons[1]).toHaveClass('bg-transparent', 'min-h-11')
+    fireEvent.click(buttons[0]!)
     expect(manual).toHaveBeenCalledTimes(1)
   })
 })
@@ -126,10 +129,10 @@ describe('AutoPanel: minimizar un cartel del automático', () => {
 
   onDesktop()
 
-  it('la flecha lo reduce a una tira con la pregunta y sus botones (el foco va a su flecha) y la de la tira lo reabre; minimizado es de esa pregunta: una nueva abre sola', () => {
+  it('Escape lo reduce a una tira con la pregunta y sus botones (el foco va a la pregunta, que lo sube) y tocarla lo reabre; minimizado es de esa pregunta: una nueva abre sola', () => {
     const { rerender } = renderBare(<Provider store={store}>{ask(1)}</Provider>)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
+    escape()
     const strip = screen.getByRole('dialog', { name: '¿Activás el efecto?' })
 
     expect(strip).toHaveAttribute('data-minimized')
@@ -148,7 +151,7 @@ describe('AutoPanel: minimizar un cartel del automático', () => {
     expect(open).not.toHaveAttribute('data-minimized')
     rerender(ask(1))
     expect(screen.getByRole('dialog')).toBe(open)
-    fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
+    escape()
     rerender(ask(1))
     expect(screen.getByRole('dialog')).toHaveAttribute('data-minimized')
   })
@@ -207,64 +210,45 @@ describe('AutoPanel en el celular: apoyado abajo, sobre la mano, con techo en la
   })
 })
 
-describe('MatPrompt: la fase y el turno arriba de la pregunta', () => {
+describe('Sin fase ni turno en los carteles (cada dato, una vez)', () => {
   const respond = <RespondBand title="¿Activás algo ahora?" link={1} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />
   const turnLine = () => document.querySelector('[data-prompt-turn]')
-
-  afterEach(() => applyLocale('es'))
 
   describe('en escritorio', () => {
     onDesktop()
 
-    it('con la fase que da la mesa, una línea chica en la barra de título de la ventana, arriba de la pregunta; sin ella (catálogo, práctica manual), nada', () => {
-      const { unmount } = render(<PromptTurnContext value={{ phase: 'draw', mine: false }}>{respond}</PromptTurnContext>)
-
-      expect(turnLine()).toHaveTextContent(/^Draw Phase · Turno del rival$/)
-      // En escritorio es el título corto de la ventana (TI-145): blanco sobre la barra violeta.
-      expect(turnLine()).toHaveClass('text-micro')
-      expect(turnLine()!.closest('[data-window-bar]')).toHaveClass('bg-primary', 'text-white')
-      expect(turnLine()!.compareDocumentPosition(screen.getByText('¿Activás algo ahora?')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      unmount()
-
-      render(respond)
+    it('aunque la mesa dé la fase y el turno, la ventana no los dice: ni en la barra ni arriba de la pregunta; tampoco la pregunta del rival de pasar de fase', () => {
+      render(<PromptTurnContext value={{ phase: 'draw', mine: false }}>{respond}</PromptTurnContext>)
       expect(turnLine()).toBeNull()
-    })
-
-    it('lo único que se desplaza es la bandeja: los botones quedan siempre a la vista, debajo y fuera de ella', () => {
-      render(respond)
-      const body = document.querySelector('[data-panel-body]')!
-
-      expect(body).toHaveClass('min-h-0', 'overflow-y-auto')
-      expect(body).not.toContainElement(screen.getByRole('button', { name: 'No responder' }))
-      expect(body.compareDocumentPosition(screen.getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    })
-
-    it('en inglés, y la pregunta del rival de pasar de fase no la repite (ya la nombra)', () => {
-      applyLocale('en')
-      const { unmount } = render(<PromptTurnContext value={{ phase: 'main1', mine: true }}>{respond}</PromptTurnContext>)
-
-      expect(turnLine()).toHaveTextContent(/^Main Phase 1 · Your turn$/)
-      expect(promptTurnText({ phase: 'battle', mine: false })).toBe("Battle Phase · Opponent's turn")
-      unmount()
-      applyLocale('es')
+      expect(screen.getByRole('group')).not.toHaveTextContent(/Draw Phase|Turno/)
+      cleanup()
 
       render(<PassPrompt name="Ana" phase="battle" endsTurn={false} responders={[]} onAllow={() => {}} onDeny={() => {}} />)
       expect(screen.getByRole('status')).toHaveTextContent('Ana quiere pasar a la Battle Phase')
       expect(turnLine()).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Minimizar' })).toBeNull()
+    })
+
+    it('lo único que se desplaza es la bandeja: los botones quedan siempre a la vista, fuera de ella (apaisada: la bandeja a la izquierda)', () => {
+      render(respond)
+      const body = document.querySelector('[data-panel-body]')!
+
+      expect(body).toHaveClass('overflow-auto')
+      expect(body).not.toContainElement(screen.getByRole('button', { name: 'Pasar' }))
+      expect(body.compareDocumentPosition(screen.getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
   })
 
-  it('en el celular va arriba de la pregunta; minimizado no se repite (queda la tira con la pregunta corta)', () => {
+  it('en el celular tampoco: ni la línea de la fase ni la flecha de bajar (se baja del asa)', () => {
     render(
       <PromptTurnContext value={{ phase: 'main1', mine: true }}>
         <AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
       </PromptTurnContext>,
     )
 
-    expect(turnLine()).toHaveTextContent('Main Phase 1 · Tu turno')
-    escape()
-    expect(screen.getByRole('dialog')).toHaveAttribute('data-minimized')
     expect(turnLine()).toBeNull()
+    expect(document.querySelector('[data-panel-fold]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Minimizar' })).toHaveAttribute('data-panel-grip')
   })
 })
 
@@ -360,7 +344,7 @@ describe('PickBand', () => {
     // La bandeja: una sola fila de cartas de 1/6 del ancho (con pocas no se agrandan); con más de seis, se desliza.
     expect(within(group).getByRole('listbox')).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]', 'overflow-x-auto')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
-    expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Cancelar', 'Listo'])
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Cancelar', 'Listo'])
     expect(within(group).getByRole('button', { name: 'Listo' })).toBeDisabled()
     // Con «Cancelar», Escape es de la mesa (cancela): la banda no se minimiza.
     escape()
@@ -395,7 +379,7 @@ describe('PickBand', () => {
     cleanup()
 
     band({ multi: false, title: 'Elegí 1 carta' })
-    expect(names(screen.queryAllByRole('button'))).toEqual(['Minimizar'])
+    expect(names(screen.queryAllByRole('button'))).toEqual([])
     // Sin «Cancelar», Escape la minimiza.
     escape()
     expect(screen.getByRole('group', { name: 'Elegí 1 carta' })).toHaveAttribute('data-minimized')
@@ -418,7 +402,7 @@ describe('RespondBand', () => {
       />,
     )
 
-  it('qué se decide (a qué eslabón lo dice la pila de la cadena: ni su número ni su carta), las candidatas con la pestaña de su lugar, «No responder» sin caja y la principal al final, apagada sin elegida', () => {
+  it('qué se decide (a qué eslabón lo dice la pila de la cadena: ni su número ni su carta), las candidatas con la pestaña de su lugar, «Pasar» sin caja y «Activar» al final, apagada sin elegida', () => {
     const onPass = vi.fn()
     respond({ onPass })
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
@@ -430,15 +414,15 @@ describe('RespondBand', () => {
     expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano').parentElement).toHaveClass('rounded-tag', 'whitespace-nowrap')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
     // Las acciones, debajo de las candidatas (también en el celular): primero se ve qué se encadena.
-    expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'No responder', 'Encadenar como CL3'])
-    expect(within(group).getByRole('listbox').compareDocumentPosition(within(group).getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(group).getByRole('button', { name: 'Encadenar como CL3' })).toBeDisabled()
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Pasar', 'Activar'])
+    expect(within(group).getByRole('listbox').compareDocumentPosition(within(group).getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(group).getByRole('button', { name: 'Activar' })).toBeDisabled()
     // Sin `mode`, sin el selector.
     expect(within(group).queryByRole('radiogroup')).toBeNull()
-    // Escape es «No responder» (lo da la mesa): la banda no se minimiza.
+    // Escape es «Pasar» (lo da la mesa): la banda no se minimiza.
     escape()
     expect(group).not.toHaveAttribute('data-minimized')
-    fireEvent.click(within(group).getByRole('button', { name: 'No responder' }))
+    fireEvent.click(within(group).getByRole('button', { name: 'Pasar' }))
     expect(onPass).toHaveBeenCalledTimes(1)
   })
 
@@ -453,23 +437,21 @@ describe('RespondBand', () => {
     expect(chosen.querySelector('[data-pick-chosen]')).toHaveClass('outline-info')
     expect(chosen.querySelector('.bg-info svg')).not.toBeNull()
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelector('[data-pick-chosen]')).toBeNull()
-    fireEvent.click(within(group).getByRole('button', { name: 'Encadenar como CL3' }))
+    fireEvent.click(within(group).getByRole('button', { name: 'Activar' }))
     expect(onChain).toHaveBeenCalledTimes(1)
     const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
 
-    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila del título: a su derecha, sin un renglón propio (el alto es de las cartas). Minimizar va en la barra de la
-    // ventana, arriba (TI-145).
+    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila del título: a su derecha, sin un renglón propio (el alto es de las cartas). Sin «Minimizar» (M-08).
     const title = within(group).getByText('Responder a la cadena')
-    const minimize = within(group).getByRole('button', { name: 'Minimizar' })
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
     expect(modes.parentElement?.parentElement).toBe(title.parentElement?.parentElement)
-    expect(minimize.closest('[data-window-bar]')).not.toBeNull()
+    expect(within(group).queryByRole('button', { name: 'Minimizar' })).toBeNull()
     expect(title.compareDocumentPosition(modes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(minimize.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    // Texto arriba, bandeja, botones abajo (el mismo orden que en el celular); las columnas, las de 6.
+    // Texto, bandeja y botones, en ese orden en el código (en la ventana, la bandeja se dibuja a la izquierda); las cartas, de 4,5 rem en la ventana.
     const listbox = within(group).getByRole('listbox')
-    expect(listbox).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]')
-    expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(listbox).toHaveClass('grid-flow-col', 'justify-center-safe', 'group-data-[auto-panel=floating]/panel:auto-cols-[4.5rem]')
+    expect(title.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // El nombre, en un renglón (entero al pasar el mouse): cada píxel de alto es de la carta.
     const name = within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' }).querySelector('[data-pick-name]')!
     expect(name).toHaveAttribute('title', 'Aluber the Jester of Despia')
@@ -481,19 +463,22 @@ describe('RespondBand', () => {
 
     // Sin cadena todavía, tu respuesta la abre.
     respond({ link: 1, title: '¿Activás algo ahora?', chosen: 'a' })
-    expect(screen.getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Activar' })).toBeEnabled()
   })
 })
 
 describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
   onDesktop()
 
-  it('entre grupos, 8 px (la escala de la guía: 4 · 8 · 16 · 24); la ventana sale centrada en la columna de la mesa, con 620 px de ancho máximo y apoyada abajo (TI-145)', () => {
+  it('entre grupos, 8 px (la escala de la guía: 4 · 8 · 16 · 24); la ventana sale centrada en la columna de la mesa, apaisada de 30 rem y apoyada abajo, con la bandeja a la izquierda del texto (M-08)', () => {
     render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
-    expect(group).toHaveClass('fixed', 'bottom-0', 'left-[var(--mat-x,50%)]', 'w-[min(38.75rem,var(--mat-w,100vw))]')
-    expect(group.querySelector('[data-panel-body]')!.parentElement).toHaveClass('gap-2', 'p-2')
+    expect(group).toHaveClass('fixed', 'bottom-0', 'left-[var(--mat-x,50%)]', 'w-[min(30rem,var(--mat-w,100vw))]')
+    expect(group.querySelector('[data-panel-body]')!.parentElement).toHaveClass('gap-y-2', 'grid-cols-[auto_minmax(0,1fr)]')
+    expect(group.querySelector('[data-panel-body]')).toHaveClass('col-start-1')
+    // Los botones a su ancho y a la derecha (B-04).
+    expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:justify-end')
     expect(group.querySelector('.gap-3')).toBeNull()
   })
 })
@@ -507,7 +492,7 @@ describe('RespondBand en el celular', () => {
     expect(within(group).queryByRole('radiogroup')).toBeNull()
     expect(within(group).getByText('Responder a la cadena')).not.toHaveClass('sr-only')
     expect(listbox).toHaveClass('grid-flow-col')
-    expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 
@@ -839,10 +824,10 @@ describe('AutoBar', () => {
     fireEvent.click(within(lane()).getByRole('button', { name: 'Cancelar' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
 
-    const chain: LaneNotice = { kind: 'ask', text: 'Cadena 2: Ash Blossom responde a Branded Fusion', actions: [{ label: 'No responder', onSelect: onPass }] }
+    const chain: LaneNotice = { kind: 'ask', text: 'Cadena 2: Ash Blossom responde a Branded Fusion', actions: [{ label: 'Pasar', onSelect: onPass }] }
     rerender(<AutoBar {...props} lane={chain} />)
     expect(lane()).toHaveClass('border-info')
-    fireEvent.click(within(lane()).getByRole('button', { name: 'No responder' }))
+    fireEvent.click(within(lane()).getByRole('button', { name: 'Pasar' }))
     expect(onPass).toHaveBeenCalledTimes(1)
 
     rerender(<AutoBar {...props} lane={{ kind: 'ask', text: 'Se resuelve Branded Fusion', actions: [] }} />)

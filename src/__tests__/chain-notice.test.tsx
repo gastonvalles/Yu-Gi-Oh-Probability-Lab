@@ -227,7 +227,7 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
     )
     const respond = (calls: string[] = []) => <RespondBand title="Responder a la cadena" link={2} cards={[card('mine:a', 'Called by the Grave'), card('mine:b', 'Nibiru')]} chosen="mine:a" onToggle={() => {}} onChain={() => calls.push('chain')} onPass={() => calls.push('pass')} />
 
-    it('responder va en el pie de la hoja de la cadena: debajo de la pila, a la vista en las dos alturas, con «No responder» y la principal debajo de las candidatas; una sola asa', () => {
+    it('responder va en el pie de la hoja de la cadena: debajo de la pila, a la vista en las dos alturas, con «Pasar» y «Activar» debajo de las candidatas; una sola asa', () => {
       const calls: string[] = []
 
       render(mat([PONIX], respond(calls)))
@@ -237,12 +237,12 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
       expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
       expect(sheet).toContainElement(options)
       expect(before(body(), options)).toBe(true)
-      expect(before(options, screen.getByRole('button', { name: 'No responder' }))).toBe(true)
-      expect(before(screen.getByRole('button', { name: 'No responder' }), screen.getByRole('button', { name: 'Encadenar como CL2' }))).toBe(true)
+      expect(before(options, screen.getByRole('button', { name: 'Pasar' }))).toBe(true)
+      expect(before(screen.getByRole('button', { name: 'Pasar' }), screen.getByRole('button', { name: 'Activar' }))).toBe(true)
       lower()
       expect(options.closest('[inert], [hidden]')).toBeNull()
-      fireEvent.click(screen.getByRole('button', { name: 'Encadenar como CL2' }))
-      fireEvent.click(screen.getByRole('button', { name: 'No responder' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Activar' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Pasar' }))
       expect(calls).toEqual(['chain', 'pass'])
     })
 

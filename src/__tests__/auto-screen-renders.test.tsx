@@ -111,7 +111,7 @@ describe('auto-screen · los dibujos de la mesa', () => {
     expect(screen.queryByRole('menuitem', { name: 'Invocación Normal' })).toBeNull()
     fireEvent.keyDown(document, { key: 'Escape' })
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a la Battle Phase' }))
     expect(fake.answers.at(-1)).toEqual({ type: 'select_idlecmd', action: 6, index: null })
     expect(dispatches).toBe(0)
   })

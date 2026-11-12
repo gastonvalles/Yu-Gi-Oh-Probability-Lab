@@ -45,16 +45,17 @@ describe('auto · la columna de escritorio', () => {
     expect(tab('Pasos')).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('tocar una carta pasa a «Carta»: el detalle arriba y su ficha con todas las jugadas al pie; la X la cierra y el detalle queda', () => {
+  it('tocar una carta pasa a «Carta» con su detalle; su ficha es la ventana (la columna ya no la lleva); la X la cierra y el detalle queda', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
     tap(handCard('Ash Blossom'))
     const panel = screen.getByRole('tabpanel', { name: 'Carta' })
-    const sheet = within(panel).getByRole('region', { name: 'Ash Blossom' })
+    const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
 
     expect(tab('Carta')).toHaveAttribute('aria-selected', 'true')
-    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
+    expect(sheet).toHaveAttribute('data-auto-panel', 'floating')
+    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Invocación Normal'])
     fireEvent.click(within(sheet).getByRole('button', { name: 'Cerrar' }))
     expect(screen.queryByRole('region', { name: 'Ash Blossom' })).toBeNull()
     expect(within(panel).getByRole('region', { name: 'Detalle de la carta' })).toHaveTextContent('Ash Blossom')

@@ -108,7 +108,7 @@ describe('auto-screen · el aro del que ataca y la estela', () => {
     expect(trail()).not.toBeNull()
     // Del rival (arriba) hacia tu carta (abajo).
     expect(trail()!.style.transform).toMatch(/^rotate\([\d.]+rad\)$/)
-    fireEvent.click(screen.getByRole('button', { name: 'No responder' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pasar' }))
     expect(trail()).toBeNull()
     // Otra ventana en el mismo ataque, todavía sin daño: vuelve; con el daño (cambian las vidas), ya no.
     core(() => fake.ask(CHAIN))

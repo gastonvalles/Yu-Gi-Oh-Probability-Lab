@@ -4,9 +4,10 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { AskWhyView } from '../../app/auto/ask-why'
+import type { CardFrame } from '../../app/card-frame'
 import type { MatPile } from '../../app/practice-mat'
 import { CardArt } from '../CardArt'
-import { PILE_SHORT } from '../probability/MatDialogs'
+import { COPIES, PILE_SHORT } from '../probability/MatDialogs'
 import { PICK_ORDER } from '../probability/MatFx'
 import { AskWhy } from '../duel/AskWhy'
 import { Badge } from '../ui/Badge'
@@ -15,7 +16,7 @@ import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
 import { SearchField } from '../ui/SearchField'
 import { Skeleton } from '../ui/Skeleton'
-import { AutoPanel } from './AutoPanel'
+import { AutoPanel, PANEL_MAIN } from './AutoPanel'
 
 /** De qué lugar es una carta para elegir: la mano, una pila, el campo o debajo de un Xyz. */
 export type PickFrom = MatPile | 'field' | 'material'
@@ -31,6 +32,45 @@ export interface PickCard {
   /** El lugar, con `pickPlace`: un chip con ícono sobre la carta (la mano propia, violeta lleno; lo demás, neutro) y los grupos de la hoja, en vez de la línea chica. */
   from?: PickFrom
   theirs?: boolean
+  /** El color de su tipo, para la carta sin imagen (`frameKindOf`, lámina T). */
+  frame?: CardFrame
+}
+
+/**
+ * Qué copias son la misma (decisión 7): la misma carta en el mismo lugar, nunca en el campo ni debajo de un Xyz (ahí cada una es otra cosa). `null`: va sola. Sin lugar, la misma carta (las
+ * de una pila que ya dice el título).
+ */
+export function copyKey(card: PickCard): string | null {
+  if (card.from === 'field' || card.from === 'material') return null
+
+  return [card.name, card.art ?? '', card.from ?? '', card.theirs ? 'theirs' : '', card.place ?? ''].join('|')
+}
+
+/** Las cartas en grupos de copias (`copyKey`), en el orden en que aparece la primera de cada uno. */
+export function copyGroups(cards: readonly PickCard[]): PickCard[][] {
+  const groups = new Map<string, PickCard[]>()
+
+  for (const card of cards) {
+    const key = copyKey(card) ?? `#${card.key}`
+
+    groups.set(key, [...(groups.get(key) ?? []), card])
+  }
+
+  return [...groups.values()]
+}
+
+/**
+ * Qué copia toca un toque sobre un grupo (decisión 7): eligiendo una sola, la elegida (la suelta) o la primera libre; eligiendo varias, la próxima libre que se pueda elegir mientras haya lugar
+ * (`max`) y, lleno o con el tope alcanzado, la última elegida del grupo (la suelta). `null`: nada.
+ */
+export function copyToToggle(copies: readonly PickCard[], chosen: readonly string[], multi: boolean, open: (card: PickCard) => boolean, max = Infinity): string | null {
+  const mine = copies.filter((card) => chosen.includes(card.key)).sort((a, b) => chosen.indexOf(a.key) - chosen.indexOf(b.key))
+  const free = copies.find((card) => !chosen.includes(card.key) && open(card))
+
+  if (!multi && mine.length > 0) return mine[0]!.key
+  if (free && (!multi || chosen.length < max)) return free.key
+
+  return mine.at(-1)?.key ?? null
 }
 
 const FROM_ICON: Record<PickFrom, IconName> = { hand: 'hand', deck: 'layers', extra: 'cards', gy: 'trash', banished: 'ban', field: 'view-top', material: 'card' }
@@ -81,44 +121,53 @@ interface PickGridProps {
   className?: string
   /** El lugar de cada carta en una pestaña sobre ella («Campo», «Mano»), como en «¿Activás el efecto?», y no debajo del nombre. */
   tabs?: boolean
+  /** Cuántas se pueden elegir: con el tope, tocar un grupo de copias suelta la última en vez de sumar otra. */
+  max?: number
 }
 
 /**
  * La grilla de cartas para elegir, con el marco de la elegida y el número de orden de `PileViewer` eligiendo varias (no se extrajo de ahí: allá son botones con `aria-pressed` y acá un `listbox`). Se recorre con
  * las flechas (arriba y abajo, una fila), Inicio y Fin, con un solo lugar de tabulación; Espacio o Enter eligen. Mientras llega el arte de una carta, un esqueleto quieto (son decenas a la vez).
- * Las que dicen de dónde son (`from`) van por lugar, la mano propia primero, cada una con su chip: dos copias iguales de la mano y del Deck nunca se ven iguales.
+ * Las que dicen de dónde son (`from`) van por lugar, la mano propia primero, cada una con su chip: dos copias iguales de la mano y del Deck nunca se ven iguales. Las copias de la misma carta en el
+ * mismo lugar van en una sola, con «×3» (`copyGroups`): tocarla suma la próxima copia (`copyToToggle`) y lleva los números de orden de las elegidas.
  */
-export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false }: PickGridProps) {
+export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, max }: PickGridProps) {
   const [active, setActive] = useState(0)
   // Las artes, en el render siguiente al de la entrada (de menor prioridad, de a pedazos): la hoja sale enseguida con los esqueletos, como si el arte no hubiera llegado.
   const arts = useDeferredValue(true, false)
-  const cards = groupsOf(given).flat()
-  const at = Math.min(active, cards.length - 1)
-  const blocked = (card: PickCard) => eligible !== undefined && !eligible.has(card.key) && !chosen.includes(card.key)
+  const groups = copyGroups(groupsOf(given).flat())
+  const at = Math.min(active, groups.length - 1)
+  const open = (card: PickCard) => eligible === undefined || eligible.has(card.key)
+  const target = (copies: readonly PickCard[]) => copyToToggle(copies, chosen, multi, open, max)
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const options = event.currentTarget.querySelectorAll<HTMLElement>('[role="option"]')
     const grid = options[at]?.parentElement ?? event.currentTarget
     const columns = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length || 1
     const step: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns }
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? cards.length - 1 : Object.hasOwn(step, event.key) ? Math.min(cards.length - 1, Math.max(0, at + step[event.key]!)) : null
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? groups.length - 1 : Object.hasOwn(step, event.key) ? Math.min(groups.length - 1, Math.max(0, at + step[event.key]!)) : null
 
     if (next !== null) {
       event.preventDefault()
       setActive(next)
       options[next]?.focus()
-    } else if ((event.key === ' ' || event.key === 'Enter') && cards[at]) {
+    } else if ((event.key === ' ' || event.key === 'Enter') && groups[at]) {
       event.preventDefault()
-      if (!blocked(cards[at])) onToggle(cards[at].key, event.shiftKey)
+      const key = target(groups[at])
+
+      if (key !== null) onToggle(key, event.shiftKey)
     }
   }
 
-  const option = (card: PickCard) => {
-    const index = cards.indexOf(card)
-    const order = chosen.indexOf(card.key)
+  const option = (copies: PickCard[], index: number) => {
+    const card = copies[0]!
+    const orders = copies.map((copy) => chosen.indexOf(copy.key)).filter((order) => order >= 0).sort((a, b) => a - b)
+    const order = orders[0] ?? -1
+    const count = copies.length
+    const named = count > 1 ? t('auto.picker.copies', { name: card.name, count }) : card.name
     // Eligiendo una sola, la elegida lleva sólo el marco (sin número de orden).
-    const name = order >= 0 && multi ? t('practice.many.order', { name: card.name, n: order + 1 }) : card.name
-    const off = blocked(card)
+    const name = order >= 0 && multi ? t('practice.many.order', { name: named, n: orders.map((n) => n + 1).join(', ') }) : named
+    const off = target(copies) === null
     // «Fire King Ponix, en tu mano»: el lugar, con minúscula, en la frase.
     const where = card.from && card.place ? t('auto.picker.at', { name, place: card.place.charAt(0).toLocaleLowerCase() + card.place.slice(1) }) : card.place ? `${name}, ${card.place}` : name
 
@@ -136,7 +185,9 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
         className={cx('group @container grid min-w-0 content-start gap-1 rounded-none outline-none focus-visible:shadow-focus', off ? 'cursor-default opacity-40' : 'cursor-pointer')}
         onClick={(event) => {
           setActive(index)
-          if (!off) onToggle(card.key, event.shiftKey)
+          const key = target(copies)
+
+          if (key !== null) onToggle(key, event.shiftKey)
         }}
       >
         {card.from ? <PlaceChip from={card.from} theirs={card.theirs ?? false} /> : null}
@@ -147,10 +198,16 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
         ) : null}
         {/* Al pasar el mouse, el aro fino de las cartas de la mesa. */}
         <span data-pick-art="" className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order < 0 && 'group-hover:outline-1 group-hover:outline-white/60')}>
-          {card.art === undefined || !arts ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
+          {card.art === undefined || !arts ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} {...(card.frame ? { frame: card.frame } : {})} className="block h-full w-full object-cover" />}
+          {/* Las copias juntas: cuántas son, arriba a la izquierda. */}
+          {count > 1 ? (
+            <span aria-hidden="true" data-pick-copies="" className={COPIES}>
+              ×{count}
+            </span>
+          ) : null}
           {/* Lo elegido, el aro y la tilde lima (eligiendo varias, su número de orden); lo que ahora no se puede elegir va apagado. */}
           {order >= 0 ? <span aria-hidden="true" data-pick-chosen="" className="pointer-events-none absolute inset-0 outline-2 -outline-offset-2 outline-info" /> : null}
-          {order >= 0 && multi ? <span aria-hidden="true" className={PICK_ORDER}>{order + 1}</span> : null}
+          {order >= 0 && multi ? <span aria-hidden="true" className={PICK_ORDER}>{orders.map((n) => n + 1).join('·')}</span> : null}
           {order >= 0 && !multi ? (
             <span aria-hidden="true" className="absolute right-0.5 top-0.5 grid size-5 place-items-center bg-info text-background">
               <Icon name="check" size={14} strokeWidth={2.5} />
@@ -174,7 +231,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
       className={cx('grid gap-2', className)}
       onKeyDown={onKeyDown}
     >
-      {cards.map(option)}
+      {groups.map(option)}
     </div>
   )
 }
@@ -208,15 +265,15 @@ export function usePicked(cards: readonly PickCard[], max: number) {
 /** Hasta cuántas cartas van en una fila de la bandeja sin deslizar. */
 export const BAND_MAX = 6
 /**
- * La bandeja de los carteles del automático: una sola fila de cartas de 1/6 del ancho (a 390 px, ~56 px; nunca se agrandan con pocas) y, con más de seis, se desliza de costado. Mide lo que miden
- * las cartas: sin alto fijo.
+ * La bandeja de los carteles del automático: una sola fila de cartas de 1/6 del ancho (a 390 px, ~56 px; nunca se agrandan con pocas), centradas, y con más de seis se desliza de costado. En la
+ * ventana de escritorio, de 4,5 rem. Mide lo que miden las cartas: sin alto fijo.
  */
-export const TRAY = 'grid-flow-col auto-cols-[calc((100%-2.5rem)/6)] overflow-x-auto overscroll-x-contain pb-1'
+export const TRAY = 'grid-flow-col auto-cols-[calc((100%-2.5rem)/6)] justify-center-safe overflow-x-auto overscroll-x-contain pb-1 group-data-[auto-panel=floating]/panel:auto-cols-[4.5rem]'
 
-/** El contador «1 de 2», sólo cuando el total es mayor que 1 (nunca «1/1» ni «0 de 1»). */
+/** El contador «1 de 2» (a la derecha del título), sólo cuando el total es mayor que 1 (nunca «1/1» ni «0 de 1»). */
 export function PickCount({ chosen, max }: { chosen: number; max: number }) {
   return max > 1 ? (
-    <p role="status" className="m-0 mr-auto text-micro tabular-nums text-muted">
+    <p role="status" data-pick-count="" className="m-0 shrink-0 border border-border px-1.5 text-micro font-semibold tabular-nums text-foreground">
       {t('auto.picker.status', { chosen, max })}
     </p>
   ) : null
@@ -241,16 +298,16 @@ interface PickBandProps {
   onCancel?: () => void
   /** El texto de la principal, si dice qué hace («Activar Garunix primero»); sin esto, «Listo» o «Elegir N cartas». */
   action?: string
-  /** La nota de abajo, a la izquierda («Sin “No responder”: son obligatorias»); sin esto, eligiendo varias, cómo se elige. */
+  /** Una nota chica debajo de la bandeja («Sin “Pasar”: son obligatorias»). */
   note?: string
   /** De qué carta es y si es su costo o su efecto (`AskWhy`), arriba del título. */
   why?: AskWhyView | null
 }
 
 /**
- * Elegir de una lista corta (hasta `BAND_MAX` cartas) en el cartel del automático (`AutoPanel`): la frase con para qué y la cuenta, la bandeja (`PickGrid`: flechas, Espacio y Enter) y abajo
- * «Cancelar» sin caja y la principal a la derecha. Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la
- * primera carta. Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa. Sin «Cancelar», Escape lo minimiza.
+ * Elegir de una lista corta (hasta `BAND_MAX` cartas) en el cartel del automático (`AutoPanel`): la frase con para qué, la bandeja (`PickGrid`: flechas, Espacio y Enter) y abajo «Cancelar» sin
+ * caja y la principal a la derecha. Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la primera carta.
+ * Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa. Sin «Cancelar», Escape lo minimiza.
  */
 export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note, why }: PickBandProps) {
   const titleId = useId()
@@ -281,26 +338,26 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
         </h2>
       }
       actions={
-        primary || onCancel || note || multi ? (
+        primary || onCancel ? (
           <>
-            {note || multi ? <p className="m-0 mr-auto min-w-0 text-micro text-muted">{note ?? t('auto.band.hint')}</p> : null}
-            <div className="ml-auto flex justify-end gap-2">
-              {onCancel ? (
-                <Button variant="tertiary" size="sm" onClick={onCancel}>
-                  {t('common.cancel')}
-                </Button>
-              ) : null}
-              {primary ? (
-                <Button variant="primary" size="sm" disabled={!done} onClick={onPick}>
-                  {action ?? (chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length }))}
-                </Button>
-              ) : null}
-            </div>
+            {onCancel ? (
+              <Button variant="tertiary" onClick={onCancel}>
+                {t('common.cancel')}
+              </Button>
+            ) : null}
+            {primary ? (
+              <Button variant="primary" className={cx(PANEL_MAIN, 'ml-auto')} disabled={!done} onClick={onPick}>
+                {action ?? (chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length }))}
+              </Button>
+            ) : null}
           </>
         ) : undefined
       }
     >
-      <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} className={TRAY} />
+      <div className="grid gap-1">
+        <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} className={TRAY} />
+        {note ? <p className="m-0 text-micro text-muted">{note}</p> : null}
+      </div>
     </AutoPanel>
   )
 }
@@ -333,10 +390,10 @@ interface CardPickerProps {
 }
 
 /**
- * Elegir de `min` a `max` cartas de una lista larga (de varios lugares, o por código) en el cartel del automático (`AutoPanel`): la bandeja en una fila que se desliza (las cartas por lugar, la mano
- * propia primero, cada una con su chip) y, con `SEARCH_FROM` cartas o más, un buscador por nombre arriba (filtra lo que se ve; lo elegido queda). Tocar elige o suelta (el aro lima y el número de
- * orden), Mayús+clic elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, la principal («Elegir 2 cartas», o «Listo»)
- * se enciende con `min` (o con `done`) y el contador dice cuántas van. Va dentro de un `Presence` (así sale al contestarse).
+ * Elegir de `min` a `max` cartas (M-03) en un solo cartel del automático (`AutoPanel`): la bandeja en una fila que se desliza (las cartas por lugar, la mano propia primero, cada una con su chip; las
+ * copias juntas con «×3») y, con `SEARCH_FROM` cartas o más, un buscador por nombre arriba (filtra lo que se ve; lo elegido queda). Tocar elige o suelta (el aro lima y el número de orden), Mayús+clic
+ * elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, una sola principal («Elegir 3 cartas», o «Listo») que se
+ * enciende con `min` (o con `done`) y el contador («2 de 3») a la derecha del título. Va dentro de un `Presence` (así sale al contestarse).
  */
 export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done }: CardPickerProps) {
   const leaving = useLeaving()
@@ -364,22 +421,20 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
       {...(why ? { describedBy: whyId } : {})}
       focus='[role="option"][tabindex="0"]'
       top={why ? <AskWhy id={whyId} why={why} /> : kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
+      {...(single ? {} : { aside: <PickCount chosen={chosen.length} max={max} /> })}
       actions={
         single && !onCancel && !finish ? undefined : (
           <>
-            {single ? null : <PickCount chosen={chosen.length} max={max} />}
-            <div className="ml-auto flex justify-end gap-2">
-              {onCancel ? (
-                <Button variant="tertiary" size="sm" onClick={onCancel}>
-                  {t('common.cancel')}
-                </Button>
-              ) : null}
-              {single && !finish ? null : (
-                <Button variant="primary" size="sm" disabled={!ready} onClick={() => onPick([...chosen])}>
-                  {chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length })}
-                </Button>
-              )}
-            </div>
+            {onCancel ? (
+              <Button variant="tertiary" onClick={onCancel}>
+                {t('common.cancel')}
+              </Button>
+            ) : null}
+            {single && !finish ? null : (
+              <Button variant="primary" className={cx(PANEL_MAIN, 'ml-auto')} disabled={!ready} onClick={() => onPick([...chosen])}>
+                {chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length })}
+              </Button>
+            )}
           </>
         )
       }
@@ -387,7 +442,7 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
       <div className="grid gap-2">
         {searchable ? <SearchField label={t('auto.picker.search')} placeholder={t('auto.picker.search')} value={query} onChange={setQuery} /> : null}
         {shown.length > 0 ? (
-          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} className={TRAY} />
+          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} max={max} className={TRAY} />
         ) : (
           <p className="m-0 text-body text-muted">{t('auto.picker.noMatches', { query: query.trim() })}</p>
         )}

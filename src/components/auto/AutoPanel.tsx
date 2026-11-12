@@ -1,6 +1,8 @@
-import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { frameClass, frameKindOf } from '../../app/card-frame'
+import { PHASES } from '../../app/practice-mat'
 import { useDraggableOffset } from '../../app/use-draggable-offset'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -10,34 +12,36 @@ import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
-import { PromptTurnContext, promptTurnText } from '../duel/MatPrompt'
 import { GHOST_CLICK_MS, LayerBackContext, type MenuItem } from '../probability/MatDialogs'
 import { levelText } from '../probability/MatFx'
-import { phaseRowEntries } from '../probability/PhaseRow'
 import { CARD_BACK } from '../probability/practice-styles'
 import { useSheetHost } from '../ui/BottomSheet'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
-import { Icon, type IconName } from '../ui/Icon'
-import { CloseButton, IconButton, TileButton } from '../ui/IconButton'
-import { overline } from '../ui/typography'
+import { Icon } from '../ui/Icon'
+import { CloseButton } from '../ui/IconButton'
+
+/** `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px). Sin decirlo, según el ancho. */
+type AutoPanelVariant = 'docked' | 'floating'
 
 /**
- * `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px). Sin decirlo, según el ancho. `column`: en su lugar, dentro de la
- * pestaña «Carta» de la columna del escritorio (la ficha de una carta: su nombre, la X y sus jugadas debajo del detalle), sin portal, sin barra ni velo.
+ * Dónde recuerda cada ventana su lugar y su tamaño: las preguntas comparten una (la próxima sale donde quedó la anterior); la ficha de una carta, la suya; las del catálogo (`playground`), otra,
+ * así probarlas no corre las de la mesa.
  */
-type AutoPanelVariant = 'docked' | 'floating' | 'column'
-
-/**
- * Dónde recuerda cada ventana su lugar y su tamaño: las preguntas comparten una (la próxima sale donde quedó la anterior); la ficha de una carta y las fases, la suya; las del catálogo (`playground`),
- * otra, así probarlas no corre las de la mesa.
- */
-const OWN_PLACE = new Set(['card', 'phases', 'playground'])
+const OWN_PLACE = new Set(['card', 'playground'])
 export const autoWindowKey = (kind: string) => `ygo-lab:auto-window:v1:${OWN_PLACE.has(kind) ? kind : 'ask'}`
-/** Lo más chica que se deja estirar una ventana (la de siempre: 620 px de ancho y el alto de su contenido); lo más grande, la pantalla. */
+/** Lo más chica que se deja estirar una ventana (la de siempre: 30 rem de ancho, apaisada, y el alto de su contenido); lo más grande, la pantalla. */
 const WINDOW_MIN = { width: 360, height: 160 }
 const ARROW_KEYS: Record<string, readonly [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }
 const WINDOW_KEYS = 'ArrowUp ArrowDown ArrowLeft ArrowRight Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Enter'
+
+/**
+ * Los botones de la fila de abajo (B-01 a B-04): la principal y las que hacen algo llevan esto (en el celular se reparten el ancho; en la ventana, a su ancho y a la derecha). Lo que descarta
+ * (`tertiary`) va sin esto, a su ancho y a la izquierda. Todos `size="md"` (44 px) y en un renglón (lo pone la fila).
+ */
+export const PANEL_MAIN = 'flex-1 group-data-[auto-panel=floating]/panel:min-w-32 group-data-[auto-panel=floating]/panel:flex-none'
+/** La fila de abajo: un renglón, la principal al final (a la derecha); en la ventana, todo a la derecha. */
+const ACTIONS = 'flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap group-data-[auto-panel=floating]/panel:justify-end'
 
 interface AutoPanelProps {
   /** `data-prompt`: qué cartel es (la mesa y las pruebas lo buscan por esto). */
@@ -48,21 +52,23 @@ interface AutoPanelProps {
   head?: ReactNode
   /** Arriba de la pregunta, chico: de qué carta es (`AskWhy`) o qué pasó. */
   top?: ReactNode
-  /** A la derecha del título (el modo de respuesta en escritorio): no suma un renglón. */
+  /** A la derecha del título (el contador «2 de 3», el modo de respuesta en escritorio): no suma un renglón. */
   aside?: ReactNode
   /** La bandeja de cartas o las opciones: lo único que se desplaza si no entra. */
   children?: ReactNode
-  /** Los botones de abajo (lo que descarta a la izquierda, sin caja; la principal a la derecha): también en la tira minimizada. */
+  /** En la ventana de escritorio, la bandeja va a la izquierda del texto y de los botones (M-08: una carta para responder). */
+  side?: boolean
+  /** Los botones de abajo (lo que descarta a la izquierda, sin caja; la principal a la derecha, con `PANEL_MAIN`): también en la tira minimizada. */
   actions?: ReactNode
   /** Al abrirse, el foco va a esto (un selector adentro). */
   focus?: string
   /** Escape lo minimiza (sólo si Escape no hace otra cosa: en una cadena es «No responder»). */
   escape?: boolean
-  /** dialog (por defecto); group, la banda que no se lleva el foco de la mesa; egion, la ficha de una carta (como la hoja de la mesa manual). */
+  /** dialog (por defecto); group, la banda que no se lleva el foco de la mesa; region, la ficha de una carta (como la hoja de la mesa manual). */
   role?: 'dialog' | 'group' | 'region'
   labelledBy?: string
   describedBy?: string
-  /** Se cierra (la ficha de una carta, las fases): la X, Escape y tocar afuera; el foco queda adentro y vuelve a lo que lo tenía. Sin esto, hay que contestar: sólo se minimiza. */
+  /** Se cierra (la ficha de una carta): la X, Escape y tocar afuera; el foco queda adentro y vuelve a lo que lo tenía. Sin esto, hay que contestar: sólo se minimiza. */
   onDismiss?: () => void
   /** Lo que este cartel tapa en el celular (el visor de una pila bajo la ficha): arriba, «‹ GY · 2», que lo cierra y lo deja a la vista. Una pregunta lo lee de `LayerBackContext`, sin botón. */
   crumb?: { label: string; onBack: () => void }
@@ -71,32 +77,32 @@ interface AutoPanelProps {
 }
 
 /**
- * El cascarón de los carteles del duelo automático (la pregunta, la bandeja, las opciones, la ficha de una carta y las fases): **texto arriba, bandeja si hay, botones abajo**, apoyado sobre tu mano
- * desde abajo y con techo en el borde de abajo de la línea (`data-duel-line`): nunca empuja ni tapa el campo ni la cadena (va en un portal `fixed`; la mesa no se entera). Mide lo de su contenido (sin
- * alto fijo): 8 px entre grupos y la pregunta en `text-body`; fondo opaco, sin desenfoque, y esquinas rectas (`mat-square`). Arrastrar la franja de arriba hacia abajo (o «Minimizar», o
- * Escape con `escape`) lo deja en una tira con la pregunta y sus botones; nunca se cierra solo.
- * En escritorio (`floating`) es una ventana: sale en el mismo lugar (620 px de ancho, centrada en la columna de la mesa: `--mat-x`, `--mat-w`, apoyada sobre tu mano), con una barra de título violeta
- * que es el asa (`useDraggableOffset`: se lleva con el mouse; enfocada, flechas, Alt + flechas la estiran, Enter o doble clic la vuelven a su lugar y su tamaño) y se estira del borde derecho, del de
- * abajo y de la esquina. Lugar y tamaño se recuerdan por tipo (`autoWindowKey`); nunca cambia la geometría de la mesa. Con la hoja de la cadena abierta en el celular (`SheetHost`), va en su pie: una sola hoja. Va dentro de un `Presence` (así sale al contestarse).
+ * El cascarón de los carteles del duelo automático (la pregunta, la bandeja, las opciones y la ficha de una carta): **texto arriba, bandeja si hay, botones abajo**, apoyado sobre tu mano desde
+ * abajo y con techo en el borde de abajo de la línea (`data-duel-line`): nunca empuja ni tapa el campo (va en un portal `fixed`; la mesa no se entera). Mide lo de su contenido (sin alto fijo):
+ * 8 px entre grupos y la pregunta en `text-body`; fondo opaco, sin desenfoque, y esquinas rectas (`mat-square`). Sin cabecera de fase ni de turno ni flecha de bajar (cada dato, una vez): se
+ * baja arrastrando el asa de arriba (o tocándola: es un botón, «Minimizar»; o Escape con `escape`) y queda una tira con la pregunta y sus botones que **se sube tocándola entera**; nunca se
+ * cierra solo.
+ * En escritorio (`floating`) es una ventana apaisada (30 rem, centrada en la columna de la mesa: `--mat-x`, `--mat-w`, apoyada sobre tu mano) con una barra violeta que es el asa
+ * (`useDraggableOffset`: se lleva con el mouse; enfocada, flechas, Alt + flechas la estiran, Enter o doble clic la vuelven a su lugar y su tamaño) y se estira del borde derecho, del de abajo y de
+ * la esquina; con `side`, la bandeja a la izquierda del texto. Lugar y tamaño se recuerdan por tipo (`autoWindowKey`). Con la hoja de la cadena abierta en el celular (`SheetHost`), va en su pie:
+ * una sola hoja. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AutoPanel({ kind, label, head, top, aside, children, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, crumb, variant, className }: AutoPanelProps) {
+export function AutoPanel({ kind, label, head, top, aside, children, side = false, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, crumb, variant, className }: AutoPanelProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const titleId = useId()
   const leaving = useLeaving()
   const host = useSheetHost()
   const slot = host?.slot ?? null
-  const column = variant === 'column'
-  // En un marco del catálogo (`SheetHost phone`) o en la columna, en su lugar: ni portal ni `fixed`.
-  const inline = (host?.phone === true && !slot) || column
+  // En un marco del catálogo (`SheetHost phone`), en su lugar: ni portal ni `fixed`.
+  const inline = host?.phone === true && !slot
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
   // En el pie de la hoja de la cadena (celular) nunca es ventana.
   const floating = !slot && (variant === 'floating' || (variant === undefined && desktop))
-  const turn = useContext(PromptTurnContext)
   const saved = useContext(LayerBackContext)
   const [minimized, setMinimized] = useState(false)
   // La ventana se lleva de la barra y se estira del borde y la esquina; posición y tamaño, por tipo (`autoWindowKey`). En la mesa se centra con su `translate`: el corrimiento va en `--drag-x/y`.
   const move = useDraggableOffset(autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, WINDOW_MIN)
-  // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; minimizado, el asa hacia arriba lo abre.
+  // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; minimizado, la tira hacia arriba lo abre.
   const follow = (dy: number | null) => {
     if (ref.current) ref.current.style.translate = dy === null ? '' : `${desktop && !slot ? '-50%' : '0'} ${dy}px`
   }
@@ -106,11 +112,11 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
   useEscapeKey(() => (onDismiss ? onDismiss() : setMinimized(true)), (dismissible || escape) && !minimized && !leaving)
   useFocusTrap(ref, dismissible && !minimized && !inline)
 
-  // Al abrir (y al reabrirlo), el foco va a lo que se decide; minimizado, a la flecha que lo abre. Sin desplazar la página.
+  // Al abrir (y al reabrirlo), el foco va a lo que se decide; minimizado, a la tira que lo sube. Sin desplazar la página.
   useEffect(() => {
-    const target = minimized ? '[data-panel-show]' : (focus ?? '[data-panel-fold]')
+    const target = minimized ? '[data-panel-show]' : (focus ?? '[data-panel-grip], [data-window-bar]')
 
-    if (target) ref.current?.querySelector<HTMLElement>(target)?.focus({ preventScroll: true })
+    ref.current?.querySelector<HTMLElement>(target)?.focus({ preventScroll: true })
   }, [minimized, focus, slot])
 
   // Lo que lo cierra tocando afuera: el toque fantasma del celular (el clic que sigue al dedo que abrió la ficha) no cuenta.
@@ -135,14 +141,12 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
     return () => window.removeEventListener('resize', place)
   }, [slot, inline, minimized])
 
-  // En la columna el nombre es su propio título (la cabeza de la ficha no se dibuja: el detalle de arriba ya muestra la carta).
-  const named = column ? titleId : (labelledBy ?? titleId)
   const attrs = {
     role,
     // Minimizado, su nombre es la pregunta corta de la tira (lo que lo nombraba abierto ya no está).
-    ...(minimized ? { 'aria-label': label } : { 'aria-labelledby': named, ...(describedBy ? { 'aria-describedby': describedBy } : {}) }),
+    ...(minimized ? { 'aria-label': label } : { 'aria-labelledby': labelledBy ?? titleId, ...(describedBy ? { 'aria-describedby': describedBy } : {}) }),
     'data-prompt': kind,
-    'data-auto-panel': column ? 'column' : floating ? 'floating' : 'docked',
+    'data-auto-panel': floating ? 'floating' : 'docked',
     // `data-lowered`: el mismo estado con el nombre de las hojas del celular (lo leen la mesa y sus pruebas).
     ...(minimized ? { 'data-minimized': '', 'data-lowered': '' } : {}),
   }
@@ -152,19 +156,18 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
       ? 'relative mx-auto w-full max-w-155 border border-primary/60'
       : cx(
         'fixed inset-x-0 bottom-0 z-[130] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] border-t border-primary/60 shadow-overlay',
-        'min-[1101px]:inset-x-auto min-[1101px]:left-[var(--mat-x,50%)] min-[1101px]:w-[min(38.75rem,var(--mat-w,100vw))] min-[1101px]:-translate-x-1/2 min-[1101px]:border-x',
         'pb-[env(safe-area-inset-bottom,0px)]',
-        // Una sola hoja abajo en el celular: lo que abrís con una pregunta abierta (la ficha, las fases, el visor de una pila) va encima y la esconde sin cerrarla; al cerrarlo, vuelve. Lo que ya
-        // estaba abierto cuando llegó la pregunta, al revés, queda guardado debajo de ella (`PracticeMat`).
-        !onDismiss && 'in-[body:has(>[data-auto-panel=docked][data-prompt=card],>[data-auto-panel=docked][data-prompt=phases],[data-pile-sheet]:not([hidden]))]:hidden',
+        // Una sola hoja abajo en el celular: lo que abrís con una pregunta abierta (la ficha, el visor de una pila) va encima y la esconde sin cerrarla; al cerrarlo, vuelve. Lo que ya estaba
+        // abierto cuando llegó la pregunta, al revés, queda guardado debajo de ella (`PracticeMat`).
+        !onDismiss && 'in-[body:has(>[data-auto-panel=docked][data-prompt=card],[data-pile-sheet]:not([hidden]))]:hidden',
       )
-  const surface = 'mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-sheet-in'
+  const surface = 'group/panel mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-sheet-in'
 
   // La ventana del escritorio: apoyada sobre tu mano y centrada en la columna de la mesa como el cartel de siempre (no empuja ni tapa el campo al abrirse); corrida, flota encima de lo que haya.
   const windowPlace = inline
-    ? 'relative w-[min(38.75rem,100%)] border border-primary'
-    : 'fixed bottom-0 left-[var(--mat-x,50%)] z-[130] w-[min(38.75rem,var(--mat-w,100vw))] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] translate-x-[calc(var(--drag-x,0px)-50%)] translate-y-[var(--drag-y,0px)] border border-primary shadow-overlay'
-  const windowSurface = 'mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-dialog-enter'
+    ? 'relative w-[min(30rem,100%)] border border-primary'
+    : 'fixed bottom-0 left-[var(--mat-x,50%)] z-[130] w-[min(30rem,var(--mat-w,100vw))] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] translate-x-[calc(var(--drag-x,0px)-50%)] translate-y-[var(--drag-y,0px)] border border-primary shadow-overlay'
+  const windowSurface = 'group/panel mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-dialog-enter'
   /** Con la barra enfocada: las flechas la mueven 16 px (Mayús: 64), Alt + flechas la estiran y Enter la vuelve a su lugar y su tamaño. */
   const onBarKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey) return
@@ -182,7 +185,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
     if (event.altKey) move.resizeBy(arrow[0] * step, arrow[1] * step)
     else move.moveBy(arrow[0] * step, arrow[1] * step)
   }
-  // La barra de título (violeta, texto blanco): el asa. Abierta, la fase y el turno; minimizada, la pregunta.
+  // La barra de título (violeta): el asa, sin fase ni turno. Minimizada, la pregunta, que la sube.
   const bar = (
     <div
       {...move.head}
@@ -200,20 +203,11 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
         <Icon name="grip" />
       </span>
       {minimized ? (
-        <p className="m-0 min-w-0 flex-1 truncate font-semibold">{label}</p>
+        <button type="button" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left font-semibold focus-visible:outline-none focus-visible:shadow-focus" onClick={() => setMinimized(false)}>
+          <span className="min-w-0 truncate">{label}</span>
+        </button>
       ) : (
-        <p data-prompt-turn={turn ? '' : undefined} className="m-0 min-w-0 flex-1 truncate text-micro font-semibold">
-          {turn ? promptTurnText(turn) : null}
-        </p>
-      )}
-      {minimized ? (
-        <IconButton size="lg" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} onClick={() => setMinimized(false)}>
-          <Icon name="chevron-up" />
-        </IconButton>
-      ) : (
-        <IconButton size="lg" data-panel-fold="" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setMinimized(true)}>
-          <Icon name="chevron-down" />
-        </IconButton>
+        <span className="flex-1" />
       )}
       {onDismiss && !minimized ? <CloseButton size="lg" tone="raised" aria-label={t('common.close')} onClick={onDismiss} /> : null}
     </div>
@@ -245,95 +239,99 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
       <span className="truncate">{saved}</span>
     </p>
   ) : null
-
-  const view = column ? (
-    // La ficha en la pestaña «Carta»: su nombre y la X, y las jugadas al pie del detalle (sin cabeza, barra, agarres ni velo; no se minimiza).
-    <div ref={ref} {...attrs} className={cx('flex min-w-0 shrink-0 flex-col gap-2 border-t border-border-subtle pt-2', className)}>
-      <div className="flex min-w-0 items-center gap-2">
-        <h2 id={titleId} className="m-0 min-w-0 flex-1 truncate text-body font-semibold">
+  const heading = (
+    <div className="grid min-w-0 flex-1 gap-1">
+      {back}
+      {top}
+      {head ?? (
+        <h2 id={titleId} className="m-0 text-body font-semibold break-words">
           {label}
         </h2>
-        {onDismiss ? <CloseButton size="lg" tone="ghost" className="-my-1 shrink-0" aria-label={t('common.close')} onClick={onDismiss} /> : null}
-      </div>
-      {children}
-      {actions ? <div className="flex min-w-0 items-center justify-between gap-2">{actions}</div> : null}
+      )}
     </div>
-  ) : floating ? (
+  )
+  const close = onDismiss ? <CloseButton size="lg" tone="ghost" className="-my-1 shrink-0" aria-label={t('common.close')} onClick={onDismiss} /> : null
+  const row = actions ? <div className={ACTIONS}>{actions}</div> : null
+  // Minimizado: tocar cualquier lugar de la tira que no sea uno de sus botones la sube (el texto es el botón para el teclado).
+  const raiseFrom = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!(event.target as Element).closest('button:not([data-panel-show]), a, [role="option"]')) setMinimized(false)
+  }
+
+  const view = floating ? (
     minimized ? (
       // La tira: la barra con la pregunta y sus botones, en el mismo lugar y con el mismo ancho (el alto, el suyo).
       <div ref={ref} {...attrs} className={cx(windowSurface, windowPlace, 'flex h-auto! min-w-0 flex-col', className)}>
         {bar}
-        {actions ? <div className="flex min-w-0 items-center justify-end gap-2 px-2 py-1">{actions}</div> : null}
+        {row ? <div className="px-2 py-1">{row}</div> : null}
       </div>
     ) : (
       <div ref={ref} {...attrs} className={cx(windowSurface, windowPlace, 'flex min-h-0 min-w-0 flex-col', className)}>
         {bar}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-2">
-          <div className="flex min-w-0 shrink-0 items-start gap-2">
-            <div className="grid min-w-0 flex-1 gap-1">
-              {back}
-              {top}
-              {head ?? (
-                <h2 id={titleId} className="m-0 text-body font-semibold break-words">
-                  {label}
-                </h2>
-              )}
+        {side && children ? (
+          // Apaisada (M-08): la bandeja a la izquierda; el texto arriba y los botones abajo, a su derecha. En el código, el mismo orden de siempre (texto, bandeja, botones).
+          <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 p-3">
+            <div className="col-start-2 row-start-1 flex min-w-0 items-start gap-2">
+              {heading}
+              {aside}
             </div>
-            {aside}
-          </div>
-          {/* Se reacomoda al ancho (la grilla de jugadas, la bandeja que se desliza); estirada más alta que su contenido, el aire queda acá y no entre los botones. */}
-          {children ? (
-            <div data-panel-body="" className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-0.5">
+            <div data-panel-body="" className="col-start-1 row-span-2 row-start-1 max-h-full max-w-60 self-center overflow-auto overscroll-contain py-0.5">
               {children}
             </div>
-          ) : null}
-          {actions ? <div className="flex min-w-0 shrink-0 items-center justify-between gap-2">{actions}</div> : null}
-        </div>
+            {row ? <div className="col-start-2 row-start-2 min-w-0">{row}</div> : null}
+          </div>
+        ) : (
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3">
+            <div className="flex min-w-0 shrink-0 items-start gap-2">
+              {heading}
+              {aside}
+            </div>
+            {/* Se reacomoda al ancho; estirada más alta que su contenido, el aire queda acá y no entre los botones. */}
+            {children ? (
+              <div data-panel-body="" className="-mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-0.5">
+                {children}
+              </div>
+            ) : null}
+            {row}
+          </div>
+        )}
         {grips}
       </div>
     )
   ) : minimized ? (
-    // La tira: la pregunta y sus botones, a la vista; tocar la flecha (o arrastrarla para arriba) lo abre entero.
-    <div ref={ref} {...attrs} className={cx(surface, place, 'flex min-w-0 items-center gap-2 px-2 py-1', className)}>
-      <Swipe dir="up" onFold={() => setMinimized(false)} className="flex min-w-0 flex-1 touch-none items-center gap-1">
-        <IconButton size="lg" tone="ghost" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} onClick={() => setMinimized(false)}>
-          <Icon name="chevron-up" />
-        </IconButton>
-        <p className="m-0 min-w-0 truncate font-semibold">{label}</p>
+    // La tira (M-07): la pregunta y sus botones, a la vista; tocarla entera (o arrastrarla para arriba) la sube.
+    <div ref={ref} {...attrs} className={cx(surface, place, 'flex min-w-0 cursor-pointer items-center gap-2 px-2 py-1', className)} onClick={raiseFrom}>
+      <Swipe dir="up" onFold={() => setMinimized(false)} className="flex min-w-0 flex-1 touch-none">
+        <button type="button" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1 text-left font-semibold focus-visible:outline-none focus-visible:shadow-focus" onClick={() => setMinimized(false)}>
+          <span className="min-w-0 truncate">{label}</span>
+          <Icon name="chevron-up" size={16} strokeWidth={2} className="ml-auto shrink-0 text-muted" />
+        </button>
       </Swipe>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {row}
     </div>
   ) : (
     <div ref={ref} {...attrs} className={cx(surface, place, 'flex min-h-0 min-w-0 flex-col gap-2 px-2 pb-2', className)}>
-      {/* La franja de arriba es el asa: arrastrarla hacia abajo lo minimiza. La rayita no suma alto (va sobre el aire de arriba). */}
-      <Swipe dir="down" onFold={() => setMinimized(true)} follow={follow} className="relative flex min-w-0 touch-none select-none items-start gap-2 pt-2">
-        <span aria-hidden="true" className="absolute left-1/2 top-0.5 h-1 w-10 -translate-x-1/2 bg-muted/50" />
-        <div className="grid min-w-0 flex-1 gap-1">
-          {back}
-          {turn ? (
-            <p data-prompt-turn="" className="m-0 text-micro text-muted">
-              {promptTurnText(turn)}
-            </p>
-          ) : null}
-          {top}
-          {head ?? (
-            <h2 id={titleId} className="m-0 text-body font-semibold break-words">
-              {label}
-            </h2>
-          )}
-        </div>
+      {/* La franja de arriba es el asa: arrastrarla hacia abajo lo minimiza; el asa misma es un botón («Minimizar», para el teclado). No suma alto (va sobre el aire de arriba). */}
+      <Swipe dir="down" onFold={() => setMinimized(true)} follow={follow} className="relative flex min-w-0 touch-none select-none items-start gap-2 pt-3">
+        <button
+          type="button"
+          data-panel-grip=""
+          aria-label={t('duel.prompt.minimize')}
+          title={t('duel.prompt.minimize')}
+          className="absolute left-1/2 top-0 grid h-3 w-16 -translate-x-1/2 place-items-center focus-visible:outline-none focus-visible:shadow-focus"
+          onClick={() => setMinimized(true)}
+        >
+          <span aria-hidden="true" className="h-1 w-10 bg-muted/50" />
+        </button>
+        {heading}
         {aside}
-        <IconButton size="lg" tone="ghost" data-panel-fold="" className="-my-1 shrink-0" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setMinimized(true)}>
-          <Icon name="chevron-down" />
-        </IconButton>
-        {onDismiss ? <CloseButton size="lg" tone="ghost" className="-my-1 shrink-0" aria-label={t('common.close')} onClick={onDismiss} /> : null}
+        {close}
       </Swipe>
       {children ? (
         <div data-panel-body="" className="-mx-2 min-h-0 overflow-y-auto overscroll-contain px-2 py-0.5">
           {children}
         </div>
       ) : null}
-      {actions ? <div className="flex min-w-0 items-center justify-between gap-2">{actions}</div> : null}
+      {row}
     </div>
   )
 
@@ -362,24 +360,6 @@ function Swipe({ dir, onFold, follow, className, children }: { dir: 'down' | 'up
   )
 }
 
-/** El ícono de cada jugada que ofrece el núcleo (`ask-ui`: los textos de la mesa manual); la que no está en la lista, el rayo de activar. */
-const playIcons = (): ReadonlyArray<readonly [string, IconName]> => [
-  [t('practice.menu.normalSummon'), 'summon'],
-  [t('practice.menu.flipSummon'), 'summon'],
-  [t('practice.menu.set'), 'set'],
-  [t('practice.menu.specialSummon'), 'special'],
-  [t('practice.menu.pendulumSummon'), 'special'],
-  [t('practice.menu.asScale'), 'layers'],
-  [t('practice.menu.battleAttack'), 'sword'],
-  [t('practice.menu.attackDirectly'), 'sword'],
-  [t('practice.menu.toAttack'), 'swap'],
-  [t('practice.menu.toDefense'), 'swap'],
-]
-
-function playIcon(label: string): IconName {
-  return playIcons().find(([text]) => text === label)?.[1] ?? 'zap'
-}
-
 /** Todas las jugadas de una vez: «Activar efecto» de una carta con varios efectos da un botón por efecto (sin segundo paso ni submenú). */
 function flatPlays(items: readonly MenuItem[]): MenuItem[] {
   return items.flatMap((item) => item.children ?? [item])
@@ -387,7 +367,7 @@ function flatPlays(items: readonly MenuItem[]): MenuItem[] {
 
 export interface AutoCardSheetProps {
   name: string
-  /** Dónde está la carta o de quién es: arriba del nombre. */
+  /** Dónde está la carta o de quién es. No se dibuja (M-01: ya la tocaste ahí); la mesa lo sigue pasando. */
   kicker?: string
   art: string | null
   /** Sin imagen (una carta del rival que no mostró): el dorso. */
@@ -405,19 +385,25 @@ export interface AutoCardSheetProps {
   /** En el celular, el visor de una pila que la ficha tapa («GY · 2»): arriba, su «volver» (`AutoPanel.crumb`). */
   crumb?: { label: string; onBack: () => void }
   /** Sólo el catálogo lo fuerza (la ventana a 1440 px en su marco); en la mesa, según el ancho. */
-  variant?: AutoPanelVariant
+  // ponytail: `column` ya no existe y se trata como sin decir; queda en el tipo hasta que la mesa (TI-193) deje de pasarlo: se borra al rebasar.
+  variant?: AutoPanelVariant | 'column'
 }
 
 /**
- * La ficha de una carta en el duelo automático (en el celular y en escritorio, la misma): la miniatura, el nombre, el tipo y su ATK/DEF, tres renglones del efecto y «Ver carta»; debajo, **todas** las
- * jugadas que ofrece el núcleo como botones cuadrados con ícono y rótulo (`menuitem`): la principal primero, violeta y de doble ancho; las demás en una grilla de 5 columnas (8 desde 576 px de cartel: en escritorio). Sin «Más»,
- * sin «⋯» y sin submenús (`flatPlays`). Se cierra con la X, Escape o tocando afuera; el foco vuelve a la carta. Reemplaza a `CardSheet`/`CardMenu` sólo con `duel.auto` (la mesa manual no cambia).
+ * La ficha de una carta en el duelo automático (M-01; en el celular y en escritorio, la misma): la miniatura, el nombre, el chip de su tipo con el color de su marco (`frameKindOf`) y su
+ * nivel y ATK/DEF, dos renglones del efecto y «Ver carta»; debajo, **todas** las jugadas que ofrece el núcleo (`menuitem`) en filas de a dos botones de 44 px con el texto en un renglón («…» si
+ * no entra), la principal (la primera del núcleo que se puede) al final, abajo a la derecha y rellena. Sin «Más», sin «⋯» y sin submenús (`flatPlays`). Se cierra con la X, Escape o tocando
+ * afuera; el foco vuelve a la carta. Reemplaza a `CardSheet`/`CardMenu` sólo con `duel.auto` (la mesa manual no cambia).
  */
-export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null, items, empty, onManual, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
+export function AutoCardSheet({ name, art, back = false, apiCard = null, items, empty, onManual, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
   const nameId = useId()
   const [armed, setArmed] = useState(false)
   const plays = flatPlays(items)
   const first = plays.findIndex((item) => !item.disabled)
+  // La principal, al final: las demás en su orden y ella abajo a la derecha.
+  const ordered = first < 0 ? plays : [...plays.filter((_, index) => index !== first), plays[first]!]
+  // Sin imagen, la carta sobre el color de su tipo (lámina T), como el chip.
+  const frame = apiCard ? frameKindOf(apiCard.frameType, apiCard.cardType) : null
   const stats = apiCard?.atk != null ? [`${t('duel.dock.atk')} ${apiCard.atk}`, ...(apiCard.def != null ? [`${t('duel.dock.def')} ${apiCard.def}`] : [])].join(' / ') : null
   const inspect = onInspect ? (
     <Button variant="tertiary" size="sm" iconEnd="chevron-right" className="min-h-8! justify-self-start px-0! text-info pointer-coarse:min-h-11!" onClick={onInspect}>
@@ -431,7 +417,7 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
       <>
         {inspect}
         {onManual ? (
-          <Button variant="secondary" size="sm" className="ml-auto" onClick={onManual}>
+          <Button variant="secondary" className={cx(PANEL_MAIN, 'ml-auto')} onClick={onManual}>
             {t('auto.bar.manual')}
           </Button>
         ) : null}
@@ -464,45 +450,54 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
       focus='[role="menuitem"]'
       onDismiss={onClose}
       {...(crumb ? { crumb } : {})}
-      variant={variant}
+      variant={variant === 'column' ? undefined : variant}
       className={armed ? undefined : 'pointer-events-none'}
       actions={foot}
       head={
         <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2">
-          <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden bg-input">{back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} className="block h-full w-full object-cover" />}</figure>
+          <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden bg-input">{back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} {...(frame ? { frame } : {})} className="block h-full w-full object-cover" />}</figure>
           <div className="grid min-w-0 gap-0.5">
-            {/* Con «‹ GY · 2» arriba, el lugar ya está dicho. */}
-            {kicker && !crumb ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
             <h2 id={nameId} className="m-0 line-clamp-2 text-body font-bold text-foreground">
               {name}
             </h2>
-            {apiCard ? <p className="m-0 truncate text-micro text-muted">{[apiCard.cardType, levelText(apiCard), stats].filter(Boolean).join(' · ')}</p> : null}
-            {apiCard?.description ? <p className="m-0 line-clamp-3 text-micro text-muted">{apiCard.description}</p> : null}
+            {apiCard ? (
+              <p className="m-0 flex min-w-0 items-center gap-1.5 text-micro text-muted">
+                {/* El tipo, en un chip del color de su marco (lámina T). */}
+                <span data-type-chip="" className={cx('relative shrink-0 px-1.5 font-semibold', frame && frameClass(frame))}>
+                  {apiCard.cardType}
+                </span>
+                <span className="min-w-0 truncate">{[levelText(apiCard), stats].filter(Boolean).join(' · ')}</span>
+              </p>
+            ) : null}
+            {apiCard?.description ? <p className="m-0 line-clamp-2 text-micro text-muted">{apiCard.description}</p> : null}
             {bare ? null : inspect}
           </div>
         </div>
       }
     >
-      <div role="menu" aria-label={name} className="@container">
+      <div role="menu" aria-label={name}>
         {plays.length === 0 ? (
           (empty ?? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p>)
         ) : (
-          <div className="grid grid-cols-5 gap-1 @min-[28rem]:grid-cols-6 @min-[36rem]:grid-cols-8">
-            {plays.map((item, index) => (
-              <Button
-                key={`${index}|${item.label}`}
-                role="menuitem"
-                variant={index === first ? 'primary' : 'secondary'}
-                size="sm"
-                icon={playIcon(item.label)}
-                aria-disabled={item.disabled || undefined}
-                title={item.hint ?? item.label}
-                className={cx('min-h-14 min-w-0 flex-col gap-1 px-1! py-1.5! text-micro', index === first && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
-                onClick={item.disabled ? undefined : item.onSelect}
-              >
-                <span className="line-clamp-3 min-w-0 hyphens-auto break-words text-center">{item.label}</span>
-              </Button>
-            ))}
+          // Filas de a dos (con una suelta, la primera ocupa su fila: la principal queda con pareja, abajo a la derecha); en la ventana, a su ancho y a la derecha.
+          <div className="grid grid-cols-2 gap-2 group-data-[auto-panel=floating]/panel:flex group-data-[auto-panel=floating]/panel:flex-wrap group-data-[auto-panel=floating]/panel:justify-end">
+            {ordered.map((item, index) => {
+              const main = index === ordered.length - 1 && first >= 0
+
+              return (
+                <Button
+                  key={`${index}|${item.label}`}
+                  role="menuitem"
+                  variant={main ? 'primary' : 'secondary'}
+                  aria-disabled={item.disabled || undefined}
+                  title={item.hint ?? item.label}
+                  className={cx('min-w-0 whitespace-nowrap px-3! group-data-[auto-panel=floating]/panel:min-w-32', ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
+                  onClick={item.disabled ? undefined : item.onSelect}
+                >
+                  <span className="min-w-0 truncate">{item.label}</span>
+                </Button>
+              )
+            })}
           </div>
         )}
       </div>
@@ -510,59 +505,101 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
   )
 }
 
-/** Lo que se elige con las flechas en las fases: las apagadas se enfocan con Tab (dicen «Todavía no»), pero las flechas las saltean. */
-const CHOOSABLE = '[role="menuitem"]:not([aria-disabled="true"])'
+/** El botón de fase de la mesa (si no llega `anchor`): el que dice «Fases: …» y abre un menú, el que se ve. */
+const phaseButton = () => [...document.querySelectorAll<HTMLElement>(`[aria-haspopup="menu"][aria-label^="${t('practice.mat.phases')}:"]`)].find((element) => element.getClientRects().length > 0) ?? null
+/** Del botón al menú. */
+const GAP = 4
+const EDGE = 8
+
+/** Adónde se puede ir desde la fase de ahora (sólo las elegibles), con lo que hace cada una: «Ir a la Battle Phase» o, a la End Phase (o de ella a la Draw Phase del rival), «Terminar el turno». */
+export function phaseChoices(items: readonly MenuItem[]): { label: string; onSelect: () => void }[] {
+  return items.flatMap((item) => {
+    if (item.disabled || item.current) return []
+    const phase = PHASES.find((entry) => entry.name === item.label)
+
+    return [{ label: phase && (phase.id === 'end' || phase.id === 'draw') ? t('auto.phase.endTurn') : t('auto.phase.goTo', { phase: item.label }), onSelect: item.onSelect }]
+  })
+}
 
 /**
- * Las fases del duelo automático (`PhaseRow` en la mesa manual): seis botones cuadrados unidos por una línea fina, la de ahora con el aro lima, las que se pueden elegir con aro blanco y las que no,
- * apagadas y punteadas (se distinguen por la forma, no sólo por el color); «Cancelar» abajo. Qué se puede elegir lo da el núcleo (`items`). ← → Inicio y Fin recorren las elegibles; Escape, la X o
- * tocar afuera la cierran.
+ * Las fases del duelo automático (M-04): un menú **pegado al botón de fase** (`anchor`, el rectángulo del botón; sin él, el botón de la mesa por su nombre), debajo de él (arriba si no entra) y
+ * dentro de la pantalla, con **sólo adónde podés ir**, cada una en una fila de 44 px («Ir a la Battle Phase», «Terminar el turno»). Sin título ni la lista de las seis: la fase de ahora la dice
+ * el botón. ↑ ↓ Inicio y Fin recorren; Escape o tocar afuera lo cierran y el foco vuelve al botón.
  */
-export function AutoPhases({ items, onClose, variant }: { items: MenuItem[]; onClose: () => void; variant?: AutoPanelVariant }) {
-  const title = t('auto.phase.title')
-  const onKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const rows = [...event.currentTarget.querySelectorAll<HTMLElement>(CHOOSABLE)]
-    const at = rows.findIndex((row) => row === document.activeElement)
-    const next = event.key === 'ArrowRight' ? at + 1 : event.key === 'ArrowLeft' ? (at < 0 ? rows.length : at) - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : null
+export function AutoPhases({ items, onClose, anchor }: { items: MenuItem[]; onClose: () => void; anchor?: DOMRect }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const leaving = useLeaving()
+  const openedAt = useRef(0)
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null)
+  const rows = phaseChoices(items)
 
-    if (next === null || rows.length === 0) return
+  useEscapeKey(onClose, !leaving)
+  useFocusTrap(ref, !leaving)
+
+  useLayoutEffect(() => {
+    const menu = ref.current
+
+    if (!menu) return
+    openedAt.current = performance.now()
+    const box = anchor ?? phaseButton()?.getBoundingClientRect() ?? null
+    const { offsetWidth: width, offsetHeight: height } = menu
+
+    if (!box) {
+      setAt({ left: Math.max(EDGE, (window.innerWidth - width) / 2), top: Math.max(EDGE, (window.innerHeight - height) / 2) })
+      return
+    }
+    const left = Math.min(Math.max(box.left + box.width / 2 - width / 2, EDGE), Math.max(EDGE, window.innerWidth - width - EDGE))
+    const below = box.bottom + GAP
+
+    setAt({ left, top: below + height <= window.innerHeight - EDGE ? below : Math.max(EDGE, box.top - GAP - height) })
+  }, [anchor])
+
+  const onKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const options = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+    const now = options.findIndex((option) => option === document.activeElement)
+    const next = event.key === 'ArrowDown' ? now + 1 : event.key === 'ArrowUp' ? (now < 0 ? options.length : now) - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : null
+
+    if (next === null || options.length === 0) return
     event.preventDefault()
-    rows[(next + rows.length) % rows.length]!.focus()
+    options[(next + options.length) % options.length]!.focus()
   }
 
-  return (
-    <AutoPanel
-      kind="phases"
-      label={title}
-      focus='[aria-current="true"]'
-      onDismiss={onClose}
-      variant={variant}
-      actions={
-        <Button variant="tertiary" size="sm" onClick={onClose}>
-          {t('common.cancel')}
-        </Button>
-      }
-    >
-      <div role="menu" aria-orientation="horizontal" aria-label={title} className="relative flex justify-between" onKeyDown={onKey}>
-        {/* La línea fina que une las seis, a la altura del centro de las cajas (detrás). */}
-        <span aria-hidden="true" className="absolute inset-x-6 top-5 h-px bg-border" />
-        {phaseRowEntries(items).map(({ item, short, word, name }) => (
-          // La caja de cada fase (`TileButton`): las elegibles con aro blanco; la de ahora, llena de lima; las que no, punteadas y apagadas.
-          <TileButton
-            key={item.label}
-            role="menuitem"
-            // Debajo de la de ahora, «ahora» (su nombre lo dice la caja: «M1»); el lector oye «Fase actual: Main Phase 1».
-            label={item.current ? t('auto.phase.now') : word}
-            aria-label={name}
-            aria-current={item.current ? 'true' : undefined}
-            aria-disabled={item.disabled || undefined}
-            className="relative min-w-0! flex-1 [&>span:first-child]:border-2 [&>span:first-child]:border-white [&[aria-current=true]>span:first-child]:bg-info [&[aria-current=true]>span:first-child]:text-background [&[aria-disabled=true]>span:first-child]:border-dashed [&[aria-disabled=true]>span:first-child]:border-border [&[aria-disabled=true]>span:first-child]:opacity-60"
-            onClick={item.disabled ? undefined : item.onSelect}
+  return usePresence(
+    !leaving,
+    typeof document === 'undefined'
+      ? null
+      : createPortal(
+        <>
+          <div aria-hidden="true" className="fixed inset-0 z-[129]" onClick={() => performance.now() - openedAt.current >= GHOST_CLICK_MS && onClose()} />
+          <div
+            ref={ref}
+            role="menu"
+            tabIndex={-1}
+            aria-label={t('auto.phase.title')}
+            data-prompt="phases"
+            style={at ?? undefined}
+            className={cx('mat-square fixed z-[130] grid min-w-48 border border-primary/60 bg-card-background text-body text-foreground shadow-overlay outline-none motion-safe:animate-dialog-enter', !at && 'invisible')}
+            onKeyDown={onKey}
           >
-            <span className="text-micro font-extrabold leading-none">{short}</span>
-          </TileButton>
-        ))}
-      </div>
-    </AutoPanel>
+            {rows.length === 0 ? (
+              <p className="m-0 flex min-h-11 items-center px-3 text-muted">{t('auto.phase.notYet')}</p>
+            ) : (
+              rows.map((row) => (
+                <button
+                  key={row.label}
+                  type="button"
+                  role="menuitem"
+                  className="flex min-h-11 items-center whitespace-nowrap border-b border-border-subtle px-3 text-left font-semibold last:border-b-0 hover:bg-tint/10 focus-visible:outline-none focus-visible:shadow-focus"
+                  onClick={row.onSelect}
+                >
+                  {row.label}
+                </button>
+              ))
+            )}
+          </div>
+        </>,
+        document.body,
+      ),
+    () => [ref.current],
   )
 }

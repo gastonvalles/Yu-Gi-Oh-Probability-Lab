@@ -82,7 +82,8 @@ describe('auto · una sola hoja abajo en el celular', () => {
     settle()
     expect(document.querySelector('[data-prompt="phases"]')).not.toBeNull()
     expect(viewer()).toBeNull()
-    fireEvent.click(within(document.querySelector<HTMLElement>('[data-prompt="phases"]')!).getByRole('button', { name: 'Cancelar' }))
+    // Las fases son un menú pegado a su botón (M-04): Escape lo cierra.
+    fireEvent.keyDown(window, { key: 'Escape' })
     settle()
 
     // Activar desde el GY: el visor se cierra (si no, taparía lo que el núcleo pregunte después).
@@ -114,10 +115,10 @@ describe('auto · una sola hoja abajo en el celular', () => {
   it('lo que abrís con la pregunta ya abierta va encima: el visor se ve y la pregunta se esconde sin cerrarse (la regla va en el cartel) hasta cerrarlo', () => {
     const fake = renderAuto()
     // La regla de la clase (`body:has(…)`): lo que el navegador evalúa para esconder la pregunta.
-    const covered = () => document.body.matches('body:has(>[data-auto-panel=docked][data-prompt=card],>[data-auto-panel=docked][data-prompt=phases],[data-pile-sheet]:not([hidden]))')
+    const covered = () => document.body.matches('body:has(>[data-auto-panel=docked][data-prompt=card],[data-pile-sheet]:not([hidden]))')
 
     core(() => fake.ask(EFFECT_YN))
-    expect(question()).toHaveClass('in-[body:has(>[data-auto-panel=docked][data-prompt=card],>[data-auto-panel=docked][data-prompt=phases],[data-pile-sheet]:not([hidden]))]:hidden')
+    expect(question()).toHaveClass('in-[body:has(>[data-auto-panel=docked][data-prompt=card],[data-pile-sheet]:not([hidden]))]:hidden')
     expect(question()!.querySelector('[data-layer-back]')).toBeNull()
     expect(covered()).toBe(false)
     openGy()

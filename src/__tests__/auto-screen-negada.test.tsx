@@ -86,7 +86,7 @@ describe('auto-screen · varias obligatorias', () => {
     ],
   }
 
-  it('una banda en el medio: cuál va primero (el número lo dice la principal), la primera ya elegida, sin «No responder»; tocar otra la cambia y la principal la activa con su número («Activar como CL1»)', () => {
+  it('una banda en el medio: cuál va primero, la primera ya elegida, sin «Pasar»; tocar otra la cambia y la principal la activa («Activar»)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(FORCED))
@@ -95,10 +95,10 @@ describe('auto-screen · varias obligatorias', () => {
     // La línea de «Tenés que activar la carta que brilla: tocala» es para una sola.
     expect(lane()).toBeNull()
     expect(band).toHaveTextContent('Los demás se activan después.')
-    expect(within(band).queryByRole('button', { name: 'No responder' })).toBeNull()
-    expect(within(band).getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
+    expect(within(band).queryByRole('button', { name: 'Pasar' })).toBeNull()
+    expect(within(band).getByRole('button', { name: 'Activar' })).toBeEnabled()
     fireEvent.click(within(band).getByRole('option', { name: /Ash Blossom/ }))
-    fireEvent.click(within(band).getByRole('button', { name: 'Activar como CL1' }))
+    fireEvent.click(within(band).getByRole('button', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }])
   })
 
@@ -111,7 +111,7 @@ describe('auto-screen · varias obligatorias', () => {
 
     expect(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ })).toHaveTextContent('Rival, Campo')
     fireEvent.click(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ }))
-    fireEvent.click(within(band).getByRole('button', { name: 'Activar como CL1' }))
+    fireEvent.click(within(band).getByRole('button', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }])
 
     // Sola: la banda lo dice igual (puede no estar a la vista) y tocarla en su campo también la activa.

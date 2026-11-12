@@ -158,6 +158,7 @@ export const auto: Translated<typeof es> = {
   'auto.picker.cards': 'Cards to choose from',
   'auto.picker.choose': { one: 'Choose {count} card', other: 'Choose {count} cards' },
   'auto.picker.status': '{chosen} of {max}',
+  'auto.picker.copies': '{name}, {count} copies',
   'auto.picker.search': 'Search by name',
   'auto.picker.noMatches': 'No cards match “{query}”.',
   // Where each card is: its group's heading (and, lowercased, «…, in your hand» for screen readers) and the short chip over the card.
@@ -259,7 +260,6 @@ export const auto: Translated<typeof es> = {
   'auto.askWhy.activation': 'Activating {name}',
   'auto.askWhy.effect': 'Effect of {name}',
   'auto.band.from': '{place} · {count}',
-  'auto.band.hint': 'Tap a card to choose it; tap it again to let it go.',
   'auto.pick.done': 'Done',
   'auto.pick.chosen': 'Chosen',
   'auto.pick.stat': '{name}, ATK {atk}, DEF {def}, selectable',
@@ -268,9 +268,10 @@ export const auto: Translated<typeof es> = {
   'auto.pick.statRank': '{name}, Rank {rank}, ATK {atk}, DEF {def}, selectable',
   'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, selectable',
   'auto.phase.notYet': 'Not yet',
-  // The automatic duel's phase selector (`AutoPhases`): its title and the word under the current phase.
+  // The automatic duel's phase menu (`AutoPhases`): its name and where you can go.
   'auto.phase.title': 'Select the phase to switch to',
-  'auto.phase.now': 'now',
+  'auto.phase.goTo': 'Go to the {phase}',
+  'auto.phase.endTurn': 'End the turn',
   // One sheet at the bottom on the phone: what the card sheet or a prompt covers and brings back.
   'auto.layer.card': '{name} card',
   'auto.layer.back': 'Back to {place}',
@@ -312,14 +313,13 @@ export const auto: Translated<typeof es> = {
   'auto.lane.thinking': 'The rules engine is resolving…',
   'auto.lane.rivalChoosing': 'The opponent is choosing',
   'auto.lane.respondTo': 'You can respond to {card} with {cards}',
-  'auto.lane.pass': "Don't respond",
+  'auto.lane.pass': 'Pass',
   // The band to respond to a chain (which link is said by the chain stack above): with which cards and which number your response would take.
   'auto.respond.title': 'Respond to the chain',
   'auto.respond.now': 'Activate a card or effect?',
-  'auto.respond.activated': '"{name}" was activated (CL{link}). Chain another card or effect?',
+  'auto.respond.activated': '"{name}" was activated. Respond?',
   'auto.respond.cards': 'You can respond with',
-  'auto.respond.chain': 'Chain as CL{link}',
-  'auto.respond.start': 'Activate as CL1',
+  'auto.respond.start': 'Activate',
   'auto.respond.mode': 'Ask me',
   'auto.lane.mustActivate': { one: 'You must activate the glowing card: tap it', other: 'You must activate the {count} glowing cards: tap one' },
   // Several mandatory ones at once: you pick which one enters the chain first (the band in the middle).

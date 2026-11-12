@@ -69,9 +69,9 @@ function drag(element: Element, dx: number, dy: number, base: Record<string, unk
 }
 
 const onYes = vi.fn()
-const prompt = () =>
+const prompt = (escape = false) =>
   render(
-    <MatPrompt kind="ask" label="¿Activás el efecto?" head={<p className="m-0">¿Activás el efecto?</p>}>
+    <MatPrompt kind="ask" label="¿Activás el efecto?" escape={escape} head={<p className="m-0">¿Activás el efecto?</p>}>
       <button type="button" onClick={onYes}>
         Sí
       </button>
@@ -130,9 +130,10 @@ describe('la pregunta del medio (MatPrompt) desde 1101 px', () => {
     expect(saved('prompt')).toEqual({ x: 50, y: 130 })
   })
 
-  it('arrancar sobre un botón de la cabeza no la mueve, y el botón sigue siendo un clic', () => {
-    prompt()
-    drag(screen.getByRole('button', { name: 'Minimizar' }), 120, 0)
+  it('la cabeza no lleva botones (sin flecha de bajar): Escape la minimiza sin moverla', () => {
+    prompt(true)
+    expect(head().parentElement!.parentElement!.parentElement!.querySelector('button')).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
     expect(saved('prompt')).toBeNull()
     expect(cartel()).toHaveAttribute('data-minimized')
   })
@@ -180,8 +181,8 @@ describe('la pregunta del medio (MatPrompt) desde 1101 px', () => {
   })
 
   it('minimizada, el asa también se lleva (la misma posición) y su flecha la sigue abriendo', () => {
-    prompt()
-    fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
+    prompt(true)
+    fireEvent.keyDown(window, { key: 'Escape' })
     drag(screen.getByText('¿Activás el efecto?', { selector: '[data-minimized] p' }), -60, -40)
     expect(cartel()).toHaveAttribute('data-minimized')
     expect(cartel().style.translate).toBe('-60px -40px')

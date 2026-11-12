@@ -8,7 +8,7 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Stepper } from '../ui/Stepper'
 import { listItemSelected } from '../ui/surfaces'
-import { AutoPanel } from './AutoPanel'
+import { AutoPanel, PANEL_MAIN } from './AutoPanel'
 import { PickCount, type PickCard } from './CardPicker'
 
 interface CounterSheetProps {
@@ -46,13 +46,11 @@ export function CounterSheet({ cards, need, onPick, why }: CounterSheetProps) {
           <p className="m-0 text-micro text-muted">{t('auto.counter.hint')}</p>
         </>
       }
+      aside={<PickCount chosen={total} max={need} />}
       actions={
-        <>
-          <PickCount chosen={total} max={need} />
-          <Button variant="primary" size="sm" className="ml-auto" disabled={total !== need} onClick={() => onPick(counts)}>
-            {t('auto.counter.done')}
-          </Button>
-        </>
+        <Button variant="primary" className={cx(PANEL_MAIN, 'ml-auto')} disabled={total !== need} onClick={() => onPick(counts)}>
+          {t('auto.counter.done')}
+        </Button>
       }
     >
       <ul aria-label={title} className="m-0 grid list-none gap-1 p-0">

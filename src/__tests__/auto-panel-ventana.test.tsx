@@ -72,21 +72,22 @@ function pull(element: Element, dx: number, dy: number) {
 const fixedRadii = (root: Element) => [root, ...root.querySelectorAll('*')].flatMap((element) => [...element.classList].filter((name) => /(^|:)rounded-(full|\[)/.test(name)))
 
 describe('la ventana del escritorio', () => {
-  it('sale en el lugar de siempre (centrada, 620 px, apoyada abajo), con la barra de título violeta, esquinas rectas y 92 % sin desenfoque; es un diálogo nombrado por la pregunta', () => {
+  it('sale en el lugar de siempre (centrada, apaisada de 30 rem, apoyada abajo), con la barra de título violeta sin fase, turno ni flecha de bajar, esquinas rectas y 92 % sin desenfoque; es un diálogo nombrado por la pregunta', () => {
     ask()
     const dialog = screen.getByRole('dialog', { name: '¿Activás el efecto?' })
 
     expect(dialog).toBe(win())
     expect(dialog).toHaveAttribute('data-auto-panel', 'floating')
-    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(38.75rem,var(--mat-w,100vw))]', 'mat-square', 'bg-card-background')
+    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(30rem,var(--mat-w,100vw))]', 'mat-square', 'bg-card-background')
     expect(dialog.className).not.toMatch(/backdrop-|rounded-/)
     expect(fixedRadii(dialog)).toEqual([])
     expect(drag(dialog)).toEqual({ x: 0, y: 0 })
     expect(dialog.style.width).toBe('')
-    // La barra: violeta con texto blanco, el asa (se enfoca), minimizar recto de 44 px.
+    // La barra: violeta con texto blanco, el asa (se enfoca); nada más (M-08: sin fase, turno ni flecha de bajar).
     expect(bar()).toHaveClass('bg-primary', 'text-white', 'cursor-grab', 'focus-visible:shadow-focus')
     expect(bar()).toHaveAttribute('tabindex', '0')
-    expect(within(bar()).getByRole('button', { name: 'Minimizar' })).toHaveClass('size-11', 'rounded-control')
+    expect(within(bar()).queryByRole('button')).toBeNull()
+    expect(dialog.querySelector('[data-panel-fold], [data-prompt-turn]')).toBeNull()
     // Tab recorre la barra, sus botones y los de abajo; el foco arranca en la principal.
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
     expect(dialog.querySelectorAll('[data-window-corner]')).toHaveLength(1)

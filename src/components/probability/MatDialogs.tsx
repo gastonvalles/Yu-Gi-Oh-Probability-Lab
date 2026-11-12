@@ -577,6 +577,11 @@ export const PileYieldContext = createContext(false)
 /** Lo que una pregunta del núcleo tapa y vuelve al contestarla («Ficha de X», «GY · 2»): la cabeza de la pregunta lo dice con su flecha (`AutoPanel`). */
 export const LayerBackContext = createContext<string | null>(null)
 
+/** P-01: el visor junta las copias de la misma carta en una sola, con «×2» (fuera de «Elegir varias»). Apagado: lo prende el duelo automático; la mesa manual no cambia. */
+export const PileGroupContext = createContext(false)
+/** «×3»: cuántas copias junta una carta (el visor y la bandeja del automático), arriba a la izquierda. */
+export const COPIES = 'absolute left-0.5 top-0.5 z-4 grid h-5 place-items-center bg-background/85 px-1 text-micro font-bold leading-none tabular-nums text-white'
+
 /**
  * Las cartas de una pila. El deck y el Extra se muestran en el orden de `ids` (el real: tope primero; al cerrar el
  * deck se baraja, como en la mesa real; el deck del duelo automático va por nombre: su orden no se sabe) y con buscador; cementerio y destierro, la más reciente primero.
@@ -622,6 +627,11 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   const words = normalizeSearchText(query).split(' ').filter(Boolean)
   const visible = words.length === 0 ? ordered : ordered.filter((card) => words.every((word) => normalizeSearchText(card.name).includes(word)))
   const visibleIds = visible.map((card) => card.id)
+  // Las copias juntas (`PileGroupContext`): la misma carta, igual de a la vista y con las mismas marcas; tocarla abre la primera.
+  const grouping = useContext(PileGroupContext) && !choosing
+  const copyOf = (card: (typeof visible)[number]) => (grouping ? [card.name, card.art, card.faceDown, card.faceUp, targeted.has(card.id), glow?.(card.id) ?? ''].join('|') : card.id)
+  const copies = Map.groupBy(visible, copyOf)
+  const shown = [...copies.values()].map((group) => group[0]!)
   const allVisible = visibleIds.length > 0 && visibleIds.every((id) => picked.includes(id))
   const title = pile ? `${PILE_TITLES[pile]} · ${ids.length}` : ''
 
@@ -800,7 +810,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
             tira, de 5.25 rem (las cartas no se agrandan: la tira sigue midiendo sus renglones de 5.25 rem). En el panel de escritorio sin tira, las de 4.5 rem. */}
         <ul
           ref={gridRef}
-          style={{ '--n': visible.length } as CSSProperties}
+          style={{ '--n': shown.length } as CSSProperties}
           className={cx(
             'm-0 list-none p-0',
             strip
@@ -811,11 +821,13 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
           )}
           aria-label={t('practice.dialog.cards')}
         >
-          {visible.map((card) => {
+          {shown.map((card) => {
+            const count = copies.get(copyOf(card))?.length ?? 1
             // Boca abajo y objetivo a la vez: el nombre accesible dice las dos cosas (la mira se suma al "boca abajo", no lo pisa).
             const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.faceUp ? t('practice.dialog.cardFaceUp', { name: card.name }) : card.name
             // El nombre accesible lo da el botón, una sola vez: el arte lleva el mismo nombre en su `alt` y, sin esto, el lector lo diría dos veces («Maxx C Maxx C»).
-            const named = targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : label
+            const one = targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : label
+            const named = count > 1 ? t('auto.picker.copies', { name: one, count }) : one
             const order = choosing ? picked.indexOf(card.id) : -1
             const lit = glow?.(card.id) ?? null
 
@@ -847,6 +859,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
                     {card.faceUp ? <span className="absolute inset-x-0 bottom-0 z-2 bg-background/85 px-1 py-px text-center text-micro font-bold leading-tight text-white">{t('practice.dialog.faceUpTag')}</span> : null}
                     {order >= 0 ? <FxFrame tone="cyan" /> : null}
                     {order >= 0 ? <span aria-hidden="true" className={PICK_ORDER}>{order + 1}</span> : null}
+                    {count > 1 ? <span aria-hidden="true" data-pile-copies="" className={COPIES}>×{count}</span> : null}
                   </span>
                   {anonymous ? null : <span className="truncate text-micro text-foreground">{label}</span>}
                 </button>

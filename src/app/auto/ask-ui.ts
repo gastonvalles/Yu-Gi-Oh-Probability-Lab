@@ -693,9 +693,9 @@ export function effectAskText(prompt: AskPromptView, cause: TriggerCause | null,
   return { kicker, text: name ? t('auto.ask.effectOf', { name }) : t('auto.ask.effect'), place: placeLabel(prompt.at) }
 }
 
-/** El título de responder a una cadena: qué pasó (el último eslabón, con su carta y su número) y qué se te pide; sin cadena, sólo la pregunta. */
+/** El título de responder a una cadena: qué pasó (el último eslabón, con su carta) y qué se te pide; sin cadena, sólo la pregunta. */
 export function respondTitle(offer: RespondOffer, name: string): string {
-  return offer.to ? t('auto.respond.activated', { name, link: offer.to.number }) : t('auto.respond.now')
+  return offer.to ? t('auto.respond.activated', { name }) : t('auto.respond.now')
 }
 
 export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, ctx: AskContext): AskState {
