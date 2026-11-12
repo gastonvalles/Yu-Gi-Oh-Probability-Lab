@@ -1,6 +1,63 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-2-duelo-kit",
+      "date": "2026-11-12",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "El duelo, rearmado con el kit nuevo",
+        "novedades": [
+          "El campo ocupa todo el alto entre tu mano y la del rival, con casillas con forma de carta y cartas más grandes. La mano del rival es un abanico como el tuyo, arriba y un poco más chico.",
+          "El botón de fase volvió al centro, entre las dos Zonas de Monstruos Extra: ahí se ven y se cambian las fases, y desde ahí también terminás el turno.",
+          "La cadena, en grande: cada activación entra al medio como una carta con su número, unida a la anterior por un eslabón. Se resuelven del último al primero y la que queda sin efecto se tacha.",
+          "ATK y DEF siempre a la vista al pie de cada monstruo. De quién es el turno lo dice el borde grueso de su chapa de vidas, y el daño baja contando adentro de la chapa.",
+          "Cada tipo de carta lleva el color de su marco (naranja Efecto, amarillo Normal, verde Mágica, púrpura Trampa), en la ficha, la cadena y la imagen exportada del deck.",
+          "Menús más simples: botones de un renglón con la acción principal a la derecha, elegir varias cartas en un solo cartel con las copias agrupadas («×3») y la posición de un monstruo con dos dibujos. En escritorio vuelven los dos paneles."
+        ],
+        "comoSeUsa": [
+          "Tocá ⚙ en medio del duelo.",
+          "Prendé «Menús flotantes».",
+          "Arrastrá la ventana de su barra y estirala de la esquina: la próxima pregunta aparece donde la dejaste."
+        ],
+        "arreglos": [
+          "Se fueron la pista de fases, el botón del turno de abajo, el cartel de «Turno de…» y la explicación larga de las cadenas.",
+          "Rendirse ahora también está en Solo, dentro de Opciones.",
+          "El tipo de la carta se lee en español y los avisos de confirmación del duelo van con esquinas rectas."
+        ],
+        "ojo": [
+          "En pantallas medianas (tableta) el marcador de vidas todavía es el anterior.",
+          "No se probó en un celular real."
+        ]
+      },
+      "en": {
+        "title": "The duel, rebuilt with the new kit",
+        "novedades": [
+          "The field fills the whole height between your hand and your opponent's, with card-shaped cells and bigger cards. The opponent's hand is a fan like yours, up top and a bit smaller.",
+          "The phase button is back in the center, between the two Extra Monster Zones: that is where phases are shown and changed, and where you end the turn.",
+          "The chain, big: each activation comes in at the middle as a card with its number, linked to the previous one. They resolve from last to first and the one that loses its effect is struck through.",
+          "ATK and DEF always in view at the foot of each monster. Whose turn it is shows in the thick border of their life plate, and damage counts down inside the plate.",
+          "Each card type takes the color of its frame (orange Effect, yellow Normal, green Spell, purple Trap), on the card sheet, the chain and the exported deck image.",
+          "Simpler menus: one-line buttons with the main action on the right, picking several cards in a single prompt with copies grouped (\"×3\") and a monster's position picked with two drawings. On desktop the two panels are back."
+        ],
+        "comoSeUsa": [
+          "Tap ⚙ in the middle of a duel.",
+          "Turn on \"Floating menus\".",
+          "Drag the window by its bar and stretch it from the corner: the next question shows up where you left it."
+        ],
+        "arreglos": [
+          "The phase track, the turn button below, the \"Turn of…\" prompt and the long chain explanation are gone.",
+          "Surrender is now also in Solo, inside Options.",
+          "The card type reads in your language and the duel confirmation prompts have square corners."
+        ],
+        "ojo": [
+          "On medium screens (tablet) the life counter is still the previous one.",
+          "It was not tested on a real phone."
+        ]
+      }
+    },
+    {
       "id": "2026-11-12-1-duelo-mejoras",
       "date": "2026-11-12",
       "tags": [
