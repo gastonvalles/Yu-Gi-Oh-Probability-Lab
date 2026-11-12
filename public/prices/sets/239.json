@@ -1,7 +1,7 @@
 [
 ["DP07-EN001","Common","1st Edition",0.15,32261,32710364,"Crystal Beast Ruby Carbuncle"],
 ["DP07-EN001","Common","Unlimited",0.11,32261,32710364,"Crystal Beast Ruby Carbuncle"],
-["DP07-EN002","Rare","1st Edition",0.34,32258,32933942,"Crystal Beast Amethyst Cat"],
+["DP07-EN002","Rare","1st Edition",0.31,32258,32933942,"Crystal Beast Amethyst Cat"],
 ["DP07-EN002","Rare","Unlimited",0.19,32258,32933942,"Crystal Beast Amethyst Cat"],
 ["DP07-EN003","Common","1st Edition",0.25,32260,68215963,"Crystal Beast Emerald Tortoise"],
 ["DP07-EN003","Common","Unlimited",0.11,32260,68215963,"Crystal Beast Emerald Tortoise"],
@@ -26,14 +26,14 @@
 ["DP07-EN013","Common","1st Edition",0.74,32256,95326659,"Crystal Beacon"],
 ["DP07-EN013","Common","Unlimited",0.14,32256,95326659,"Crystal Beacon"],
 ["DP07-EN014","Common","1st Edition",0.13,32263,35486099,"Crystal Blessing"],
-["DP07-EN014","Common","Unlimited",0.08,32263,35486099,"Crystal Blessing"],
+["DP07-EN014","Common","Unlimited",0.01,32263,35486099,"Crystal Blessing"],
 ["DP07-EN015","Rare","1st Edition",0.2,32255,72881007,"Crystal Abundance"],
 ["DP07-EN015","Rare","Unlimited",0.08,32255,72881007,"Crystal Abundance"],
 ["DP07-EN016","Common","1st Edition",0.13,32266,8275702,"Crystal Promise"],
 ["DP07-EN016","Common","Unlimited",0.14,32266,8275702,"Crystal Promise"],
 ["DP07-EN017","Rare","1st Edition",0.53,32254,34487429,"Ancient City - Rainbow Ruins"],
 ["DP07-EN017","Rare","Unlimited",0.86,32254,34487429,"Ancient City - Rainbow Ruins"],
-["DP07-EN018","Rare","1st Edition",3.43,83412,74519184,"Hand Destruction"],
+["DP07-EN018","Rare","1st Edition",3.58,83412,74519184,"Hand Destruction"],
 ["DP07-EN018","Rare","Unlimited",1.57,83412,74519184,"Hand Destruction"],
 ["DP07-EN019","Super Rare","1st Edition",0.67,32268,10004783,"Crystal Release"],
 ["DP07-EN019","Super Rare","Unlimited",0.95,32268,10004783,"Crystal Release"],
@@ -47,6 +47,6 @@
 ["DP07-EN023","Common","Unlimited",0.19,32267,96331676,"Crystal Raigeki"],
 ["DP07-EN024","Ultra Rare","1st Edition",4.31,32264,11136371,"Counter Gem"],
 ["DP07-EN024","Ultra Rare","Unlimited",0.59,32264,11136371,"Counter Gem"],
-["DP07-EN025","Rare","1st Edition",0.38,32265,47121070,"Crystal Pair"],
+["DP07-EN025","Rare","1st Edition",0.35,32265,47121070,"Crystal Pair"],
 ["DP07-EN025","Rare","Unlimited",0.28,32265,47121070,"Crystal Pair"]
 ]

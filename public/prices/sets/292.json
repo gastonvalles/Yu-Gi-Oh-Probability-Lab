@@ -15,7 +15,7 @@
 ["YSDJ-EN006","Common","Unlimited",1,26417,58932615,"Elemental HERO Burstinatrix"],
 ["YSDJ-EN007","Common","1st Edition",0.85,26418,84327329,"Elemental HERO Clayman"],
 ["YSDJ-EN007","Common","Unlimited",1.9,26418,84327329,"Elemental HERO Clayman"],
-["YSDJ-EN008","Common","1st Edition",0.58,26419,20721928,"Elemental HERO Sparkman"],
+["YSDJ-EN008","Common","1st Edition",0.59,26419,20721928,"Elemental HERO Sparkman"],
 ["YSDJ-EN008","Common","Unlimited",0.99,26419,20721928,"Elemental HERO Sparkman"],
 ["YSDJ-EN009","Common","1st Edition",0.73,26420,43716289,"Poison Mummy"],
 ["YSDJ-EN009","Common","Unlimited",null,26420,43716289,"Poison Mummy"],
@@ -80,5 +80,5 @@
 ["YSDJ-EN039","Common","1st Edition",0.62,26450,14315573,"Negate Attack"],
 ["YSDJ-EN039","Common","Unlimited",1.85,26450,14315573,"Negate Attack"],
 ["YSDJ-EN040","Common","1st Edition",0.56,26451,62279055,"Magic Cylinder"],
-["YSDJ-EN040","Common","Unlimited",1.49,26451,62279055,"Magic Cylinder"]
+["YSDJ-EN040","Common","Unlimited",0.35,26451,62279055,"Magic Cylinder"]
 ]
