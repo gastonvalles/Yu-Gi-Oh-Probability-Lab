@@ -3,12 +3,14 @@ import { createPortal } from 'react-dom'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import type { ChainBadgeData } from '../../app/card-glow'
+import { printedBadge, statShift } from '../../app/field-stats'
 import { cuesBetween, fated, play, type Cue, type LinkLook } from '../../app/chain-motion'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { PHASES, type MatPhase, type MatSpot } from '../../app/practice-mat'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
 import { t } from '../../i18n'
+import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -45,15 +47,16 @@ export const DUEL_GLOW = [
 ].join(' ')
 
 /**
- * «Puede atacar»: la ficha celeste con la espada, montada sobre el borde de arriba de un monstruo tuyo que puede atacar en tu Battle Phase (además de su brillo `can`). Va al lado de la carta (la carta
- * recorta lo que se sale) y mide el 38 % de su ancho (18 px a 390 px). Decorativa: lo dice la descripción de la carta (`practice.card.canAttack`). Quieta, como el brillo.
+ * «Puede atacar»: la ficha celeste con la espada, en la esquina de arriba a la derecha de un monstruo tuyo que puede atacar en tu Battle Phase (además de su brillo `can`), medio afuera: no tapa
+ * el arte (la de la izquierda es de la insignia de la cadena, `chainBadgeAt`). Va al lado de la carta (la carta recortaría lo que se sale) y mide el 26 % de la casilla (15 px a 390). Decorativa:
+ * lo dice la descripción de la carta (`practice.card.canAttack`). Quieta, como el brillo.
  */
 export function AttackMark() {
   return (
     <span
       aria-hidden="true"
       data-attack-mark=""
-      className="pointer-events-none absolute left-1/2 top-0 z-11 grid aspect-square w-[26%] min-w-4 -translate-x-1/2 -translate-y-[55%] animate-fx-frame-in place-items-center rounded-[3px] bg-[rgb(var(--playable-rgb))] text-background shadow-[0_0_0_1.5px_var(--background),0_2px_6px_rgb(0_0_0/0.5)] motion-reduce:animate-none"
+      className="pointer-events-none absolute right-[15.71%] top-0 z-11 grid aspect-square w-[26%] min-w-4 -translate-y-1/2 translate-x-1/2 animate-fx-frame-in place-items-center bg-[rgb(var(--playable-rgb))] text-background shadow-[0_0_0_1.5px_var(--background),0_2px_6px_rgb(0_0_0/0.5)] motion-reduce:animate-none"
     >
       <Icon name="sword" strokeWidth={2.4} className="size-[72%]" />
     </span>
@@ -387,33 +390,45 @@ const STAT_ARRIVAL_MS = Math.round(FLIGHT_MS * LANDING_AT)
 const BADGE_ARRIVAL: CSSProperties = { animationDelay: `${STAT_ARRIVAL_MS}ms` }
 const STAT_ARRIVAL: CSSProperties = { animationDelay: `${STAT_ARRIVAL_MS + 70}ms` }
 
+/** El Nivel, Rango o LINK impreso de una carta para su ficha («Nivel 4», «Rango 4», «LINK-2»; `printedBadge`), o null: en la mesa no va (sólo mientras se elige, `StatTag`). */
+export function levelText(card: ApiCardReference | null | undefined): string | null {
+  const badge = printedBadge(card)
+  return badge ? t(`practice.mat.badge.${badge.kind}`, { value: badge.value }) : null
+}
+
+/** El color de un número que cambió respecto del impreso (`statShift`): menta si subió, rojo claro si bajó. */
+const SHIFT_TONE = { up: 'text-success-soft', down: 'text-danger-soft' } as const
+
 /**
- * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), abajo y al centro de su
- * casilla, sobre el pie de la carta (donde la impresa lleva los suyos), y su ficha (`badge`: ★ Nivel, R Rango o LINK) arriba y al centro, sobre la fila de estrellas de la carta y debajo de la
- * espada de atacar: no cambian la caja de la carta ni la de la casilla, y no se salen de ella. El ATK en blanco y la DEF apagada, como en la carta; sin DEF, un Link; sin `badge`, sin ficha
- * (no se sabe con certeza). Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla no llega a los dos números de cuatro cifras
- * (`@container`: el celular, de 56 a 65 px, y la mesa de escritorio angosta, de 63 a 73), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`), como se lee la carta; el
- * nombre lleva los dos. Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla: la ficha baja desde arriba (`animate-chip-drop`) y, 70 ms después, el
- * ATK/DEF sube desde abajo (`animate-chip-rise`), con un pop corto; lo que llega después (los números del núcleo), al toque si ya llegó. Con movimiento reducido, quietas.
+ * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), en una placa de 15 px al pie
+ * de la carta, sobre su cuadro de texto (que a este tamaño no se lee): el arte queda entero. Nada más va sobre la carta: la ficha (`badge`: ★ Nivel, R Rango o LINK) sale de la mesa y vive en
+ * la ficha de la carta (`levelText`); vuelve, arriba y al centro, sólo mientras se elige (la de `pickStatsOf`, o la casilla con `data-pick`: Sacrificios y materiales de la mesa manual), que
+ * es cuando el Nivel decide. No cambian la caja de la carta ni la de la casilla. El número que cambió respecto del impreso (`printed`, sólo los de ahora), en menta si subió y en rojo claro si
+ * bajó; un «?» y la mesa manual, sin color. La DEF que no cambió, apagada. Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla
+ * no llega a los dos números de cuatro cifras (`@container`: el celular y la mesa de escritorio angosta), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`); el nombre
+ * lleva los dos. Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla (`animate-chip-drop`, `animate-chip-rise` 70 ms después); con movimiento reducido,
+ * quietas.
  */
 export function StatTag({ stat, sideways = false, className }: { stat: PickStat | null; sideways?: boolean; className?: string }) {
   const def = stat !== null && stat.defense !== null && sideways
   const badge = stat?.badge
+  const atkShift = stat ? statShift(stat.attack, stat.printed?.attack) : null
+  const defShift = stat ? statShift(stat.defense, stat.printed?.defense) : null
 
   return (
     <>
       <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[16%] z-11 animate-chip-drop motion-reduce:animate-none" style={BADGE_ARRIVAL}>
         {badge ? (
-          <span data-stat-badge={badge.kind} className={STAT_CHIP}>{`${BADGE_MARK[badge.kind]}\u2009${badge.value}`}</span>
+          <span data-stat-badge={badge.kind} className={cx(STAT_CHIP, stat.resting ? 'hidden in-data-[pick=true]:block' : 'block')}>{`${BADGE_MARK[badge.kind]}\u2009${badge.value}`}</span>
         ) : null}
       </span>
       <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container animate-chip-rise motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
         {stat ? (
-          <span data-pick-stat="" className={STAT_CHIP}>
-            <span className={cx(def && '@max-[5rem]:hidden')}>{stat.attack}</span>
+          <span data-pick-stat="" className={cx(STAT_CHIP, 'block')}>
+            <span data-shift={atkShift ?? undefined} className={cx(def && '@max-[5rem]:hidden', atkShift && SHIFT_TONE[atkShift])}>{stat.attack}</span>
             {stat.defense === null ? null : (
-              <span className={cx('font-semibold text-muted', def ? '@max-[5rem]:font-extrabold @max-[5rem]:text-foreground' : '@max-[5rem]:hidden')}>
-                <span className={cx(def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
+              <span data-shift={defShift ?? undefined} className={cx('font-semibold', defShift ? SHIFT_TONE[defShift] : 'text-muted', def ? cx('@max-[5rem]:font-extrabold', !defShift && '@max-[5rem]:text-foreground') : '@max-[5rem]:hidden')}>
+                <span className={cx('text-muted', def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
                 {stat.defense}
               </span>
             )}
@@ -424,7 +439,8 @@ export function StatTag({ stat, sideways = false, className }: { stat: PickStat 
   )
 }
 
-const STAT_CHIP = 'mx-auto block w-fit max-w-full whitespace-nowrap rounded-tag bg-background/85 px-1 text-micro font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
+/** 12 px con su renglón de 15 (`leading-tight`), cifras tabulares y el carbón al 92 % debajo: se lee sobre cualquier arte (≥4,5:1). Sin `block`: lo pone cada uso. */
+const STAT_CHIP = 'mx-auto w-fit max-w-full whitespace-nowrap bg-background/92 px-1 text-micro leading-tight font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
 
 /**
  * La barra entre el ATK y la DEF, con espacios finos: «2500 / 2000» mide 80 px y entra justo en la casilla de 1440 px (80–81). El corte (`@max-[5rem]`) es el de cuatro cifras y

@@ -273,6 +273,10 @@ export const practice = {
   'practice.mat.cardStatLevel': '{name}, nivel {level}, ATK {atk}, DEF {def}',
   'practice.mat.cardStatRank': '{name}, rango {rank}, ATK {atk}, DEF {def}',
   'practice.mat.cardStatRating': '{name}, LINK {link}, ATK {atk}',
+  // La ficha de la carta (en la mesa sólo va mientras se elige).
+  'practice.mat.badge.level': 'Nivel {value}',
+  'practice.mat.badge.rank': 'Rango {value}',
+  'practice.mat.badge.link': 'LINK-{value}',
   'practice.mat.cardChosen': '{label} ({chosen})',
   // Los materiales de un Xyz en el campo: el aro de la cantidad y lo que se suma al nombre de la carta.
   'practice.mat.materialCount': { one: '{count} material', other: '{count} materiales' },

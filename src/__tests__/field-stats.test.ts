@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fieldStatsOf, nowStat, printedBadge, printedStat } from '../app/field-stats'
+import { fieldStatsOf, nowStat, printedBadge, printedStat, statShift } from '../app/field-stats'
 import { createMatState, replayMat } from '../app/practice-mat'
 import type { ApiCardReference } from '../types'
 
@@ -38,13 +38,33 @@ describe('field-stats · la etiqueta de ATK/DEF del campo', () => {
   })
 
   it('la ficha de ahora (el duelo automático): el tipo sale de la carta; el Nivel, del núcleo; el Rango y el LINK, impresos si el núcleo dice nivel 0; sin carta o si no coinciden, sin ficha', () => {
-    expect(nowStat({ attack: 1900, defense: 1000, level: 5 }, api('1900', '1000', null, 'effect', 4))).toEqual({ attack: 1900, defense: 1000, badge: { kind: 'level', value: 5 } })
-    expect(nowStat({ attack: 1900, defense: 1000, level: 0 }, api('1900', '1000', null, 'effect', 4))).toEqual({ attack: 1900, defense: 1000 })
-    expect(nowStat({ attack: 2500, defense: 0, level: 0 }, api('2500', '0', null, 'xyz', 4))).toEqual({ attack: 2500, defense: 0, badge: { kind: 'rank', value: 4 } })
-    expect(nowStat({ attack: 2500, defense: 2000, level: 4 }, api('2500', '2000', null, 'xyz', 4))).toEqual({ attack: 2500, defense: 2000 })
-    expect(nowStat({ attack: 2300, defense: 0, level: 0 }, api('2300', null, 2, 'link'))).toEqual({ attack: 2300, defense: null, badge: { kind: 'link', value: 2 } })
-    expect(nowStat({ attack: 1800, defense: 1200, level: 4 }, api('1800', '1200', null, 'effect_pendulum', 4))).toEqual({ attack: 1800, defense: 1200 })
+    const printed = (attack: number | '?', defense: number | '?' | null) => ({ printed: { attack, defense } })
+    expect(nowStat({ attack: 1900, defense: 1000, level: 5 }, api('1900', '1000', null, 'effect', 4))).toEqual({ attack: 1900, defense: 1000, badge: { kind: 'level', value: 5 }, ...printed(1900, 1000) })
+    expect(nowStat({ attack: 1900, defense: 1000, level: 0 }, api('1900', '1000', null, 'effect', 4))).toEqual({ attack: 1900, defense: 1000, ...printed(1900, 1000) })
+    expect(nowStat({ attack: 2500, defense: 0, level: 0 }, api('2500', '0', null, 'xyz', 4))).toEqual({ attack: 2500, defense: 0, badge: { kind: 'rank', value: 4 }, ...printed(2500, 0) })
+    expect(nowStat({ attack: 2500, defense: 2000, level: 4 }, api('2500', '2000', null, 'xyz', 4))).toEqual({ attack: 2500, defense: 2000, ...printed(2500, 2000) })
+    expect(nowStat({ attack: 2300, defense: 0, level: 0 }, api('2300', null, 2, 'link'))).toEqual({ attack: 2300, defense: null, badge: { kind: 'link', value: 2 }, ...printed(2300, null) })
+    expect(nowStat({ attack: 1800, defense: 1200, level: 4 }, api('1800', '1200', null, 'effect_pendulum', 4))).toEqual({ attack: 1800, defense: 1200, ...printed(1800, 1200) })
     expect(nowStat({ attack: 1800, defense: 1200, level: 4 }, null)).toEqual({ attack: 1800, defense: 1200 })
+  })
+
+  it('lo que cambió respecto del impreso (para pintarlo): sube, baja o nada; un «?» o sin impreso, nada; la mesa manual no lleva impresos para comparar', () => {
+    expect(statShift(2100, 1600)).toBe('up')
+    expect(statShift(1200, 1600)).toBe('down')
+    expect(statShift(1600, 1600)).toBeNull()
+    expect(statShift('?', 1600)).toBeNull()
+    expect(statShift(1600, '?')).toBeNull()
+    expect(statShift(1600, undefined)).toBeNull()
+    expect(statShift(null, null)).toBeNull()
+    expect(printedStat(api('1600', '1000'))).not.toHaveProperty('printed')
+  })
+
+  it('la etiqueta de siempre va marcada `resting` (su ficha no se ve salvo eligiendo) y cambia de mapa si cambia el impreso', () => {
+    const mat = replayMat(createMatState(['a'], [], 1), [{ type: 'place', id: 'a', zone: 'mz', index: 0, pos: 'atk' }])
+    const first = fieldStatsOf(mat, () => ({ attack: 1000, defense: 100 }))
+
+    expect(first.get('a')).toEqual({ attack: 1000, defense: 100, resting: true })
+    expect(fieldStatsOf(mat, () => ({ attack: 1000, defense: 100, printed: { attack: 800, defense: 100 } }), first)).not.toBe(first)
   })
 
   it('el mismo mapa si la ficha no cambia (por valor), uno nuevo si cambia', () => {

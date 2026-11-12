@@ -9,12 +9,15 @@ export interface StatBadge {
 
 /**
  * El ATK y la DEF de un monstruo del campo, para su etiqueta (`StatTag`) y su nombre. Sin `defense`, un Link; `'?'`, un valor que la carta no tiene impreso. `badge`, su Nivel, Rango o
- * LINK, sólo si se sabe con certeza (`printedBadge`): si no, no va.
+ * LINK, sólo si se sabe con certeza (`printedBadge`): si no, no va. `printed`, los impresos para comparar (sólo los de ahora, `nowStat`: la etiqueta se pinta si cambiaron). `resting`, la
+ * etiqueta de siempre (`fieldStatsOf`): su ficha no se ve en la mesa salvo mientras se elige en su casilla; la de elegir (`pickStatsOf`) la muestra.
  */
 export interface PickStat {
   attack: number | '?'
   defense: number | '?' | null
   badge?: StatBadge
+  printed?: { attack: number | '?'; defense: number | '?' | null }
+  resting?: true
 }
 
 /** Los marcos que llevan Nivel (los de YGOPRODeck). Los Pendulum, las fichas y lo que no se reconoce no llevan ficha: callar antes que decir un dato falso. */
@@ -35,15 +38,22 @@ export function printedBadge(card: ApiCardReference | null | undefined): StatBad
 /**
  * Lo que el núcleo cuenta de un monstruo (`overlay.stats`): el ATK/DEF de ahora. El núcleo no da el tipo (su nivel es 0 en un Xyz y en un Link), así que la ficha sale de la carta del catálogo
  * (`card`), si se la conoce: el Nivel, el de ahora (el núcleo, si coincide en que tiene); el Rango y el LINK, los impresos (si el núcleo coincide en nivel 0). Sin carta, sin ficha, y nivel 0 y DEF 0
- * es un Link (o un Xyz de DEF 0) y va sin DEF: callar un dato y no decir uno falso.
+ * es un Link (o un Xyz de DEF 0) y va sin DEF: callar un dato y no decir uno falso. Con la carta, también los impresos (`printed`), para pintar lo que subió o bajó.
  */
 export function nowStat(stat: { attack: number; defense: number; level: number } | undefined, card?: ApiCardReference | null): PickStat | null {
   if (!stat) return null
   const print = printedBadge(card)
   const badge = !print ? null : print.kind === 'level' ? (stat.level > 0 ? { kind: 'level' as const, value: stat.level } : null) : stat.level === 0 ? print : null
   const defense = badge ? (badge.kind === 'link' ? null : known(stat.defense)) : stat.level === 0 && stat.defense === 0 ? null : known(stat.defense)
+  const base = printedStat(card)
 
-  return { attack: known(stat.attack), defense, ...(badge ? { badge } : {}) }
+  return { attack: known(stat.attack), defense, ...(badge ? { badge } : {}), ...(base ? { printed: { attack: base.attack, defense: base.defense } } : {}) }
+}
+
+/** Cómo cambió un número respecto del impreso: `up`, `down` o null (igual, un «?» o sin impreso con qué comparar). */
+export function statShift(now: number | '?' | null, printed: number | '?' | null | undefined): 'up' | 'down' | null {
+  if (typeof now !== 'number' || typeof printed !== 'number' || now === printed) return null
+  return now > printed ? 'up' : 'down'
 }
 
 /** Un valor negativo es el «?» de la carta (el núcleo lo guarda como -2; un catálogo, como -1). */
@@ -58,14 +68,14 @@ export function printedStat(card: ApiCardReference | null | undefined): PickStat
   return { attack: printed(card.atk), defense: card.linkValue !== null ? null : printed(card.def), ...(badge ? { badge } : {}) }
 }
 
-/** Dos etiquetas iguales por valor (la ficha también). */
+/** Dos etiquetas iguales por valor (la ficha y los impresos también). */
 const sameStat = (a: PickStat | undefined, b: PickStat) =>
-  a !== undefined && a.attack === b.attack && a.defense === b.defense && a.badge?.kind === b.badge?.kind && a.badge?.value === b.badge?.value
+  a !== undefined && a.attack === b.attack && a.defense === b.defense && a.badge?.kind === b.badge?.kind && a.badge?.value === b.badge?.value && a.printed?.attack === b.printed?.attack && a.printed?.defense === b.printed?.defense
 
 /**
  * La etiqueta de ATK/DEF de siempre, de la mesa automática y de la manual: de los monstruos boca arriba de la fila de monstruos y de las Zonas Extra de `mat`, los que `statOf` conoce
- * (los de ahora, si hay núcleo; los impresos, si no). Boca abajo, nada. Si queda igual a `previous` (por valor), devuelve `previous`: la mesa compara sus props por referencia y un
- * mapa nuevo con lo mismo la volvería a dibujar.
+ * (los de ahora, si hay núcleo; los impresos, si no), marcados `resting`. Boca abajo, nada. Si queda igual a `previous` (por valor), devuelve `previous`: la mesa compara sus props por
+ * referencia y un mapa nuevo con lo mismo la volvería a dibujar.
  */
 export function fieldStatsOf(mat: MatState, statOf: (id: string) => PickStat | null, previous?: ReadonlyMap<string, PickStat>): ReadonlyMap<string, PickStat> {
   const out = new Map<string, PickStat>()
@@ -73,7 +83,7 @@ export function fieldStatsOf(mat: MatState, statOf: (id: string) => PickStat | n
   for (const placed of [...mat.mz, ...mat.emz]) {
     const stat = placed && placed.pos !== 'set' ? statOf(placed.id) : null
 
-    if (stat) out.set(placed!.id, stat)
+    if (stat) out.set(placed!.id, stat.resting ? stat : { ...stat, resting: true })
   }
   if (previous && previous.size === out.size && [...out].every(([id, stat]) => sameStat(previous.get(id), stat))) return previous
   return out

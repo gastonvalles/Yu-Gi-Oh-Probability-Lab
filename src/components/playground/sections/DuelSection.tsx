@@ -266,16 +266,30 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
   )
 }
 
+/** Un número del duelo automático que cambió por un efecto: `by` sobre el impreso (un «?» queda «?»). */
+const shifted = (value: number | '?' | null, by: number) => (typeof value === 'number' ? Math.max(0, value + by) : value)
+
 /**
- * El ATK/DEF de cada monstruo boca arriba del campo (`StatTag`), siempre: sobre el pie de la carta, sin cambiar ninguna caja. Las cifras son las impresas (`fieldStatsOf`, como en la mesa
- * manual; en el duelo automático, las de ahora). Eligiendo, la de cada elegible (`pickStatsOf`) es la misma etiqueta, no otra: su nombre suma «elegible».
+ * El ATK/DEF de cada monstruo boca arriba del campo (`StatTag`), siempre: una placa al pie de la carta, sin cambiar ninguna caja. Las cifras son las impresas (`fieldStatsOf`, como en la mesa
+ * manual; en el duelo automático, las de ahora, y en «Cambiados» las tuyas suben 500 y las del rival bajan 500). Eligiendo, la de cada elegible (`pickStatsOf`) es la misma etiqueta y vuelve el
+ * Nivel: su nombre suma «elegible».
  */
 function StatTagSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
-  const [on, setOn] = useState<'on' | 'pick' | 'off'>('on')
+  const [on, setOn] = useState<'on' | 'shift' | 'pick' | 'off'>('on')
   const sides = useMemo(() => {
-    const picking = (side: DuelSideView) => ({ ...side, pickable: new Set(side.stats?.keys()), pickStats: new Map<string, PickStat>(side.stats) })
+    // La de elegir (`pickStatsOf`) no es la de siempre (`resting`): su ficha se ve.
+    const picking = (side: DuelSideView) => ({
+      ...side,
+      pickable: new Set(side.stats?.keys()),
+      pickStats: new Map([...(side.stats ?? [])].map(([id, stat]): [string, PickStat] => [id, { attack: stat.attack, defense: stat.defense, ...(stat.badge ? { badge: stat.badge } : {}) }])),
+    })
     const bare = (side: DuelSideView) => ({ ...side, stats: undefined })
+    const shift = (side: DuelSideView, by: number) => ({
+      ...side,
+      stats: new Map([...(side.stats ?? [])].map(([id, stat]): [string, PickStat] => [id, { ...stat, attack: shifted(stat.attack, by) ?? '?', defense: shifted(stat.defense, by), printed: { attack: stat.attack, defense: stat.defense } }])),
+    })
 
+    if (on === 'shift') return { mine: shift(duel.mine, 500), theirs: shift(duel.theirs, -500) }
     return on === 'pick' ? { mine: picking(duel.mine), theirs: picking(duel.theirs) } : on === 'off' ? { mine: bare(duel.mine), theirs: bare(duel.theirs) } : duel
   }, [duel, on])
 
@@ -286,12 +300,15 @@ function StatTagSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideV
       className="col-span-full"
       note={
         <>
-          Cada monstruo boca arriba lleva su ATK/DEF abajo de su casilla y, arriba, su Nivel (★), Rango (R) o LINK si se sabe con certeza (baja con la carta que llega y el ATK/DEF sube 70 ms después), siempre y de los dos lados: en el duelo automático el de ahora (con lo que le cambiaron los efectos), en la mesa manual el impreso. El ATK en blanco y la DEF apagada; un Link, sólo el ATK; un valor «?» se ve «?»; boca abajo, nada. En una casilla angosta va sólo el de su posición (ATK parada, DEF acostada). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
+          Lo que se dice de una carta del campo va al pie o afuera, nunca sobre el arte: su ATK/DEF en una placa de 15 px (12 px de letra, el carbón al 92 % debajo) sobre el cuadro de texto, siempre y de los dos lados, y la espada de «puede atacar» en la esquina, medio afuera. En el duelo automático, el de ahora: en menta si subió y en rojo claro si bajó respecto del impreso («Cambiados»); en la mesa manual, el impreso y sin color. Un Link, sólo el ATK; un «?» se ve «?» y sin color; boca abajo, nada. En una casilla angosta (la de abajo, 57 px como a 390) va sólo el de su posición (ATK parada, DEF acostada). El Nivel (★), Rango (R) o LINK no va en la mesa: está en la ficha de la carta y vuelve, arriba, sólo mientras se elige («Eligiendo»). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
         </>
       }
     >
-      <Segmented label="Etiqueta" variant="track" value={on} onChange={setOn} options={[{ value: 'on', label: 'Siempre' }, { value: 'pick', label: 'Eligiendo' }, { value: 'off', label: 'Sin etiqueta' }]} />
+      <Segmented label="Etiqueta" variant="track" value={on} onChange={setOn} options={[{ value: 'on', label: 'Siempre' }, { value: 'shift', label: 'Cambiados' }, { value: 'pick', label: 'Eligiendo' }, { value: 'off', label: 'Sin etiqueta' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
+      <div className="mx-auto w-full max-w-[24.375rem] [--cell:3.57rem]">
+        <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
+      </div>
     </Specimen>
   )
 }

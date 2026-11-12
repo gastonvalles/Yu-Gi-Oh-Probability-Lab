@@ -12,6 +12,7 @@ import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { PromptTurnContext, promptTurnText } from '../duel/MatPrompt'
 import { GHOST_CLICK_MS, LayerBackContext, type MenuItem } from '../probability/MatDialogs'
+import { levelText } from '../probability/MatFx'
 import { phaseRowEntries } from '../probability/PhaseRow'
 import { CARD_BACK } from '../probability/practice-styles'
 import { useSheetHost } from '../ui/BottomSheet'
@@ -436,7 +437,7 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
             <h2 id={nameId} className="m-0 line-clamp-2 text-body font-bold text-foreground">
               {name}
             </h2>
-            {apiCard ? <p className="m-0 truncate text-micro text-muted">{[apiCard.cardType, stats].filter(Boolean).join(' · ')}</p> : null}
+            {apiCard ? <p className="m-0 truncate text-micro text-muted">{[apiCard.cardType, levelText(apiCard), stats].filter(Boolean).join(' · ')}</p> : null}
             {apiCard?.description ? <p className="m-0 line-clamp-3 text-micro text-muted">{apiCard.description}</p> : null}
             {onInspect ? (
               <Button variant="tertiary" size="sm" iconEnd="chevron-right" className="min-h-8! justify-self-start px-0! text-info pointer-coarse:min-h-11!" onClick={onInspect}>
