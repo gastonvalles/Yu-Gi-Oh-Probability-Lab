@@ -16,7 +16,7 @@ import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
 import { SearchField } from '../ui/SearchField'
 import { Skeleton } from '../ui/Skeleton'
-import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
+import { AutoPanel, ON_ART, ON_ART_TAG, PANEL_PRIMARY } from './AutoPanel'
 
 /** De qué lugar es una carta para elegir: la mano, una pila, el campo o debajo de un Xyz. */
 export type PickFrom = MatPile | 'field' | 'material'
@@ -85,7 +85,7 @@ function PlaceChip({ from, theirs }: { from: PickFrom; theirs: boolean }) {
   const zone = from === 'field' ? t('practice.mat.field') : from === 'material' ? t('auto.picker.chip.material') : PILE_SHORT[from]
 
   return (
-    <Badge size="sm" shape="tag" {...(from === 'hand' && !theirs ? { tone: 'brand', solid: true } : {})} icon={FROM_ICON[from]} aria-hidden="true" data-pick-place="" className="min-w-0 max-w-full justify-self-start">
+    <Badge size="sm" shape="tag" {...(from === 'hand' && !theirs ? { tone: 'brand', solid: true } : {})} icon={FROM_ICON[from]} aria-hidden="true" data-pick-place="" className={cx('min-w-0 max-w-full justify-self-start', ON_ART)}>
       <span className="hidden min-w-0 truncate @[4rem]:inline">{theirs ? t('auto.picker.chip.theirs', { zone }) : zone}</span>
     </Badge>
   )
@@ -182,7 +182,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
         aria-disabled={off || undefined}
         aria-label={where}
         title={multi ? t('practice.many.range') : undefined}
-        className={cx('group @container grid min-w-0 content-start gap-1 rounded-none outline-none focus-visible:shadow-focus', off ? 'cursor-default opacity-40' : 'cursor-pointer')}
+        className={cx('group @container relative grid min-w-0 content-start gap-1 rounded-none outline-none focus-visible:shadow-focus', off ? 'cursor-default opacity-40' : 'cursor-pointer')}
         onClick={(event) => {
           setActive(index)
           const key = target(copies)
@@ -192,7 +192,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
       >
         {card.from ? <PlaceChip from={card.from} theirs={card.theirs ?? false} /> : null}
         {tabs && card.place && !card.from ? (
-          <Badge size="sm" shape="tag" aria-hidden="true" className="min-w-0 max-w-full justify-self-start">
+          <Badge size="sm" shape="tag" aria-hidden="true" className={cx('min-w-0 max-w-full justify-self-start', ON_ART_TAG)}>
             <span className="min-w-0 truncate">{card.place}</span>
           </Badge>
         ) : null}
@@ -214,8 +214,8 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
             </span>
           ) : null}
         </span>
-        {/* En un renglón (el alto es de la carta) y entero al pasar el mouse. */}
-        <span aria-hidden="true" data-pick-name="" title={card.name} className="grid min-w-0">
+        {/* En un renglón (el alto es de la carta) y entero al pasar el mouse. En la ventana de escritorio no va: lo dice la imagen (y el nombre accesible). */}
+        <span aria-hidden="true" data-pick-name="" title={card.name} className="grid min-w-0 group-data-[window]/panel:hidden">
           <span className="truncate text-micro text-foreground">{card.name}</span>
           {card.place && !tabs && !card.from ? <span className="truncate text-micro text-muted">{card.place}</span> : null}
         </span>
@@ -266,10 +266,9 @@ export function usePicked(cards: readonly PickCard[], max: number) {
 export const BAND_MAX = 6
 /**
  * La bandeja de los carteles del automático: una sola fila de cartas de 1/6 del ancho (a 390 px, ~56 px; nunca se agrandan con pocas), centradas, y con más de seis se desliza de costado. En la
- * ventana de escritorio, de 4,5 rem. Mide lo que miden las cartas: sin alto fijo.
+ * ventana del celular, de 4,5 rem; en la de escritorio, del tamaño de las de tu mano (`--desk-card`, `AutoPanel`). Mide lo que miden las cartas: sin alto fijo.
  */
-export const TRAY = 'grid-flow-col auto-cols-[calc((100%-2.5rem)/6)] justify-center-safe overflow-x-auto overscroll-x-contain pb-1 group-data-[auto-panel=floating]/panel:auto-cols-[4.5rem]'
-
+export const TRAY = 'grid-flow-col auto-cols-[calc((100%-2.5rem)/6)] justify-center-safe overflow-x-auto overscroll-x-contain pb-1 group-data-[auto-panel=floating]/panel:auto-cols-[4.5rem] group-data-[window]/panel:auto-cols-(--desk-card)!'
 /** El contador «1 de 2» (a la derecha del título), sólo cuando el total es mayor que 1 (nunca «1/1» ni «0 de 1»). */
 export function PickCount({ chosen, max }: { chosen: number; max: number }) {
   return max > 1 ? (
@@ -302,6 +301,8 @@ interface PickBandProps {
   note?: string
   /** De qué carta es y si es su costo o su efecto (`AskWhy`), arriba del título. */
   why?: AskWhyView | null
+  /** Sólo el catálogo lo fuerza (la ventana de escritorio en su marco); en la mesa, según el ancho. */
+  variant?: 'floating'
 }
 
 /**
@@ -309,7 +310,7 @@ interface PickBandProps {
  * caja y la principal a la derecha. Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la primera carta.
  * Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa. Sin «Cancelar», Escape lo minimiza.
  */
-export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note, why }: PickBandProps) {
+export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note, why, variant }: PickBandProps) {
   const titleId = useId()
   const whyId = useId()
   const primary = multi || done
@@ -317,11 +318,14 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
   return (
     <AutoPanel
       kind="ask"
+      variant={variant}
       role="group"
       label={title}
+      titleId={titleId}
       labelledBy={why ? `${titleId} ${whyId}` : titleId}
       focus='[role="option"][tabindex="0"]'
       escape={!onCancel}
+      side="desk"
       top={
         <>
           {place ? (
@@ -331,11 +335,6 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
           ) : null}
           {why ? <AskWhy id={whyId} why={why} /> : null}
         </>
-      }
-      head={
-        <h2 id={titleId} className="m-0 text-body font-semibold">
-          {title}
-        </h2>
       }
       actions={
         primary || onCancel ? (
@@ -418,6 +417,8 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
     <AutoPanel
       kind="pick"
       label={title}
+      // En escritorio, las cartas y los botones en una fila; con buscador, en columna (el campo va arriba de las cartas).
+      side={searchable ? false : 'desk'}
       {...(why ? { describedBy: whyId } : {})}
       focus='[role="option"][tabindex="0"]'
       top={why ? <AskWhy id={whyId} why={why} /> : kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}

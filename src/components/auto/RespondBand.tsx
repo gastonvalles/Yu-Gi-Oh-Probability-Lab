@@ -21,6 +21,8 @@ interface RespondBandProps {
   onToggle: (key: string) => void
   onChain: () => void
   onPass: () => void
+  /** Sólo el catálogo lo fuerza (la ventana de escritorio en su marco); en la mesa, según el ancho. */
+  variant?: 'floating'
 }
 
 /**
@@ -29,14 +31,25 @@ interface RespondBandProps {
  * izquierda del texto). El modo de respuesta («Siempre · Nunca») no va acá: vive en Opciones («Respuestas»). Tocar la carta que brilla en la mesa sigue valiendo. Al aparecer, el foco va a las
  * cartas. Escape es «Pasar» (lo da la mesa), así que no lo minimiza.
  */
-export function RespondBand({ title, about, cards, chosen, onToggle, onChain, onPass }: RespondBandProps) {
+export function RespondBand({ title, about, cards, chosen, onToggle, onChain, onPass, variant }: RespondBandProps) {
   const titleId = useId()
   // El nombre va aparte (se corta él, no la pregunta): se parte la frase donde iría.
   const [lead, tail] = t('auto.respond.strip', { name: NAME_AT }).split(NAME_AT)
+  // La barra de la ventana de escritorio dice la frase entera («Se activó «X». ¿Respondés?») en un renglón: si no entra, se corta el nombre.
+  const at = about ? title.indexOf(about) : -1
+  const line =
+    about && at >= 0 ? (
+      <span className="flex min-w-0">
+        <span className="shrink-0">{title.slice(0, at)}</span>
+        <span className="truncate">{about}</span>
+        <span className="shrink-0">{title.slice(at + about.length)}</span>
+      </span>
+    ) : null
 
   return (
     <AutoPanel
       kind="ask"
+      variant={variant}
       role="group"
       label={title}
       {...(about
@@ -50,14 +63,10 @@ export function RespondBand({ title, about, cards, chosen, onToggle, onChain, on
             ),
           }
         : {})}
-      labelledBy={titleId}
+      titleId={titleId}
+      {...(line ? { line } : {})}
       focus='[role="option"][tabindex="0"]'
       side
-      head={
-        <h2 id={titleId} className="m-0 min-w-0 text-body font-semibold break-words">
-          {title}
-        </h2>
-      }
       actions={
         <>
           <Button variant="tertiary" onClick={onPass}>

@@ -81,7 +81,8 @@ describe('la ventana del escritorio', () => {
 
     expect(dialog).toBe(win())
     expect(dialog).toHaveAttribute('data-auto-panel', 'floating')
-    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(30rem,var(--mat-w,100vw))]', 'mat-square', 'bg-card-background')
+    // De fábrica, el ancho de tu mano (`--window-w`, lo mide al abrir); sin mano a la vista, 30 rem.
+    expect(dialog).toHaveClass('fixed', 'bottom-0', 'w-[min(var(--window-w,30rem),var(--mat-w,100vw))]', 'mat-square', 'bg-card-background')
     expect(dialog.className).not.toMatch(/backdrop-|rounded-/)
     expect(fixedRadii(dialog)).toEqual([])
     expect(drag(dialog)).toEqual({ x: 0, y: 0 })
@@ -90,6 +91,10 @@ describe('la ventana del escritorio', () => {
     expect(bar()).toHaveClass('bg-primary', 'text-white', 'cursor-grab', 'focus-visible:shadow-focus')
     expect(bar()).toHaveAttribute('tabindex', '0')
     expect(within(bar()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Minimizar'])
+    // La pregunta va en la barra, en un renglón (entera en su `title`): es el título que nombra el diálogo, y no se repite abajo.
+    expect(within(bar()).getByRole('heading', { name: '¿Activás el efecto?' })).toHaveClass('truncate', 'text-body')
+    expect(within(bar()).getByRole('heading')).toHaveAttribute('title', '¿Activás el efecto?')
+    expect(screen.getAllByRole('heading')).toHaveLength(1)
     expect(dialog.querySelector('[data-panel-fold], [data-prompt-turn]')).toBeNull()
     // Tab recorre la barra, sus botones y los de abajo; el foco arranca en la principal.
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()

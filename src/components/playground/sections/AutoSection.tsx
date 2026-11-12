@@ -325,11 +325,19 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const frame = (width: string, label: string, variant?: 'floating') => (
     <div className={cx('grid content-start gap-2', width)}>
       <p className="m-0 text-micro text-muted">{label}</p>
-      <div className={cx('grid gap-3 border border-border-subtle bg-background py-3', variant && 'min-h-[36rem] justify-items-center overflow-hidden')}>
+      <div className={cx('grid gap-3 border border-border-subtle bg-background py-3', variant && 'min-h-[36rem] content-start justify-items-center overflow-hidden')}>
         <AutoCardSheet name={ASH.name} kicker={t('auto.picker.place.mine.hand')} art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} variant={variant} />
         {variant ? null : <PhasesSample items={phases} />}
         {/* Abierta desde el visor del GY (celular): lo reemplaza, y «‹ GY · 2» la cierra y lo deja a la vista. */}
         {variant ? null : <AutoCardSheet name={ASH.name} kicker="GY" art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} crumb={{ label: 'GY · 2', onBack: reply('Volver a GY · 2') }} />}
+        {/* Las preguntas en la ventana: la pregunta en la barra; las cartas, del tamaño de las de tu mano, y los botones en su fila, abajo a la derecha. */}
+        {variant ? (
+          <>
+            <RespondBand variant={variant} title={t('auto.respond.activated', { name: ASH.name })} about={ASH.name} link={2} cards={[{ key: 'veiler', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', false) }]} chosen="veiler" onToggle={() => {}} onChain={reply(t('auto.respond.start'))} onPass={reply(t('auto.lane.pass'))} />
+            <AskPrompt variant={variant} text={t('auto.ask.effect')} card={PONIX} place={t('practice.mat.field')} kicker={t('auto.ask.afterEvent', { event: t('auto.ask.event.special') })} yes={{ label: t('practice.menu.activateEffect'), onSelect: reply(t('practice.menu.activateEffect')) }} no={{ label: t('auto.ask.skipEffect'), onSelect: reply(t('auto.ask.skipEffect')) }} />
+            <PickBand variant={variant} title={t('auto.pick.cards', { count: 1 })} place={t('auto.band.from', { place: t('practice.place.gy'), count: GRAVE.length })} cards={GRAVE} chosen={[]} eligible={new Set(GRAVE.map((grave) => grave.key))} multi={false} done={false} onToggle={(key) => onAnswer(key)} onPick={() => {}} onCancel={reply(t('common.cancel'))} />
+          </>
+        ) : null}
       </div>
     </div>
   )

@@ -6,7 +6,8 @@ import { CardArt } from '../CardArt'
 import { AskWhy } from '../duel/AskWhy'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
+import { cx } from '../ui/cx'
+import { AutoPanel, ON_ART_TAG, PANEL_PRIMARY } from './AutoPanel'
 
 /** Un botón de una pregunta del núcleo: lo que dice (verbo y objeto) y qué contesta. */
 export interface AskChoice {
@@ -33,6 +34,8 @@ interface AskPromptProps {
   manual?: AskChoice
   /** De qué carta es y si es su costo o su efecto (`AskWhy`): un sí o no a secas (`select_yesno`) que llega mientras se activa o se resuelve una carta. */
   why?: AskWhyView | null
+  /** Sólo el catálogo lo fuerza (la ventana de escritorio en su marco); en la mesa, según el ancho. */
+  variant?: 'floating'
 }
 
 /**
@@ -40,26 +43,27 @@ interface AskPromptProps {
  * por su arte y con la pestaña de su lugar, centrada en la bandeja (en escritorio, a la izquierda del texto); abajo «No activar» sin caja y la principal a la derecha, que nombra la jugada. Hay que
  * contestarla: Escape la minimiza y, al aparecer, el foco va a la principal. Una cadena que se puede pasar no va acá: va en `RespondBand`.
  */
-export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manual, why }: AskPromptProps) {
+export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manual, why, variant }: AskPromptProps) {
   const textId = useId()
   const whyId = useId()
 
   return (
     <AutoPanel
       kind="ask"
+      variant={variant}
       label={text}
+      titleId={textId}
       labelledBy={why ? `${textId} ${whyId}` : textId}
       focus="[data-ask-primary]"
       escape
       side
-      head={
-        <div className="grid min-w-0 gap-1">
-          {kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
-          {why ? <AskWhy id={whyId} why={why} /> : null}
-          <h2 id={textId} className="m-0 text-body font-semibold">
-            {text}
-          </h2>
-        </div>
+      top={
+        kicker || why ? (
+          <>
+            {kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
+            {why ? <AskWhy id={whyId} why={why} /> : null}
+          </>
+        ) : null
       }
       actions={
         <>
@@ -80,9 +84,10 @@ export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manua
     >
       {card ? (
         <div data-ask-card="" className="flex justify-center">
-          <span className="grid w-14 justify-items-center gap-1 group-data-[auto-panel=floating]/panel:w-18">
+          {/* En la ventana de escritorio, del tamaño de las cartas de tu mano y con la pestaña sobre el arte, abajo. */}
+          <span className="relative grid w-14 justify-items-center gap-1 group-data-[auto-panel=floating]/panel:w-18 group-data-[window]/panel:w-(--desk-card)!">
             {place ? (
-              <Badge size="sm" shape="tag" className="max-w-full justify-self-start">
+              <Badge size="sm" shape="tag" className={cx('max-w-full justify-self-start', ON_ART_TAG)}>
                 {place}
               </Badge>
             ) : null}
