@@ -17,7 +17,7 @@ const step = (kind: ChainStep['kind'], index: number, by?: number): ChainStep =>
 const grayed = () => [...document.querySelectorAll('.grayscale')].filter((element) => !element.closest('[data-testid="chain-notice"]'))
 
 describe('auto-screen · la cadena negada', () => {
-  it('Maxx C (CL1) queda sin efecto por el CL2 del rival: en la escena se tacha, en la mesa su nombre dice «Sin efecto · por CL2» y se ve gris y latiendo, sin moverla', () => {
+  it('Maxx C (CL1) queda sin efecto por el CL2 del rival: su medallón se tacha en rojo, en la mesa su nombre dice «Sin efecto · por CL2» y se ve gris y latiendo, sin moverla', () => {
     const fake = renderAuto()
     const cell = () => document.querySelector('[data-card-id="card-200-1"]')!.parentElement!
     const chain = [link(0, { side: 'mine', id: 'card-200-1' }), link(1, { side: 'theirs', id: 'c1' }), step('solving', 1), step('disabled', 0, 2)]
@@ -31,14 +31,12 @@ describe('auto-screen · la cadena negada', () => {
 
     // Armada, se resuelve: lo que pasa mientras resuelve el del rival (negar la tuya) sale con él.
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    // En la escena: el del rival resuelve en el centro y tu carta, en su lugar, ya va tachada; quién la dejó sin efecto, por su nombre.
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent(/: Resolviendo$/)
-    const linked = screen.getByRole('img', { name: 'Eslabón 1: Carta, tuyo. Sin efecto por Carta' })
-    expect(linked).toHaveAttribute('data-pose', 'slot')
-    expect(linked).toHaveAttribute('data-voided')
-    // Sobre la carta: la insignia tachada y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
-    expect(cell().querySelector('[data-chain-link]')).toHaveClass('line-through')
+    // Resolviendo, la escena en grande no está: lo que pasa lo dice una línea oculta (para el lector de pantalla).
+    expect(document.querySelector('[data-chain-stage]')).toBeNull()
+    expect(screen.getByTestId('chain-notice')).toHaveTextContent(/: Resolviendo$/)
+    // Sobre la carta: el medallón tachado en rojo y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
     expect(cell().querySelector('[data-chain-link]')).toHaveAttribute('data-chain-void', '2')
+    expect(cell().querySelector('[data-chain-link] line')).toHaveClass('stroke-danger')
     const art = cell().querySelector('[data-card-id] > .grayscale')
 
     expect(art).toHaveClass('grayscale', 'motion-safe:animate-fx-void')

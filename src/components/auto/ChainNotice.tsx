@@ -38,99 +38,155 @@ export const whatHappened = (row: ChainNoticeRow, rows: readonly ChainNoticeRow[
 }
 
 /**
- * Dónde queda cada carta en la escena (de 3:4) cuando espera: arriba a la izquierda, arriba a la derecha y abajo al medio, inclinadas, como en Master Duel. Se corren con `translate` desde el
- * centro (fracciones de la carta: un tercio del ancho), así ir al centro es sólo `transform`. `BOND` es el centro de cada lugar en el `viewBox` de 300 × 400 de los eslabones.
+ * Dónde queda cada carta en la escena (de 3:4) cuando espera, por lo nueva que es (`DEPTH[0]`, la última que entró), como en Master Duel: la última, abajo a la izquierda, la más
+ * grande y adelante; las anteriores, cada vez más chicas, atrás y más arriba (en zigzag). Al entrar otra, todas se corren un lugar (sólo `transform`). Se mueven con `translate`
+ * desde el centro (fracciones de la carta: un tercio del ancho). `BOND` es el centro de cada lugar en el `viewBox` de 300 × 400 de la cadena (la carta mide 100 × 146 y su centro sin
+ * correr es 150, 187).
  */
-const SLOT = ['-translate-x-9/10 -translate-y-7/12 -rotate-6', 'translate-x-9/10 -translate-y-7/10 rotate-6', 'translate-y-1/2 -rotate-3']
+const DEPTH = [
+  'z-5 -translate-x-1/3 translate-y-1/2 -rotate-6 scale-150',
+  'translate-x-3/4 -translate-y-1/3 rotate-6 scale-90',
+  '-translate-x-4/5 -translate-y-3/5 -rotate-3 scale-75',
+  'translate-x-1/10 -translate-y-3/4 rotate-3 scale-60',
+]
 const BOND = [
-  [60, 104],
-  [240, 87],
-  [150, 257],
+  [118, 260],
+  [225, 138],
+  [70, 100],
+  [160, 78],
 ] as const
-/** Cuántas cartas se ven a la vez; con más, las primeras esperan detrás y vuelven cuando se van las de arriba. */
-const SHOWN = 3
+/** Cuántas cartas se ven a la vez; las de antes se achican y se van hacia arriba, y vuelven cuando se resuelven las de adelante. */
+const SHOWN = DEPTH.length
+/** Cada cuánto va un eslabón de metal en la cadena que une dos cartas (en unidades del `viewBox`). */
+const LINK_STEP = 17
 
-type Pose = 'slot' | 'center' | 'out'
-const slotOf = (number: number) => (number - 1) % SHOWN
+type Pose = 'slot' | 'back' | 'out'
+
+/** Cuánto se mete la cadena en cada carta desde su centro, por su lugar (las grandes, más): cruza de borde a borde y pisa un poco cada carta, como en Master Duel. */
+const BOND_TRIM = [62, 40, 32, 26]
 
 /**
- * La cadena en grande del duelo automático (K-01 a K-03 del kit; las referencias son Master Duel). La pone la mesa en `duel.chain`, en la capa centrada sobre el campo: llena su alto (3:4; quien la usa le da un alto).
- * - **Armar:** cada activación entra grande y se acomoda inclinada en su lugar (`starting:`), con su número enorme (`text-hit`, del color de su dueño) y el borde del color de su tipo; un
- *   eslabón la une con la anterior. Una activación sola entra igual, con su «1».
- * - **Resolver**, del último al primero (`current`): la carta va al centro, crece y, cuando empieza la siguiente, se va hacia arriba; su eslabón se corta. La negada o sin efecto se tacha antes.
- * - **Una sola línea** abajo (`role="status"`): armando, «Se resuelve del último al primero»; resolviendo, qué pasó con la que está en el centro.
- * - Sólo `translate`/`rotate`/`scale`/`opacity`; con movimiento reducido aparece y se va sin moverse (sólo la opacidad). La capa no ataja toques (`pointer-events-none`): lo de abajo se
- *   sigue tocando. El ritmo lo pone quien la usa (`chainDwell`, `use-auto-asks.tsx`).
+ * La cadena de metal de una carta a la otra, por encima de las cartas: eslabones alternados (uno de frente, hueco, y uno de canto, una barra), girados sobre la recta que las une.
+ * Entra desde la carta anterior (`from`, en el lugar `fromAt`) hacia la nueva (`to`, `toAt`).
  */
-export function ChainStage({ rows, current, done = false }: { rows: readonly ChainNoticeRow[]; /** El que se resuelve (índice en `rows`); -1 mientras se arma. */ current: number; done?: boolean }) {
-  const pose = (index: number): Pose => (done || (current >= 0 && index > current) ? 'out' : index === current ? 'center' : 'slot')
-  // ponytail: con más de tres, sólo las tres de arriba; las de abajo vuelven a su lugar al irse aquéllas.
-  const shown = new Set(rows.filter((_, index) => pose(index) !== 'out').slice(-SHOWN).map((row) => row.number))
+function Bond({ number, from, to, fromAt, toAt }: { number: number; from: readonly [number, number]; to: readonly [number, number]; fromAt: number; toAt: number }) {
+  const length = Math.hypot(to[0] - from[0], to[1] - from[1])
+  const angle = (Math.atan2(to[1] - from[1], to[0] - from[0]) * 180) / Math.PI
+  const start = BOND_TRIM[fromAt]!
+  const span = Math.max(LINK_STEP * 2, length - start - BOND_TRIM[toAt]!)
+
+  return (
+    <g transform={`translate(${from[0]} ${from[1]}) rotate(${angle}) translate(${start} 0)`}>
+      <g data-chain-bond={number} className="opacity-100 transition-[scale,opacity] duration-300 ease-snap starting:scale-x-0 starting:opacity-0 motion-reduce:transition-opacity">
+        {Array.from({ length: Math.floor(span / LINK_STEP) }, (_, i) =>
+          i % 2 === 0 ? (
+            <rect key={i} x={i * LINK_STEP} y={-6} width={24} height={12} rx={6} strokeWidth={3.5} className="fill-none stroke-soft" />
+          ) : (
+            <rect key={i} x={i * LINK_STEP} y={-2} width={24} height={4} rx={2} className="fill-muted" />
+          ),
+        )}
+      </g>
+    </g>
+  )
+}
+
+/**
+ * La cadena en grande del duelo automático (K-01 a K-03 del kit; las referencias son Master Duel), **sólo al encadenar**. La pone la mesa en `duel.chain`, en la capa centrada sobre el
+ * campo: llena su alto (3:4; quien la usa le da un alto).
+ * - **Armar:** cada activación entra grande y derecha desde el centro y cae inclinada a su lugar (`starting:`) con un borde de luz, y el campo baja un poco más; su número enorme (del
+ *   color de su dueño, con borde) se sale por la esquina de abajo y destella. La última va adelante y más grande; las anteriores, atrás, más chicas y más arriba (`DEPTH`); desde la
+ *   quinta, las viejas se achican y se van hacia arriba. Una cadena de metal la une con la anterior y, con dos o más, «CADENA» destella al medio. Una activación sola entra igual, con su «1».
+ * - **El velo:** mientras está, el campo de atrás baja (una capa al lado de la escena que llena la capa de la mesa, sólo `opacity`); no ataja toques.
+ * - **Una sola línea** arriba (`role="status"`, sobre la fila de atrás del rival: nunca pisa tu campo ni tu mano): «Se resuelve del último al primero».
+ * - **Corrida** (`away`, mientras el núcleo pregunta algo que no es responder): ni cartas, ni velo, ni línea a la vista, y vuelve después.
+ * - **Resolver** (Gastón: «la animación con las cartas grandes sucede al momento de encadenar»): apenas empieza, la escena se va entera y no vuelve; quedan los medallones sobre cada lugar
+ *   donde se activó un eslabón (`ChainBadge`, `linksOf`) y lo que pasó con cada uno, en esta línea oculta a la vista (para el lector de pantalla) y en Pasos.
+ * - Sólo `translate`/`rotate`/`scale`/`opacity`; con movimiento reducido aparece y se va sin moverse ni destellar (sólo la opacidad). No ataja toques (`pointer-events-none`): lo de
+ *   abajo se sigue tocando. El ritmo lo pone quien la usa (`chainDwell`, `use-auto-asks.tsx`).
+ */
+export function ChainStage({
+  rows,
+  current,
+  done = false,
+  away = false,
+}: {
+  rows: readonly ChainNoticeRow[]
+  /** El que se resuelve (índice en `rows`); -1 mientras se arma. */
+  current: number
+  done?: boolean
+  /** Se corre: el núcleo te pregunta algo que no es responder (el campo se ve entero). */
+  away?: boolean
+}) {
+  // Resolviendo (algún eslabón dejó de esperar) o terminada: sólo la línea, oculta a la vista.
+  const resolving = current >= 0 || rows.some((link) => link.state !== 'chained')
   const row = rows[current >= 0 ? current : rows.length - 1]
+  const depth = (index: number) => rows.length - 1 - index
+  const pose = (index: number): Pose => (away ? 'out' : depth(index) >= SHOWN ? 'back' : 'slot')
 
   if (!row) return null
-  return (
-    <div data-testid="chain-notice" data-chain-stage="" className="pointer-events-none relative aspect-3/4 h-full max-w-full select-none">
-      <svg aria-hidden="true" viewBox="0 0 300 400" preserveAspectRatio="none" className="absolute inset-0 size-full">
-        {rows.slice(1).map((link) => {
-          const [x1, y1] = BOND[slotOf(link.number - 1)]!
-          const [x2, y2] = BOND[slotOf(link.number)]!
-          const on = shown.has(link.number - 1) && shown.has(link.number)
-
-          return (
-            <line
-              key={link.number}
-              data-chain-bond={link.number}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              strokeWidth={9}
-              strokeDasharray="15 7"
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-              className={cx('stroke-muted transition-opacity duration-200', on ? 'opacity-100' : 'opacity-0')}
-            />
-          )
-        })}
-      </svg>
-      {rows.map((link, index) => {
-        const at = pose(index)
-
-        if (at !== 'out' && !shown.has(link.number)) return null
-        const voided = link.state === 'negated' || link.state === 'disabled'
-
-        return (
-          <div
-            key={link.number}
-            role="img"
-            aria-label={t(link.mine ? 'auto.chain.linkMine' : 'auto.chain.linkTheirs', { number: link.number, card: link.name, state: whatHappened(link, rows) })}
-            data-chain-card={link.number}
-            data-pose={at}
-            {...(voided ? { 'data-voided': '' } : {})}
-            className={cx(
-              'absolute left-1/3 top-2/7 aspect-[421/614] w-1/3 p-1 transition-[translate,rotate,scale,opacity] duration-300 ease-snap starting:scale-150 starting:opacity-0 motion-reduce:transition-opacity',
-              link.frame ? frameClass(link.frame) : 'bg-input',
-              at === 'center' ? 'z-10 scale-135' : at === 'out' ? '-translate-y-1/4 scale-80 opacity-0' : SLOT[slotOf(link.number)],
-            )}
-          >
-            <CardArt remoteUrl={link.art} name={link.name} {...(link.frame ? { frame: link.frame } : {})} className="block size-full object-cover" />
-            <span className="absolute inset-x-1 top-1 truncate bg-background/85 px-1 text-micro font-semibold text-foreground">{link.name}</span>
-            {voided ? (
-              <svg aria-hidden="true" viewBox="0 0 100 146" preserveAspectRatio="none" className="absolute inset-0 size-full">
-                <line x1={4} y1={142} x2={96} y2={4} strokeWidth={6} strokeLinecap="round" vectorEffect="non-scaling-stroke" className="stroke-danger" />
-              </svg>
-            ) : null}
-            <span aria-hidden="true" className={cx('absolute -bottom-6 -right-3 text-hit font-extrabold tabular-nums text-shadow-lg text-shadow-background', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].text)}>
-              {link.number}
-            </span>
-          </div>
-        )
-      })}
-      <p role="status" className="absolute inset-x-0 bottom-0 m-0 min-h-11 border-t border-border-subtle bg-background px-3 py-2.5 text-body font-semibold text-foreground">
+  if (resolving || done) {
+    return (
+      <p data-testid="chain-notice" role="status" className="sr-only">
         {current < 0 ? t('auto.chain.order') : t('auto.chain.say', { card: row.name, what: whatHappened(row, rows) })}
       </p>
-    </div>
+    )
+  }
+  return (
+    <>
+      <div aria-hidden="true" data-chain-veil="" className={cx('pointer-events-none absolute inset-0 bg-background/60 transition-opacity duration-300 starting:opacity-0 motion-reduce:transition-opacity', away ? 'opacity-0' : 'opacity-100')} />
+      {/* Mientras entra un eslabón, el campo baja todavía más. */}
+      {away ? null : <div key={`veil-${rows.length}`} aria-hidden="true" data-chain-dim="" className="pointer-events-none absolute inset-0 animate-chain-veil bg-background/45 motion-reduce:hidden" />}
+      <div data-testid="chain-notice" data-chain-stage="" {...(away ? { 'data-away': '' } : {})} className="pointer-events-none relative aspect-3/4 h-full max-w-full select-none">
+        <svg aria-hidden="true" viewBox="0 0 300 400" className="absolute inset-0 z-6 size-full overflow-visible">
+          {rows.map((link, index) =>
+            // La cadena entre esta carta y la anterior, mientras las dos están en la escena; cada vez que se corren, vuelve a salir desde la anterior.
+            index === 0 || pose(index - 1) !== 'slot' || pose(index) !== 'slot' ? null : (
+              <Bond key={`${link.number}-${depth(index)}`} number={link.number} from={BOND[depth(index - 1)]!} to={BOND[depth(index)]!} fromAt={depth(index - 1)} toAt={depth(index)} />
+            ),
+          )}
+        </svg>
+        {rows.map((link, index) => {
+          const at = pose(index)
+          // La que acaba de entrar: adelante y más grande, con un borde de luz y su número destellando.
+          const newest = index === rows.length - 1 && !away
+
+          return (
+            <div
+              key={link.number}
+              role="img"
+              aria-label={t(link.mine ? 'auto.chain.linkMine' : 'auto.chain.linkTheirs', { number: link.number, card: link.name, state: whatHappened(link, rows) })}
+              data-chain-card={link.number}
+              data-pose={at}
+              className={cx(
+                'absolute left-1/3 top-2/7 aspect-[421/614] w-1/3 p-1 transition-[translate,rotate,scale,opacity] duration-300 ease-snap starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0 motion-reduce:transition-opacity',
+                link.frame ? frameClass(link.frame) : 'bg-input',
+                at === 'out' ? '-translate-y-1/4 scale-80 opacity-0' : at === 'back' ? '-translate-y-full scale-50 opacity-0' : DEPTH[depth(index)],
+              )}
+            >
+              <CardArt remoteUrl={link.art} name={link.name} {...(link.frame ? { frame: link.frame } : {})} className="block size-full object-cover" />
+              <span className="absolute inset-x-1 top-1 truncate bg-background/85 px-1 text-micro font-semibold text-foreground">{link.name}</span>
+              {newest ? <span aria-hidden="true" data-chain-glow="" className="absolute -inset-1.5 animate-fx-flash border-4 border-foreground motion-reduce:hidden" /> : null}
+              <span aria-hidden="true" data-chain-number="" className={cx('absolute -bottom-8 -left-5 text-hit font-extrabold tabular-nums', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].text)}>
+                {newest ? <span data-chain-flash="" className="absolute inset-0 animate-fx-flash text-center motion-reduce:hidden">{link.number}</span> : null}
+                <svg className="block h-16 w-12 overflow-visible">
+                  <text x="50%" y={55} textAnchor="middle" paintOrder="stroke" strokeWidth={8} strokeLinejoin="round" className="fill-current stroke-background">
+                    {link.number}
+                  </text>
+                </svg>
+              </span>
+            </div>
+          )
+        })}
+        {rows.length > 1 && !away ? (
+          <span key={rows.length} aria-hidden="true" data-chain-word="" className="absolute inset-0 z-20 flex animate-fx-flash items-center justify-center text-display font-extrabold uppercase text-foreground text-shadow-lg text-shadow-background motion-reduce:hidden">
+            {t('auto.chain.title')}
+          </span>
+        ) : null}
+        <p role="status" className={cx('absolute inset-x-0 top-0 m-0 truncate bg-background/90 px-3 py-1.5 text-center text-body font-semibold text-foreground', away && 'sr-only')}>
+          {t('auto.chain.order')}
+        </p>
+      </div>
+    </>
   )
 }
 

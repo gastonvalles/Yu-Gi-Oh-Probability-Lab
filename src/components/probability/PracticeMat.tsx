@@ -105,7 +105,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -118,7 +118,7 @@ import { UndoChip, useUndoPlay, type UndoPlay } from './UndoChip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
 import { CARD_BACK, CARD_BACK_URL, DECK_LAYERS, glowFrame } from './practice-styles'
-import { glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
+import { fieldLinkOf, glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
 
 export interface MatCard {
   name: string
@@ -2401,7 +2401,7 @@ function PracticeMatBody({
             stat={fieldStats.get(shown.id) ?? null}
             pickStat={duel?.auto?.cardPick?.stats?.get(shown.id) ?? null}
             targeted={targetedIds.has(shown.id)}
-            link={duel?.links?.get(shown.id) ?? null}
+            link={fieldLinkOf(duel?.links, shown.id)}
             selected={selectedId === shown.id}
             hold={holdPlay(shown.id) !== null}
             still={isAuto}
@@ -2464,7 +2464,7 @@ function PracticeMatBody({
           {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
           {marked ? <TargetMark key={`mira:${shown}`} /> : null}
         </span>
-        {link ? <ChainBadge link={link} className="left-0 top-0" /> : null}
+        {link ? <ChainBadge link={link} /> : null}
       </button>
     )
   }
@@ -3116,7 +3116,7 @@ function PracticeMatBody({
             ) : null}
             <PileBadge count={state.deck.length} />
             {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
-            {deckLink ? <ChainBadge link={deckLink} className="left-0 top-0" /> : null}
+            {deckLink ? <ChainBadge link={deckLink} /> : null}
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
@@ -3734,7 +3734,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
       </div>
-      {link && !dragging ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
+      {link && !dragging ? <ChainBadge link={link} /> : null}
       {canAttack && !dragging ? <AttackMark /> : null}
       {/* Parada, la carta llega al pie de la casilla: la etiqueta de elegida va ahí, y el ATK/DEF, encima. */}
       {spot === 'mz' || spot === 'emz' ? <StatTag stat={dragging ? null : (pickStat ?? stat)} className={cx(chosen && !sideways && 'bottom-4.5')} /> : null}

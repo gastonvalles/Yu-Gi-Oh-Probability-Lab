@@ -198,6 +198,8 @@
   /* La placa de los carteles del duelo (DuelMedal): entra una vez y se queda quieta (nada gira sin fin). */
   --animate-plate-in: plate-in 700ms var(--ease-snap) both;
   --animate-banner-veil: banner-veil 2.8s var(--ease-out) both;
+  /* La cadena en grande: el campo baja de más mientras entra un eslabón (lo que dura su `CHAIN_LINK_MS`). */
+  --animate-chain-veil: banner-veil 700ms var(--ease-out) both;
   --animate-banner-rise: banner-rise 600ms var(--ease-out) 350ms both;
   /* El golpe letal en cámara lenta (`LethalBlow`, 1500 ms = `LETHAL_MS`): el destello, los rayos desde el punto del golpe y el daño en grande. */
   --animate-lethal-flash: lethal-flash 1500ms var(--ease-out) both;

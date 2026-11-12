@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { chainFeed, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION } from '../app/auto/protocol'
-import { FROM_HAND, actingOf, glowOf, linksOf, pileGlowOf, pileLinksOf } from '../app/card-glow'
+import { FROM_HAND, actingOf, fieldLinkOf, glowOf, handLinksOf, linksOf, pileGlowOf, pileLinksOf } from '../app/card-glow'
 import { glowFrame } from '../components/probability/practice-styles'
 
 const sets = { can: new Set(['a', 'b']), act: new Set(['b', 'c']) }
@@ -56,16 +56,34 @@ describe('el brillo de una carta en un duelo', () => {
   })
 })
 
-describe('la insignia del eslabón (CL1, CL2…)', () => {
+describe('los medallones del eslabón', () => {
   const link = (index: number, side: 'mine' | 'theirs', id: string, mine = side === 'mine', from?: number): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: { side, id }, code: 1, mine, ...(from === undefined ? {} : { from }) } })
 
-  it('cada carta de la cadena lleva su número, del lado donde está y con el color de quien la activó, también ya resuelta', () => {
-    const steps: ChainStep[] = [link(0, 'mine', 'm1'), link(1, 'theirs', 't1', false, FROM_HAND), link(2, 'mine', 't2', false), { kind: 'solving', at: 0, index: 2 }, { kind: 'solved', at: 0, index: 2 }]
-    const { mine, theirs } = linksOf(chainFeed(steps, steps.length))
+  it('cada carta de la cadena lleva su número, del lado donde está y con el color de quien la activó; el que se resuelve late y se van del último al primero', () => {
+    const steps: ChainStep[] = [link(0, 'mine', 'm1'), link(1, 'theirs', 't1', false, FROM_HAND), link(2, 'mine', 't2', false), { kind: 'solving', at: 0, index: 2 }, { kind: 'solved', at: 0, index: 2 }, { kind: 'solving', at: 0, index: 1 }]
+    const at = (count: number) => linksOf(chainFeed(steps, count))
 
-    expect(Object.fromEntries(mine)).toEqual({ m1: { numbers: [1], mine: true, fromHand: false }, t2: { numbers: [3], mine: false, fromHand: false } })
-    expect(Object.fromEntries(theirs)).toEqual({ t1: { numbers: [2], mine: false, fromHand: true } })
+    expect(Object.fromEntries(at(3).mine)).toEqual({ m1: { numbers: [1], mine: true, fromHand: false }, t2: { numbers: [3], mine: false, fromHand: false } })
+    expect(Object.fromEntries(at(3).theirs)).toEqual({ t1: { numbers: [2], mine: false, fromHand: true } })
+    // Resolviendo el 3: el suyo late.
+    expect(at(5).mine.get('t2')).toEqual({ numbers: [3], mine: false, fromHand: false, resolving: 3 })
+    // Empieza el 2: el 3 ya se fue.
+    expect(Object.fromEntries(at(6).mine)).toEqual({ m1: { numbers: [1], mine: true, fromHand: false } })
+    expect(at(6).theirs.get('t1')?.resolving).toBe(2)
+    // Terminada, ninguno.
+    expect(linksOf(chainFeed([...steps, { kind: 'end', at: 0, index: -1 }], 7))).toEqual({ mine: new Map(), theirs: new Map() })
     expect(linksOf(null)).toEqual({ mine: new Map(), theirs: new Map() })
+  })
+
+  it('lo activado desde la mano va sobre la mano, no sobre la pila ni la casilla adonde se fue (un costo); si sigue en la mano, sobre su carta', () => {
+    const { mine } = linksOf(chainFeed([link(0, 'mine', 'f'), link(1, 'mine', 'h1', true, FROM_HAND), link(2, 'mine', 'h2', true, FROM_HAND)], 3))
+
+    expect(fieldLinkOf(mine, 'f')?.numbers).toEqual([1])
+    expect(fieldLinkOf(mine, 'h1')).toBeNull()
+    expect(pileLinksOf(['h1', 'f'], mine)?.numbers).toEqual([1])
+    // h1 se descartó (ya no está en la mano) y h2 sigue: sólo h1 va sobre la mano.
+    expect(handLinksOf(mine, ['h2', 'x'])).toEqual({ numbers: [2], mine: true, fromHand: true })
+    expect(handLinksOf(mine, ['h1', 'h2'])).toBeNull()
   })
 
   it('una carta con dos eslabones los lleva los dos; una pila junta los de adentro, en orden', () => {

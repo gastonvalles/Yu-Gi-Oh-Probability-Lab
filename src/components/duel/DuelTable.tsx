@@ -1,7 +1,7 @@
 import { useContext, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
-import { pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
+import { fieldLinkOf, handLinksOf, pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
 import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
 import { flatTransform, type Point } from '../../app/flat-quad'
@@ -13,7 +13,7 @@ import { THEIR_FAN_RISE, THEIR_HAND, TheirHandSize } from './their-hand'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from '../probability/MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from '../probability/MatFx'
 import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZONE_CARD, ZoneLines } from '../probability/PracticeMat'
@@ -117,7 +117,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
 
   return (
     <div className={cx('grid gap-1.5', className)}>
-      {showTheirs && hand !== undefined ? <TheirHand count={hand} align="start" /> : null}
+      {showTheirs && hand !== undefined ? <TheirHand count={hand} align="start" links={handLinksOf(theirs.links, [])} /> : null}
       <div role="group" aria-label={t('duel.table.label')} className={GRID} style={{ '--areas': rows.join(' ') } as CSSProperties}>
         {showTheirs ? <SideCells side={theirs} owner="theirs" /> : null}
         {[0, 1].map((index) => (
@@ -170,9 +170,12 @@ export function TheirHand({
   onMark,
   onCard,
   onCardHover,
+  links,
   align = 'center',
 }: {
   count: number
+  /** Los eslabones de la cadena que activó desde la mano (duelo automático): sus medallones, sobre el abanico. */
+  links?: ChainBadgeData | null
   /** Cómo la pone su lugar: centrada (encima del campo de la mesa) o arrimada a la izquierda (en una grilla: `DuelTable`, la vista del espectador). */
   align?: 'center' | 'start'
   /** Boca arriba, en su orden (sin esto, de dorso). */
@@ -274,6 +277,11 @@ export function TheirHand({
           )
         })}
       </div>
+      {links ? (
+        <div data-hand-links="" className="pointer-events-none absolute inset-y-0 z-8" style={fanBox}>
+          <ChainBadge link={links} />
+        </div>
+      ) : null}
       {marked || onMark ? (
         <div className="absolute inset-y-0 z-8" style={fanBox}>
           {marked ? <TargetMark /> : null}
@@ -395,7 +403,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   // De una carta de esta mesa se sabe su arte, no si es un Xyz; los materiales sólo se ponen debajo de uno (Invocación Xyz o «Adjuntar» a un Xyz), así que se muestran los que tenga. Boca abajo también: siguen debajo, a la vista.
   const materials = placed.materials.length
   const acting = side.act?.has(placed.id) ?? false
-  const link = side.links?.get(placed.id)
+  const link = fieldLinkOf(side.links, placed.id)
   const picked = side.pickStats?.get(placed.id)
   const stat = picked ?? side.stats?.get(placed.id) ?? null
   const named = picked ? pickStatLabel(label, picked) : stat ? statLabel(label, stat) : label
@@ -429,7 +437,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: named })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
         {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white">{placed.counters}</span> : null}
       </div>
-      {link ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
+      {link ? <ChainBadge link={link} /> : null}
       {spot === 'mz' || spot === 'emz' ? <StatTag stat={stat} /> : null}
     </>
   )
@@ -476,7 +484,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
       {marked ? <TargetMark key={`mira:${shown}`} /> : null}
       </span>
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
-      {link ? <ChainBadge link={link} className="left-0 top-0" /> : null}
+      {link ? <ChainBadge link={link} /> : null}
     </div>
   )
 }

@@ -33,39 +33,58 @@ export function actingOf(feed: ChainFeed | null): { mine: Set<string>; theirs: S
 /** `LOCATION.HAND` del núcleo (`auto/protocol.ts`; el test los compara): copiado para que la mesa de práctica, que importa este módulo, no cargue el protocolo. */
 export const FROM_HAND = 2
 
-/** La insignia de la cadena de una carta: sus eslabones (CL1 = 1; una carta con dos eslabones, «CL1·3»), si la activaste vos y si alguno se activó desde la mano. */
+/** El medallón de la cadena de una carta: sus eslabones (1 = CL1; una carta con dos eslabones lleva dos), si la activaste vos y si alguno se activó desde la mano. */
 export interface ChainBadgeData {
   numbers: number[]
   mine: boolean
   fromHand: boolean
+  /** El eslabón suyo que se está resolviendo: su medallón late. */
+  resolving?: number
   /** Un eslabón de la carta quedó negado o sin efecto (la insignia va tachada, con la marca roja): su estado y quién lo negó (`ChainRow.by`), si se sabe. */
   voided?: { state: 'negated' | 'disabled'; by?: number }
 }
 
 /**
- * Las cartas de la cadena que se ve (`chainFeed`), por id y del lado de la mesa donde están, con sus eslabones: todos, también los ya resueltos o negados, mientras la cadena esté a la
- * vista. Quien la dibuja la busca por id en la mesa de ahora, así la insignia sigue a la carta si cambia de lugar (una carta descartada como costo pasa a la pila del Cementerio).
+ * Las cartas de la cadena que se ve (`chainFeed`), por id y del lado de la mesa donde están, con sus eslabones pendientes: armando, todos; resolviendo (del último al primero), el que
+ * se resuelve (`resolving`, late) y los que esperan, también los negados (tachados); los ya resueltos se van y, terminada, no queda ninguno. Quien la dibuja la busca por id en la mesa
+ * de ahora (su casilla o su pila); lo activado desde la mano va sobre esa carta de la mano o, si se fue (un costo), sobre la mano (`handLinksOf`).
  */
 export function linksOf(feed: ChainFeed | null): { mine: Map<string, ChainBadgeData>; theirs: Map<string, ChainBadgeData> } {
   const links = { mine: new Map<string, ChainBadgeData>(), theirs: new Map<string, ChainBadgeData>() }
 
-  for (const row of feed?.rows ?? []) {
-    if (!row.card) continue
+  if (!feed || feed.done) return links
+  for (const row of feed.rows) {
+    if (!row.card || (feed.current >= 0 && row.number - 1 > feed.current)) continue
+    const resolving = row.number - 1 === feed.current ? { resolving: row.number } : {}
     const fromHand = row.from === FROM_HAND
     const seen = links[row.card.side].get(row.card.id)
     const voided = row.state === 'negated' || row.state === 'disabled' ? { voided: { state: row.state, ...(row.by ? { by: row.by } : {}) } } : {}
 
-    if (seen) links[row.card.side].set(row.card.id, { ...seen, numbers: [...seen.numbers, row.number], fromHand: seen.fromHand || fromHand, ...voided })
-    else links[row.card.side].set(row.card.id, { numbers: [row.number], mine: row.mine, fromHand, ...voided })
+    if (seen) links[row.card.side].set(row.card.id, { ...seen, numbers: [...seen.numbers, row.number], fromHand: seen.fromHand || fromHand, ...voided, ...resolving })
+    else links[row.card.side].set(row.card.id, { numbers: [row.number], mine: row.mine, fromHand, ...voided, ...resolving })
   }
   return links
 }
 
-/** La insignia de una pila: los eslabones de las cartas de adentro, juntos y en orden (del color de la primera), o null si no hay ninguna en la cadena. */
-export function pileLinksOf(ids: readonly string[], links: ReadonlyMap<string, ChainBadgeData> | undefined): ChainBadgeData | null {
-  const found = links?.size ? ids.flatMap((id) => links.get(id) ?? []) : []
+/** El medallón de una pila: los eslabones de las cartas de adentro activados ahí (no los de la mano, que van sobre la mano), juntos y en orden (del color de la primera), o null. */
+export const pileLinksOf = (ids: readonly string[], links: ReadonlyMap<string, ChainBadgeData> | undefined): ChainBadgeData | null =>
+  merged(links?.size ? ids.flatMap((id) => links.get(id) ?? []).filter((link) => !link.fromHand) : [], false)
 
+/** Lo activado desde la mano que ya no está en ella (`hand`: los ids de ahora; un costo la mandó a otro lado): sus medallones, juntos, van sobre la mano. */
+export const handLinksOf = (links: ReadonlyMap<string, ChainBadgeData> | undefined, hand: readonly string[]): ChainBadgeData | null =>
+  merged([...(links ?? [])].flatMap(([id, link]) => (link.fromHand && !hand.includes(id) ? [link] : [])), true)
+
+/** Varios en un mismo lugar: los números juntos y en orden, del color del primero. */
+function merged(found: readonly ChainBadgeData[], fromHand: boolean): ChainBadgeData | null {
+  const resolving = found.find((link) => link.resolving)?.resolving
   const voided = found.find((link) => link.voided)?.voided
 
-  return found[0] ? { numbers: found.flatMap((link) => link.numbers).sort((a, b) => a - b), mine: found[0].mine, fromHand: found.some((link) => link.fromHand), ...(voided ? { voided } : {}) } : null
+  return found[0] ? { numbers: found.flatMap((link) => link.numbers).sort((a, b) => a - b), mine: found[0].mine, fromHand, ...(voided ? { voided } : {}), ...(resolving ? { resolving } : {}) } : null
+}
+
+/** En una casilla del campo, sólo lo activado ahí: lo de la mano va sobre la mano. */
+export const fieldLinkOf = (links: ReadonlyMap<string, ChainBadgeData> | undefined, id: string) => {
+  const link = links?.get(id)
+
+  return link && !link.fromHand ? link : null
 }

@@ -27,7 +27,7 @@ import { t } from '../../i18n'
 import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import type { ChainBadgeData } from '../../app/card-glow'
+import { handLinksOf, type ChainBadgeData } from '../../app/card-glow'
 import { ChainBadge, FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, VOIDED_ART, chainLinkLabel, fxVars } from './MatFx'
 import { CARD_BACK, glowFrame } from './practice-styles'
 
@@ -356,6 +356,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
   const onCardKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>, id: string) => latest.current.handleKeyDown(event, id), [])
   const deckRect = useCallback(() => latest.current.getDeckRect(), [])
   /** El lugar de la carta `index` en el abanico, en reposo: un poco más abajo y más inclinada cuanto más lejos del centro. */
+  const handLeft = handLinksOf(links, cards.map((card) => card.id))
   const restTransform = (index: number) => `translate3d(${slotLeft(layout, index)}px, ${TOP_ROOM + Math.abs(index - (count - 1) / 2) ** 2 * 1.6}px, 0) rotate(${fanAngle(index, count, fanDegrees)}deg)`
 
   return (
@@ -399,18 +400,24 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
           />
         )
       })}
-      {/* La insignia de la cadena, sobre el borde de arriba de su carta y con su mismo lugar en el abanico (la carta recorta lo que se sale). Van después de todas las cartas: no cambian su lugar entre hermanas. */}
+      {/* Los medallones de la cadena, sobre su carta y con su mismo lugar en el abanico (la carta recorta lo que se sale). Van después de todas las cartas: no cambian su lugar entre hermanas. */}
       {links
         ? cards.map((card, index) => {
             const link = links.get(card.id)
 
             return link && draggedId !== card.id ? (
-              <span key={`cl:${card.id}`} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 z-60" style={{ width: layout.cardWidth, transform: restTransform(index) }}>
-                <ChainBadge link={link} className="left-0 top-0" />
+              <span key={`cl:${card.id}`} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 z-60" style={{ width: layout.cardWidth, height: layout.cardHeight, transform: restTransform(index) }}>
+                <ChainBadge link={link} />
               </span>
             ) : null
           })
         : null}
+      {/* Lo activado desde la mano que ya se fue de ella (un costo): su medallón, sobre la mano. */}
+      {handLeft ? (
+        <span data-hand-links="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-60">
+          <ChainBadge link={handLeft} />
+        </span>
+      ) : null}
       {cards.length === 0 ? <span className="absolute inset-0 grid place-items-center text-micro text-soft">{t('practice.hand.empty')}</span> : null}
     </div>
   )

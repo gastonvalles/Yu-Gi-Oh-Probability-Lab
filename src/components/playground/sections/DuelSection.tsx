@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatScene, PickMarks } from '../../probability/MatArena'
-import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, fxVars } from '../../probability/MatFx'
+import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from '../../probability/MatFx'
 import { glowFrame } from '../../probability/practice-styles'
 import { AttackFx, ChevronTrail, measureStrike, type Strike } from '../../probability/AttackFx'
 import { t } from '../../../i18n'
@@ -251,36 +251,38 @@ function PendulumPickerSample({ range, title, note }: { range: string; title: st
 }
 
 /**
- * La insignia del eslabón: una cadena de cuatro sobre la mesa de muestra (CL1 un monstruo del rival en ataque, CL2 uno tuyo en defensa, CL3 tu Cementerio y CL4 tu Zona de campo). Las
- * pide `links` de cada lado (`linksOf` de `app/card-glow.ts`, por id).
+ * Los medallones de la cadena: una cadena de cinco sobre la mesa de muestra (1, un monstruo del rival en ataque; 2, uno tuyo en defensa; 3, tu Cementerio; 4, tu Zona de campo; 5, desde la
+ * mano del rival, sobre su abanico). Los pide `links` de cada lado (`linksOf` de `app/card-glow.ts`, por id). «Resolviendo»: el 5 y el 4 ya se resolvieron, el 3 late y el 2 quedó sin efecto.
  */
 function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
-  const [mode, setMode] = useState<'on' | 'void' | 'off'>('on')
+  const [mode, setMode] = useState<'on' | 'solve' | 'off'>('on')
   const on = mode !== 'off'
   const sides = useMemo(() => {
-    // «Negada»: CL2 (tuyo) queda sin efecto por el CL1 del rival.
-    const voided = (n: number) => (mode === 'void' && n === 2 ? { voided: { state: 'disabled' as const, by: 1 } } : {})
-    const links = (ids: ReadonlyArray<string | undefined>, first: number, owner: boolean) =>
-      new Map<string, ChainBadgeData>(ids.flatMap((id, i) => (id ? [[id, { numbers: [first + i], mine: owner, fromHand: false, ...voided(first + i) }] as const] : [])))
+    const solving = mode === 'solve'
+    const extra = (n: number) => ({ ...(solving && n === 2 ? { voided: { state: 'disabled' as const, by: 1 } } : {}), ...(solving && n === 3 ? { resolving: 3 } : {}) })
+    const links = (ids: ReadonlyArray<string | undefined>, first: number, owner: boolean, fromHand = false) =>
+      new Map<string, ChainBadgeData>(ids.flatMap((id, i) => (id && !(solving && first + i > 3) ? [[id, { numbers: [first + i], mine: owner, fromHand, ...extra(first + i) }] as const] : [])))
     const mine = links(['card-59438930-1', duel.mine.state.gy.at(-1), duel.mine.state.field?.id], 2, true)
-    const theirs = links([duel.theirs.state.mz[0]?.id], 1, false)
+    const theirs = new Map([...links([duel.theirs.state.mz[0]?.id], 1, false), ...links(['de-la-mano'], 5, false, true)])
 
-    return { mine: { ...duel.mine, ...(on ? { links: mine } : {}) }, theirs: { ...duel.theirs, ...(on ? { links: theirs } : {}) } }
+    return { mine: { ...duel.mine, ...(on ? { links: mine } : {}) }, theirs: { ...duel.theirs, handCount: duel.theirs.handCount ?? 5, ...(on ? { links: theirs } : {}) } }
   }, [duel, on, mode])
 
   return (
     <Specimen
-      title="La insignia del eslabón (CL1, CL2…)"
+      title="Los medallones de la cadena"
       layout="column"
       className="col-span-full"
       note={
         <>
-          Mientras se ve el aviso de la cadena, cada carta que está en ella lleva su número arriba a la izquierda, montado sobre el borde (no tapa el nombre), en la carta o en la pila donde esté ahora, con el
-          color de sus vidas: violeta claro lo tuyo, ámbar lo del rival (una etiqueta llena; el ámbar de lo que se activa es un aro). No se toca ni mueve nada: el eslabón también va en el nombre de la carta. Negada o sin efecto, la insignia va tachada y la carta se ve gris y latiendo (un pulso por segundo; con movimiento reducido, gris y quieta), sin moverse ni tapar el arte; su nombre suma «Sin efecto · por CL1» si se sabe quién fue. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>VOIDED_ART</Tag>)
+          Como en Master Duel al resolver (la escena grande es sólo para encadenar): un medallón por eslabón, un aro de cadena redondo (una ficha) con su número en el color de su dueño, de 36 px,
+          centrado en el lugar donde se activó: la casilla de la carta, la pila (Cementerio, Desterradas, Deck, Extra), la carta de tu mano o, si se fue (un costo), tu mano, y el abanico del rival.
+          Varios en un mismo lugar, corridos. Del último al primero: el que se resuelve late (con movimiento reducido, quieto) y, al empezar el siguiente, se va; el negado o sin efecto se tacha en
+          rojo y su carta se ve gris y latiendo. No ataja toques: el eslabón también va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>ChainBadge</Tag>, <Tag>VOIDED_ART</Tag>)
         </>
       }
     >
-      <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'on', label: 'Con cadena' }, { value: 'void', label: 'Negada' }, { value: 'off', label: 'Sin cadena' }]} />
+      <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'on', label: 'Armada' }, { value: 'solve', label: 'Resolviendo' }, { value: 'off', label: 'Sin cadena' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
     </Specimen>
   )
@@ -560,7 +562,7 @@ function GlowsSample() {
                   {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />}
                   {frame ? <FxFrame {...frame} /> : null}
                 </div>
-                {kind === 'act' ? <ChainBadge link={CL1} className={chainBadgeAt('mz', false)} /> : null}
+                {kind === 'act' ? <ChainBadge link={CL1} /> : null}
                 {attack ? <AttackMark /> : null}
               </div>
               <span className="text-micro text-muted">{label}</span>
