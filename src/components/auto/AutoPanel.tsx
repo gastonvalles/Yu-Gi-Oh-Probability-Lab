@@ -360,15 +360,13 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
       <div ref={ref} {...attrs} className={cx(windowSurface, windowPlace, 'flex min-h-0 min-w-0 flex-col', className)}>
         {bar}
         {side && children && desk ? (
-          // Escritorio: las cartas a la izquierda, al pie, y a su derecha lo de arriba (de qué carta es) y los botones al borde de abajo, en la misma fila. Si no entran, las cartas se deslizan.
-          <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,max-content)_minmax(min-content,1fr)] gap-x-4 p-2 pointer-coarse:pb-7">
-            <div data-panel-body="" className="max-h-full min-w-0 self-end overflow-auto overscroll-contain">
+          // Escritorio: las cartas al medio de la ventana, centradas a lo ancho y a lo alto (Gastón, 2026-11-12: «la carta en el medio del contenedor centrada»); a su izquierda lo de arriba (de qué carta es) y a su derecha los botones, al borde de abajo. Las dos columnas de los costados miden lo mismo, salvo que los botones pidan más. Si no entran, las cartas se deslizan.
+          <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,max-content)_minmax(min-content,1fr)] gap-x-4 p-2 pointer-coarse:pb-7">
+            <div data-panel-body="" className="col-start-2 row-start-1 max-h-full min-w-0 self-center overflow-auto overscroll-contain">
               {children}
             </div>
-            <div className="flex min-h-0 min-w-0 flex-col gap-2">
-              {lead}
-              {row}
-            </div>
+            <div className="col-start-1 row-start-1 min-w-0">{lead}</div>
+            <div className="col-start-3 row-start-1 flex min-h-0 min-w-0 flex-col justify-end">{row}</div>
           </div>
         ) : side === true && children ? (
           // Apaisada (M-08): la bandeja a la izquierda; el texto arriba y los botones abajo, a su derecha. En el código, el mismo orden de siempre (texto, bandeja, botones).
