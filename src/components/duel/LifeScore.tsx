@@ -24,12 +24,13 @@ const BADGE_COUNT_MAX_MS = 700
  * - Crítico (`CRITICAL_LP`: 2000 o menos y más de 0, en las dos casillas y para quien mira): el número queda rojo y detrás late un resplandor (sólo `opacity`). En 0, rojo y quieto.
  * - Con movimiento reducido: sólo el «±N», que se funde; en crítico, el resplandor quieto.
  * - `align`: «start» la tuya (a la izquierda del marcador), «end» la del rival (a la derecha).
- * - `size`: «sm» el número de 24 px (el marcador de la barra, hasta 1100 px); «lg» el de 33 px (escritorio, opción D2: cada vida en su esquina del campo o en su lateral).
+ * - `size`: «sm» el número de 24 px (el marcador de la barra, hasta 1100 px); «lg» el de 33 px (sólo el catálogo: en escritorio las vidas van en `LifeBadge`).
  * - `onClick` (el duelo por enlace manual): es un botón de 44 × 44 como mínimo que abre la calculadora, con el aro de foco de siempre y un fondo tenue al apuntarlo. Sin él, `role="group"` (el automático:
  *   las vidas las lleva el núcleo).
  * - `bubble`: la señal de su dueño (🤔, «Pensando…»), un instante, con el borde de su color: debajo del número; tus vidas grandes (abajo de la pantalla, en tu esquina o tu lateral), arriba.
  * - Accesibilidad: «Puntos de vida de …: N» (con el botón, «… Abrir la calculadora de vidas»); el globo es `role="status"`.
- * - Usos: «Jugar solo automático» y los duelos por enlace en todos los anchos (el marcador de la barra hasta 1100 px; las esquinas del campo o los laterales en escritorio) y quien mira.
+ * - Usos: el marcador de la barra de 640 a 1100 px de «Jugar solo automático» y de los duelos por enlace, quien mira y los replays. En escritorio, nunca: su fogonazo (`-inset-y-4`) se salía de la columna
+ *   de la mesa y la hacía scrollear (el campo se corría 8 px); ahí va `LifeBadge`, que lo lleva todo adentro.
  * - `memo`: la barra que la lleva se redibuja por otras cosas (el turno, los avisos) y las vidas, si no cambiaron, no.
  */
 export const LifeScore = memo(function LifeScore({
@@ -166,7 +167,8 @@ const BADGE_TAG = { mine: 'bg-primary text-white', theirs: 'bg-info text-backgro
  *   conviene poco (tu daño, lo que el rival gana), menta si te conviene (el daño al rival, lo que ganás). Sólo `transform`/`opacity`. Lo anuncia el lector de pantalla (`aria-live`).
  * - Crítico (2000 o menos) y en 0, el número en rojo. `onClick` (el duelo manual): un botón de 44 px que abre la calculadora. `bubble`: la señal de su dueño, como en `LifeScore`.
  * - `compact`: la del rival en la fila de los íconos del celular (44 px): relleno de arriba y abajo mínimo y el número de 19 px.
- * - Usos: los duelos (manual, por enlace y automático) en el celular y en las esquinas del campo en escritorio; la marca y la fila de 640 a 1100 px siguen con `LifeScore`.
+ * - Usos: los duelos (manual, por enlace y automático) en el celular y en todo el escritorio, en los mismos lugares con laterales o sin ellos (la del rival arriba a la derecha, la tuya abajo a la
+ *   izquierda); la fila de 640 a 1100 px sigue con `LifeScore`.
  */
 export const LifeBadge = memo(function LifeBadge({
   name,

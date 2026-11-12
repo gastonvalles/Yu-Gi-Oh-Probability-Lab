@@ -3324,8 +3324,8 @@ function PracticeMatBody({
                   {isDesktop || duel.undoInHeader ? null : undoButton}
                   {duel.tools}
                   {duel.steps ? stepsButton : null}
-                  {/* Con la botonera, o con Deshacer arriba (el duelo por enlace), tus vidas van a la izquierda: en la esquina opuesta a las del rival. */}
-                  {isDesktop && (duel.dock || duel.undoInHeader) ? duel.life : null}
+                  {/* Con la botonera, o con Deshacer arriba (el duelo por enlace), tus vidas van a la izquierda: en la esquina opuesta a las del rival (con laterales, las pone la barra). */}
+                  {isDesktop && !rails && (duel.dock || duel.undoInHeader) ? duel.life : null}
                 </span>
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
                   {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}

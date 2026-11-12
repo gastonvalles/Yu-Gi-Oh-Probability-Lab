@@ -303,7 +303,8 @@ const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
  * La barra de arriba de un duelo por enlace (manual y automático), hermana de `AutoBar` (Gastón, 2026-10-27: sin placas ni barra de abajo). Arriba, el reloj de la ronda (tocarlo lo pausa) y los
  * íconos: el chat (hasta 1100 px), deshacer (`MatUndoContext`: lo arma la mesa), el ⋯ y salir (pide confirmación). Hasta 1100 px, debajo, el marcador plano: tus vidas, el turno dicho una sola vez
  * («Turno de Ana · 3», en el color de quién es; la fase la dice sólo el botón del campo) y las del rival (`LifeScore`: en el manual se tocan y abren la calculadora), y la línea del registro. En escritorio
- * cada vida va en su esquina (las pone la pantalla: `RivalLife` en `corner` y `DuelLife` en `life`) y el turno debajo de los íconos; con laterales, las del rival en el izquierdo.
+ * cada vida va en su chapa y su esquina (las pone la pantalla: `RivalLife` en `corner` y `DuelLife` en `life`) y el turno debajo de los íconos; con laterales, las chapas las pone la barra en los mismos
+ * lugares (la del rival arriba a la derecha, la tuya abajo a la izquierda).
  */
 export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRematch, onLeave, onAbandon, onConcede, inOptions = false, onReconnect, log, resultOpen = false, rivalSignal = null, rivalSignalKey, mySignal = null, mySignalKey, chat, lane = null, onOpenLife, turnNumber = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null), extraSettings, resultReason }: DuelBarProps) {
   const [leaving, setLeaving] = useState(false)
@@ -334,7 +335,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
     </span>
   )
   const myLife = <DuelLife snapshot={snapshot} myName={myName} onOpen={onOpenLife} signal={mySignal} signalKey={mySignalKey} />
-  const rivalLife = (size: 'sm' | 'lg', align: 'start' | 'end') => <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} size={size} align={align} />
+  const rivalLife = <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} />
 
   const dialogs = (
     <>
@@ -428,22 +429,26 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
       <Callout className={ALERT_OVERLAY} tone="info">{t('duel.peer.absent')}</Callout>
     ) : null
 
-  // Con laterales (escritorio ancho): la barra se reparte a los costados del campo. Izquierda: las vidas del rival, el reloj de la ronda y, en el medio, los avisos (lo que hace el rival, un pedido de volver atrás, la conexión) y los
-  // avisos de toda la app (`useHostToasts`). Derecha: los íconos, el turno y el resultado (tus vidas, abajo: las pone la mesa). Sus piezas se acomodan en la grilla de la mesa (`col-start` / `row-start`).
+  // Con laterales (escritorio ancho): la barra se reparte a los costados del campo. Izquierda: el reloj de la ronda, en el medio los avisos (lo que hace el rival, un pedido de volver atrás, la conexión) y los
+  // avisos de toda la app (`useHostToasts`) y abajo tu chapa. Derecha: los íconos, el turno, la chapa del rival y el resultado. Sus piezas se acomodan en la grilla de la mesa (`col-start` / `row-start`).
   if (rails) {
     return (
       <>
         <div className="col-start-1 row-start-1 flex min-w-0 flex-col items-start gap-2">
-          {rivalLife('lg', 'start')}
           {clockButton}
           <span className="flex flex-wrap items-center gap-1.5 empty:hidden">{chips()}</span>
         </div>
+        {/* Las chapas, en los mismos lugares que sin laterales y que en el celular: la del rival arriba a la derecha (debajo del turno) y la tuya abajo a la izquierda. */}
         <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
           <span className="-mr-2 flex flex-wrap items-center justify-end">
             {undo}
             {actions}
           </span>
           {turnLine('max-w-full text-right')}
+          <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} badge active={turn !== 'mine'} />
+        </div>
+        <div className="col-start-1 row-start-3 flex min-w-0 items-end">
+          <DuelLife snapshot={snapshot} myName={myName} onOpen={onOpenLife} signal={mySignal} signalKey={mySignalKey} badge active={turn === 'mine'} />
         </div>
         <div ref={toastHost} data-testid="duel-rail-notices" className="pointer-events-none relative z-20 col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4 *:pointer-events-auto" style={RAIL_LANE_STYLE}>
           {lane ? <LaneBanner lane={lane} rivalName={rivalName} rail /> : null}
@@ -531,7 +536,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
           {turnLine('max-w-full text-center leading-tight')}
           {hasChips ? <span className="flex max-w-full items-center justify-center gap-1.5 overflow-hidden">{chips('py-0')}</span> : null}
         </span>
-        {rivalLife('sm', 'end')}
+        {rivalLife}
       </div>
 
       {/* Lo que pasó va debajo del marcador. Un aviso se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve). En un celular en vertical la línea no ocupa lugar (`-mb-11`): flota
@@ -698,7 +703,7 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey, s
   return badge ? <LifeBadge name={name} label={t('duel.bar.you')} life={life} mine active={active} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} label={t('duel.bar.you')} life={life} mine size={size} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
 }
 
-/** Los puntos de vida del rival, planos: en el marcador (a la derecha), en la esquina de arriba a la derecha del campo (escritorio) o en el lateral izquierdo. Se tocan igual que los tuyos. Con `badge`, su chapa. */
+/** Los puntos de vida del rival, planos: en el marcador (a la derecha), en la esquina de arriba a la derecha del campo (escritorio) o arriba en el lateral derecho. Se tocan igual que los tuyos. Con `badge`, su chapa. */
 export function RivalLife({ snapshot, onOpen, signal = null, signalKey, size = 'sm', align = 'end', badge = false, compact = false, active }: { snapshot: DuelSnapshot; onOpen?: (() => void) | undefined; /** Su señal (pensando, continuá): un globo debajo de sus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; align?: 'start' | 'end'; badge?: boolean; /** La chapa de la fila del celular (`compact`). */ compact?: boolean; /** Con `badge`: es su turno (su chapa lleva el borde grueso; si no, tenue). */ active?: boolean | undefined }) {
   const name = snapshot.peerName ?? t('duel.bar.rival')
   const life = snapshot.life.lp[snapshot.me === 0 ? 1 : 0]

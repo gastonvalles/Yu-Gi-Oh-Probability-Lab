@@ -26,7 +26,7 @@ import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { BotDeckEditor } from '../../duel/BotDeckEditor'
 import { BotDeckSheet } from '../../duel/BotDeckSheet'
 import { SoloScreen } from '../../duel/SoloScreen'
-import { LifeScore } from '../../duel/LifeScore'
+import { LifeBadge, LifeScore } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatUndoContext } from '../../probability/MatBarActions'
 import { CardMenu, type MenuItem } from '../../probability/MatDialogs'
@@ -966,7 +966,7 @@ function LifePlateSample() {
 }
 
 /**
- * El marcador de «Jugar solo automático» hasta 1100 px (`LifeScore` en `AutoBar`): tus vidas, el turno una sola vez y las del rival, planos; debajo, el tamaño de escritorio (`size="lg"`), cada una en su esquina.
+ * El marcador de «Jugar solo automático» hasta 1100 px (`LifeScore` en `AutoBar`): tus vidas, el turno una sola vez y las del rival, planos; debajo, las chapas de escritorio (`LifeBadge`), cada una en su esquina.
  * «Recibir 1000» baja las del rival de verdad (el conteo y el golpe: la sacudida, el número que se infla, el fogonazo y el «−N» que sube); el otro botón cambia el turno y su color.
  */
 function LifeScoreSample() {
@@ -974,7 +974,7 @@ function LifeScoreSample() {
   const [mineTurn, setMineTurn] = useState(true)
 
   return (
-    <Specimen title="LifeScore · el marcador y las esquinas" layout="column" className="col-span-full" note={<>Plano, sin caja, chapa ni barra (Gastón, 2026-10-27: las placas «no le gustan»): el nombre chico en el color del dueño (<Tag>PLAYER_COLOR</Tag>: lavanda vos, ámbar el rival) y el número blanco, lo que decide: 24 px en el marcador de la barra (hasta 1100 px) y 33 en escritorio (<Tag>size="lg"</Tag>, cada una en su esquina del campo o en su lateral). Cuenta hasta el valor nuevo; al bajar, el golpe (se sacude, el número se infla, un fogonazo rojo y el «−N» sube) y al subir, un fogonazo verde; en 2000 o menos queda rojo y late, y en 0, rojo. El turno va una vez (en el medio del marcador o debajo de los íconos), en el color de quién es; la fase la dice el botón del campo. Archivo: <Tag>duel/LifeScore.tsx</Tag></>}>
+    <Specimen title="LifeScore · el marcador y las esquinas" layout="column" className="col-span-full" note={<>Plano, sin caja, chapa ni barra (Gastón, 2026-10-27: las placas «no le gustan»): el nombre chico en el color del dueño (<Tag>PLAYER_COLOR</Tag>: lavanda vos, ámbar el rival) y el número blanco, lo que decide: 24 px, en el marcador de la barra (de 640 a 1100 px). En escritorio, con laterales o sin ellos, van siempre las chapas (<Tag>LifeBadge</Tag>, debajo): la del rival arriba a la derecha y la tuya abajo a la izquierda, con el golpe adentro de la caja (el fogonazo del plano se salía de la columna). Cuenta hasta el valor nuevo; al bajar, el golpe (se sacude, el número se infla, un fogonazo rojo y el «−N» sube) y al subir, un fogonazo verde; en 2000 o menos queda rojo y late, y en 0, rojo. El turno va una vez (en el medio del marcador o debajo de los íconos), en el color de quién es; la fase la dice el botón del campo. Archivo: <Tag>duel/LifeScore.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => setTheirs((life) => Math.max(0, life - 1000))}>
           Recibir 1000
@@ -997,9 +997,11 @@ function LifeScoreSample() {
       <div className="relative isolate grid h-44 w-full max-w-md content-between overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
         <span className="justify-self-end">
-          <LifeScore name={t('duel.bar.rival')} label={t('duel.bar.rivalTag')} life={theirs} size="lg" />
+          <LifeBadge name={t('duel.bar.rival')} label={t('duel.bar.rivalTag')} life={theirs} active={!mineTurn} />
         </span>
-        <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={3200} mine size="lg" />
+        <span className="justify-self-start">
+          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={3200} mine active={mineTurn} />
+        </span>
       </div>
     </Specimen>
   )

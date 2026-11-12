@@ -741,7 +741,7 @@ describe('AutoBar', () => {
     expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
   })
 
-  it('con laterales, las vidas van planas y grandes cada una de su lado del lateral izquierdo: el rival arriba (junto a la flecha) y vos abajo; sin placa ni cartas en la mano', () => {
+  it('con laterales, una sola chapa en escritorio: las dos son `LifeBadge` (no el plano) en los lugares de siempre, la del rival arriba a la derecha y la tuya abajo a la izquierda, con el turno en el borde y el golpe adentro de la caja', () => {
     desktop()
     const { container } = render(
       <DuelRailsContext.Provider value>
@@ -749,10 +749,20 @@ describe('AutoBar', () => {
       </DuelRailsContext.Provider>,
     )
     const rival = screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000' })
+    const mine = screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' })
 
-    expect(rival.parentElement).toHaveClass('col-start-1', 'row-start-1')
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' }).parentElement).toHaveClass('col-start-1', 'row-start-3')
+    expect(rival.parentElement).toHaveClass('col-start-3', 'row-start-1')
+    expect(mine.parentElement).toHaveClass('col-start-1', 'row-start-3')
     expect(rival.querySelector('.text-stat')).toHaveTextContent('7000')
+    // Las dos, chapas: ninguna vida plana con laterales (antes, plegar ≡ cambiaba de una a otra).
+    const scores = [...container.querySelectorAll('[data-life-score]')]
+    expect(scores).toHaveLength(2)
+    scores.forEach((score) => expect(score).toHaveAttribute('data-life-badge'))
+    // El turno es tuyo (`myTurn`): tu chapa con el borde grueso y la del rival tenue.
+    expect(mine).toHaveAttribute('data-active', 'true')
+    expect(rival).toHaveAttribute('data-active', 'false')
+    // Nada sale de la caja: el fogonazo del plano (`-inset-y-4`) hacía scrollear la columna 8 px y el campo se corría.
+    scores.forEach((score) => expect(score.querySelector('[class*="-inset-"]')).toBeNull())
     expect(container.querySelector('.life-plate, [role="meter"]')).toBeNull()
   })
 

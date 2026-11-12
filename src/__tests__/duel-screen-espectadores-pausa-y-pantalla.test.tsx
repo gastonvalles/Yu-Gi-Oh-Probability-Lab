@@ -1311,7 +1311,7 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
   })
 
-  it('con laterales (escritorio ancho) la barra se reparte a los costados del campo: vidas y reloj a la izquierda; íconos, turno, tus vidas y deshacer a la derecha', () => {
+  it('con laterales (escritorio ancho) la barra se reparte a los costados del campo: el reloj y tu chapa a la izquierda; íconos, deshacer, el turno y la chapa del rival a la derecha', () => {
     asDesktop()
     railsOn.value = true
     const { host, guest } = startDuel()
@@ -1323,12 +1323,15 @@ describe('la pantalla del duelo', () => {
     // Lo que rodea al campo está en la misma grilla que él, en las columnas de los costados, y los avisos van por encima de él: agrandado en 3D se mete en el lateral y, sin esto, los cortaría.
     // La caja de los avisos no ataja toques (sólo sus avisos): ocupa todo el lateral, encima del campo, y tapaba el Extra Deck, el Field y el Banish del rival aun vacía.
     expect(notices).toHaveClass('col-start-1', 'z-20', 'pointer-events-none', '*:pointer-events-auto')
-    expect(view.container.querySelector('[data-lp="theirs"]')?.parentElement).toHaveClass('col-start-1', 'row-start-1')
+    // Una sola chapa en escritorio (la misma que sin laterales y en el celular), en los mismos lugares: la del rival arriba a la derecha y la tuya abajo a la izquierda, una vez cada una.
+    expect(view.container.querySelector('[data-lp="theirs"]')?.parentElement).toHaveClass('col-start-3', 'row-start-1')
+    expect(view.container.querySelector('[data-lp="mine"]')?.parentElement).toHaveClass('col-start-1', 'row-start-3')
+    expect(view.container.querySelectorAll('[data-life-score]')).toHaveLength(2)
+    view.container.querySelectorAll('[data-life-score]').forEach((score) => expect(score).toHaveAttribute('data-life-badge'))
     expect(within(view.container).getByRole('button', { name: 'Más opciones' }).closest('.col-start-3')).not.toBeNull()
     expect(within(view.container).getByTestId('duel-turn')).toHaveTextContent(/^Tu turno · 1$/)
     expect(within(view.container).getByTestId('duel-turn').closest('.col-start-3')).not.toBeNull()
     expect(within(view.container).getByRole('button', { name: 'Deshacer' }).closest('.col-start-3')).not.toBeNull()
-    expect(view.container.querySelector('[data-lp="mine"]')?.closest('.col-start-3')).not.toBeNull()
   })
 
   it('con laterales, el resultado queda en el lateral derecho, con la revancha apilada abajo del texto', () => {
