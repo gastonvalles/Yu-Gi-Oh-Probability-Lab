@@ -10,7 +10,7 @@ import { core, renderAuto } from './support/auto-screen-harness'
 
 /**
  * La mesa de escritorio del duelo automático (desde 1101 px; Gastón, 2026-11-12: «esto de mover el detalle de la carta a un único panel derecho no me gusta»): dos paneles, el detalle de la carta a la
- * izquierda (desde 1440 px) y los pasos a la derecha, sin pestañas ni columna única; sin línea debajo del campo ni renglón del turno; la fase, en su botón que llena su casilla, al medio del campo.
+ * izquierda (desde 1440 px) y los pasos a la derecha, sin pestañas ni columna única; sin línea debajo del campo ni renglón del turno; la fase, en su botón cuadrado, al medio del campo.
  * Lo que mide (la casilla de ~100 px a 1440 × 900, entera a 1101 × 700, el campo que no se mueve) se mide en un navegador: jsdom no mide.
  */
 
@@ -46,7 +46,7 @@ describe('auto · la mesa de escritorio', () => {
     expect(document.querySelector('[data-mat-column]')).toBeNull()
   })
 
-  it('sin línea debajo del campo (queda su marca de 0 px, el techo de las ventanas) ni pista de fases ni botón del turno: la fase va en su botón, al medio del campo, y llena su casilla', () => {
+  it('sin línea debajo del campo (queda su marca de 0 px, el techo de las ventanas) ni pista de fases ni botón del turno: la fase va en su botón, al medio del campo, cuadrado', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(idle(true)))
@@ -58,7 +58,7 @@ describe('auto · la mesa de escritorio', () => {
     const phase = screen.getAllByRole('button', { name: /^Fases:/ })
 
     expect(phase).toEqual([within(screen.getByLabelText('Campo')).getByRole('button', { name: 'Fases: Main Phase 1' })])
-    expect(phase[0]).toHaveClass('size-full!')
+    expect(phase[0]).toHaveClass('size-[100cqmin]!')
     expect(screen.queryByRole('button', { name: /^(Ir a Batalla|Terminar turno)$/ })).toBeNull()
     expect(document.querySelector('[data-mat-seat]')).toBeNull()
   })

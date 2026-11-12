@@ -10,6 +10,7 @@ import { computeHandLayout, fanAngle } from '../../app/practice-hand-layout'
 import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { THEIR_FAN_RISE, THEIR_HAND, TheirHandSize } from './their-hand'
+import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
@@ -260,6 +261,8 @@ export function TheirHand({
             <span
               key={index}
               title={card?.name}
+              // La marca que busca el barajado del rival: no depende del rol del abanico (`img` o `group`, según se pueda tocar).
+              data-their-card=""
               // El ancho manda y el alto sale de la proporción de la carta (nunca los dos fijos).
               className={cx('pointer-events-auto absolute bottom-0 left-0 block aspect-[421/614] overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
               style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${-raise}px) rotate(${-fanAngle(index, shown, 2.2)}deg)` }}
@@ -279,11 +282,13 @@ export function TheirHand({
           )
         })}
       </div>
-      {medals?.length ? (
-        <div data-hand-links="" className="pointer-events-none absolute inset-y-0 z-8" style={fanBox}>
-          <ChainBadge medals={medals} />
-        </div>
-      ) : null}
+      <Presence>
+        {medals?.length ? (
+          <div data-hand-links="" className="pointer-events-none absolute inset-y-0 z-8" style={fanBox}>
+            <ChainBadge medals={medals} />
+          </div>
+        ) : null}
+      </Presence>
       {marked || onMark ? (
         <div className="absolute inset-y-0 z-8" style={fanBox}>
           {marked ? <TargetMark /> : null}
@@ -321,7 +326,7 @@ function SharedZone({ area, index, mine, theirs }: { area: string; index: number
     <div role="group" aria-label={label} className={cx(CELL_MONSTER, conflict && 'border-solid border-danger')} style={{ gridArea: area }}>
       <ZoneLines kind="monster" />
       {own ? <CardOnZone placed={own} spot="emz" side={mine} owner="mine" label={label} /> : other ? <CardOnZone placed={other} spot="emz" side={theirs} owner="theirs" label={label} /> : null}
-      {mine.medals?.get(`emz:${index}`) ? <ChainBadge medals={mine.medals.get(`emz:${index}`)!} /> : theirs.medals?.get(`emz:${1 - index}`) ? <ChainBadge medals={theirs.medals.get(`emz:${1 - index}`)!} /> : null}
+      <Presence>{mine.medals?.get(`emz:${index}`) ? <ChainBadge medals={mine.medals.get(`emz:${index}`)!} /> : theirs.medals?.get(`emz:${1 - index}`) ? <ChainBadge medals={theirs.medals.get(`emz:${1 - index}`)!} /> : null}</Presence>
       {conflict ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-2 grid size-4 place-items-center rounded-full bg-danger text-[0.6rem] font-extrabold leading-none text-white">!</span> : null}
     </div>
   )
@@ -334,7 +339,7 @@ export function sharedZoneCard(theirs: DuelSideView, index: number) {
   return placed || medals ? (
     <>
       {placed ? <CardOnZone placed={placed} spot="emz" side={theirs} owner="theirs" label={zoneLabel('mine', 'emz', index)} /> : null}
-      {medals ? <ChainBadge medals={medals} /> : null}
+      <Presence>{medals ? <ChainBadge medals={medals} /> : null}</Presence>
     </>
   ) : null
 }
@@ -394,7 +399,7 @@ function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: 
       {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
       {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
       {placed ? <CardOnZone placed={placed} spot={spot} side={side} owner={owner} label={label} /> : null}
-      {side.medals?.get(spot === 'field' ? 'field' : `${spot}:${index}`) ? <ChainBadge medals={side.medals.get(spot === 'field' ? 'field' : `${spot}:${index}`)!} /> : null}
+      <Presence>{side.medals?.get(spot === 'field' ? 'field' : `${spot}:${index}`) ? <ChainBadge medals={side.medals.get(spot === 'field' ? 'field' : `${spot}:${index}`)!} /> : null}</Presence>
     </div>
   )
 }
@@ -493,7 +498,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
       {marked ? <TargetMark key={`mira:${shown}`} /> : null}
       </span>
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
-      {side.medals?.get(pile) ? <ChainBadge medals={side.medals.get(pile)!} /> : null}
+      <Presence>{side.medals?.get(pile) ? <ChainBadge medals={side.medals.get(pile)!} /> : null}</Presence>
     </div>
   )
 }

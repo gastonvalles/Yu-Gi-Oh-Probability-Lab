@@ -57,7 +57,7 @@ afterEach(() => {
 })
 
 describe('la pantalla del duelo', () => {
-  it('lo que el rival activa y es público se queda tres segundos con el nombre de la carta, en el cartel y en el registro (una línea, corregida); lo que no es público no se nombra', async () => {
+  it('lo que el rival activa y es público se queda tres segundos y lleva su nombre en el registro (una línea, corregida), no en el cartel (la imagen ya lo trae); lo que no es público no se nombra', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)
@@ -73,14 +73,14 @@ describe('la pantalla del duelo', () => {
     })
     expect(stage()).toBeNull()
 
-    // Al activarla pasa a ser pública: se queda 3 s y, cuando se busca su nombre, el cartel y la carta lo llevan.
+    // Al activarla pasa a ser pública: se queda 3 s; el cartel dice sólo quién y qué (la imagen ya trae el nombre: sin placa) y el registro, cuando se busca su nombre, lo lleva.
     tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
     flush()
     expect(stage()!.querySelector('[class*="animate-card-activate-linger"]')).not.toBeNull()
     await act(async () => {})
-    expect(stage()).toHaveTextContent(/Ana activa Carta \d+/)
-    expect(stage()!.querySelector('figcaption')).toHaveTextContent(/^Carta \d+$/)
+    expect(stage()).toHaveTextContent('Ana activa una carta')
+    expect(stage()!.querySelector('figcaption')).toBeNull()
     act(() => {
       vi.advanceTimersByTime(2000)
     })
@@ -659,8 +659,8 @@ describe('la pantalla del duelo', () => {
     flush()
     await act(async () => {})
 
-    // Beto ve cuál es: su nombre en el cartel (que se queda para leerlo) y la carta a la izquierda.
-    expect(stage()).toHaveTextContent(/^Ana lleva Carta \d+ a su mano/)
+    // Beto ve cuál es: el cartel (que se queda para leerla) dice quién y qué, sin el nombre que la imagen ya trae, y la carta queda a la izquierda.
+    expect(stage()).toHaveTextContent(/^Ana lleva una carta a su mano/)
     expect(shown(guest)).toMatch(/^Carta \d+$/)
     const added = shown(guest)
     act(() => {

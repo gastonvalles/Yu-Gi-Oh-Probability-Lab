@@ -1,9 +1,9 @@
 import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { distinctLabels } from '../../app/auto/ask-ui'
 import { cardTypeLabel, frameKindOf, frameTextClass } from '../../app/card-frame'
 import { useMatMenus } from '../../app/mat-menus'
-import { PHASES } from '../../app/practice-mat'
 import { useDraggableOffset } from '../../app/use-draggable-offset'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -48,6 +48,14 @@ const WINDOW_KEYS = 'ArrowUp ArrowDown ArrowLeft ArrowRight Alt+ArrowUp Alt+Arro
  * (`tertiary`) va sin esto, a su ancho y a la izquierda. Todos `size="md"` (44 px) y en un renglón (lo pone la fila).
  */
 export const PANEL_MAIN = 'flex-1 group-data-[auto-panel=floating]/panel:min-w-32 group-data-[auto-panel=floating]/panel:flex-none'
+/**
+ * El color de la principal de los menús del duelo (Gastón, 2026-11-12): lima (`info`) con letras oscuras (`info-foreground`: carbón; con Índigo, el ámbar con su violeta casi negro). Vive acá, en un solo
+ * lugar, y no toca el `primary` del resto de la app (los `!` ganan al relleno de `Button`). Al apuntarlo se aclara (`info-soft`), apretado vuelve al lima, y apagado es una caja lisa con texto suave
+ * (el 40 % de opacidad de siempre dejaría el lima y su texto ilegibles).
+ */
+export const PANEL_LIME = 'bg-info! text-info-foreground! hover:bg-info-soft! active:bg-info! disabled:bg-surface-raised! disabled:text-soft! disabled:opacity-100!'
+/** La principal de la fila de abajo: `PANEL_MAIN` (ancho y lugar) con el color de los menús (`PANEL_LIME`). */
+export const PANEL_PRIMARY = `${PANEL_MAIN} ${PANEL_LIME}`
 /** La fila de abajo: un renglón, la principal al final (a la derecha); en la ventana, todo a la derecha y pegada al borde de abajo (`mt-auto`: estirada, el aire queda entre el contenido y ella). */
 const ACTIONS = 'flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap group-data-[auto-panel=floating]/panel:mt-auto group-data-[auto-panel=floating]/panel:justify-end'
 
@@ -418,9 +426,11 @@ export interface AutoCardSheetProps {
 export function AutoCardSheet({ name, art, back = false, apiCard = null, items, empty, onManual, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
   const nameId = useId()
   const [armed, setArmed] = useState(false)
-  const plays = flatPlays(items)
+  // Dos botones de una ficha nunca dicen lo mismo: los del mismo nombre se numeran en el orden del núcleo, antes de pasar la principal al final (`distinctLabels`).
+  const numbered = distinctLabels(items)
+  const plays = flatPlays(numbered)
   // La principal, al final: las demás jugadas en su orden y ella abajo a la derecha. Los efectos de una misma jugada («Efecto 2», «Efecto 3») van juntos y en su orden.
-  const groups = items.map((item) => item.children ?? [item])
+  const groups = numbered.map((item) => item.children ?? [item])
   const first = groups.findIndex((group) => group.some((play) => !play.disabled))
   const ordered = (first < 0 ? groups : [...groups.filter((_, index) => index !== first), groups[first]!]).flat()
   // Sin imagen, la carta sobre el color de su tipo (lámina T), como el chip.
@@ -448,7 +458,7 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
               variant={main ? 'primary' : 'secondary'}
               aria-disabled={item.disabled || undefined}
               title={item.hint ?? item.label}
-              className={cx('min-w-0 whitespace-nowrap px-3! group-data-[auto-panel=floating]/panel:min-w-32', ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
+              className={cx('min-w-0 whitespace-nowrap px-3! group-data-[auto-panel=floating]/panel:min-w-32', main && PANEL_LIME, ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
               onClick={item.disabled ? undefined : item.onSelect}
             >
               <span className="min-w-0 truncate">{item.label}</span>
@@ -521,104 +531,5 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
     >
       {bare ? <div role="menu" aria-label={name}>{empty ?? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p>}</div> : null}
     </AutoPanel>
-  )
-}
-
-/** El botón de fase de la mesa (si no llega `anchor`): el que dice «Fases: …» y abre un menú, el que se ve. */
-const phaseButton = () => [...document.querySelectorAll<HTMLElement>(`[aria-haspopup="menu"][aria-label^="${t('practice.mat.phases')}:"]`)].find((element) => element.getClientRects().length > 0) ?? null
-/** Del botón al menú. */
-const GAP = 4
-const EDGE = 8
-
-/** Adónde se puede ir desde la fase de ahora (sólo las elegibles), con lo que hace cada una: «Ir a la Battle Phase» o, a la End Phase (o de ella a la Draw Phase del rival), «Terminar el turno». */
-export function phaseChoices(items: readonly MenuItem[]): { label: string; onSelect: () => void }[] {
-  return items.flatMap((item) => {
-    if (item.disabled || item.current) return []
-    const phase = PHASES.find((entry) => entry.name === item.label)
-
-    return [{ label: phase && (phase.id === 'end' || phase.id === 'draw') ? t('auto.phase.endTurn') : t('auto.phase.goTo', { phase: item.label }), onSelect: item.onSelect }]
-  })
-}
-
-/**
- * Las fases del duelo automático (M-04): un menú **pegado al botón de fase** (`anchor`, el rectángulo del botón; sin él, el botón de la mesa por su nombre), debajo de él (arriba si no entra) y
- * dentro de la pantalla, con **sólo adónde podés ir**, cada una en una fila de 44 px («Ir a la Battle Phase», «Terminar el turno»). Sin título ni la lista de las seis: la fase de ahora la dice
- * el botón. ↑ ↓ Inicio y Fin recorren; Escape o tocar afuera lo cierran y el foco vuelve al botón.
- */
-export function AutoPhases({ items, onClose, anchor }: { items: MenuItem[]; onClose: () => void; anchor?: DOMRect }) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const leaving = useLeaving()
-  const openedAt = useRef(0)
-  const [at, setAt] = useState<{ left: number; top: number } | null>(null)
-  const rows = phaseChoices(items)
-
-  useEscapeKey(onClose, !leaving)
-  useFocusTrap(ref, !leaving)
-
-  useLayoutEffect(() => {
-    const menu = ref.current
-
-    if (!menu) return
-    openedAt.current = performance.now()
-    const box = anchor ?? phaseButton()?.getBoundingClientRect() ?? null
-    const { offsetWidth: width, offsetHeight: height } = menu
-
-    if (!box) {
-      setAt({ left: Math.max(EDGE, (window.innerWidth - width) / 2), top: Math.max(EDGE, (window.innerHeight - height) / 2) })
-      return
-    }
-    const left = Math.min(Math.max(box.left + box.width / 2 - width / 2, EDGE), Math.max(EDGE, window.innerWidth - width - EDGE))
-    const below = box.bottom + GAP
-
-    setAt({ left, top: below + height <= window.innerHeight - EDGE ? below : Math.max(EDGE, box.top - GAP - height) })
-  }, [anchor])
-
-  const onKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const options = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-    const now = options.findIndex((option) => option === document.activeElement)
-    const next = event.key === 'ArrowDown' ? now + 1 : event.key === 'ArrowUp' ? (now < 0 ? options.length : now) - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : null
-
-    if (next === null || options.length === 0) return
-    event.preventDefault()
-    options[(next + options.length) % options.length]!.focus()
-  }
-
-  return usePresence(
-    !leaving,
-    typeof document === 'undefined'
-      ? null
-      : createPortal(
-        <>
-          <div aria-hidden="true" className="fixed inset-0 z-[129]" onClick={() => performance.now() - openedAt.current >= GHOST_CLICK_MS && onClose()} />
-          <div
-            ref={ref}
-            role="menu"
-            tabIndex={-1}
-            aria-label={t('auto.phase.title')}
-            data-prompt="phases"
-            style={at ?? undefined}
-            className={cx('mat-square fixed z-[130] grid min-w-48 border border-primary/60 bg-card-background text-body text-foreground shadow-overlay outline-none motion-safe:animate-dialog-enter', !at && 'invisible')}
-            onKeyDown={onKey}
-          >
-            {rows.length === 0 ? (
-              <p className="m-0 flex min-h-11 items-center px-3 text-muted">{t('auto.phase.notYet')}</p>
-            ) : (
-              rows.map((row) => (
-                <button
-                  key={row.label}
-                  type="button"
-                  role="menuitem"
-                  className="flex min-h-11 items-center whitespace-nowrap border-b border-border-subtle px-3 text-left font-semibold last:border-b-0 hover:bg-tint/10 focus-visible:outline-none focus-visible:shadow-focus"
-                  onClick={row.onSelect}
-                >
-                  {row.label}
-                </button>
-              ))
-            )}
-          </div>
-        </>,
-        document.body,
-      ),
-    () => [ref.current],
   )
 }

@@ -21,12 +21,12 @@ La de la práctica (`PracticeMat` con la prop `duel`), con el campo del rival es
 - **Con laterales** (escritorio ancho) el campo 3D se mete en los costados (`--field-overhang`) y lo del lateral se corre de eso. Trampa: la caja del lateral, aun vacía, tapaba el Extra Deck: no ataja toques (sólo sus avisos); y la mesa con `transform` crea su contexto y pinta sobre lo anterior sin `z-index`.
 - **Escritorio** (automático): dos paneles, el detalle a la izquierda (desde 1440 px) y los pasos o el chat a la derecha, sin pestañas ni línea bajo el campo; la casilla crece con el alto y el 3D se recorta por los bordes (Deck y Extra cortados).
 - **Pasar de fase le pregunta al rival** si va a hacer algo antes. Sin respuesta pasa sola (`PHASE_WAIT_MS`): callar es no tener nada que jugar, y un rival ausente no frena el duelo. Va en el lugar de los carteles (`PassPrompt`); lo que puede responder brilla en celeste y las urgencias van de a una sobre la línea del registro.
-- **Opciones** (automático): el ⚙ de abajo a la derecha (44 px; con ≡, los pasos) abre una hoja recta: vista 3D, «Menús flotantes» (`app/mat-menus.ts`), lo del duelo y «Rendirse»; flotantes vuelve ventana la pregunta abierta (dedo o mouse; lugar aparte en celular y escritorio). Su ⋯ no lleva la vista 3D; el manual, sin ⚙.
+- **Opciones** (automático, sin ⋯; el manual no tiene ⚙): el ⚙ de abajo (44 px) con «La mesa» (3D, sonidos, colores, «Menús flotantes»: `app/mat-menus.ts`, vuelve ventana la pregunta abierta), lo del duelo y «Rendirse». Hasta 1100 px Deshacer va primero en la botonera; en escritorio, arriba.
 - **Menús:** en escritorio, pegados a lo que se toca (`CardMenu`), en bloques: apoyo (Revelar, Target), envíos (Al deck, A la mano, Al cementerio, Desterrar) y jugadas, con la principal abajo (`mat-menu-order.ts`). Una pregunta de «cómo» (posición, boca arriba o abajo, dónde del deck) es una fila con › que abre un submenú. Sin fila «Ver carta»: la carta del menú se toca y abre el detalle. Con el detalle fijo (≥ 1440 px), una sola jugada directa es una etiqueta (`PlayTag`). En el celular, la hoja de abajo (`CardSheet`).
 
 ### En un celular
 
-- El campo de siete columnas, con geometría fija bajo 640 px (`phoneDuelLayout`): sale del tamaño de la pantalla y nada lo mueve. Filas con forma de carta (bajan hasta cuadradas si no entra) entre las dos manos, sin línea en el medio (los avisos flotan sobre tu mano); la del rival, tu mano espejada a 0,8. La fase, en `p2` en todos los anchos.
+- El campo de siete columnas, con geometría fija bajo 640 px (`phoneDuelLayout`): sale del tamaño de la pantalla y nada lo mueve. Filas con forma de carta (bajan hasta cuadradas si no entra) entre las dos manos, sin línea en el medio (los avisos, bajo la barra; sin botones, se deslizan para sacarlos); la del rival, tu mano espejada a 0,8. La fase, en `p2` en todos los anchos.
 - Hasta 1100 px no hay barra de abajo: las vidas van en el marcador de arriba (`LifeScore`), y las salidas y problemas de la mano de apertura, en una píldora (`RulesPill`) que nunca flota sobre el campo ni se abre sola.
 
 ### Visor de pilas
@@ -48,7 +48,7 @@ Usa las zonas y el arrastre del builder, pero es una pantalla propia (`DuelSidin
 ## Pausa, reconexión y cierre
 
 - Mientras falta uno, el duelo queda en pausa: la mesa se tapa y el reloj de la ronda se detiene.
-- **Reconectar** (el ⋯ de la barra y el cartel de pausa) tira la conexión y abre otra: el relay vuelve a decir quién está y destraba una pausa por un aviso que no llegó. Safari en iOS suspende los WebSockets al bloquear la pantalla: el cliente reintenta y pide un `sync` al volver.
+- **Reconectar** (el ⋯ o el ⚙ y el cartel de pausa) tira la conexión y abre otra: el relay vuelve a decir quién está y destraba una pausa por un aviso que no llegó. Safari en iOS suspende los WebSockets al bloquear la pantalla: el cliente reintenta y pide un `sync` al volver.
 - Lo propio se guarda por sala y rol (`duel-save.ts`), con el chat, el registro y `order` (Deshacer tras recargar sigue el orden real); lo del rival lo repite él al saludar, y el marcador del Match viene de su `sync` (uno viejo no pisa a uno nuevo). El relay no reserva el asiento: sólo recupera su mesa quien tiene lo guardado (límite aceptado: `docs/seguridad.md`).
 - **La sala muere al terminar el duelo** (uno suelto o un Match ganado): si el rival se va, a los `ROOM_CLOSE_S` la sala se cierra para todos (`duel.endRoom()`; el porqué, en `docs/duelo-relay.md`). Hasta entonces otra identidad no recibe nada (`stranger`), y quien ocupa el lugar del rival no cuenta como presente hasta saludar (`peerGreeted`): un tercero no reinicia la cuenta. La sala pública no vuelve a la lista de espera.
 

@@ -1,4 +1,4 @@
-import { useEffect, useId, type ReactNode } from 'react'
+import { Children, Fragment, isValidElement, useEffect, useId, type ReactNode } from 'react'
 
 import type { SpectatorEnd } from '../../app/duel-spectator'
 import type { Duelist } from '../../app/life-calculator'
@@ -38,85 +38,99 @@ export function TurnOrderBanner({ first, rival, onDone }: { first: boolean; riva
   )
 }
 
-/** Las vidas con que terminó el duelo, «3100 a 0»: el número que decide, el más grande del cartel. */
-export interface ResultScore {
-  mine: number
-  theirs: number
-  /** Cómo se llama el rival (la etiqueta de su número). */
-  rival: string
-}
-
 type ResultTone = 'win' | 'lose' | 'draw'
 
 /** El color del resultado, lo único que resalta del cartel: lima si ganaste, rojo si perdiste, lavanda si empataron (los de la placa, `DuelMedal`). */
 const RESULT_TEXT: Record<ResultTone, string> = { win: 'text-info', lose: 'text-danger-soft', draw: 'text-accent' }
+const RESULT_WORD = { win: 'duel.result.word.win', lose: 'duel.result.word.lose', draw: 'duel.result.word.draw' } as const
 
 interface ResultHeroProps {
   tone: ResultTone
-  /** Cómo terminó: el título, en el color del resultado. */
+  /** Cómo terminó, para el lector de pantalla (el nombre del cartel): a la vista lo dice la palabra («Victoria»). */
   title: string
-  /** Por qué, en una línea debajo. */
+  /** Por qué, en una línea debajo de la palabra. */
   reason: string
   note?: string | null
-  score?: ResultScore
   /** `alertdialog` en el automático solo (nadie más decide), `dialog` en un duelo con otro. */
   role?: 'dialog' | 'alertdialog'
-  /** La ✕ de salir, dentro de la hoja (nunca encima de la barra). */
+  /** La ✕ de salir del duelo. */
   onLeave?: () => void
-  /** Las secundarias, una debajo de la otra y del mismo ancho (`Button` `secondary` `fullWidth`). */
+  /** En vez de salir, la ✕ esconde el cartel y deja el campo solo («Ver el campo»; quien lo monta ofrece cómo volver a abrirlo). */
+  onHide?: () => void
+  /** Las secundarias: botones chicos (`Button` `sm` `fullWidth`, ícono y una o dos palabras), en la misma grilla que la principal. */
   actions?: ReactNode
-  /** La principal, abajo de todo, grande y de lado a lado (`primary` `lg` `fullWidth`): al alcance del pulgar. */
+  /** La principal, la última de la grilla (`primary` `sm` `fullWidth`). */
   primary?: ReactNode
   /** Fuera de la mesa (quien mira): tapa la pantalla (`fixed`); si no, la columna de la mesa (la portada de `PracticeMat`). */
   fixed?: boolean
 }
 
 /**
- * El final del duelo (Gastón, 2026-11-12: «mejorar la pantalla de victoria»): una hoja opaca apoyada abajo (en escritorio, al centro de la columna de la mesa) sobre la mesa con un
- * velo, como los menús del duelo. Arriba, el título en el color del resultado (lo único que resalta) con el porqué pegado; las vidas finales en grande («3100 a 0»: el número que
- * decide); las secundarias del mismo ancho y la principal, grande, abajo de todo. Recta (`mat-square`); entra subiendo (sólo `transform`) y el velo aparece (`opacity`).
- * Lo usan los jugadores (con sus botones y sus vidas) y quienes miran (sin ellos).
+ * El final del duelo (Gastón, 2026-11-12: «debo poder ver el campo, todo debe estar centrado al medio, mostrar la vida no es necesario»; referencia: el VICTORY de Master Duel): un solo
+ * bloque al medio del campo, sin velo ni hoja: el campo se ve entero arriba y abajo (detrás del bloque, sólo una franja oscura para leerlo). La palabra del resultado enorme («Victoria»,
+ * «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos, quietos; entra creciendo, sólo `scale`/`opacity`), el porqué debajo y las acciones en botones
+ * chicos iguales: dos por fila en lo angosto y todos en una desde 36 rem (si son impares, en lo angosto la última va de lado a lado). Sin vidas: las dicen las chapas de la mesa. Recto
+ * (`mat-square`). El nombre del cartel es `title` («¡Ganaste!»). Lo usan los jugadores (con sus botones) y quienes miran.
  */
-export function ResultHero({ tone, title, reason, note, score, role = 'dialog', onLeave, actions, primary, fixed = false }: ResultHeroProps) {
+export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave, onHide, actions, primary, fixed = false }: ResultHeroProps) {
   const titleId = useId()
+  // Cada botón en su celda (un fragmento de secundarias se abre).
+  const buttons = Children.toArray([actions, primary]).flatMap((node) => (isValidElement<{ children?: ReactNode }>(node) && node.type === Fragment ? Children.toArray(node.props.children) : [node]))
+  const close = onHide ?? onLeave
+  const closeLabel = onHide ? t('duel.result.hide') : t('duel.bar.leave')
 
   return (
-    <div role={role} aria-modal="true" aria-labelledby={titleId} data-testid="result-hero" data-tone={tone} className={cx('mat-square inset-0 z-65 flex flex-col justify-end min-[1101px]:justify-center', fixed ? 'fixed' : 'absolute')}>
-      <span aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-background/75 motion-reduce:animate-none" />
-      <section className="relative grid w-full animate-sheet-up gap-4 border-t border-border bg-card-background px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] motion-reduce:animate-none min-[1101px]:mx-auto min-[1101px]:max-w-md min-[1101px]:animate-sheet-in min-[1101px]:border min-[1101px]:p-6">
-        <div className="flex items-start gap-2">
-          <div className="grid min-w-0 flex-1 gap-1 pt-1">
-            <h2 id={titleId} className={cx('m-0 text-balance text-title font-extrabold [overflow-wrap:anywhere]', RESULT_TEXT[tone])}>
-              {title}
-            </h2>
-            <p role="status" className="m-0 text-body text-muted">
-              {reason}
-            </p>
-            {note ? <p className="m-0 text-micro text-muted">{note}</p> : null}
-          </div>
-          {onLeave ? <CloseButton size="md" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="-mr-2 shrink-0" onClick={onLeave} /> : null}
-        </div>
-        {score ? (
-          // Los espacios sueltos no se dibujan entre las piezas de un flex o una grilla, pero hacen que se lea «Vos 3100 a Rival 0».
-          <p data-score="" className="m-0 flex min-w-0 items-end gap-3 font-extrabold tabular-nums">
-            <span className="grid">
-              <span className="text-micro font-bold text-muted">{t('duel.bar.you')}</span>{' '}
-              <span className="text-display leading-none text-foreground">{score.mine}</span>
-            </span>{' '}
-            <span className="pb-1 text-lead font-bold text-muted">{t('duel.result.scoreTo')}</span>{' '}
-            <span className="grid min-w-0">
-              <span className="truncate text-micro font-bold text-muted">{score.rival}</span>{' '}
-              <span className="text-display leading-none text-foreground">{score.theirs}</span>
-            </span>
+    // En la mesa (no `fixed`) sólo el bloque ataja toques (`data-cover-pass`: la portada de `PracticeMat` los deja pasar): ⚙, Pasos y deshacer se siguen tocando con el final abierto.
+    <div role={role} aria-modal={fixed ? 'true' : undefined} aria-labelledby={titleId} data-testid="result-hero" data-tone={tone} {...(fixed ? {} : { 'data-cover-pass': '' })} className={cx('mat-square inset-0 z-65 grid place-items-center', fixed ? 'fixed' : 'pointer-events-none absolute')}>
+      <h2 id={titleId} className="sr-only">
+        {title}
+      </h2>
+      <section data-result-block="" className="pointer-events-auto @container relative grid w-full justify-items-center gap-2 p-4">
+        {/* La franja que deja leer el bloque: de lado a lado, oscura al medio y transparente en los bordes; aparece (`opacity`). */}
+        <span aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-linear-to-r from-transparent via-background/85 to-transparent motion-reduce:animate-none" />
+        {/* La palabra: su tamaño, por el ancho que tiene («Victoria» entra en un renglón desde 360 px). */}
+        <div aria-hidden="true" data-result-word={tone} className="@container relative grid w-full place-items-center">
+          <p
+            className={cx(
+              'm-0 whitespace-nowrap text-display font-extrabold uppercase italic leading-none tracking-tight [paint-order:stroke_fill] [-webkit-text-stroke:0.1875rem_var(--color-foreground)] text-shadow-[0_0_1.5rem_rgb(255_255_255/0.45)] @min-[21rem]:text-hit @min-[28rem]:text-hit-lg',
+              'transition-[scale,opacity] duration-300 ease-snap starting:scale-150 starting:opacity-0 motion-reduce:transition-none',
+              RESULT_TEXT[tone],
+            )}
+          >
+            {t(RESULT_WORD[tone])}
           </p>
-        ) : null}
-        {actions || primary ? (
-          <div className="grid gap-2">
-            {actions}
-            {primary}
+        </div>
+        {/* El porqué, y la ✕ a su altura en el borde (no pisa la palabra). */}
+        <div className="relative grid w-full justify-items-center gap-0.5 px-12 text-center transition-[opacity,translate] delay-200 duration-300 ease-out starting:translate-y-2 starting:opacity-0 motion-reduce:transition-none">
+          <p role="status" className="m-0 max-w-md text-balance text-body font-semibold text-foreground">
+            {reason}
+          </p>
+          {note ? <p className="m-0 text-micro text-muted">{note}</p> : null}
+          {close ? <CloseButton size="md" aria-label={closeLabel} title={closeLabel} className="absolute -right-2 top-1/2 -translate-y-1/2" onClick={close} /> : null}
+        </div>
+        {buttons.length > 0 ? (
+          <div className="relative mt-1 grid w-full max-w-md grid-cols-2 gap-2 transition-[opacity,translate] delay-300 duration-300 ease-out starting:translate-y-2 starting:opacity-0 motion-reduce:transition-none @min-[36rem]:max-w-2xl @min-[36rem]:auto-cols-fr @min-[36rem]:grid-flow-col @min-[36rem]:grid-cols-none">
+            {buttons.map((button, at) => (
+              <div key={at} className={cx('grid', buttons.length % 2 === 1 && at === buttons.length - 1 && 'col-span-2 @min-[36rem]:col-span-1')}>
+                {button}
+              </div>
+            ))}
           </div>
         ) : null}
       </section>
+    </div>
+  )
+}
+
+/** Con el final escondido (su ✕), el campo queda solo y al medio, chico, «Ver el resultado» lo vuelve a abrir. */
+export function ResultPeek({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div data-cover-pass="" className="pointer-events-none absolute inset-0 z-65 grid place-items-center">
+      <span className="pointer-events-auto">
+        <Button variant="secondary" size="sm" icon="trophy" onClick={onOpen}>
+          {t('duel.result.show')}
+        </Button>
+      </span>
     </div>
   )
 }
@@ -147,12 +161,13 @@ export function WatchResultBanner({ end, nameOf, onLeave, onClose }: { end: Spec
         fixed
         tone={winner === null ? 'draw' : 'win'}
         title={title}
-        reason={`${why}${score}`}
+        // La palabra dice «Victoria»: quién ganó, en la línea de abajo.
+        reason={`${winner === null ? '' : `${title}. `}${why}${score}`}
         {...(end.over ? { note: t('duel.watch.end.back') } : {})}
         {...(end.over
           ? {
               primary: (
-                <Button variant="secondary" size="lg" fullWidth onClick={onLeave}>
+                <Button variant="secondary" size="sm" icon="home" fullWidth onClick={onLeave}>
                   {t('duel.watch.end.backNow')}
                 </Button>
               ),

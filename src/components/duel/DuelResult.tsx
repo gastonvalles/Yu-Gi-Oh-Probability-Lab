@@ -82,29 +82,32 @@ interface ResultProps {
 }
 
 /**
- * El final del duelo, al centro de la mesa: la placa con cómo te fue (ganar o perder pesa más que cualquier otro cartel), por qué, las vidas finales y qué sigue
- * (revancha, salir o mirar cómo quedó la mesa). Quien ya pidió la revancha ve que espera a su rival; si el rival la pidió, "Revancha" la acepta.
+ * El final del duelo, al centro del campo: cómo te fue (la palabra), por qué y qué sigue (revancha, ver la mesa, guardar o ver el replay; sin vidas: las dicen las chapas). Quien ya pidió la revancha ve que espera a su rival; si el rival la pidió, "Revancha" la acepta.
  */
-export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClose, onSaveReplay, reason }: ResultProps & { onLeave: () => void; onClose: () => void; /** «Guardar replay» (el automático y el manual por enlace). */ onSaveReplay?: () => void }) {
+export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClose, onSaveReplay, onWatchReplay, reason }: ResultProps & { onLeave: () => void; onClose: () => void; /** «Guardar replay» (el automático y el manual por enlace). */ onSaveReplay?: () => void; /** «Ver el replay»: el duelo recién jugado, sin guardarlo. */ onWatchReplay?: () => void }) {
   const view = viewOf(result, snapshot, rival, reason)
 
   return (
     <ResultHero
       tone={view.tone}
       title={view.title}
-      reason={view.reason}
+      // La palabra dice cómo te fue en este duelo; si con él terminó el Match, la hoja lo dice primero.
+      reason={snapshot.series.match && snapshot.series.winner !== null ? `${view.title} ${view.reason}` : view.reason}
       note={view.note}
-      // Rendirse (vos o el rival) no es un marcador: «8000 a 8000» se lee como un empate. Por tiempo o por vidas, sí.
-      {...(snapshot.conceded !== null && !snapshot.timeUp ? {} : { score: { mine: snapshot.life.lp[snapshot.me], theirs: snapshot.life.lp[snapshot.me === 0 ? 1 : 0], rival } })}
       onLeave={onLeave}
       actions={
         <>
-          <Button variant="secondary" icon="eye" fullWidth onClick={onClose}>
+          <Button variant="secondary" size="sm" icon="eye" fullWidth onClick={onClose}>
             {t('duel.result.viewTable')}
           </Button>
           {onSaveReplay ? (
-            <Button variant="secondary" icon="save" fullWidth aria-haspopup="dialog" onClick={onSaveReplay}>
-              {t('meta.duels.save.button')}
+            <Button variant="secondary" size="sm" icon="save" fullWidth aria-haspopup="dialog" aria-label={t('meta.duels.save.button')} onClick={onSaveReplay}>
+              {t('duel.result.save')}
+            </Button>
+          ) : null}
+          {onWatchReplay ? (
+            <Button variant="secondary" size="sm" icon="play" fullWidth aria-haspopup="dialog" onClick={onWatchReplay}>
+              {t('duel.result.watchReplay')}
             </Button>
           ) : null}
         </>
@@ -113,7 +116,7 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
         ? {}
         : {
             primary: (
-              <Button variant="primary" size="lg" icon="refresh" fullWidth disabled={!snapshot.peerPresent} onClick={onRematch}>
+              <Button variant="primary" size="sm" icon="refresh" fullWidth disabled={!snapshot.peerPresent} onClick={onRematch}>
                 {rematchLabel(snapshot)}
               </Button>
             ),

@@ -11,7 +11,8 @@ import { t, type MessageKey } from '../../i18n'
 import { BAR_SEAT, LaneBanner, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
 import { LifeScore } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext } from '../probability/MatBarActions'
+import { MAT_BAR_ROW, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext, useMatTableItems } from '../probability/MatBarActions'
+import { PaletteSwitcher } from '../ui/PaletteSwitcher'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -45,6 +46,8 @@ export interface AutoOptions {
   onPlace: (mode: AutoPlaceMode) => void
   /** «Reiniciar el mismo duelo» de «Más opciones»: desde el principio, con las mismas cartas (sin esto, no se ofrece). */
   onRestart?: () => void
+  /** «Nueva mano»: otro duelo, con otra semilla (otras cartas). Sin esto, no se ofrece. */
+  onNewHand?: () => void
   /** «Rendirse» de Opciones (Solo): pide confirmar y termina el duelo como derrota (sin esto, no se ofrece). */
   onConcede?: () => void
   /** «Seguir en modo manual»: abre el diálogo para seguir la partida en la mesa manual (sin esto, no se ofrece). */
@@ -60,7 +63,7 @@ export interface AutoOptions {
   onBlind: (on: boolean) => void
 }
 
-interface AutoBarProps extends AutoOptions {
+interface AutoBarProps {
   rivalName: string
   /** Los puntos de vida de los dos, planos (`LifeScore`): en el marcador debajo de los íconos hasta 1100 px y en el lateral izquierdo con laterales. En escritorio sin laterales van en las esquinas del campo: las pone la pantalla. */
   life: { mine: number; theirs: number }
@@ -71,16 +74,14 @@ interface AutoBarProps extends AutoOptions {
   myTurn: boolean
   /** La flecha de «Volver a Jugar», como en la práctica. */
   onExit: () => void
-  /** Los íconos de la práctica (`MatBarActions`): deshacer tu última orden y «Nueva mano» (otro duelo, con otra semilla); «Rival» del ⋯ abre la hoja de la pantalla. */
-  onUndo: () => void
-  canUndo: boolean
-  onNewHand: () => void
   /** Lo que se apoya sobre la línea del registro (el núcleo resolviendo, la cadena con «No responder»): la misma fila, sin sumar alto. */
   lane?: LaneNotice | null
   /** La línea del registro (sólo en el celular; `DuelLogTicker`). */
   log?: ReactNode
-  /** El celular: la chapa del rival (sus vidas), en la fila de los íconos, a la izquierda de deshacer. */
+  /** El celular: la chapa del rival (sus vidas), a la derecha de la fila. */
   seat?: ReactNode
+  /** El celular repasando: «Volver al duelo», en el lugar de la chapa del rival (y no en un aviso sobre tu mano). */
+  back?: () => void
 }
 
 /** Una fila de Opciones (M-10): de 44 px, el nombre a la izquierda y su control a la derecha. Lo que explica va en el `title` (sin párrafos de ayuda debajo: «explican lo justo y necesario»). */
@@ -94,9 +95,9 @@ export function OptionRow({ title, hint, children }: { title: string; hint?: str
 }
 
 /** Una fila de Opciones que se enciende y se apaga: el interruptor a la derecha. */
-function SwitchRow({ title, hint, checked, onChange }: { title: string; hint: string; checked: boolean; onChange: (checked: boolean) => void }) {
+function SwitchRow({ title, hint, checked, onChange }: { title: string; hint?: string | undefined; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
-    <OptionRow title={title} hint={hint}>
+    <OptionRow title={title} {...(hint ? { hint } : {})}>
       <Switch checked={checked} onChange={onChange} label={title} />
     </OptionRow>
   )
@@ -124,21 +125,46 @@ export interface ConcedeOption {
 /** Las dos respuestas de una fila de Opciones, el segmentado chico en la misma fila (la cadena y la casilla). */
 const rowSegmented = { size: 'sm', dense: true, className: '-my-1 shrink-0' } as const
 
+/** Un grupo de Opciones con su rótulo chico (como los del ⋯: «La mesa», «El duelo»). */
+function OptionGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div role="group" aria-label={title} className="pt-3 first:pt-0">
+      <span aria-hidden="true" className="block pb-1 text-micro font-bold uppercase tracking-wider text-soft">
+        {title}
+      </span>
+      {children}
+    </div>
+  )
+}
+
 /**
- * El panel de Opciones (M-10): la hoja recta de abajo del resto de los menús del duelo (`AutoPanel`: asa, ✕, Escape o tocar afuera) y, en escritorio, su ventana recta. Arriba «Vista 3D» y
- * «Menús flotantes» (se prenden y apagan en medio del duelo: la pregunta abierta cambia en el acto), después lo propio de cada duelo (`children`: cada uno, una fila) y, al final, «Rendirse ›».
+ * El panel de Opciones (M-10), el único menú de un duelo automático (Gastón, 2026-11-12: «el botón de 3 puntos compite con el de configuración»): la hoja recta de abajo del resto de los menús del duelo
+ * (`AutoPanel`: asa, ✕, Escape o tocar afuera) y, en escritorio, su ventana recta. En grupos: «La mesa» (la vista 3D, los sonidos y la ventana grande de `useMatTableItems`, los colores y «Menús
+ * flotantes»: se prenden y apagan en medio del duelo, la pregunta abierta cambia en el acto) y «El duelo» (lo propio de cada duelo, `children`: cada uno, una fila) con «Rendirse ›» al final.
  */
 function OptionsPanel({ onClose, onConcede, disabled, children }: { onClose: () => void; onConcede?: () => void; disabled: boolean; children: ReactNode }) {
   const view = useMatView()
   const menus = useMatMenus()
+  // Los sonidos y la ventana grande (sólo en escritorio), los mismos ajustes que «La mesa» del ⋯ de la práctica.
+  const table = useMatTableItems(false)
 
   return (
     <AutoPanel kind="options" label={t('duel.options.title')} tall onDismiss={onClose}>
       <div>
-        <SwitchRow title={t('practice.view.3d')} hint={t('duel.options.viewHint')} checked={view === '3d'} onChange={(on) => setMatView(on ? '3d' : 'top')} />
-        <SwitchRow title={t('duel.options.floating')} hint={t('duel.options.floatingHint')} checked={menus === 'floating'} onChange={(on) => setMatMenus(on ? 'floating' : 'docked')} />
-        {children}
-        {onConcede ? <ActionRow danger title={t('duel.options.concede')} aria-haspopup="dialog" disabled={disabled} onClick={onConcede} /> : null}
+        <OptionGroup title={t('practice.mat.groupTable')}>
+          <SwitchRow title={t('practice.view.3d')} hint={t('duel.options.viewHint')} checked={view === '3d'} onChange={(on) => setMatView(on ? '3d' : 'top')} />
+          {table.map((item) => (
+            <SwitchRow key={item.label} title={item.label} hint={item.hint} checked={item.checked === true} onChange={() => item.onSelect()} />
+          ))}
+          <OptionRow title={t('common.palette')}>
+            <PaletteSwitcher className="-my-1 shrink-0" />
+          </OptionRow>
+          <SwitchRow title={t('duel.options.floating')} hint={t('duel.options.floatingHint')} checked={menus === 'floating'} onChange={(on) => setMatMenus(on ? 'floating' : 'docked')} />
+        </OptionGroup>
+        <OptionGroup title={t('practice.mat.groupDuel')}>
+          {children}
+          {onConcede ? <ActionRow danger title={t('duel.options.concede')} aria-haspopup="dialog" disabled={disabled} onClick={onConcede} /> : null}
+        </OptionGroup>
       </div>
     </AutoPanel>
   )
@@ -215,8 +241,10 @@ export function PlaceRow({ place, onPlace }: { place: AutoPlaceMode; onPlace: (m
   )
 }
 
-/** Lo de Opciones que es de «Jugar solo automático»: las respuestas a la cadena, la casilla, el rival y su mano de dorso, reiniciar el mismo duelo, el replay, el bot y seguir en modo manual; cada uno, una fila. */
-function SoloSettings({ chain, onChain, place, onPlace, onRestart, onManual, onSaveReplay, onBotLog, rival, blind, onBlind, close }: AutoOptions & { close: () => void }) {
+/** Lo de Opciones que es de «Jugar solo automático»: las respuestas a la cadena, la casilla, el rival y su mano de dorso, nueva mano, guardar combo, reiniciar el mismo duelo, el replay, el bot y seguir en modo manual; cada uno, una fila. */
+function SoloSettings({ chain, onChain, place, onPlace, onRestart, onNewHand, onManual, onSaveReplay, onBotLog, rival, blind, onBlind, close }: AutoOptions & { close: () => void }) {
+  // «Guardar combo» es de la mesa (su diálogo y su lista): la mesa lo pone alrededor de la botonera.
+  const save = useContext(MatSaveContext)
   // Cada acción cierra el panel antes de abrir lo suyo (una hoja o un diálogo).
   const go = (action: () => void) => () => {
     close()
@@ -233,6 +261,8 @@ function SoloSettings({ chain, onChain, place, onPlace, onRestart, onManual, onS
       ) : rival.kind === 'handtraps' ? (
         <SwitchRow title={t('auto.bar.blind')} hint={t('auto.bar.blindHint')} checked={blind} onChange={onBlind} />
       ) : null}
+      {onNewHand ? <ActionRow title={t('practice.mat.newHand')} onClick={go(onNewHand)} /> : null}
+      {save ? <ActionRow title={t('practice.mat.saveCombo')} aria-haspopup="dialog" disabled={!save.canSave} {...(save.canSave ? {} : { value: t('practice.mat.saveNone') })} onClick={go(save.onSave)} /> : null}
       {onRestart ? <ActionRow title={t('auto.bar.restart')} hint={t('auto.bar.restartHint')} onClick={go(onRestart)} /> : null}
       {onSaveReplay ? <ActionRow title={t('meta.duels.save.button')} hint={t('auto.bar.saveReplayHint')} aria-haspopup="dialog" onClick={go(onSaveReplay)} /> : null}
       {onBotLog ? <ActionRow title={t('auto.bot.log.open')} hint={t('auto.bot.log.optionHint')} aria-haspopup="dialog" onClick={go(onBotLog)} /> : null}
@@ -261,18 +291,21 @@ export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps
 }
 
 /**
- * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace. Es la barra de la práctica: la flecha de
- * «Volver a Jugar» a la izquierda y, a la derecha, deshacer y el ⋯ (`MatBarActions`), y lo propio del automático: «Rival» en el ⋯ (las Opciones del duelo van en el ⚙ de abajo, `AutoDock`), el turno, dicho una sola vez y sólo hasta 1100 px («Tu turno · 3», en el color de quién es; desde 1101 px lo dice la chapa de quien juega y la fase, sólo el botón del campo) y las vidas, planas (`LifeScore`): hasta 1100 px en el marcador debajo
+ * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace: la flecha de «Volver a Jugar» a la
+ * izquierda y, sólo en escritorio, Deshacer a la derecha (`MatUndoContext`: hasta 1100 px va abajo, en la botonera). Sin ⋯: todo lo demás va en el ⚙ de abajo (`AutoDock`). En el celular, la chapa del
+ * rival a la derecha (repasando, «Volver al duelo» en su lugar). El turno, dicho una sola vez y sólo hasta 1100 px («Tu turno · 3», en el color de quién es; desde 1101 px lo dice la chapa de quien juega y la fase, sólo el botón del campo) y las vidas, planas (`LifeScore`): hasta 1100 px en el marcador debajo
  * de los íconos («VOS 8000 · Tu turno · 1 · RIVAL 8000»), con laterales en el izquierdo y, en escritorio sin ellos, en las esquinas del campo (las pone la pantalla). Hasta 1100 px la línea del registro va
  * debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se
  * mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, onUndo, canUndo, onNewHand, lane = null, log, seat, ...options }: AutoBarProps) {
+export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, lane = null, log, seat, back }: AutoBarProps) {
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const rails = useDuelRails()
-  // La píldora de las salidas (o el aviso de deshacer) va antes de la chapa del rival: la fila la lee acá y se la saca a los íconos.
+  // La píldora de las salidas va antes de la chapa del rival (toma el lugar libre).
   const rules = useContext(MatRulesContext)
+  // Deshacer, sólo en escritorio: lo arma la mesa (hasta 1100 px va en la botonera de abajo).
+  const undo = useContext(MatUndoContext)
   // Repasando un combo en el celular: el paso va en el segundo renglón del aviso (la mesa lo da; los botones y la línea de tiempo quedan abajo).
   const replay = useContext(MatReplayContext)
 
@@ -283,11 +316,6 @@ export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, onUndo
     <span data-testid="auto-turn" className={cx('min-w-0 truncate text-lead font-bold max-[359px]:text-body', myTurn ? 'text-accent' : 'text-info-soft', className)}>
       {turn > 0 ? (myTurn ? t('auto.bar.turnMine', { turn }) : t('duel.bar.theirTurnN', { name: rivalName, turn })) : null}
     </span>
-  )
-
-  // Los íconos de la práctica (deshacer y el ⋯, sin la vista 3D: está en Opciones, el ⚙ de abajo a la derecha, que arma la pantalla).
-  const actions = (first?: string) => (
-    <MatBarActions className={first} onUndo={onUndo} canUndo={canUndo} onNewHand={onNewHand} rival={{ meta: t(`auto.rival.kind.${options.rival.kind}`), onSelect: options.rival.onChange }} view={false} />
   )
 
   // Con laterales (escritorio ancho), las piezas van a la grilla de la mesa como las de `DuelBar`: arriba a la izquierda la flecha y las vidas, y los avisos debajo; arriba a la derecha los íconos
@@ -305,7 +333,7 @@ export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, onUndo
         </div>
         <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
           <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-2', MAT_BAR_ROW)}>
-            {actions()}
+            {undo}
           </div>
         </div>
         {/* El aviso, en lo que el campo agrandado deja libre del lateral (`--field-overhang`, de la mesa) y por encima del tablero (`z-20`): nunca cortado ni debajo. Con menos de 11 rem libres se apoya sobre el borde del campo.
@@ -323,7 +351,7 @@ export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, onUndo
         <MatExitButton onExit={onExit} />
         <div className="ml-auto flex min-h-18 min-w-0 flex-col items-end justify-center">
           <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-1', MAT_BAR_ROW)}>
-            {actions()}
+            {undo}
           </div>
         </div>
         {/* El aviso, centrado debajo de la barra. */}
@@ -337,23 +365,22 @@ export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, onUndo
   }
 
   return (
-    // Hasta 1100 px: arriba la fila de la práctica (la hamburguesa, la flecha y los íconos, en el mismo lugar), debajo el marcador y la línea del registro (en el celular flota: no ocupa lugar).
+    // Hasta 1100 px: arriba la hamburguesa, la flecha y las salidas (Deshacer y el ⚙ van abajo), debajo el marcador y la línea del registro (en el celular no hay: los avisos los pone la mesa).
     <div className="relative flex flex-col gap-1.5 px-0.5 pt-1.5">
       <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-1 h-11', MAT_BAR_ROW)}>
         <ShellMenuButton className="-ml-2" />
         <MatExitButton onExit={onExit} />
-        {/* Los íconos, a la derecha, como en la práctica (el engranaje, al final, donde ella tiene «Guardar combo» y los pasos). En el celular, antes de ellos, la chapa del rival. */}
-        {phone && seat ? (
-          <>
-            {rules}
-            <span data-bar-seat="" className={cx(BAR_SEAT, !rules && 'ml-auto')}>{seat}</span>
-            <MatRulesContext value={null}>{actions()}</MatRulesContext>
-          </>
-        ) : (
-          actions('ml-auto')
-        )}
+        {rules}
+        {/* En el celular, a la derecha, la chapa del rival; repasando, «Volver al duelo» en su lugar (lo único de la barra que no se mira mientras repasás; nada flota sobre tu mano). */}
+        {phone && back ? (
+          <Button variant="secondary" size="sm" className={cx('shrink-0', !rules && 'ml-auto')} onClick={back}>
+            {t('auto.review.back')}
+          </Button>
+        ) : phone && seat ? (
+          <span data-bar-seat="" className={cx(BAR_SEAT, !rules && 'ml-auto')}>{seat}</span>
+        ) : null}
       </div>
-      {/* En el celular la barra es sólo esta fila: las vidas del rival van en ella, las tuyas en tu chapa (abajo) y los avisos flotan sobre tu mano (los pone la pantalla). */}
+      {/* En el celular la barra es sólo esta fila: las vidas del rival van en ella, las tuyas en tu chapa (abajo) y los avisos van debajo de ella (los pone la mesa). */}
       {phone ? null : (
         <>
           {/* El marcador, plano (Gastón, 2026-10-27, opción A; de 640 a 1100 px): «VOS 8000 · Tu turno · 1 · RIVAL 8000». La fase, en el botón del campo. */}

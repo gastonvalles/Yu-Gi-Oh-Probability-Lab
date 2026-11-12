@@ -23,6 +23,7 @@ import type { SpotlightKind } from '../../app/mat-effects'
 import { DEAL_EDGE_AT, DEAL_LAND_AT, dealFrames } from '../../app/deal-flight'
 import { EASE_IN_OUT, EASE_OUT, cancelWhenDone } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
+import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
@@ -402,11 +403,13 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
         )
       })}
       {/* Los medallones de lo activado desde la mano, sobre la mano (donde se activó, aunque la carta se haya ido como costo). Después de las cartas: no cambian su lugar entre hermanas. */}
-      {medals?.length ? (
-        <span data-hand-links="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-60">
-          <ChainBadge medals={medals} />
-        </span>
-      ) : null}
+      <Presence>
+        {medals?.length ? (
+          <span data-hand-links="" aria-hidden="true" className="pointer-events-none absolute inset-0 z-60">
+            <ChainBadge medals={medals} />
+          </span>
+        ) : null}
+      </Presence>
       {cards.length === 0 ? <span className="absolute inset-0 grid place-items-center text-micro text-soft">{t('practice.hand.empty')}</span> : null}
     </div>
   )

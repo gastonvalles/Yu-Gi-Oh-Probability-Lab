@@ -150,7 +150,7 @@ describe('auto-screen · el rival de handtraps', () => {
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
     // La respuesta del rival se ve en la escena: su carta entra con su «2», del color del rival, unida a la tuya.
     expect(pose()).toEqual(['Eslabón 1: Maxx C, tuyo. En espera · slot', `Eslabón 2: ${ASH.name}, del rival. En espera · slot`])
-    expect(screen.getByRole('img', { name: `Eslabón 2: ${ASH.name}, del rival. En espera` })).toHaveTextContent(/2$/)
+    expect(screen.getByRole('img', { name: `Eslabón 2: ${ASH.name}, del rival. En espera` })).toContainElement(document.querySelector('[data-chain-number="2"]'))
     expect(document.querySelector('[data-chain-bond="2"]')).toHaveClass('opacity-100')
 
     // Se resuelve de una en el núcleo; la pantalla lo cuenta de a un eslabón, del último al primero, sin nada grande (la escena es sólo para encadenar): lo que pasó, en una línea

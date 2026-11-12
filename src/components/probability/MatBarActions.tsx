@@ -24,16 +24,13 @@ export function MatExitButton({ onExit }: { onExit: () => void }) {
 }
 
 /**
- * «Guardar combo» de la mesa, para una barra que arma la pantalla (`duel.header`: la de «Jugar solo automático»): el diálogo y la lista de combos son de la mesa (`PracticeMat`),
- * que lo pone alrededor de esa barra; sin `onSave`, `MatBarActions` toma éste.
+ * «Guardar combo» de la mesa, para lo que arma la pantalla (las Opciones del ⚙ de «Jugar solo automático»): el diálogo y la lista de combos son de la mesa (`PracticeMat`),
+ * que lo pone alrededor de la barra y de la botonera; sin `onSave`, `MatBarActions` toma éste.
  */
 export const MatSaveContext = createContext<{ onSave: () => void; canSave: boolean } | null>(null)
 
 /** Las salidas y problemas de la mano en el celular (`RulesPill`), que la mesa pone en la barra antes de Deshacer: la de la práctica y la de «Jugar solo automático». Sin ella, nada. */
 export const MatRulesContext = createContext<ReactNode>(null)
-
-/** «Pasos y combos» como primer ítem del ⋯: la mesa lo da cuando no tiene la fila de abajo donde iba su botón («Jugar solo automático» en el celular en vertical). Sin él, no va. */
-export const MatStepsContext = createContext<(() => void) | null>(null)
 
 /**
  * El replay partido de «Jugar solo automático» en el celular (sin la fila de abajo): qué paso se mira (`step`, el segundo renglón del aviso del repaso). La mesa lo da sólo mientras se repasa un
@@ -41,7 +38,7 @@ export const MatStepsContext = createContext<(() => void) | null>(null)
  */
 export const MatReplayContext = createContext<{ step: string } | null>(null)
 
-/** Deshacer de un duelo por enlace, para su barra de arriba (`DuelBar`, con `undoInHeader`): lo arma la mesa con su estado (sin jugadas, esperando el permiso del rival). Sin él, nada. */
+/** Deshacer de un duelo en escritorio, para su barra de arriba (`DuelBar` y `AutoBar`, con `undoInHeader`): lo arma la mesa con su estado (sin jugadas, esperando el permiso del rival). Sin él, nada. */
 export const MatUndoContext = createContext<ReactNode>(null)
 
 /**
@@ -63,8 +60,8 @@ export function useMatTableItems(view3d = true): OverflowItem[] {
 }
 
 /** El ⋯ de la barra de la mesa (blanco de 44 px; lima al apuntarlo, al enfocarlo o abierto): «La mesa» y lo de cada una, en grupos. */
-export function MatMoreMenu({ items, lead = [], defaultOpen = false, view = true }: { items: OverflowItem[]; /** Lo que va antes de «La mesa» («Pasos y combos»). */ lead?: OverflowItem[]; /** Abierto de entrada (la muestra del catálogo). */ defaultOpen?: boolean; /** Sin esto, no lleva la vista 3D (en un duelo automático va en Opciones, el ⚙). */ view?: boolean }) {
-  return <OverflowMenu trigger="bar" label={t('practice.mat.more')} items={[...lead, ...useMatTableItems(view), ...items]} defaultOpen={defaultOpen} />
+export function MatMoreMenu({ items, defaultOpen = false, view = true }: { items: OverflowItem[]; /** Abierto de entrada (la muestra del catálogo). */ defaultOpen?: boolean; /** Sin esto, no lleva la vista 3D (en un duelo automático va en Opciones, el ⚙). */ view?: boolean }) {
+  return <OverflowMenu trigger="bar" label={t('practice.mat.more')} items={[...useMatTableItems(view), ...items]} defaultOpen={defaultOpen} />
 }
 
 const NOTHING = () => {}
@@ -77,8 +74,6 @@ interface MatBarActionsProps {
   onNewHand: () => void
   /** Se aplicaron las handtraps del rival (ya quedaron guardadas): la práctica reparte otra mano. */
   onHandtraps?: () => void
-  /** El duelo automático: en vez de «Handtraps del rival», «Rival» (contra quién jugás, en `meta`), que abre la hoja de la pantalla (`RivalSheet`). */
-  rival?: { meta: string; onSelect: () => void }
   /** «Guardar combo»; `canSave` apagado sin jugadas. Sin esto, el de la mesa (`MatSaveContext`, el automático) o ninguno (el duelo por enlace). */
   onSave?: () => void
   canSave?: boolean
@@ -93,7 +88,7 @@ interface MatBarActionsProps {
 }
 
 /**
- * La barra de arriba de la mesa, la misma en la práctica (`PracticeMat`) y en «Jugar solo automático» (`AutoBar`): a la vista sólo deshacer (lo que se toca en cada jugada) y el ⋯ (`MatMoreMenu`),
+ * La barra de arriba de la práctica (`PracticeMat`): a la vista sólo deshacer (lo que se toca en cada jugada) y el ⋯ (`MatMoreMenu`),
  * que lleva lo demás en dos grupos: «La mesa» (la vista 3D, los sonidos y la ventana grande, con su interruptor) y «El duelo» (las handtraps del rival, «Nueva mano», «Guardar combo» y lo de cada mesa).
  * La flecha de salir va antes, en la barra de cada una (Gastón, 2026-10-26: «muchos íconos juntos»; antes eran siete a la vista).
  *
@@ -102,13 +97,12 @@ interface MatBarActionsProps {
  * - Accesibilidad: cada uno con `aria-label` y `title`; el menú es `role="menu"` (los ajustes, `menuitemcheckbox`), ↑ ↓ lo recorren y Escape lo cierra.
  * - El estado es de toda la app (la vista, los sonidos, la ventana grande y las handtraps se recuerdan): las mesas lo comparten y acá no se guarda nada.
  * - Hacer: lo propio de una mesa va en `more` o después, en su barra. No hacer: sacar uno de estos al lado del ⋯ ni copiar uno en otra barra.
- * - Usos: la barra de la práctica (`PracticeMat`), la de «Jugar solo automático» (`AutoBar`: en el celular, en escritorio y con laterales) y la muestra del catálogo; la del duelo por enlace (`DuelBar`)
- *   arma su ⋯ con el mismo grupo «La mesa» (`MatMoreMenu`).
+ * - Usos: la barra de la práctica (`PracticeMat`) y la muestra del catálogo; la del duelo por enlace manual (`DuelBar`) arma su ⋯ con el mismo grupo «La mesa» (`MatMoreMenu`). Los duelos
+ *   automáticos no llevan ⋯: «La mesa» va en su ⚙ (`OptionsGear`, con `useMatTableItems`).
  */
-export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, rival, onSave, canSave = false, more = [], className, menuOpen = false, view = true }: MatBarActionsProps) {
+export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, onSave, canSave = false, more = [], className, menuOpen = false, view = true }: MatBarActionsProps) {
   const fromMat = useContext(MatSaveContext)
   const rules = useContext(MatRulesContext)
-  const openSteps = useContext(MatStepsContext)
   const save = onSave ? { onSave, canSave } : fromMat
   const handtraps = useHandtrapsSheet({ onApply: onHandtraps ?? NOTHING })
 
@@ -122,17 +116,14 @@ export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, rival, 
       <MatMoreMenu
         defaultOpen={menuOpen}
         view={view}
-        lead={openSteps ? [{ label: t('practice.mat.stepsAndCombos'), icon: 'list', opens: true, onSelect: openSteps }] : []}
         items={[
-          rival
-            ? { group: t('practice.mat.groupDuel'), label: t('auto.rival.label'), icon: 'hand', meta: rival.meta, opens: true, onSelect: rival.onSelect }
-            : { group: t('practice.mat.groupDuel'), label: t('handtraps.title'), icon: 'hand', meta: t(handtraps.config.enabled ? 'handtraps.mat.on' : 'handtraps.mat.off'), opens: true, onSelect: handtraps.open },
+          { group: t('practice.mat.groupDuel'), label: t('handtraps.title'), icon: 'hand', meta: t(handtraps.config.enabled ? 'handtraps.mat.on' : 'handtraps.mat.off'), opens: true, onSelect: handtraps.open },
           { label: t('practice.mat.newHand'), icon: 'refresh', onSelect: onNewHand },
           ...(save ? [{ label: t('practice.mat.saveCombo'), icon: 'save', disabled: !save.canSave, ...(save.canSave ? {} : { meta: t('practice.mat.saveNone') }), onSelect: save.onSave } satisfies OverflowItem] : []),
           ...more,
         ]}
       />
-      {rival ? null : handtraps.sheet}
+      {handtraps.sheet}
     </>
   )
 }

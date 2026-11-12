@@ -6,6 +6,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 
 import type { DuelConnect } from '../app/use-duel'
+import { DuelLine, type LaneNotice } from '../components/duel/DuelBar'
 import { LifeBadge } from '../components/duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY, phoneDuelLayout } from '../components/probability/compact-field'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
@@ -14,7 +15,7 @@ import { asSocket, createDuelHarness, phaseChip } from './support/duel-screen-ha
 
 /**
  * La mesa del duelo en el celular (Gastón, 2026-11-12: «evitar espacio vacío entre campo y mano»): las vidas en chapas (la del rival en la barra) y, entre el campo y tu mano, nada: la línea es una
- * marca de 0 px y lo que dice (un aviso) flota sobre tu mano sólo mientras está. Nada de lo que aparece mueve el campo.
+ * marca de 0 px y lo que dice (un aviso) va arriba, debajo de la barra, sólo mientras está («deberían aparecer arriba»); uno sin botones se saca deslizándolo. Nada de lo que aparece mueve el campo.
  */
 vi.setConfig({ testTimeout: 20_000 })
 
@@ -50,7 +51,7 @@ afterEach(() => {
 })
 
 describe('la línea del celular', () => {
-  it('no ocupa lugar: es una marca de 0 px en el borde de abajo del campo; la última jugada no sale en la mesa y un aviso flota sobre tu mano sólo mientras está, sin mover el campo', () => {
+  it('no ocupa lugar: entre el campo y tu mano queda una marca de 0 px; la última jugada no sale en la mesa y un aviso va arriba, debajo de la barra (sobre la mano del rival), sólo mientras está, sin mover el campo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
     const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 58, bottom: 68 })
@@ -71,13 +72,64 @@ describe('la línea del celular', () => {
     expect(within(line()).queryByRole('button', { name: new RegExp(`^${t('duel.log.open')}`) })).toBeNull()
     expect(geometry()).toEqual(before)
 
-    // Un aviso flota sobre el borde de arriba de tu mano (no ocupa lugar ni corre el campo).
+    // Un aviso va arriba: debajo de la barra (absoluto, `top-full`), no en la marca de entre el campo y tu mano; no ocupa lugar ni corre el campo.
     fireEvent.click(phaseChip(mover))
     fireEvent.click(screen.getByRole('menuitem', { name: /Battle Phase/ }))
     flush()
-    expect(line().querySelector('[data-lane="passAsking"]')).not.toBeNull()
-    expect(line().firstElementChild).toHaveClass('absolute', 'top-0', 'h-11', 'pointer-events-none')
+    const top = mover.container.querySelector<HTMLElement>('[data-mat-line]')!
+
+    expect(top.querySelector('[data-lane="passAsking"]')).not.toBeNull()
+    expect(top).toHaveClass('absolute', 'top-full', 'h-11', 'pointer-events-none', 'z-20')
+    // Hermano de la barra (en su caja `relative`), y antes del campo en el orden de la página.
+    expect(top.parentElement).toContainElement(within(mover.container).getByRole('button', { name: /^Salir del duelo/ }))
+    expect(top.compareDocumentPosition(field()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(line().childElementCount).toBe(0)
     expect(geometry()).toEqual(before)
+  })
+})
+
+describe('sacar un aviso deslizándolo', () => {
+  // Gastón, 2026-11-12: «no se pueden eliminar deslizandolos a la izquierda o derecha como antes».
+  const moment: LaneNotice = { kind: 'ask', text: 'Invocación Normal de Gene-Warped Warwolf', actions: [] }
+  const swipeable = () => screen.queryByTitle(t('duel.log.dismiss'))
+  const drag = (element: HTMLElement, dx: number) => {
+    fireEvent.pointerDown(element, { button: 0, pointerId: 1, clientX: 100, clientY: 10 })
+    fireEvent.pointerMove(element, { button: 0, pointerId: 1, clientX: 100 + dx, clientY: 12 })
+    fireEvent.pointerUp(element, { button: 0, pointerId: 1, clientX: 100 + dx, clientY: 12 })
+  }
+
+  it('uno sin botones se saca de costado (a izquierda o derecha, o con Supr) y no vuelve hasta que la línea diga otra cosa; poco arrastre lo deja', () => {
+    const view = renderBare(<DuelLine lane={moment} rivalName="Ana" />)
+
+    expect(swipeable()).toHaveClass('touch-pan-y', 'pointer-events-auto', 'motion-reduce:transition-none')
+    expect(swipeable()).toHaveAttribute('aria-keyshortcuts', 'Delete')
+    drag(swipeable()!, 20)
+    expect(document.querySelector('[data-lane="ask"]')).not.toBeNull()
+    drag(swipeable()!, 120)
+    expect(document.querySelector('[data-lane]')).toBeNull()
+    // Lo mismo otra vez (otro objeto, el mismo texto): no vuelve.
+    view.rerender(<DuelLine lane={{ ...moment }} rivalName="Ana" />)
+    expect(document.querySelector('[data-lane]')).toBeNull()
+    // Otro aviso sí sale; para la izquierda también se va, y con Supr.
+    view.rerender(<DuelLine lane={{ kind: 'looking', what: 'deck' }} rivalName="Ana" />)
+    expect(document.querySelector('[data-lane="looking"]')).not.toBeNull()
+    drag(swipeable()!, -120)
+    expect(document.querySelector('[data-lane]')).toBeNull()
+    view.rerender(<DuelLine lane={{ kind: 'undoResult', result: 'denied' }} rivalName="Ana" />)
+    fireEvent.keyDown(swipeable()!, { key: 'Delete' })
+    expect(document.querySelector('[data-lane]')).toBeNull()
+    // Sin aviso y con el mismo de vuelta, es uno nuevo: sale.
+    view.rerender(<DuelLine lane={null} rivalName="Ana" />)
+    view.rerender(<DuelLine lane={moment} rivalName="Ana" />)
+    expect(document.querySelector('[data-lane="ask"]')).not.toBeNull()
+  })
+
+  it('uno con botones no se desliza: se contesta', () => {
+    renderBare(<DuelLine lane={{ kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} }} rivalName="Ana" />)
+
+    expect(swipeable()).toBeNull()
+    expect(document.querySelector('[data-lane="undoAsked"]')).not.toBeNull()
+    expect(screen.getAllByRole('button')).toHaveLength(2)
   })
 })
 

@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CHAIN_LINK_MS, type ChainStep } from '../app/auto/chain-feed'
 import { AutoSoloScreen } from '../components/auto/AutoSoloScreen'
-import { PLAYER_COLOR } from '../components/duel/player-color'
 import type { MatCard } from '../components/probability/PracticeMat'
 import { CARDS, fakeSession } from './support/auto-session-fake'
 import { core } from './support/auto-screen-harness'
@@ -52,18 +51,19 @@ function mountChain() {
 const dock = () => screen.getByRole('region', { name: 'Detalle de la carta', hidden: true })
 /** Lo resaltado en el detalle (la frase puede venir partida: la condición, la velocidad y el costo llevan su marca). */
 const marked = () => [...dock().querySelectorAll('[data-highlight]')].map((mark) => mark.textContent).join('')
-const number = (name: string) => screen.getByRole('img', { name }).querySelector('.text-hit')
+const number = (name: string) => screen.getByRole('img', { name }).querySelector('[data-chain-number]')
 
 describe('auto-screen · la cadena en grande, en escritorio', () => {
-  it('cada carta lleva su número en el color de su dueño (el de las vidas), un nombre que dice de quién es y el borde de su tipo (la del rival, por YGOPRODeck)', async () => {
+  it('cada carta lleva su número (blanco y celeste para los dos, como en Master Duel), un nombre que dice de quién es y, sin imagen, el color de su tipo (la del rival, por YGOPRODeck)', async () => {
     mountChain()
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
     await act(async () => {})
 
-    expect(number('Eslabón 1: Ash Blossom, tuyo. En espera')).toHaveClass(PLAYER_COLOR.mine.text)
-    expect(number('Eslabón 2: Blue-Eyes White Dragon, del rival. En espera')).toHaveClass(PLAYER_COLOR.theirs.text)
-    expect(screen.getByRole('img', { name: /^Eslabón 1:/ })).toHaveClass('bg-frame-effect')
-    expect(screen.getByRole('img', { name: /^Eslabón 2:/ })).toHaveClass('bg-frame-effect')
+    expect(number('Eslabón 1: Ash Blossom, tuyo. En espera')).toHaveAttribute('data-chain-number', '1')
+    expect(number('Eslabón 2: Blue-Eyes White Dragon, del rival. En espera')).toHaveAttribute('data-chain-number', '2')
+    const tone = (name: string) => [...new Set([...number(name)!.querySelectorAll('svg:not([data-chain-flash]) path')].map((path) => path.getAttribute('class')))].join()
+    expect(tone('Eslabón 1: Ash Blossom, tuyo. En espera')).toBe(tone('Eslabón 2: Blue-Eyes White Dragon, del rival. En espera'))
+    for (const card of screen.getAllByRole('img', { name: /^Eslabón \d:/ })) expect(card).toHaveClass(card.querySelector('img') ? 'bg-input' : 'bg-frame-effect')
   })
 
   it('el detalle de la izquierda muestra el eslabón del que habla la escena, con la frase de su efecto resaltada: el tuyo y el del rival, por su número', async () => {

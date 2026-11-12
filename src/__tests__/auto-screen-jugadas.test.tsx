@@ -90,7 +90,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 5, index: 0 }])
   })
 
-  it('fases: el botón de la fase ofrece sólo adónde el núcleo deja ir (M-04) y «Ir a la Battle Phase» contesta', () => {
+  it('fases: el botón de la fase abre las seis (la de ahora marcada, las que el núcleo no deja, apagadas) y «Ir a Battle Phase» contesta', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -98,18 +98,18 @@ describe('auto-screen · las jugadas', () => {
     fireEvent.click(phaseButton())
     const items = screen.getAllByRole('menuitem')
 
-    expect(items.map((item) => item.textContent)).toEqual(['Ir a la Battle Phase', 'Terminar el turno'])
-    fireEvent.click(items[0]!)
+    expect(items.map((item) => item.getAttribute('aria-label'))).toEqual(['Draw Phase · Todavía no', 'Standby Phase · Todavía no', 'Fase actual: Main Phase 1', 'Ir a Battle Phase', 'Main Phase 2 · Todavía no', 'Ir a End Phase'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 6, index: null }])
     expect(dispatches).toBe(0)
   })
 
-  it('terminar el turno: «Terminar el turno» desde el botón de la fase contesta `to_ep` (el núcleo pasa el turno solo)', () => {
+  it('terminar el turno: «Ir a End Phase» desde el botón de la fase contesta `to_ep` (el núcleo pasa el turno solo)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Terminar el turno' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a End Phase' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 7, index: null }])
     // Sin pregunta, el botón de la fase se apaga: no hay nada que contestar.
     expect(phaseButton()).toBeDisabled()
@@ -120,7 +120,7 @@ describe('auto-screen · las jugadas', () => {
 
     core(() => fake.ask(BATTLE))
     fireEvent.click(phaseButton())
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Ir a la Main Phase 2', 'Terminar el turno'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.getAttribute('aria-label'))).toEqual(['Draw Phase · Todavía no', 'Standby Phase · Todavía no', 'Fase actual: Main Phase 1', 'Battle Phase · Todavía no', 'Ir a Main Phase 2', 'Ir a End Phase'])
     fireEvent.keyDown(window, { key: 'Escape' })
     // Lo que puede atacar brilla en celeste y lleva la espada arriba; el lector la dice como descripción («Puede atacar»), no en el nombre.
     const attacker = screen.getByRole('button', { name: 'Maxx C' })

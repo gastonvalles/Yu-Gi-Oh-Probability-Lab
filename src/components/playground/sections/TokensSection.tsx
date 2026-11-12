@@ -3,9 +3,10 @@ import { useMemo, useState } from 'react'
 import { FRAME_FILL, FRAME_OUTLINE, frameKindOf, frameTextClass } from '../../../app/card-frame'
 import { CardArt } from '../../CardArt'
 import { cx } from '../../ui/cx'
+import { PaletteSwitcher } from '../../ui/PaletteSwitcher'
 import { SearchField } from '../../ui/SearchField'
 import { Segmented } from '../../ui/Segmented'
-import { Specimen, SpecimenGrid } from '../Specimen'
+import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { readThemeTokens, tokenKind, type ThemeToken, type TokenKind } from '../theme-tokens'
 
 const KIND_LABEL: Record<TokenKind, string> = {
@@ -110,6 +111,19 @@ export function TokensSection() {
         />
       </div>
       {tokens.length === 0 ? <p className="m-0 text-body text-muted">No se pudieron leer las hojas de estilo.</p> : null}
+      <Specimen
+        title="Paleta: Carbón o Índigo"
+        note={
+          <>
+            <Tag>ui/PaletteSwitcher</Tag> en el ☰ (<Tag>segmented</Tag>, el cajón del celular) y en la barra de escritorio (<Tag>chips</Tag>); en ⚙ Opciones del duelo, como fila. Carbón es la de fábrica; Índigo, la de antes de la propuesta de carbón (índigo, violeta y ámbar). Se guarda y se aplica con <Tag>data-palette</Tag> en el html: los tokens de abajo y toda la página cambian al elegir. No siguen a la paleta, a propósito: la imagen exportada del deck, el <Tag>theme-color</Tag>, <Tag>foil.css</Tag> y los colores por tipo de carta.
+          </>
+        }
+      >
+        <div className="grid w-full max-w-xs gap-3">
+          <PaletteSwitcher variant="segmented" />
+          <PaletteSwitcher />
+        </div>
+      </Specimen>
       <Specimen
         title="Marcos por tipo de carta"
         note="frameKindOf(frameType, cardType), frameTextClass y CardArt frame: lo que lleva texto va sobre el tono profundo del marco (el mismo matiz, oscurecido hasta que el blanco dé 4,5:1) y el texto es siempre blanco; la franja de abajo es el color oficial (frameClass), el de lo que no lleva texto. Xyz, Enlace, Sincronía y Sincronía Oscura con aro; el Péndulo partido."

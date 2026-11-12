@@ -9,13 +9,14 @@ import { useMatSession } from '../app/use-mat-session'
 import { AutoSoloScreen, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
 import { PracticeMat } from '../components/probability/PracticeMat'
 import { CARDS as AUTO_CARDS, fakeSession, type FakeSession } from './support/auto-session-fake'
-import { openOptions } from './support/mat-menu'
+import { openOptions, optionRow } from './support/mat-menu'
 import { core, dispatches, renderAuto } from './support/auto-screen-harness'
 import { CARDS, INITIAL, render } from './support/practice-mat-harness'
 
 // La barra de arriba de la mesa es una sola (`MatBarActions`): la práctica y «Jugar solo automático» llevan los mismos íconos, en el mismo orden, con los mismos nombres y estados
 // (Gastón, 2026-10-25: «TODAS las mesas deberían ser iguales… menos las opciones de cada una»): a la vista sólo salir, deshacer y el ⋯ (Gastón, 2026-10-26: «muchos íconos juntos»), y en el
-// ⋯ lo demás, con el estado de cada ajuste en su interruptor. Lo del automático: «Nueva mano» es otro duelo, la ventana grande se apaga al salir y deshacer va arriba.
+// ⋯ lo demás, con el estado de cada ajuste en su interruptor. El automático no tiene ⋯ (Gastón, 2026-11-12): lo mismo va en su ⚙; «Nueva mano» es otro duelo, la ventana grande se apaga al salir
+// y deshacer va abajo hasta 1100 px.
 
 const ASH = { id: 14558127, name: 'Ash Blossom & Joyous Spring' }
 type Options = Parameters<NonNullable<AutoSoloScreenProps['connect']>>[1]
@@ -40,9 +41,6 @@ const barButtons = () =>
   within(screen.getByRole('toolbar', { name: 'Mesa' }))
     .getAllByRole('button')
     .map((button) => ({ name: button.getAttribute('aria-label'), title: button.getAttribute('title'), pressed: button.getAttribute('aria-pressed'), disabled: (button as HTMLButtonElement).disabled }))
-
-/** Lo que tiene que ser igual en las dos mesas: deshacer y el ⋯. */
-const shared = (buttons: ReturnType<typeof barButtons>) => buttons.slice(buttons.findIndex((button) => button.name === 'Deshacer'), buttons.findIndex((button) => button.name === 'Más opciones') + 1)
 
 /** Abre el ⋯ de la barra (si no está abierto) y devuelve sus filas: lo que dicen, si son un ajuste prendido o apagado y si se pueden tocar. */
 const menuRows = () => {
@@ -96,7 +94,7 @@ function mountAuto() {
 afterEach(() => act(() => setDuelFullscreen(false)))
 
 describe('la barra de la mesa es una sola', () => {
-  it('la práctica y «Jugar solo automático» llevan arriba la flecha de volver y los mismos íconos, en el mismo orden, con los mismos nombres y estados; después, lo de cada una (en el celular y en escritorio)', () => {
+  it('la práctica lleva arriba salir, deshacer, el ⋯ y sus pasos; «Jugar solo automático» no tiene ⋯ (Gastón, 2026-11-12: «compite con el de configuración»): todo va en ⚙, en «La mesa» y «El duelo», sin repetir nada (en el celular y en escritorio)', () => {
     for (const layout of ['celular', 'escritorio'] as const) {
       if (layout === 'escritorio') desktop()
       render(<Practice />)
@@ -106,16 +104,15 @@ describe('la barra de la mesa es una sola', () => {
       cleanup()
       renderAuto()
       const auto = barButtons()
-      const autoRows = menuRows()
 
-      expect(shared(auto)).toEqual(shared(practice))
-      // A la vista, tres: salir, deshacer y el ⋯ (en el celular la hamburguesa del armazón es la cuarta; en escritorio la flecha del automático va fuera de la fila de íconos); la práctica suma sus pasos.
-      expect(auto.map((button) => button.name)).toEqual([...(layout === 'celular' ? ['Volver a Jugar'] : []), 'Deshacer', 'Más opciones'])
+      // El automático: hasta 1100 px su barra lleva sólo la flecha (Deshacer va abajo, con el ⚙); en escritorio, Deshacer arriba (la flecha va fuera de la fila de íconos). Sin ⋯.
+      expect(auto.map((button) => button.name)).toEqual(layout === 'celular' ? ['Volver a Jugar'] : ['Deshacer'])
+      expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
       expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
       expect(practice.map((button) => button.name)).toEqual(['Volver a Jugar', 'Deshacer', 'Más opciones', 'Pasos y combos'])
       // Ningún ícono de la barra queda en ámbar por un ajuste prendido: ninguno lleva `aria-pressed`.
       expect([...practice, ...auto].filter((button) => button.pressed !== null)).toEqual([])
-      // En el ⋯, lo mismo en las dos y en el mismo orden: «La mesa» con sus interruptores (la vista 3D y los sonidos vienen prendidos) y «El duelo»; el automático no lleva la vista 3D ni «Opciones del duelo» (van en el ⚙ de abajo).
+      // La práctica no cambia: «La mesa» con sus interruptores (la vista 3D y los sonidos vienen prendidos) y «El duelo».
       expect(practiceRows).toEqual([
         { text: 'Vista 3D', checked: 'true', disabled: false },
         { text: 'Sonidos', checked: 'true', disabled: false },
@@ -124,14 +121,18 @@ describe('la barra de la mesa es una sola', () => {
         { text: 'Nueva mano', checked: null, disabled: false },
         { text: 'Guardar combosin jugadas', checked: null, disabled: true },
       ])
-      // Hasta 1100 px el automático no tiene fila de abajo: «Pasos y combos» va primero.
-      const steps = layout === 'escritorio' ? [] : [{ text: 'Pasos y combos', checked: null, disabled: false }]
+      // El ⚙ del automático: «La mesa» (la vista 3D, los sonidos, la ventana grande en escritorio, los colores y los menús flotantes) y «El duelo», con «Rival» una sola vez y «Rendirse» al final.
+      const dialog = openOptions()
+      const table = within(within(dialog).getByRole('group', { name: 'La mesa' }))
+      const duel = within(dialog).getByRole('group', { name: 'El duelo' })
+      const duelRows = within(duel).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
 
-      // En el automático, «Handtraps del rival» es «Rival» (contra quién: el pasivo, el de handtraps o el bot), que abre su hoja.
-      const rivalRows = practiceRows.filter((row) => row.text !== 'Vista 3D').map((row) => (row.text.startsWith('Handtraps del rival') ? { ...row, text: 'RivalPasivo' } : row))
-
-      expect(autoRows).toEqual([...steps, ...rivalRows])
-      expect(within(screen.getByRole('menu')).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['La mesa', 'El duelo'])
+      expect(table.getAllByRole('switch').map((element) => element.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Sonidos', ...(layout === 'escritorio' ? ['Ventana grande'] : []), 'Menús flotantes'])
+      expect(table.getByRole('group', { name: 'Colores' })).toBeInTheDocument()
+      expect(duelRows.filter((name) => name === 'Cambiar rival')).toHaveLength(1)
+      expect(duelRows).toEqual(expect.arrayContaining(['Cambiar rival', 'Nueva mano', 'Guardar combo', 'Reiniciar el mismo duelo']))
+      expect(within(duel).getByRole('button', { name: 'Guardar combo' })).toBeDisabled()
+      expect(duelRows.at(-1)).toBe('Rendirse')
       cleanup()
     }
   })
@@ -140,7 +141,7 @@ describe('la barra de la mesa es una sola', () => {
     const { calls, fakes } = mountAuto()
     const first = fakes[0]!
 
-    fireEvent.click(menuRow(/^Nueva mano/))
+    fireEvent.click(optionRow('Nueva mano'))
     expect(first.restart).toHaveBeenCalledTimes(1)
     const seed = vi.mocked(first.restart).mock.calls[0]![0]
 
@@ -148,8 +149,8 @@ describe('la barra de la mesa es una sola', () => {
     expect(seed).not.toBe(99)
     expect(calls).toHaveLength(1)
 
-    // Las handtraps desde la barra: «Rival» abre su hoja y, con Handtraps, «Elegir…» la del automático; al aplicar, el duelo se arma de nuevo con la mano de ahora.
-    fireEvent.click(menuRow(/^Rival/))
+    // Las handtraps desde Opciones: «Cambiar rival» abre su hoja y, con Handtraps, «Elegir…» la del automático; al aplicar, el duelo se arma de nuevo con la mano de ahora.
+    fireEvent.click(optionRow('Cambiar rival'))
     const rivalSheet = screen.getByRole('dialog', { name: 'Rival' })
 
     fireEvent.click(within(rivalSheet).getByRole('radio', { name: 'Handtraps' }))
@@ -169,22 +170,24 @@ describe('la barra de la mesa es una sola', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('la ventana grande: su interruptor del ⋯ del automático la prende (en escritorio; el menú sigue abierto y dice que está prendida) y salir de la mesa la apaga', () => {
+  it('la ventana grande: su interruptor de Opciones del automático la prende (en escritorio; el panel sigue abierto y dice que está prendida) y salir de la mesa la apaga', () => {
     desktop()
     renderAuto()
-    fireEvent.click(menuRow(/^Ventana grande/))
-    expect(menuRow(/^Ventana grande/)).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(optionRow('Ventana grande'))
+    expect(optionRow('Ventana grande')).toHaveAttribute('aria-checked', 'true')
 
     cleanup()
     expect(renderHook(() => useDuelFullscreen()).result.current).toBe(false)
   })
 
-  it('deshacer del automático va arriba, con los íconos (abajo ya no hay): apagado sin una orden tuya; con una, deshace la última', () => {
+  it('deshacer del automático va abajo hasta 1100 px (Gastón, 2026-11-12: «debería estar abajo, no arriba»), el primero de la botonera y de 44 px: apagado sin una orden tuya; con una, deshace la última. En escritorio, arriba', () => {
     const fake = renderAuto()
     const undo = () => screen.getByRole('button', { name: 'Deshacer' })
 
     expect(screen.getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
-    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Deshacer' })).toBe(undo())
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('button', { name: 'Deshacer' })).toBeNull()
+    expect([...undo().parentElement!.children].map((element) => element.getAttribute('aria-label'))).toEqual(['Deshacer', 'Pasos y combos', 'Botonera del duelo'])
+    expect(undo()).toHaveClass('size-11')
     expect(undo()).toBeDisabled()
 
     core(() => fake.set({ answers: [{ seat: 0, answer: { type: 'select_idlecmd', action: 0, index: 0 } }] }))
@@ -193,6 +196,13 @@ describe('la barra de la mesa es una sola', () => {
     expect(fake.undos).toBe(1)
     // Mientras el núcleo vuelve atrás, apagado.
     expect(undo()).toBeDisabled()
+    cleanup()
+
+    // En escritorio (el mouse), arriba con los íconos, y la botonera no lo repite.
+    desktop()
+    renderAuto()
+    expect(screen.getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Deshacer' })).toBe(undo())
   })
 
   it('en escritorio (opción D2, «esquinas sin caja»): cada vida en su esquina, plana (Gastón: «la vida de ambos jugadores junta»): el rival arriba a la derecha del campo, junto a su mano, y vos abajo a la izquierda, junto a la tuya; la fase, sólo en su botón', () => {
@@ -219,7 +229,7 @@ describe('la barra de la mesa es una sola', () => {
     expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ }).parentElement).toHaveStyle({ gridArea: 'p2' })
   })
 
-  it('en el celular en vertical las vidas salen del marcador: tu chapa abajo (con el turno y «Pasos y combos» en la botonera) y la del rival en la fila de los íconos de la barra; el ⋯ no repite «Pasos y combos»', () => {
+  it('en el celular en vertical las vidas salen del marcador: tu chapa abajo, con la botonera a la derecha (↶ ≡ ⚙), y la del rival en la barra; sin ⋯', () => {
     const original = window.matchMedia
 
     onTestFinished(() => {
@@ -233,13 +243,13 @@ describe('la barra de la mesa es una sola', () => {
     const mine = within(seat).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })
 
     expect(mine).toHaveAttribute('data-life-badge')
-    expect(within(seat).getByRole('button', { name: 'Pasos y combos' })).toBeInTheDocument()
+    expect(within(seat).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Pasos y combos', 'Opciones'])
     expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('group', { name: 'Puntos de vida de Rival: 8000' })).toHaveAttribute('data-life-badge')
     expect(document.querySelector('[data-corner="theirs"]')).toBeNull()
-    expect(menuRows().map((row) => row.text)).not.toContain('Pasos y combos')
+    expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
   })
 
-  it('de 640 a 1100 px (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo, «Pasos y combos» es lo primero del ⋯, el botón de la fase sólo con su sigla y los avisos van arriba', () => {
+  it('de 640 a 1100 px (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo (↶ ≡ ⚙ van a la derecha de la franja de tu mano), el botón de la fase sólo con su sigla y los avisos van arriba', () => {
     const original = window.matchMedia
 
     onTestFinished(() => {
@@ -260,10 +270,12 @@ describe('la barra de la mesa es una sola', () => {
     expect(document.querySelector('[data-corner]')).toBeNull()
     expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
     expect(screen.queryByTestId('auto-phase')).toBeNull()
-    // Sin fila de abajo: el único «Pasos y combos» es el del ⋯, primero.
-    expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
-    expect(menuRows()[0]!.text).toBe('Pasos y combos')
-    fireEvent.click(menuRow(/^Pasos y combos$/))
+    // Sin fila de abajo ni ⋯: Deshacer, «Pasos y combos» y el ⚙, a la derecha de la franja de abajo de tu mano.
+    const steps = screen.getByRole('button', { name: 'Pasos y combos' })
+
+    expect([...steps.parentElement!.children].map((element) => element.getAttribute('aria-label'))).toEqual(['Deshacer', 'Pasos y combos', 'Botonera del duelo'])
+    expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
+    fireEvent.click(steps)
     expect(screen.getByRole('dialog', { name: 'Pasos y combos' })).toBeInTheDocument()
   })
 
@@ -289,7 +301,7 @@ describe('la barra de la mesa es una sola', () => {
     fireEvent.click(button(/^Opciones/))
     const more = screen.getByRole('dialog', { name: 'Opciones' })
 
-    expect(within(more).getAllByRole('switch').slice(0, 2).map((element) => element.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Menús flotantes'])
+    expect(within(more).getAllByRole('switch').slice(0, 4).map((element) => element.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Sonidos', 'Ventana grande', 'Menús flotantes'])
     expect(within(more).getByRole('radiogroup', { name: 'Respuestas' })).toBeInTheDocument()
     expect(within(more).getByRole('radiogroup', { name: 'Casilla' })).toBeInTheDocument()
     expect(within(more).getByRole('button', { name: 'Reiniciar el mismo duelo' })).toBeInTheDocument()

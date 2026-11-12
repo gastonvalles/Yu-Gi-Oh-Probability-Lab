@@ -100,22 +100,23 @@ describe('la ficha de una carta en el automático', () => {
 })
 
 describe('las fases del automático', () => {
-  it('M-04: un menú pegado al botón de fase con sólo adónde podés ir, en filas de 44 px («Ir a la Battle Phase», «Terminar el turno»); Escape lo cierra', () => {
+  it('las seis fases en una línea pegada al botón (la de `PhaseRow`, la del manual): la de ahora marcada, las que no se pueden apagadas; Escape la cierra', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
     fireEvent.click(phaseButton())
-    const menu = screen.getByRole('menu', { name: 'Elegí la fase a la que pasás' })
+    const menu = screen.getByRole('menu', { name: 'Pasar a la fase' })
     const phases = within(menu).getAllByRole('menuitem')
 
-    expect(phases.map((phase) => phase.textContent)).toEqual(['Ir a la Battle Phase', 'Terminar el turno'])
-    expect(phases[0]).toHaveClass('min-h-11', 'whitespace-nowrap')
-    expect(menu).toHaveClass('fixed', 'mat-square')
-    expect(fixedRadii(menu)).toEqual([])
+    expect(phases.map((phase) => phase.getAttribute('aria-label'))).toEqual(['Draw Phase · Todavía no', 'Standby Phase · Todavía no', 'Fase actual: Main Phase 1', 'Ir a Battle Phase', 'Main Phase 2 · Todavía no', 'Ir a End Phase'])
+    expect(phases[2]).toHaveAttribute('aria-current', 'true')
+    expect(phases[0]).toHaveAttribute('aria-disabled', 'true')
+    expect(document.querySelector('[data-phase-row]')!.parentElement).toHaveClass('mat-square')
+    expect(fixedRadii(document.querySelector('[data-phase-row]')!.parentElement!)).toEqual([])
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByRole('menu', { name: 'Elegí la fase a la que pasás' })).toBeNull()
+    expect(screen.queryByRole('menu', { name: 'Pasar a la fase' })).toBeNull()
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a la Battle Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 6, index: null }])
   })
 })

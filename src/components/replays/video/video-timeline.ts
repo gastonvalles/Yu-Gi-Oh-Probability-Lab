@@ -27,8 +27,8 @@ export const STEP_MS = 900
 /** La mesa al reproducir un combo espera esto entre jugadas (`AUTOPLAY_MS` de `PracticeMat.tsx`). */
 export const COMBO_STEP_MS = 1400
 const PHASE_MS = 400
-/** En un combo un cambio de fase dura lo que su cartel (`MESA.banner`): así no queda debajo de la carta grande de la jugada siguiente, como en la mesa (que espera 1,4 s en todas). */
-const COMBO_PHASE_MS = 1100
+/** En un combo un cambio de fase dura lo que su banda (`MESA.banner`): así no queda debajo de la carta grande de la jugada siguiente, como en la mesa (que espera 1,4 s en todas). */
+const COMBO_PHASE_MS = 850
 export const INTRO_MS = 2000
 export const OUTRO_MS = 3000
 /** Desde cuánto se ofrece «Rápido (2×)». */

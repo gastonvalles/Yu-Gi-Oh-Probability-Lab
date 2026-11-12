@@ -11,7 +11,7 @@ import { CARD_BACK } from '../probability/practice-styles'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { choiceChip } from '../ui/surfaces'
-import { AutoPanel, PANEL_MAIN } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
 import { PickCount } from './CardPicker'
 
 /** Una opción del núcleo: un texto, una posición, un número, un Tipo o un Atributo. */
@@ -107,7 +107,7 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
             </Button>
           ) : undefined
         ) : (
-          <Button variant="primary" className={cx(PANEL_MAIN, 'ml-auto')} disabled={!full} onClick={() => onPick(chosen)}>
+          <Button variant="primary" className={cx(PANEL_PRIMARY, 'ml-auto')} disabled={!full} onClick={() => onPick(chosen)}>
             {t('auto.options.declare')}
           </Button>
         )

@@ -4,7 +4,7 @@ import { act, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PHASE_BAND_MS, PhaseBand, type PhaseCue } from '../components/duel/PhaseBand'
+import { PHASE_BAND_MS, PhaseBand, TURN_BAND_MS, type PhaseCue } from '../components/duel/PhaseBand'
 
 const bands = () => document.querySelectorAll('[data-fx="banner"]')
 
@@ -53,6 +53,42 @@ describe('PhaseBand', () => {
     act(() => vi.advanceTimersByTime(PHASE_BAND_MS - 1))
     expect(bands()).toHaveLength(1)
     act(() => vi.advanceTimersByTime(1))
+    expect(bands()).toHaveLength(0)
+  })
+
+  it('con una carta grande en el centro (hold) espera: no se dibuja detrás de ella, y su reloj sigue', () => {
+    const cue: PhaseCue = { key: 1, phase: 'battle', side: 'mine' }
+    const view = render(<PhaseBand cue={cue} hold />)
+
+    expect(bands()).toHaveLength(0)
+    view.rerender(<PhaseBand cue={null} hold={false} />)
+    expect(bands()).toHaveLength(1)
+    act(() => vi.advanceTimersByTime(PHASE_BAND_MS))
+    expect(bands()).toHaveLength(0)
+  })
+
+  it('al pasar el turno sale antes «Cambio de turno», más alta y del color de quien empieza, y después la fase más nueva; el primer turno no la tiene', () => {
+    const view = render(<PhaseBand cue={{ key: 1, phase: 'draw', side: 'theirs' }} />)
+
+    // El primer turno: sólo su fase.
+    expect(bands()[0]).toHaveTextContent(/^Draw Phase$/)
+    act(() => vi.advanceTimersByTime(PHASE_BAND_MS))
+    view.rerender(<PhaseBand cue={{ key: 2, phase: 'draw', side: 'mine', turn: true }} />)
+    expect(bands()).toHaveLength(1)
+    expect(bands()[0]).toHaveAttribute('data-turn')
+    expect(bands()[0]).toHaveAttribute('data-side', 'mine')
+    expect(bands()[0]).toHaveTextContent(/^Cambio de turno$/)
+    expect(bands()[0]).toHaveClass('h-20', 'pointer-events-none')
+    // Una fase que llega mientras se ve espera su turno (no se apilan): sale la más nueva, después.
+    act(() => vi.advanceTimersByTime(500))
+    view.rerender(<PhaseBand cue={{ key: 3, phase: 'standby', side: 'mine' }} />)
+    expect(bands()).toHaveLength(1)
+    expect(bands()[0]).toHaveTextContent(/^Cambio de turno$/)
+    act(() => vi.advanceTimersByTime(TURN_BAND_MS - 500))
+    expect(bands()).toHaveLength(1)
+    expect(bands()[0]).not.toHaveAttribute('data-turn')
+    expect(bands()[0]).toHaveTextContent(/^Standby Phase$/)
+    act(() => vi.advanceTimersByTime(PHASE_BAND_MS))
     expect(bands()).toHaveLength(0)
   })
 })

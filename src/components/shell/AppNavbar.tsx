@@ -3,6 +3,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
+import { PaletteSwitcher } from '../ui/PaletteSwitcher'
 import { AppBrand } from './AppBrand'
 
 interface AppNavbarProps {
@@ -58,6 +59,7 @@ export function AppNavbar({ collapsed, onToggleCollapsed, onSearch, onMascots, c
         <IconButton tone="flat" size="sm" aria-label={t('shell.mascot.title')} title={t('shell.mascot.title')} className="hover:text-nav-active! focus-visible:text-nav-active!" onClick={onMascots}>
           <Icon name="paw" size={22} />
         </IconButton>
+        <PaletteSwitcher />
         <LanguageSwitcher />
       </div>
     </header>

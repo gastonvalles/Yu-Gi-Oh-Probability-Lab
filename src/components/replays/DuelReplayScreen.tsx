@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { duelReplayAt, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
+import { matEffects } from '../../app/mat-effects'
 import { isToken } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { artOfDrawId } from '../duel/duel-art'
@@ -8,6 +9,7 @@ import { DuelTable, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { LifeScore } from '../duel/LifeScore'
 import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { PLAYER_COLOR } from '../duel/player-color'
+import { Spotlight } from '../probability/MatFx'
 import { ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from '../probability/ReplayBar'
 import { stepTone } from '../probability/step-tone'
 import { Button } from '../ui/Button'
@@ -29,6 +31,10 @@ interface DuelReplayScreenProps {
   shared?: { onSave: () => void } | undefined
   /** Copiar el enlace (si entra) y descargar el archivo. */
   actions: OverflowItem[]
+  /** Desde qué jugada abre (si no, el final): el replay de un duelo recién jugado, desde el principio. */
+  startAt?: number
+  /** Lo que dice la flecha de volver (si no, «Volver a Replays»). */
+  backLabel?: string
 }
 
 /** Cuánto dura cada jugada al reproducir, a velocidad normal. */
@@ -39,17 +45,42 @@ const STEP_MS = 900
  */
 function bannerAt(replay: DuelReplay, from: number, to: number): PhaseCue | null {
   const step = to === from + 1 ? replay.steps[to - 1] : undefined
+  if (!step || step[1].type !== 'phase') return null
+  // A la Draw Phase se llega pasando el turno (la juega quien termina): «Cambio de turno» y la Draw Phase, del color de quien empieza.
+  const turn = step[1].phase === 'draw'
 
-  return step && step[1].type === 'phase' ? { key: to, phase: step[1].phase, side: step[0] === 0 ? 'mine' : 'theirs' } : null
+  return { key: to, phase: step[1].phase, side: (step[0] === 0) !== turn ? 'mine' : 'theirs', turn }
 }
 
-export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelReplayScreenProps) {
+/** Cuánto se ve la carta grande de una activación (lo que dura `card-activate-center`). */
+const ACTIVATION_MS = 950
+
+/** La carta que se activa en un paso: de quién y cuál (su id, el del lado que la jugó). */
+interface Activation {
+  key: number
+  side: ReplaySide
+  id: string
+}
+
+/**
+ * La carta grande al avanzar un paso (reproducir o «Siguiente») que activa algo, con la misma regla que la mesa (`matEffects`: activar, o una Mágica o Trampa que pasa boca arriba); saltar no la
+ * muestra. La cadena y los medallones no entran: el replay no los trae.
+ */
+function activationAt(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>[2], from: number, to: number): Activation | null {
+  const step = to === from + 1 ? replay.steps[to - 1] : undefined
+  const spotlight = step ? matEffects(duelReplayAt(replay, from, shots).states[step[0]], step[1]).spotlight : undefined
+
+  return step && spotlight?.kind === 'activate' ? { key: to, side: step[0], id: spotlight.id } : null
+}
+
+export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, backLabel = t('meta.duels.back') }: DuelReplayScreenProps) {
   const total = replay.steps.length
-  const [cursor, setCursor] = useState(total)
+  const [cursor, setCursor] = useState(startAt ?? total)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
   const [flipped, setFlipped] = useState(false)
   const [banner, setBanner] = useState<PhaseCue | null>(null)
+  const [activation, setActivation] = useState<Activation | null>(null)
   // Una sola pasada: las fotos para saltar y la marca de cada jugada (su color, si cambia de fase, si empieza un turno).
   const { shots, marks } = useMemo(() => {
     const marks: ReplayMark[] = []
@@ -74,6 +105,20 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
     [replay, shots],
   )
 
+  // Lo que se anuncia al avanzar de a un paso: la banda de la fase y la carta grande de lo que se activa.
+  const announce = useCallback(
+    (from: number, to: number) => {
+      setBanner(bannerAt(replay, from, to))
+      setActivation(activationAt(replay, shots, from, to))
+    },
+    [replay, shots],
+  )
+  useEffect(() => {
+    if (!activation) return
+    const timer = window.setTimeout(() => setActivation(null), ACTIVATION_MS)
+    return () => window.clearTimeout(timer)
+  }, [activation])
+
   // Reproducir: una jugada cada `STEP_MS` (según la velocidad) hasta el final.
   useEffect(() => {
     if (!playing) return
@@ -83,13 +128,14 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
     }
     const timer = window.setTimeout(() => {
       setCursor(cursor + 1)
-      setBanner(bannerAt(replay, cursor, cursor + 1))
+      announce(cursor, cursor + 1)
     }, STEP_MS / speed)
     return () => window.clearTimeout(timer)
-  }, [playing, cursor, total, speed, replay])
+  }, [playing, cursor, total, speed, replay, announce])
   const jump = (at: number) => {
     setPlaying(false)
     setBanner(null)
+    setActivation(null)
     setCursor(at)
   }
 
@@ -124,7 +170,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
       ) : null}
       <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4">
         <div className="flex h-11 min-w-0 items-center gap-1.5">
-          <IconButton tone="flat" size="sm" className="-ml-2 shrink-0" aria-label={t('meta.duels.back')} title={t('meta.duels.back')} onClick={onClose}>
+          <IconButton tone="flat" size="sm" className="-ml-2 shrink-0" aria-label={backLabel} title={backLabel} onClick={onClose}>
             <Icon name="arrow-left" />
           </IconButton>
           <span className="min-w-0 flex-1 truncate text-body font-bold text-foreground">{title}</span>
@@ -136,7 +182,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
             <IconButton tone="flat" size="sm" aria-label={t('duel.watch.flip')} title={t('duel.watch.flip')} onClick={() => setFlipped((current) => !current)}>
               <Icon name="swap" />
             </IconButton>
-            <OverflowMenu label={t('meta.duels.more', { title })} items={actions} />
+            {actions.length > 0 ? <OverflowMenu label={t('meta.duels.more', { title })} items={actions} /> : null}
           </span>
         </div>
 
@@ -155,7 +201,16 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
           turn={frame.turn === bottom ? 'mine' : 'theirs'}
           className="[--cell:max(3rem,min(6.5rem,calc((100dvh-35rem)/5.2)))] max-[1101px]:mx-auto max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_35rem)/5.2)_+_1.5rem))]"
         >
-          <PhaseBand cue={banner} />
+          {/* La banda espera a que se vaya la carta grande (no se lee partida detrás), y la carta va sin cartel: el texto del paso está debajo. */}
+          <PhaseBand cue={banner} hold={activation !== null} />
+          {activation ? (
+            <Spotlight
+              key={activation.key}
+              kind="activate"
+              cards={[{ id: activation.id, name: cardName(replay, frame, activation.side)(activation.id), art: view(activation.side).artOf(activation.id), back: realOf(replay, frame, activation.side, activation.id) === undefined }]}
+              className="absolute inset-0 z-[120]"
+            />
+          ) : null}
         </DuelTable>
         <TheirHand count={bottomView.handCount ?? 0} align="start" {...(openHand ? { cards: openHand } : {})} />
 
@@ -185,7 +240,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
 
               setPlaying(false)
               setCursor(next)
-              setBanner(bannerAt(replay, cursor, next))
+              announce(cursor, next)
             }}
             onSpeed={setSpeed}
           />

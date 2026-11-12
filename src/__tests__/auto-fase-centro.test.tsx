@@ -59,7 +59,16 @@ describe('auto · las fases al medio del campo', () => {
       expect(screen.queryByRole('button', { name: /^(Ir a Batalla|Terminar turno)$/ })).toBeNull()
 
       fireEvent.click(phases[0]!)
-      expect(document.querySelector('[data-prompt="phases"]')).not.toBeNull()
+      // Las seis, como en el manual (`PhaseRow`): la de ahora marcada, las que no se pueden, apagadas.
+      const row = document.querySelector<HTMLElement>('[data-phase-row]')!
+      const items = within(row).getAllByRole('menuitem')
+
+      expect(items).toHaveLength(6)
+      expect(items.filter((item) => item.getAttribute('aria-current') === 'true')).toHaveLength(1)
+      expect(within(row).getByRole('menuitem', { name: 'Fase actual: Main Phase 1' })).toHaveAttribute('aria-current', 'true')
+      expect(within(row).getByRole('menuitem', { name: /^Draw Phase/ })).toHaveAttribute('aria-disabled', 'true')
+      // El botón es cuadrado: su lado es el de la casilla (`p2`), con 44 px de piso.
+      expect(phases[0]).toHaveClass('size-[100cqmin]!', 'min-h-11', 'min-w-11')
     })
   }
 

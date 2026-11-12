@@ -147,7 +147,7 @@ describe('lo que anima la mesa, en el video', () => {
     expect(Math.max(...tight.map((flight) => flight.delay + flight.duration))).toBeCloseTo(300)
   })
 
-  it('el cartel de la fase, la carta grande de lo que mueve cada paso (como al reproducir el combo), el destello cuando la carta toca la zona; al cementerio, sin carta grande', () => {
+  it('la banda de la fase, la carta grande de lo que mueve cada paso (como al reproducir el combo), el destello cuando la carta toca la zona; al cementerio, sin carta grande', () => {
     expect(kinds(stepFx(1).overlays)).toEqual(['banner'])
     const summon = stepFx(2)
     expect(kinds(summon.overlays)).toEqual(['landing', 'stage'])
@@ -164,14 +164,17 @@ describe('lo que anima la mesa, en el video', () => {
     expect(ctx.calls).toBeGreaterThan(50)
   })
 
-  it('un cartel de fase que sigue abierto cambia de texto sin volver a abrirse; otra carta grande saca a la anterior', () => {
-    const banner = (start: number): Overlay => ({ kind: 'banner', start, duration: MESA.banner, draw: () => {} })
+  it('una banda de fase que sigue abierta (del mismo dueño) cambia de texto sin volver a entrar; otra carta grande saca a la anterior', () => {
+    const banner = (start: number, side = 0): Overlay => ({ kind: 'banner', side, start, duration: MESA.banner, draw: () => {}, carry: { kind: 'banner', side, start, duration: MESA.banner, draw: () => {} } })
     const stage = (start: number): Overlay => ({ kind: 'stage', start, duration: 1000, draw: () => {} })
     const open = replaceOverlays([banner(0), stage(0)], [banner(400)], 400)
     expect(open.map((overlay) => overlay.kind)).toEqual(['stage', 'banner'])
-    expect(open[1]!.start).toBeCloseTo(400 - MESA.banner * 0.26)
-    // Ya cerrándose, el nuevo entra de cero; y lo que terminó, se va.
-    expect(replaceOverlays([banner(0)], [banner(1000)], 1000)[0]!.start).toBe(1000)
+    // Seguir es usar la variante sin entrada (`carry`, que ya no lleva otra).
+    expect(open[1]!.carry).toBeUndefined()
+    // Si cambia de dueño entra la otra, y si la anterior ya terminó, entra de cero; y lo que terminó, se va.
+    expect(replaceOverlays([banner(0)], [banner(400, 1)], 400)[0]!.carry).toBeDefined()
+    expect(replaceOverlays([banner(0)], [banner(1000)], 1000)[0]!.carry).toBeDefined()
+    expect(replaceOverlays([banner(0)], [banner(1000)], 1000)).toHaveLength(1)
     expect(replaceOverlays([stage(0)], [stage(500)], 500)).toHaveLength(1)
     expect(replaceOverlays([stage(0)], [], 1200)).toEqual([])
   })

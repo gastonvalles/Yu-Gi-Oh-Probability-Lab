@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
@@ -6,10 +6,10 @@ import { printedBadge, statShift } from '../../app/field-stats'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
+import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
-import { PLAYER_COLOR } from '../duel/player-color'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { CARD_BACK, FX_RGB, type FxTone } from './practice-styles'
@@ -180,40 +180,75 @@ export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
 /** El aro de cadena del medallón: 12 eslabones alrededor, alternados de frente (huecos) y de canto (barras), en el `viewBox` de 40 × 40. */
 const MEDAL_RING = Array.from({ length: 12 }, (_, i) => i * 30)
 
+/** Cuánto se corre cada medallón respecto del de al lado cuando hay varios en un mismo lugar (se pisan un tercio), y lo que dura su salida. */
+const MEDAL_STEP_PX = 24
+const MEDAL_OUT_MS = 220
+const medalOffsets = (medals: readonly ChainMedal[]) => new Map(medals.map((medal, i) => [medal.number, (i - (medals.length - 1) / 2) * MEDAL_STEP_PX]))
+
 /**
  * Los medallones de la cadena (Master Duel, al resolver): uno por eslabón, centrados en el lugar donde se activó (la casilla, aunque quede vacía; la pila; la mano: quien lo usa pone
- * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, del color de su dueño
- * (`PLAYER_COLOR`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira (`aria-hidden`): el eslabón va en el nombre de la
- * carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
+ * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, blanco con luz celeste
+ * y el aro del metal de la escena (la misma familia que `ChainStage`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira
+ * (`aria-hidden`): el eslabón va en el nombre de la carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
+ * - **Suave** (Gastón: «la animación de las cadenas debe ser smooth»): cada uno entra creciendo con opacidad y, al resolverse, se rompe (crece y se apaga, `MEDAL_OUT_MS`) en vez
+ *   de desaparecer; los que quedan en el mismo lugar se reacomodan con `translate` (cada uno, en su lugar por número), sin saltar. El último de un lugar sale igual si quien lo usa
+ *   lo envuelve en `Presence` (`useLeaving`). Sólo `translate`/`scale`/`opacity`; con movimiento reducido, sólo la opacidad.
  */
 export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
+  const closing = useLeaving()
+  // Los que se acaban de ir, en el lugar donde estaban, mientras se rompen.
+  const [kept, setKept] = useState(medals)
+  const [gone, setGone] = useState<Array<ChainMedal & { x: number }>>([])
+  const isNow = (number: number) => medals.some((medal) => medal.number === number)
+
+  if (medals.map((medal) => medal.number).join() !== kept.map((medal) => medal.number).join()) {
+    const before = medalOffsets(kept)
+
+    setGone([...gone.filter((medal) => !isNow(medal.number)), ...kept.filter((medal) => !isNow(medal.number)).map((medal) => ({ ...medal, resolving: false, x: before.get(medal.number) ?? 0 }))])
+    setKept(medals)
+  }
+  useEffect(() => {
+    if (!gone.length) return
+    const timer = window.setTimeout(() => setGone([]), MEDAL_OUT_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [gone])
+  const at = medalOffsets(medals)
+  const shown = [...gone.map((medal) => ({ ...medal, out: true })), ...medals.map((medal) => ({ ...medal, x: at.get(medal.number) ?? 0, out: closing }))].sort((a, b) => a.number - b.number)
+
   return (
     <span
       aria-hidden="true"
       data-chain-link={medals.map((medal) => medal.number).join(',')}
       data-chain-owner={medals[0]?.mine ? 'mine' : 'theirs'}
-      className="pointer-events-none absolute inset-0 z-11 flex items-center justify-center -space-x-3"
+      className="pointer-events-none absolute inset-0 z-11 grid place-items-center"
     >
-      {medals.map(({ number, mine, voided, resolving }) => (
+      {shown.map(({ number, voided, resolving, x, out }) => (
         <span
           key={number}
-          data-chain-medal={number}
-          {...(resolving ? { 'data-resolving': '' } : {})}
+          {...(out ? { 'data-chain-medal-leaving': number } : { 'data-chain-medal': number })}
+          {...(resolving && !out ? { 'data-resolving': '' } : {})}
           {...(voided ? { 'data-voided': '' } : {})}
-          className={cx('relative grid size-9 shrink-0 place-items-center', resolving && 'animate-pulse motion-reduce:animate-none')}
+          style={{ translate: `${x}px 0` }}
+          className={cx(
+            'relative col-start-1 row-start-1 size-9 transition-[translate,scale,opacity] duration-200 ease-out starting:scale-75 starting:opacity-0 motion-reduce:transition-opacity',
+            out && 'scale-125 opacity-0',
+          )}
         >
-          <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
-            <circle cx={20} cy={20} r={18} className="fill-background" />
-            {MEDAL_RING.map((angle, i) =>
-              i % 2 === 0 ? (
-                <rect key={angle} x={16.5} y={0.5} width={7} height={4.5} rx={2.25} strokeWidth={2.4} transform={`rotate(${angle} 20 20)`} className="fill-none stroke-soft" />
-              ) : (
-                <rect key={angle} x={16.5} y={1.25} width={7} height={3} rx={1.5} transform={`rotate(${angle} 20 20)`} className="fill-muted" />
-              ),
-            )}
-            {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
-          </svg>
-          <span className={cx('relative text-lead font-extrabold leading-none tabular-nums', PLAYER_COLOR[mine ? 'mine' : 'theirs'].text)}>{number}</span>
+          <span className={cx('grid size-full place-items-center', resolving && !out && 'animate-pulse motion-reduce:animate-none')}>
+            <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
+              <circle cx={20} cy={20} r={18} className="fill-background" />
+              {MEDAL_RING.map((angle, i) =>
+                i % 2 === 0 ? (
+                  <rect key={angle} x={16.5} y={0.5} width={7} height={4.5} rx={2.25} strokeWidth={2.4} transform={`rotate(${angle} 20 20)`} className="fill-none stroke-chain-metal" />
+                ) : (
+                  <rect key={angle} x={16.5} y={1.25} width={7} height={3} rx={1.5} transform={`rotate(${angle} 20 20)`} className="fill-chain-metal-lo" />
+                ),
+              )}
+              {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
+            </svg>
+            <span className="relative text-lead font-extrabold leading-none tabular-nums text-white text-shadow-md text-shadow-chain-glow">{number}</span>
+          </span>
         </span>
       ))}
     </span>
@@ -370,8 +405,8 @@ interface SpotlightProps {
   kind: SpotlightKind | ShowcaseKind
   /** Una carta (activar, mostrar, declarar, una invocación) o varias (robar o mandar al cementerio de a más de una). */
   cards: SpotlightCard[]
-  /** Lo que pasó, en una línea (el texto del paso). */
-  caption: string | null
+  /** Lo que pasó, en una línea recta arriba de la carta; sin ella, donde el texto del paso ya está a la vista (el Replay, el combo). */
+  caption?: string | null
   /** El efecto que se activa, si se eligió uno entre varios: cuándo se activa y qué hace, textual, debajo de la carta; se queda 7 s para leerlo. */
   detail?: { lead: string; text: string }
   /** Las cartas salen del deck o del Extra: aparecen de dorso y se dan vuelta en 3D. */
@@ -508,16 +543,20 @@ function useStageRoom(rootRef: RefObject<HTMLDivElement | null>) {
 /** El resplandor de cada carta del centro (el color del paso, con una sombra abajo). */
 const STAGE_FACE = 'absolute inset-0 overflow-hidden bg-input shadow-[0_0_0_3px_rgb(var(--fx-rgb)),0_0_60px_rgb(var(--fx-rgb)/0.8),0_24px_48px_rgba(0,0,0,0.6)]'
 
-/** Ancho de cada carta según cuántas son: una sola es grande; con más, se achican para entrar juntas. */
-const STAGE_CARD_WIDTH = ['', 'w-[min(42cqw,13rem)]', 'w-[min(30cqw,10rem)]', 'w-[min(22cqw,7.5rem)]', 'w-[min(18cqw,6.5rem)]']
+/**
+ * Ancho de cada carta según cuántas son: una sola es grande (la mitad del recuadro: lo que mide la de adelante de `ChainStage`, unos 185 px a 390 px, y nunca menos del 38 %); con más, se achican para entrar juntas.
+ * Con el efecto escrito al lado (`detail`) es más chica.
+ */
+const STAGE_CARD_WIDTH = ['', 'w-[min(50cqw,13rem)]', 'w-[min(30cqw,10rem)]', 'w-[min(22cqw,7.5rem)]', 'w-[min(18cqw,6.5rem)]']
 
-/** Con el efecto escrito debajo la carta es más chica: lo que hay que leer es el texto, y el conjunto tiene que entrar en el alto de la mesa. */
+/** Con el efecto escrito la carta es más chica: lo que hay que leer es el texto, y el conjunto tiene que entrar en el alto de la mesa. */
 const STAGE_CARD_WIDTH_WITH_DETAIL = 'w-[min(34cqw,10.5rem)]'
 
 /**
  * Las cartas grandes en el centro de la mesa cuando se activa, se muestra o se declara una carta (o, al reproducir un combo, cuando
- * un paso las mueve): aparecen con un resplandor y una onda, cada una con su marco de color, un reflejo y su nombre debajo, y arriba una
- * línea que dice qué pasó. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
+ * un paso las mueve): aparecen con un resplandor y una onda, cada una con su marco de color y un reflejo, y arriba, recta, una línea que
+ * dice qué pasó (`caption`; quien ya muestra el texto del paso, como el Replay y el combo, no la pasa). Con su imagen a la vista no lleva
+ * la placa con el nombre (ya está impreso): ésa queda sólo en la carta sin imagen o de dorso. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
  * recuadro, no las de la pantalla. Con `origin`, cada una sale de su carta en la mesa (`useStageTravel`).
  */
 export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, origin, className }: SpotlightProps) {
@@ -534,8 +573,8 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
       data-activation={shown[0]?.id}
       data-kind={kind}
       aria-hidden="true"
-      // En el celular, apoyada sobre la fila del medio (como la lámina): arriba queda la barra a la vista.
-      className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className, 'max-sm:bottom-auto max-sm:h-[var(--stage-room,100%)] max-sm:items-end max-sm:pb-2')}
+      // Con el efecto escrito, en el celular se apoya sobre la fila del medio (arriba queda la barra a la vista); sola, la carta va al medio, grande.
+      className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className, detail && 'max-sm:bottom-auto max-sm:h-[var(--stage-room,100%)] max-sm:items-end max-sm:pb-2')}
       style={fxVars(tone)}
     >
       <span data-stage-glow className="absolute left-1/2 top-1/2 aspect-square w-[min(100cqw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
@@ -543,13 +582,13 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
       {/* En el celular el efecto escrito va al lado de la carta, no debajo: el conjunto entra arriba de la fila del medio. */}
       <div className={cx('relative motion-reduce:animate-none', detail ? 'animate-card-activate-read max-sm:flex max-sm:items-start max-sm:gap-2' : linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
         {caption ? (
-          <span data-stage-text className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] max-sm:mb-1.5 -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
+          <span data-stage-text className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] max-sm:mb-1.5 -translate-x-1/2 truncate whitespace-nowrap border border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
             {caption}
           </span>
         ) : null}
         <div className="flex items-start justify-center gap-3">
           {shown.map((card) => (
-            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2 max-sm:max-w-23', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
+            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2', detail && 'max-sm:max-w-23', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
               {/* Dos caras: la de adelante (la carta) y la de atrás (el dorso), que se muestra primero y se da vuelta en 3D. */}
               <div data-stage-card={card.id} className="relative aspect-[421/614] w-full [perspective:900px]">
                 <div className={cx('absolute inset-0 [transform-style:preserve-3d]', flip && 'animate-fx-flip-in motion-reduce:animate-none')}>
@@ -564,7 +603,7 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
                   ) : null}
                 </div>
               </div>
-              {card.name ? <figcaption data-stage-text className="line-clamp-2 max-w-full bg-background/85 px-2 py-0.5 text-center text-micro font-bold text-foreground">{card.name}</figcaption> : null}
+              {card.name && (card.back || !card.art) ? <figcaption data-stage-text className="line-clamp-2 max-w-full bg-background/85 px-2 py-0.5 text-center text-micro font-bold text-foreground">{card.name}</figcaption> : null}
             </figure>
           ))}
         </div>

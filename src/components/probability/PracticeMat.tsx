@@ -96,13 +96,13 @@ import { CardSheet } from './CardSheet'
 import { AskWhy } from '../duel/AskWhy'
 import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { artOfDrawId } from '../duel/duel-art'
-import { THEIR_HAND, TheirHandSize } from '../duel/their-hand'
+import { THEIR_HAND, THEIR_HAND_CARDS, TheirHandSize } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from './compact-field'
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, LayerBackContext, NoPlays, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
@@ -219,7 +219,7 @@ export interface DuelMatLink {
    * Lo que el rival acaba de hacer y se anima (activar, mostrar, declarar o marcar una carta, invocar, mandar cartas al cementerio, al destierro, a la mano o al deck…), como en un combo
    * guardado: las cartas (con el id que él les dio y su arte, o de dorso si no las mostró) grandes en el centro y `caption` arriba, que dice qué pasó. Cambiar `key` lo vuelve a mostrar.
    */
-  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean; /** La carta que el rival sumó a su mano sin robar (su id real): el detalle de la izquierda se queda en ella hasta que se toque otra. */ peekId?: string; /** El efecto que activó, si eligió uno entre varios: cuándo se activa («Efecto 2 · When…») y qué hace, **textual**, para que quien tiene que decidir si responde lo lea. */ detail?: { lead: string; text: string } }
+  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; /** Lo mismo sin el nombre de la carta (quién y qué hizo): lo que se dice arriba de la carta grande cuando su imagen ya la muestra. */ brief?: string; linger?: boolean; /** La carta que el rival sumó a su mano sin robar (su id real): el detalle de la izquierda se queda en ella hasta que se toque otra. */ peekId?: string; /** El efecto que activó, si eligió uno entre varios: cuándo se activa («Efecto 2 · When…») y qué hace, **textual**, para que quien tiene que decidir si responde lo lea. */ detail?: { lead: string; text: string } }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
   /** Mis cartas con las que podés hacer algo ahora (activar, invocar de forma especial, atacar, responder, elegir): brillan en celeste (`can` de `app/card-glow.ts`), y la pila que tenga una adentro, también. */
@@ -240,7 +240,7 @@ export interface DuelMatLink {
   prompt?: ReactNode
   /** La cadena en grande (duelo automático: `ChainStage`), en todos los anchos una capa centrada sobre el campo (en escritorio, sobre la columna del medio) que deja pasar los toques. */
   chain?: ReactNode
-  /** Lo de la línea en el celular (`DuelLine`): un aviso o un pedido del rival, que flota sobre tu mano sólo mientras está. Sin nada, no se pasa. */
+  /** Lo de la línea en el celular (`DuelLine`): un aviso o un pedido del rival, que flota debajo de la barra (sobre la mano del rival) sólo mientras está. Sin nada, no se pasa. */
   line?: ReactNode
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
   pointed?: { card?: string; pile?: MatPile } | null
@@ -256,11 +256,11 @@ export interface DuelMatLink {
   undoAvailable?: boolean
   /** La última jugada de la mesa cambió de manos un monstruo (la otra mesa ya la completó): no se deshace. */
   undoBlocked?: boolean
-  /** Deshacer va arriba, en la barra de la pantalla (`header`, con los íconos de la práctica: `MatBarActions`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). */
+  /** Escritorio: Deshacer va arriba, en la barra de la pantalla (`header`, por `MatUndoContext`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). Hasta 1100 px va abajo (`scoreInHeader`). */
   undoInHeader?: boolean
   /**
-   * «Jugar solo automático» hasta 1100 px (sin efecto en escritorio): las vidas y el turno van en el marcador de la barra (`header`) y no hay fila de abajo (ni `life` ni `corner`). «Pasos y combos» va
-   * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra y lo que falta elegir sobre el borde de abajo de tu mano; el replay se parte (la línea de tiempo arriba, `MatReplayContext`; los botones abajo).
+   * Los duelos hasta 1100 px (sin efecto en escritorio): las vidas y el turno van en la barra (`header`) y no hay fila de abajo (ni `corner`). Deshacer, «Pasos y combos» y `dock` van abajo a la derecha (tu chapa a
+   * la izquierda en el celular) y lo que falta elegir, sobre el borde de abajo de tu mano; el replay se parte (la línea de tiempo arriba, `MatReplayContext`; los botones abajo).
    */
   scoreInHeader?: boolean
   /** Con `scoreInHeader`, las vidas del marcador son botones de 44 px (el duelo por enlace: abren la calculadora) y no de 40: lo que no es campo suma 4 px hasta 1100 px. */
@@ -303,10 +303,10 @@ export interface DuelMatLink {
   /** El duelo automático: las jugadas las decide el núcleo de reglas y la mesa sólo contesta sus preguntas (los menús, las casillas y las cartas que ofrece); nada se arrastra, se mantiene ni se despacha. */
   auto?: AutoLink
   /**
-   * El duelo automático: su ficha de una carta (todas las jugadas, sin submenús) y sus fases (`AutoPanel`), en lugar de `CardSheet`, `CardMenu` y `PhaseRow`, que siguen siendo los de la mesa manual. Los
+   * El duelo automático: su ficha de una carta (todas las jugadas, sin submenús; `AutoPanel`), en lugar de `CardSheet` y `CardMenu`, que siguen siendo los de la mesa manual. Las fases son `PhaseRow` en los dos. Los
    * trae la pantalla del automático: la mesa no importa sus piezas (el modo automático entra por `lazy`, `auto-isolation.test.ts`).
    */
-  menus?: { Card: ComponentType<AutoCardSheetProps>; Phases: ComponentType<{ items: MenuItem[]; onClose: () => void; /** El botón de la fase (`p2`) que la abrió: de ahí sale el menú. */ anchor?: DOMRect }> }
+  menus?: { Card: ComponentType<AutoCardSheetProps> }
   /** El duelo automático tiene una pregunta abierta en un cartel de abajo (`AutoPanel`): en el celular gana ella, y la ficha y el visor de una pila ceden sin cerrarse. */
   asking?: boolean
 }
@@ -374,7 +374,7 @@ const EMPTY_IDS: ReadonlySet<string> = new Set()
 /**
  * El borde de una casilla vacía: una línea fina **blanca** (`field-line`, como el campo de referencia: Gastón, 2026-10-19) y **sin relleno**: la casilla es transparente y se ve el fondo de la mesa
  * (Gastón, 2026-11-10: «el fondo del campo transparente»). Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: el dueño lo dice el color del conteo de una pila
- * (`PileBadge`) y el color queda para lo que pasa (elegir, soltar una carta).
+ * (el número de una pila, `PileBadge`, es sólo un número) y el color queda para lo que pasa (elegir, soltar una carta).
  */
 const CELL_LOOK = 'border border-solid border-field-line/50 min-[1101px]:border-field-line/55' // al 55 % en escritorio: 3:1 contra el punto más claro de su remolino (scripts/remolino/medir.mjs)
 /** Las zonas del centro no se dibujan con el borde de su casilla cuadrada sino con las líneas de la carta (`ZoneLines`, como el tapete): el borde queda invisible (y se enciende al elegir o soltar una carta). */
@@ -890,12 +890,15 @@ function PracticeMatBody({
   const { fx } = fxStep
   const { flash, landing, banner, stage, handFlash } = fx
   // La banda de la fase: la tuya en violeta y la del rival en lima. En un duelo tu mesa sólo trae tus fases, y su pase (turno nuevo) abre el del rival; sus fases llegan en `notice`, y la que
-  // te devuelve el turno («Tu turno», `label`) abre el tuyo. Si están las dos, la más nueva (las dos claves son `Date.now()`): una que todavía no se fue no tapa a la que llega.
+  // te devuelve el turno («Tu turno», `label`) abre el tuyo. Si están las dos, la más nueva (las dos claves son `Date.now()`): una que todavía no se fue no tapa a la que llega. Esos dos pases son
+  // cambios de turno (`turn`: antes, «Cambio de turno»); el primer turno no tiene pase.
   const rivalNotice = duel?.notice
   const dueling = Boolean(duel)
   const phaseCue = useMemo<PhaseCue | null>(() => {
-    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: dueling && banner.turn !== null ? 'theirs' : 'mine' } : null
-    const rival: PhaseCue | null = rivalNotice ? { key: rivalNotice.key, phase: rivalNotice.phase, side: rivalNotice.label ? 'mine' : 'theirs' } : null
+    // Un pase deja el turno 2 o más: el arranque de la mesa (de 0 a 1) no es un cambio de turno.
+    const passed = dueling && banner?.turn != null && banner.turn > 1
+    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: passed ? 'theirs' : 'mine', turn: passed } : null
+    const rival: PhaseCue | null = rivalNotice ? { key: rivalNotice.key, phase: rivalNotice.phase, side: rivalNotice.label ? 'mine' : 'theirs', turn: Boolean(rivalNotice.label) } : null
 
     return own && rival ? (own.key >= rival.key ? own : rival) : (own ?? rival)
   }, [banner, rivalNotice, dueling])
@@ -1213,7 +1216,7 @@ function PracticeMatBody({
 
     const root = sectionRef.current
     shuffleDeck(root?.querySelectorAll('[data-rival-drop="deck"] [data-layer]') ?? [])
-    shuffleHand(root?.querySelectorAll('[data-rival-drop="hand"] [role="img"] > span') ?? [])
+    shuffleHand(root?.querySelectorAll(THEIR_HAND_CARDS) ?? [])
   }, [rivalShuffle])
   // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
   useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
@@ -2418,7 +2421,7 @@ function PracticeMatBody({
           </span>
         ) : null}
         {!shown && spot === 'emz' && duel ? duel.sharedZone(index) : null}
-        {duel?.medals?.get(drop) ? <ChainBadge medals={duel.medals.get(drop)!} /> : null}
+        <Presence>{duel?.medals?.get(drop) ? <ChainBadge medals={duel.medals.get(drop)!} /> : null}</Presence>
         {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
       </div>
     )
@@ -2467,7 +2470,7 @@ function PracticeMatBody({
           {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
           {marked ? <TargetMark key={`mira:${shown}`} /> : null}
         </span>
-        {duel?.medals?.get(pile) ? <ChainBadge medals={duel.medals.get(pile)!} /> : null}
+        <Presence>{duel?.medals?.get(pile) ? <ChainBadge medals={duel.medals.get(pile)!} /> : null}</Presence>
       </button>
     )
   }
@@ -2744,7 +2747,7 @@ function PracticeMatBody({
   const pickedIds = autoPick?.chosen ?? []
   const viewerList = byName ? [...viewerIds].sort((a, b) => Number(pickedIds.includes(b)) - Number(pickedIds.includes(a)) || nameOf(a).localeCompare(nameOf(b))) : viewerIds
 
-  // Deshacer de un duelo, abajo, donde llega el pulgar (en la práctica y en «Jugar solo automático» va arriba, con los íconos de la mesa: `MatBarActions`), y la ficha y la lista de pasos.
+  // Deshacer de un duelo, abajo, donde llega el pulgar hasta 1100 px (en escritorio va arriba, `undoInHeader`; en la práctica, con los íconos de su barra: `MatBarActions`), y la ficha y la lista de pasos.
   // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, sin caja.
   const dockTone = duel ? 'tile' : 'flat'
   // El mismo Deshacer en la barra, abajo y en el aviso de lo que acabás de activar (`undoChip`).
@@ -2778,6 +2781,15 @@ function PracticeMatBody({
     <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
       <Icon name="list" />
     </IconButton>
+  )
+  // La botonera del duelo (`dock`, el ⚙): «Guardar combo» vive en sus Opciones, así que lleva el de la mesa. Hasta 1100 px va con Deshacer primero (el pulgar: chapa … ↶ ≡ ⚙) y los pasos.
+  const dock = duel?.dock ? <MatSaveContext.Provider value={saveLink}>{duel.dock}</MatSaveContext.Provider> : null
+  const dockRow = (
+    <>
+      {duel?.undoInHeader ? null : undoButton}
+      {duel?.steps ? stepsButton : null}
+      {dock}
+    </>
   )
   const replayBar =
     session.replay && !choosing ? (
@@ -2879,8 +2891,6 @@ function PracticeMatBody({
     </div>
   )
 
-  // Lo de la línea del celular: un aviso que flota sobre tu mano mientras está (repasando, dice el paso). La cadena va en su capa, sobre el campo, en todos los anchos.
-  const lineContent = <MatReplayContext.Provider value={replayLink}>{duel?.line}</MatReplayContext.Provider>
 
   // Los bordes de los paneles de los costados se arrastran para cambiarles el ancho (Gastón, 2026-10-22), sólo donde hay panel: el del detalle desde 1440 px y el de la derecha (los pasos o el chat)
   // desde 1101. Cada agarre va sobre su borde, fuera de la grilla (no ocupa lugar ni corre nada) y encima de la mesa y de los paneles; en el orden del foco, junto a su panel.
@@ -2979,14 +2989,22 @@ function PracticeMatBody({
       >
         <DuelRailsContext.Provider value={rails}>
           <MatSaveContext.Provider value={saveLink}>
-            {/* Sin la fila de abajo (`bare`): «Pasos y combos» va primero en el ⋯ y el aviso de lo que acabás de activar, en la barra antes de Deshacer (las salidas ya se fueron con la primera jugada). */}
-            <MatStepsContext.Provider value={bare && !phone ? openSteps : null}>
-              <MatRulesContext.Provider value={rulesPill ?? (bare && undoPlay && !choosing ? <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} className="ml-auto" /> : null)}>
-                <MatUndoContext.Provider value={duel?.undoInHeader ? undoButton : null}>
-                  <MatReplayContext.Provider value={replayLink}>{duel?.header}</MatReplayContext.Provider>
-                </MatUndoContext.Provider>
-              </MatRulesContext.Provider>
-            </MatStepsContext.Provider>
+            {/* Hasta 1100 px Deshacer va abajo, en la botonera (`dock`), y no hay aviso de lo que acabás de activar (eran dos Deshacer): la barra lleva sólo las salidas. */}
+            <MatRulesContext.Provider value={rulesPill}>
+              <MatUndoContext.Provider value={duel?.undoInHeader ? undoButton : null}>
+                <MatReplayContext.Provider value={replayLink}>
+                  {/* Celular: los avisos van debajo de la barra, sobre la mano del rival (como el resultado): flotan, no suman alto ni tapan la barra; la cadena va por encima (`z-[125]`). */}
+                  {phone ? (
+                    <div className="relative">
+                      {duel?.header}
+                      {duel?.line ? <div data-mat-line="" className="pointer-events-none absolute inset-x-0.5 top-full z-20 mt-1 h-11">{duel.line}</div> : null}
+                    </div>
+                  ) : (
+                    duel?.header
+                  )}
+                </MatReplayContext.Provider>
+              </MatUndoContext.Provider>
+            </MatRulesContext.Provider>
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
@@ -3043,10 +3061,11 @@ function PracticeMatBody({
               restricciones (el automático). Un solo lugar para las fases, en todos los anchos y los duelos. */}
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
           <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>{duel?.auto ? duel.limits : tokenButton}</div>
-          <div className="relative min-h-0 min-w-0" style={{ gridArea: 'p2' }}>
+          <div className="relative grid min-h-0 min-w-0 place-items-center [container-type:size]" style={{ gridArea: 'p2' }}>
               {/* Sólo la sigla de dos letras, en todos los anchos y en todos los duelos (Gastón, 2026-10-27: «está bien que sólo muestre 2 letras y se abra el menú al tocarlo»): el nombre completo lo
                   dicen las fases que abre y su `aria-label`. La caja de la mesa (`tile`): en lima cuando el turno es tuyo (es lo que se toca); en el del rival, la sigla en lila. Llena toda su casilla, con
-                  borde grueso y la sigla grande (C-01 y C-02 del kit: es lo que más se toca, Fitts); la casilla ya mide ≥ 54 × 54 px, así que el objetivo táctil de 44 px entra siempre. */}
+                  borde grueso y la sigla grande (C-01 y C-02 del kit: es lo que más se toca, Fitts). Cuadrado (Gastón, 2026-11-12: «ya no es cuadrado»): el lado es el menor de la casilla (el ancho de su columna en el celular), centrado,
+                  y con 44 px como piso; la fila `p2` no cambia de alto, manda la casilla (`[container-type:size]`: el botón no la estira). */}
               <IconButton
                 tone="tile"
                 size="sm"
@@ -3055,7 +3074,7 @@ function PracticeMatBody({
                 aria-expanded={menu?.kind === 'phases'}
                 data-active={myTurn}
                 disabled={!myTurn}
-                className="size-full! border-2! text-lead font-extrabold leading-none"
+                className="size-[100cqmin]! min-h-11 min-w-11 border-2! text-lead font-extrabold leading-none"
                 onClick={(event) => {
                   // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
                   if (!isDesktop && phaseNow === 'end') setEndingTurn(true)
@@ -3120,13 +3139,13 @@ function PracticeMatBody({
             ) : null}
             <PileBadge count={state.deck.length} />
             {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
-            {duel?.medals?.get('deck') ? <ChainBadge medals={duel.medals.get('deck')!} /> : null}
+            <Presence>{duel?.medals?.get('deck') ? <ChainBadge medals={duel.medals.get('deck')!} /> : null}</Presence>
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
           {pileCell('banished', 'ban')}
 
-          {/* Cambio de fase: la banda cruza el campo por la fila del medio, del color de quien juega (`PhaseBand`), en la práctica, repasando un combo y en los duelos. */}
+          {/* Cambio de fase: la banda cruza el campo por la fila del medio, del color de quien juega (`PhaseBand`), en la práctica, repasando un combo y en los duelos; en un duelo, el pase antes con «Cambio de turno». */}
           <Deferred value={phaseCue}>{(cue) => <PhaseBand cue={cue} />}</Deferred>
           {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
           {announcement ? (
@@ -3143,11 +3162,9 @@ function PracticeMatBody({
         </div>
 
         {/* Celular: sin línea entre el campo y tu mano (Gastón, 2026-11-12: «evitar espacio vacío entre campo y mano»). `data-duel-line` queda como marca de 0 px en el borde de abajo del campo (el
-            techo de las hojas, `AutoPanel`) y lo de la línea (un aviso del rival, lo que pasó) flota sobre el borde de arriba de tu mano sólo mientras está: no ocupa lugar ni corre nada. */}
+            techo de las hojas, `AutoPanel`); los avisos van arriba, debajo de la barra. */}
         {phone ? (
-          <div data-duel-line="" className="relative h-0 shrink-0" style={{ marginBottom: phone.gap }}>
-            {duel?.line ? <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-11">{lineContent}</div> : null}
-          </div>
+          <div data-duel-line="" className="relative h-0 shrink-0" style={{ marginBottom: phone.gap }} />
         ) : deskLine ? (
           // Escritorio automático: tampoco hay línea. La marca de 0 px (con `-mb-2`, que anula su `gap-2`) queda en el borde de abajo del campo: es el techo de las ventanas (`AutoPanel`).
           <div data-duel-line="" aria-hidden="true" className="-mb-2 h-0 shrink-0" />
@@ -3215,7 +3232,7 @@ function PracticeMatBody({
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
         {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven. */}
         {/* Sin fila de abajo («Jugar solo automático» hasta 1100 px: tus vidas van en el marcador de la barra): lo que falta elegir se apoya sobre los 44 px de abajo de tu
-            mano sólo mientras está (no ocupa alto ni ataja toques si no); los botones del replay van ahí, debajo de tu mano achicada (`REVIEW_HAND`); el aviso de lo que acabás de activar va en la barra. */}
+            mano sólo mientras está (no ocupa alto ni ataja toques si no); los botones del replay van ahí, debajo de tu mano achicada (`REVIEW_HAND`); Deshacer, los pasos y el ⚙, abajo a la derecha. */}
         {bare ? (
           <div className={cx('pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55', phone && !splitReplay ? 'h-15' : 'h-11')} data-mat-float="">
             {/* El celular: tu fila de abajo (60 px), tu chapa a la izquierda y la botonera cuadrada a la derecha; lo que falta elegir se apoya encima (`status`). */}
@@ -3223,16 +3240,13 @@ function PracticeMatBody({
               // Tu chapa cede el ancho que le falta a la botonera (recorta su turno con «…»). El turno se termina desde el botón de la fase, al medio del campo.
               <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto [&>[data-life-badge]]:min-w-0 [&>[data-life-badge]]:shrink">
                 {duel?.life}
-                <span className="flex items-center gap-2">
-                  {duel?.steps ? stepsButton : null}
-                  {duel?.dock}
-                </span>
+                <span className="flex items-center gap-2">{dockRow}</span>
               </div>
             ) : null}
-            {/* De 640 a 1100 px (sin la fila de abajo del celular): el ⚙ de Opciones, a la derecha de la franja de abajo de tu mano. */}
-            {!phone && duel?.dock && !splitReplay ? (
+            {/* De 640 a 1100 px (sin la fila de abajo del celular): Deshacer, los pasos y el ⚙, a la derecha de la franja de abajo de tu mano. */}
+            {!phone && !splitReplay ? (
               <div inert={choosing} className="absolute inset-y-0 right-0 flex items-center gap-2 *:pointer-events-auto">
-                {duel.dock}
+                {dockRow}
               </div>
             ) : null}
             {splitReplay ? (
@@ -3275,7 +3289,7 @@ function PracticeMatBody({
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
                   {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
                   {isDesktop && !duel.undoInHeader ? undoButton : null}
-                  {isDesktop && duel.dock ? duel.dock : isDesktop && duel.undoInHeader ? null : duel.life}
+                  {isDesktop && duel.dock ? dock : isDesktop && duel.undoInHeader ? null : duel.life}
                 </span>
               </div>
               )}
@@ -3334,7 +3348,6 @@ function PracticeMatBody({
       {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera (y baja: `Presence` la deja montada mientras sale). */}
       {/* El duelo automático: la ficha con todas las jugadas que da el núcleo, la misma en el celular y en escritorio (la mesa manual sigue con `CardSheet` y `CardMenu`); en escritorio, una sola jugada sigue siendo su etiqueta (`PlayTag`). */}
       <Presence>{cardSheet}</Presence>
-      <Presence>{phasesOpen && autoMenus && !menuShelved ? <autoMenus.Phases items={menuItems} anchor={menu.rect} onClose={() => setMenu(null)} /> : null}</Presence>
       <Presence>{sheeted && menu && !autoMenus ? (
         <CardSheet
           name={menuTitle}
@@ -3384,7 +3397,7 @@ function PracticeMatBody({
       ) : null}
 
       {/* Las fases en una línea, con las mismas opciones que armaba el menú (`menuItems`): qué fase se puede elegir lo deciden la mesa manual o el núcleo, no la línea. */}
-      <PhaseRow anchor={phasesOpen && !autoMenus ? menu.rect : null} items={phasesOpen && !autoMenus ? menuItems : []} onClose={() => setMenu(null)} />
+      <PhaseRow anchor={phasesOpen && !menuShelved ? menu.rect : null} items={phasesOpen && !menuShelved ? menuItems : []} onClose={() => setMenu(null)} />
       <CardMenu
         anchor={covered || sheeted || lonePlay || phasesOpen || autoMenus ? null : (menu?.rect ?? null)}
         kicker={menuKicker}
@@ -3478,18 +3491,16 @@ function PracticeMatBody({
 
       <Presence>{inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}</Presence>
 
-      {/* En el automático, activar no sale acá (ni lo propio ni lo del rival): lo muestra la cadena en grande, en su capa (lámina C). */}
+      {/* En el automático, activar no sale acá (ni lo propio ni lo del rival): lo muestra la cadena en grande, en su capa (lámina C). Un combo guardado no trae cadena: ahí sí (`session.replay`). */}
       {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin los paneles de los costados (`--mat-left` / `--mat-right`, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
       <Deferred value={stage}>
         {(shown) =>
-          shown && !(isAuto && shown.kind === 'activate') ? (
+          shown && !(isAuto && shown.kind === 'activate' && !session.replay) ? (
             <Spotlight
               key={shown.key}
               kind={shown.kind}
               cards={shown.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
-              // Repasando con el replay partido el paso ya se lee en el aviso de arriba: la carta va sin cartel, en el medio como siempre (en una franja de la mitad del rival quedaba arriba y su
-              // resplandor, cortado por los bordes de la franja: Gastón, 2026-10-30).
-              caption={splitReplay ? null : (steps[shown.step - 1] ?? null)}
+              // Sin cartel: repasando, el paso ya se lee en la barra o en el aviso de arriba, y jugando no hay texto de paso (Gastón, 2026-11-12: «evitemos información repetida o redundante»).
               flip={shown.flip}
               origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
               className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
@@ -3506,7 +3517,8 @@ function PracticeMatBody({
           cards={duel.rivalEffect.cards.map((card) => ({ id: card.id, name: card.name ?? '', art: card.art, back: card.art === null }))}
           flip={duel.rivalEffect.flip}
           linger={duel.rivalEffect.linger}
-          caption={duel.rivalEffect.caption}
+          // Con la imagen a la vista el nombre ya está impreso: el cartel dice sólo quién y qué hizo (con un efecto elegido entre varios queda su número y la carta: no tiene forma corta).
+          caption={!duel.rivalEffect.detail && duel.rivalEffect.cards.every((card) => card.art !== null) ? (duel.rivalEffect.brief ?? duel.rivalEffect.caption) : duel.rivalEffect.caption}
           detail={duel.rivalEffect.detail}
           origin={(id) => cardPose(sectionRef.current, duel.rivalFlights?.state ?? null, id, 'theirs')}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
@@ -3548,8 +3560,8 @@ function PracticeMatBody({
       </Presence>
       </SheetHost>
 
-      {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
-      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
+      {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). El final y su «Ver el resultado» (`data-cover-pass`) sólo atajan en su bloque: ⚙, Pasos y deshacer se siguen tocando. */}
+      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140] has-[[data-cover-pass]]:pointer-events-none', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
 
       {drag
         ? createPortal(
@@ -3609,13 +3621,13 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
 
 /**
  * La cantidad, grande en el centro de la pila, y nada más (pieza P-05 del kit: qué pila es lo dice el dorso o la carta de arriba, y su nombre para el lector de pantalla). En una pila angosta
- * (menos de 2 rem) el número baja un paso. El conteo lleva el color del dueño (Gastón, 2026-11-10: las casillas ya no lo dicen): violeta con texto blanco lo tuyo y lima con texto carbón lo del
- * rival, cuya pila lleva `data-rival-drop` (`DuelTable`). Recto, como toda la mesa.
+ * (menos de 2 rem) el número baja un paso. Sólo el número, blanco y sin cuadro ni color de dueño (Gastón, 2026-11-12: «deberían ser sólo un número»; el dueño lo dice el lado del campo), con la
+ * sombra de texto de la casa para leerse sobre el dorso y sobre la casilla vacía.
  */
 export const PileBadge = memo(function PileBadge({ count }: { count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center text-center leading-none @container">
-      <span className={cx('px-1.5 py-0.5 text-lead font-extrabold tabular-nums min-[1101px]:text-title @max-[2rem]:px-0.5 @max-[2rem]:text-body', 'bg-primary text-primary-foreground', 'in-[[data-rival-drop]]:bg-info in-[[data-rival-drop]]:text-background')}>{count}</span>
+      <span className="text-lead font-extrabold tabular-nums text-foreground text-shadow-lg text-shadow-background min-[1101px]:text-title @max-[2rem]:text-body">{count}</span>
     </span>
   )
 })

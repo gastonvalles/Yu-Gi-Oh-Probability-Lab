@@ -94,6 +94,17 @@
   --color-frame-spell-deep: #188461;
   --color-frame-trap-deep: #b65480;
 
+  /* La escena de la cadena (`ChainNotice.tsx`, como Master Duel): no dependen de la paleta. El halo blanco de cada carta, el número blanco con luz celeste, el destello de entrada,
+     el velo azulado y el metal de los eslabones (luz, medio y sombra). */
+  --shadow-chain-halo: 0 0 0 2px rgb(255 255 255 / 0.9), 0 0 14px 4px rgb(255 255 255 / 0.6), 0 0 32px 8px rgb(255 255 255 / 0.18);
+  --color-chain-glow: #5fe4ff;
+  --color-chain-flash: #fff3a6;
+  --color-chain-burst: #ffc23a;
+  --color-chain-veil: #050b22;
+  --color-chain-metal-hi: #f7f9fc;
+  --color-chain-metal: #aeb7c4;
+  --color-chain-metal-lo: #3c4452;
+
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;
 
@@ -1359,6 +1370,27 @@
 }
 
 /*
+ * La leve inclinación 3D de las cartas de la cadena en grande (`ChainNotice.tsx`, como Master Duel): la de adelante, un poco hacia atrás por arriba; las de atrás, al revés. Va en
+ * `transform`, aparte de `translate`/`rotate`/`scale` (que llevan la pose); quieta salvo cuando una carta pasa de adelante a atrás.
+ */
+@utility chain-tilt-front {
+  transform: perspective(56rem) rotateX(10deg) rotateY(-7deg);
+}
+
+@utility chain-tilt-back {
+  transform: perspective(56rem) rotateX(-8deg) rotateY(6deg);
+}
+
+/* Las mismas, en espejo: cuando la última entra a la derecha (un eslabón par). */
+@utility chain-tilt-front-flip {
+  transform: perspective(56rem) rotateX(10deg) rotateY(7deg);
+}
+
+@utility chain-tilt-back-flip {
+  transform: perspective(56rem) rotateX(-8deg) rotateY(-6deg);
+}
+
+/*
  * El fondo de la mesa, de la sala y de la apertura del duelo (Gastón, 2026-11-10: «de fondo algo así con nuestros colores»): un remolino violeta y lima sobre el carbón, generado por
  * `scripts/remolino/` (con un tope de luz: el contraste contra su punto más claro lo mide `scripts/remolino/medir.mjs`). El campo no lleva placa: sus casillas son transparentes y el remolino se ve a través.
  * El navegador baja sólo el de su tamaño (escritorio desde 1101 px); mientras carga, o sin AVIF, queda el carbón. Plano y quieto: sin `bg-fixed` (repinta al desplazar en el celular), sin animación,
@@ -1688,6 +1720,57 @@
     --zone-extra-border: transparent;
     --zone-side-background: rgb(var(--success-rgb) / 0.09);
     --zone-side-border: transparent;
+  }
+
+  /* Índigo: la paleta de antes de `85dc26c0` (índigo, violeta y ámbar), a elección en el menú (`app/palette.ts`, `ui/PaletteSwitcher`). Sólo los valores que cambian, con los mismos nombres. Va después de Carbón (la de fábrica, la que leen los tests). */
+  :root[data-palette='indigo'] {
+    --color-lavender-light: #eee9ff;
+    --background: #150a24;
+    --background-rgb: 21 10 36;
+    --secondary: #231238;
+    --card-background: #231238;
+    --card-background-rgb: 35 18 56;
+    --border: #3a2459;
+    --input: #2b1745;
+    --input-hover: #352052;
+    --primary: #8000cb;
+    --primary-rgb: 128 0 203;
+    --primary-hover: #9a26e0;
+    --primary-hover-rgb: 154 38 224;
+    --accent: #c77dff;
+    --accent-rgb: 199 125 255;
+    --accent-foreground: #150a24;
+    --destructive: #da0000;
+    --destructive-rgb: 218 0 0;
+    --surface-raised: #2b1745;
+    --surface-hover: #352052;
+    --border-subtle: #2e1c4a;
+    --primary-soft: #c77dff;
+    --primary-soft-rgb: 199 125 255;
+    --lavender: #2b1745;
+    --lavender-hover: #352052;
+    --info: #ffc100;
+    --info-rgb: 255 193 0;
+    --success-soft: #6bf55c;
+    --warning-soft: #ffd84d;
+    --danger-soft: #ff4d4d;
+    --danger-soft-rgb: 255 77 77;
+    --info-soft: #ffd84d;
+    --success: #1aef06;
+    --success-rgb: 26 239 6;
+    --success-solid: color-mix(in srgb, #1aef06 55%, black);
+    --warning: #ffc100;
+    --warning-rgb: 255 193 0;
+    --danger: #da0000;
+    --danger-rgb: 218 0 0;
+    --nav: #400065;
+    --nav-raised: #5a2a80;
+    --nav-active: #ffc100;
+    --text-muted: #b4a2d4;
+    --text-soft: #9b86c4;
+    --app-scrollbar-track: #1c0f30;
+    --app-scrollbar-thumb: #45296b;
+    --app-scrollbar-thumb-hover: #6a4b96;
   }
 }
 

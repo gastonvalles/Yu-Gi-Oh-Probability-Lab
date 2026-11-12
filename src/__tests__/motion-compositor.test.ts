@@ -61,6 +61,40 @@ describe('las animaciones de la mano, el ataque, el barajado y el dar vuelta se 
     expect(Math.sign(packetX(0))).not.toBe(Math.sign(packetX(1)))
   })
 
+  // Un vuelo que se cancela (la mesa se midió de nuevo y lo reemplazó por otro) rechaza su `finished`: el barajado no se pierde, espera al vuelo nuevo y se baraja cuando aterriza.
+  it('si el vuelo que esperaba se cancela y la mesa lo reemplaza por otro, se baraja igual cuando aterriza el nuevo', async () => {
+    const calls: Array<{ options: KeyframeAnimationOptions }> = []
+    let cancel = () => {}
+    let land = () => {}
+    const flight = (finished: Promise<void>) => ({ id: '', finished, effect: { getComputedTiming: () => ({ endTime: 380 }), getKeyframes: () => [{ transform: 'none' }] } })
+    const first = flight(new Promise<void>((_, reject) => (cancel = () => reject(new DOMException('cancelado', 'AbortError')))))
+    const second = flight(new Promise<void>((resolve) => (land = resolve)))
+    const passes = [[first], [second]]
+    const card = {
+      isConnected: true,
+      animate: (_frames: Keyframe[], options: KeyframeAnimationOptions) => calls.push({ options }),
+      getAnimations: () => passes.shift() ?? [],
+    } as unknown as Element
+    const style = globalThis.getComputedStyle
+    globalThis.getComputedStyle = (() => ({ transform: 'none' })) as unknown as typeof getComputedStyle
+
+    try {
+      shuffleHand([card])
+      cancel()
+      await first.finished.catch(() => {})
+      await Promise.resolve()
+      expect(calls).toHaveLength(0)
+      land()
+      await second.finished
+      await Promise.resolve()
+    } finally {
+      globalThis.getComputedStyle = style
+    }
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]!.options).toEqual({ id: SHUFFLE_ID, duration: HAND_SHUFFLE_MS })
+  })
+
   // Lo que el dedo toca al arrastrar y lo que cambia con cada pregunta: un borde o una sombra que transiciona corre en el hilo principal en cada cuadro.
   // La carta que se enciende destella con `filter` (`animate-card-glow`): si el atenuado también transiciona `filter`, son dos animaciones de la misma propiedad y ninguna va en la GPU.
   it('las cartas de la mano sólo transicionan lo que se mueve y las casillas del campo no transicionan `box-shadow` ni el color del borde', () => {

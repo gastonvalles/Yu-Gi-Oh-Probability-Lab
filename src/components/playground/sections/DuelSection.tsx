@@ -152,6 +152,9 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
   const mine = <LifeBadge name="Vos" label="Vos" life={life.mine} mine active={mineTurn} />
   const buttons = (
     <span className="flex items-center gap-2">
+      <IconButton tone="tile" size="sm" aria-label={t('practice.mat.undo')}>
+        <Icon name="undo" />
+      </IconButton>
       <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
         <Icon name="list" />
       </IconButton>
@@ -168,7 +171,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
       className="col-span-full"
       note={
         <>
-          Las vidas: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color); en el celular la del rival va en la fila de los íconos de la barra, con el número un paso más chico (<Tag>compact</Tag>: entra en sus 44 px), y la tuya abajo con las herramientas: ≡ (pasos) y ⚙ (Opciones: la vista 3D, los menús flotantes, lo de cada duelo y, al final, Rendirse; tocalo para verlo). El turno lo dice sólo el borde: grueso (3 px) en la chapa de quien juega y tenue en la otra, sin texto. No hay línea entre el campo y tu mano: un aviso (o «Momento», lo que pasó al invocar o atacar, 1,5 s: el daño no sale acá, lo cuenta la chapa) flota sobre el borde de arriba de tu mano sólo mientras está, y la cadena va en una capa centrada sobre el campo. El cambio de vidas, todo adentro de la chapa: tiembla, el número baja contando (700 ms como mucho) y el «−N» chico toma el lugar de la etiqueta 1,6 s (rojo tu daño, menta el del rival); no sale ningún número afuera. Las fases van en el botón del medio del campo. A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/AutoBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
+          Las vidas: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color); en el celular la del rival va en la fila de los íconos de la barra, con el número un paso más chico (<Tag>compact</Tag>: entra en sus 44 px), y la tuya abajo con las herramientas: ↶ (Deshacer, el primero: el pulgar), ≡ (pasos) y ⚙ (Opciones, el único menú: «La mesa» con la vista 3D, los sonidos, los colores y los menús flotantes, lo de cada duelo y, al final, Rendirse; tocalo para verlo). El turno lo dice sólo el borde: grueso (3 px) en la chapa de quien juega y tenue en la otra, sin texto. No hay línea entre el campo y tu mano: un aviso (o «Momento», lo que pasó al invocar o atacar, 1,5 s: el daño no sale acá, lo cuenta la chapa) va debajo de la barra, sobre la mano del rival, sólo mientras está; uno sin botones («Momento») se saca deslizándolo de costado (o con Supr) y uno con botones («Aviso») no. La cadena va en una capa centrada sobre el campo. El cambio de vidas, todo adentro de la chapa: tiembla, el número baja contando (700 ms como mucho) y el «−N» chico toma el lugar de la etiqueta 1,6 s (rojo tu daño, menta el del rival); no sale ningún número afuera. Las fases van en el botón del medio del campo. A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/AutoBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }
     >
@@ -200,16 +203,15 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
         </Button>
       </div>
       <div className="mat-square relative grid w-[24.375rem] max-w-full gap-2 bg-background p-1 [--cell:3.57rem]">
-        <div className="flex h-11 items-center justify-end">
+        <div className="relative flex h-11 items-center justify-end">
           <span className={BAR_SEAT}>{rival}</span>
+          {lane ? <div className="pointer-events-none absolute inset-x-0.5 top-full z-20 mt-1 h-11">{content}</div> : null}
         </div>
         <div className="relative">
           <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
           {line === 'chain' ? <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-4">{content}</div> : null}
         </div>
-        <div data-duel-line="" className="relative h-0">
-          {lane ? <div className="absolute inset-x-0 top-0 z-20 h-11">{content}</div> : null}
-        </div>
+        <div data-duel-line="" className="relative h-0" />
         <div aria-hidden="true" className="h-24 bg-tint/8" />
         <div className="flex h-15 items-center justify-between gap-2">
           {mine}
@@ -282,8 +284,8 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
       className="col-span-full"
       note={
         <>
-          Como en Master Duel, sólo al resolver (al encadenar lo dice la escena grande): un medallón por eslabón, un aro de cadena redondo (una ficha) con su número en el color de su dueño, de 36
-          px, en el lugar donde se activó, aunque la carta se haya ido: la casilla (aunque quede vacía), la pila (Cementerio, Desterradas, Deck, Extra) o la mano (la tuya o el abanico del rival).
+          Como en Master Duel, sólo al resolver (al encadenar lo dice la escena grande): un medallón por eslabón, un aro de cadena redondo (una ficha, del metal de la escena) con su número blanco y
+          luz celeste (como la escena, para los dos), de 36 px, en el lugar donde se activó, aunque la carta se haya ido: la casilla (aunque quede vacía), la pila (Cementerio, Desterradas, Deck, Extra) o la mano (la tuya o el abanico del rival).
           Varios en un mismo lugar, corridos. Del último al primero: el que se resuelve late (con movimiento reducido, quieto) y, al empezar el siguiente, se va; sólo el negado o sin efecto se
           tacha en rojo. No ataja toques: el eslabón también va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>ChainBadge</Tag>)
         </>
@@ -718,13 +720,17 @@ function RivalEffectSample() {
       layout="column"
       note={
         <>
-          Cuando el rival elige un efecto entre varios, el cartel del centro dice cuál (<Tag>Ana activa el efecto 2 de …</Tag>) y, debajo de la carta, lleva la frase del efecto tal cual el texto, con su número y cuándo se activa; se queda 7 s. Sin efecto elegido, sólo la carta y el cartel de siempre. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>Spotlight detail</Tag>)
+          Cuando el rival elige un efecto entre varios, el cartel del centro dice cuál (<Tag>Ana activa el efecto 2 de …</Tag>) y, al lado o debajo de la carta, lleva la frase del efecto tal cual el texto, con su número y cuándo se activa; se queda 7 s. Sin efecto elegido, la carta grande (la mitad del recuadro, como la de adelante de la cadena; en el celular, nunca menos del 38 %) y, arriba y recto, sólo quién hizo qué, sin repetir el nombre que la carta ya trae impreso: no lleva placa con el nombre (ésa queda para la carta sin imagen o de dorso). Donde el texto del paso ya está a la vista (el Replay, el combo) no lleva cartel. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>Spotlight detail</Tag>)
         </>
       }
     >
       <div className="relative isolate min-h-[30rem] overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
         <Spotlight key={shown} kind="activate" cards={[RIVAL_EFFECT.card]} caption={RIVAL_EFFECT.caption} detail={RIVAL_EFFECT.detail} className="absolute inset-0" />
+      </div>
+      <div data-testid="spotlight-alone" className="relative isolate min-h-[30rem] overflow-hidden rounded-card border border-border-subtle">
+        <MatScene className="absolute inset-0 -z-10" />
+        <Spotlight key={shown} kind="activate" cards={[RIVAL_EFFECT.card]} caption="Ana activa una carta" className="absolute inset-0" />
       </div>
       <Button variant="secondary" size="sm" icon="refresh" onClick={() => setShown((count) => count + 1)}>
         Volver a mostrar
@@ -905,7 +911,7 @@ function ArenaSamples() {
       className="col-span-full"
       note={
         <>
-          El fondo (<Tag>MatScene</Tag>) se ve a través de las casillas, transparentes y con las líneas blancas de la carta (<Tag>CELL_MONSTER</Tag>, <Tag>CELL_SPELL</Tag> y <Tag>ZoneLines</Tag>); las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>) y el conteo de una pila con el color de su dueño (<Tag>PileBadge</Tag>: violeta lo tuyo, lima lo del rival, cuya pila lleva <Tag>data-rival-drop</Tag>). La mesa y sus hojas van con esquinas rectas (<Tag>mat-square</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag>, <Tag>probability/PracticeMat.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
+          El fondo (<Tag>MatScene</Tag>) se ve a través de las casillas, transparentes y con las líneas blancas de la carta (<Tag>CELL_MONSTER</Tag>, <Tag>CELL_SPELL</Tag> y <Tag>ZoneLines</Tag>); las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>) y el conteo de una pila, sólo el número en blanco con sombra y sin cuadro ni color de dueño (<Tag>PileBadge</Tag>). La mesa y sus hojas van con esquinas rectas (<Tag>mat-square</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag>, <Tag>probability/PracticeMat.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
         </>
       }
     >
@@ -989,65 +995,70 @@ const MEDALS: Array<{ tone: MedalTone; label: string; numeral?: string }> = [
 ]
 
 /** Los finales, con las acciones de cada pantalla: el automático solo (`solo`), un duelo con otro (`room`, con lo que dice el botón de seguir) y quien mira (`watch`). */
-const RESULTS: Array<{ label: string; tone: 'win' | 'lose' | 'draw'; title: string; reason: string; score?: [number, number]; note?: string; kind: 'solo' | 'room' | 'watch'; next?: string }> = [
-  { label: 'ganar por vidas', tone: 'win', title: '¡Ganaste!', reason: 'Rival se quedó sin puntos de vida.', score: [7700, 0], kind: 'solo' },
-  { label: 'perder por vidas', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida.', score: [0, 3100], kind: 'solo' },
-  { label: 'empate', tone: 'draw', title: 'Empate', reason: 'Los dos se quedaron sin puntos de vida a la vez.', score: [0, 0], kind: 'solo' },
+const RESULTS: Array<{ label: string; tone: 'win' | 'lose' | 'draw'; title: string; reason: string; note?: string; kind: 'solo' | 'room' | 'watch'; next?: string }> = [
+  { label: 'ganar por vidas', tone: 'win', title: '¡Ganaste!', reason: 'Rival se quedó sin puntos de vida.', kind: 'solo' },
+  { label: 'perder por vidas', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida.', kind: 'solo' },
+  { label: 'empate', tone: 'draw', title: 'Empate', reason: 'Los dos se quedaron sin puntos de vida a la vez.', kind: 'solo' },
   { label: 'te rendiste', tone: 'lose', title: 'Perdiste', reason: 'Te rendiste.', kind: 'solo' },
-  { label: 'sin cartas', tone: 'win', title: '¡Ganaste!', reason: 'El rival no pudo robar.', score: [5200, 1800], kind: 'solo' },
+  { label: 'sin cartas', tone: 'win', title: '¡Ganaste!', reason: 'El rival no pudo robar.', kind: 'solo' },
   { label: 'se rindió el rival', tone: 'win', title: '¡Ganaste!', reason: 'Beto se rindió.', kind: 'room', next: 'Revancha' },
-  { label: 'por tiempo', tone: 'lose', title: 'Perdiste', reason: 'Se te acabó el tiempo.', score: [3000, 2500], kind: 'room', next: 'Revancha' },
-  { label: 'serie: partida 1 de 3', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida. Match 0–1.', score: [0, 1200], note: 'Beto quiere la revancha.', kind: 'room', next: 'Siguiente duelo' },
-  { label: 'espectador', tone: 'win', title: 'Ganó Ana', reason: 'Beto se quedó sin puntos de vida.', note: 'Volvés al inicio en unos segundos.', kind: 'watch' },
+  { label: 'por tiempo', tone: 'lose', title: 'Perdiste', reason: 'Se te acabó el tiempo.', kind: 'room', next: 'Revancha' },
+  { label: 'serie: partida 1 de 3', tone: 'lose', title: 'Perdiste', reason: 'Te quedaste sin puntos de vida. Match 0–1.', note: 'Beto quiere la revancha.', kind: 'room', next: 'Siguiente duelo' },
+  { label: 'espectador', tone: 'win', title: 'Ganó Ana', reason: 'Ganó Ana. Beto se quedó sin puntos de vida.', note: 'Volvés al inicio en unos segundos.', kind: 'watch' },
 ]
 
 function ResultSample({ sample }: { sample: (typeof RESULTS)[number] }) {
-  const { kind, score } = sample
+  const { kind } = sample
+  const duel = useMemo(sampleDuel, [])
   const actions =
     kind === 'solo' ? (
       <>
-        <Button variant="secondary" icon="save" fullWidth>
-          Guardar replay
+        <Button variant="secondary" size="sm" icon="save" fullWidth>
+          Guardar
         </Button>
-        <Button variant="secondary" icon="hand" fullWidth>
-          Seguir en modo manual
+        <Button variant="secondary" size="sm" icon="hand" fullWidth>
+          Modo manual
         </Button>
-        <Button variant="secondary" icon="chat" fullWidth>
-          Qué hizo el bot
+        <Button variant="secondary" size="sm" icon="play" fullWidth>
+          Ver el replay
         </Button>
       </>
     ) : kind === 'room' ? (
       <>
-        <Button variant="secondary" icon="eye" fullWidth>
+        <Button variant="secondary" size="sm" icon="eye" fullWidth>
           Ver la mesa
         </Button>
-        <Button variant="secondary" icon="save" fullWidth>
-          Guardar replay
+        <Button variant="secondary" size="sm" icon="save" fullWidth>
+          Guardar
+        </Button>
+        <Button variant="secondary" size="sm" icon="play" fullWidth>
+          Ver el replay
         </Button>
       </>
     ) : undefined
   const primary =
     kind === 'watch' ? (
-      <Button variant="secondary" size="lg" fullWidth>
+      <Button variant="secondary" size="sm" icon="home" fullWidth>
         Volver al inicio
       </Button>
     ) : (
-      <Button variant="primary" size="lg" icon="refresh" fullWidth>
+      <Button variant="primary" size="sm" icon="refresh" fullWidth>
         {kind === 'solo' ? 'Jugar otra vez' : sample.next}
       </Button>
     )
 
+  // Sobre la mesa de muestra: el campo se ve alrededor del bloque.
   return (
     <div className="grid w-full max-w-[24.375rem] gap-2">
       <Tag>{sample.label}</Tag>
-      <div className="relative h-[36rem] overflow-hidden border border-border-subtle bg-background">
+      <div className="relative overflow-hidden border border-border-subtle bg-background [--cell:3.57rem]">
+        <DuelTable mine={duel.mine} theirs={duel.theirs} turn="mine" />
         <ResultHero
           tone={sample.tone}
           title={sample.title}
           reason={sample.reason}
           {...(sample.note ? { note: sample.note } : {})}
-          {...(score ? { score: { mine: score[0], theirs: score[1], rival: kind === 'solo' ? 'Rival' : 'Beto' } } : {})}
-          {...(kind === 'watch' ? {} : { onLeave: () => {} })}
+          {...(kind === 'watch' ? {} : kind === 'solo' ? { onHide: () => {} } : { onLeave: () => {} })}
           {...(actions ? { actions } : {})}
           primary={primary}
         />
@@ -1069,7 +1080,7 @@ function BannerSamples() {
       className="col-span-full"
       note={
         <>
-          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, sin degradados ni brillos) del cartel del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos). El final (<Tag>ResultHero</Tag>) es una hoja opaca y recta apoyada abajo (en escritorio, al centro) sobre la mesa con un velo: el título en el color del resultado (lo único que resalta), el porqué pegado, las vidas «7700 a 0» en grande, las secundarias del mismo ancho y la principal grande abajo; la ✕ va dentro. Antes, el golpe letal en cámara lenta (<Tag>LethalBlow</Tag>: destello, rayos y el daño en grande, 1,5 s); después la chapa del que perdió cuenta hasta 0, una pausa y recién ahí el final (<Tag>app/end-reveal.ts</Tag>). Entra subiendo; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
+          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, sin degradados ni brillos) del cartel del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos). El final (<Tag>ResultHero</Tag>) es un solo bloque al medio del campo, que se ve entero alrededor (sin velo ni hoja; sólo una franja oscura detrás del bloque): la palabra enorme («Victoria», «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos; entra creciendo), el porqué en una línea (el nombre del cartel, «¡Ganaste!», queda para el lector de pantalla) y las acciones en botones chicos iguales, dos por fila en el celular y en una sola en escritorio. Sin vidas: las dicen las chapas. En Solo la ✕ lo esconde (y «Ver el resultado» lo vuelve a abrir); «Ver el replay» abre el duelo recién jugado en el visor de replays. Antes, el golpe letal en cámara lenta (<Tag>LethalBlow</Tag>: destello, rayos y el daño en grande, 1,5 s); después la chapa del que perdió cuenta hasta 0, una pausa y recién ahí el final (<Tag>app/end-reveal.ts</Tag>). Con <Tag>prefers-reduced-motion</Tag> aparece quieto. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
         </>
       }
     >

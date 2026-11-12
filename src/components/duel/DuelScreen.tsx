@@ -1536,9 +1536,10 @@ function useRivalEffect(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
       const readable = READABLE_KINDS.has(spotlight.kind) && cards[0]!.art !== null
       const real = ids.length > 1 || isToken(spotlight.id) ? undefined : theirs.known[spotlight.id]
       const passcode = readable && real ? passcodeOfDrawId(real) : null
+      const said = t(`duel.announce.${spotlight.kind}`, { name: rival, count: ids.length })
 
       setShown({
-        effect: { key, kind: spotlight.kind, cards, caption: t(`duel.announce.${spotlight.kind}`, { name: rival, count: ids.length }), ...(readable ? { linger: true } : {}) },
+        effect: { key, kind: spotlight.kind, cards, caption: said, brief: said, ...(readable ? { linger: true } : {}) },
         flashId: spotlight.id,
         ...(passcode === null ? {} : { passcode }),
         ...(action.type === 'activate' && action.effect !== undefined ? { effectIndex: action.effect } : {}),
@@ -1553,10 +1554,11 @@ function useRivalEffect(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
       const local = rivalCardName(cardsById, summoned)
       const lookup = added ?? (local === undefined ? summoned : undefined)
       const passcode = lookup ? passcodeOfDrawId(lookup) : null
-      const caption = local !== undefined && isSummonKind(showcase.kind) ? t(`duel.announce.named.${showcase.kind}`, { name: rival, card: local }) : t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length })
+      const brief = t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length })
+      const caption = local !== undefined && isSummonKind(showcase.kind) ? t(`duel.announce.named.${showcase.kind}`, { name: rival, card: local }) : brief
 
       setShown({
-        effect: { key, kind: showcase.kind, cards, ...(showcase.flip ? { flip: true } : {}), caption, ...(added ? { linger: true, peekId: added } : {}) },
+        effect: { key, kind: showcase.kind, cards, ...(showcase.flip ? { flip: true } : {}), caption, brief, ...(added ? { linger: true, peekId: added } : {}) },
         ...(passcode === null ? {} : { passcode }),
         ...(local === undefined ? {} : { named: true }),
       })
@@ -1599,7 +1601,7 @@ function useRivalEffect(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 
         setShown((current) =>
           current && current.effect.key === key
-            ? { ...current, named: true, effect: { ...current.effect, ...(isSummonKind(kind) ? {} : { cards: current.effect.cards.map((card) => ({ ...card, name })) }), caption, ...(detail ? { detail: { lead: detail.lead, text: detail.what } } : {}) } }
+            ? { ...current, named: true, effect: { ...current.effect, ...(isSummonKind(kind) ? {} : { cards: current.effect.cards.map((card) => ({ ...card, name })) }), caption, ...(picked === undefined ? {} : { brief: caption }), ...(detail ? { detail: { lead: detail.lead, text: detail.what } } : {}) } }
             : current,
         )
       })
@@ -1832,11 +1834,11 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
   // La señal del rival junto a sus vidas; sus emojis, en escritorio, grandes en el medio (`RivalEmoji`).
   const rivalSignal = signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs
   useMarkNotice(snapshot)
-  const notice = useRivalNotice(snapshot.theirs?.state.phase, turn, snapshot.peerName ?? t('duel.bar.rival'))
+  const notice = useRivalNotice(snapshot.theirs?.state.phase, turn, snapshot.peerName ?? t('duel.bar.rival'), duelTurnNumber(mine, theirs!.state))
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const undoResult = useUndoResult(snapshot)
   // «Guardar replay» (al terminar y en «Más opciones»), si este duelo se pudo grabar.
-  const { onSave: onSaveReplay, setting: replaySetting, dialog: replayDialog } = useManualReplay(snapshot, myName, cardsById)
+  const { onSave: onSaveReplay, onWatch: onWatchReplay, setting: replaySetting, dialog: replayDialog } = useManualReplay(snapshot, myName, cardsById)
   const passHeld = usePassHeld(snapshot)
   // Las cartas mías que pueden responder cuando el rival pregunta si hacés algo antes: brillan en la mesa y el aviso las nombra.
   const responders = useResponders(snapshot, cardsById)
@@ -1940,7 +1942,7 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
       // Sin barra de abajo (Gastón, 2026-10-27): hasta 1100 px las vidas van en el marcador de la barra (`scoreInHeader`, con las vidas de 44 px); en escritorio, planas y cada una en su esquina
       // (opción D2): la del rival arriba a la derecha del campo, junto a su mano, y la tuya abajo a la izquierda, subida 20 px sobre el borde de tu mano (`-mt-5`, la chapa: la fila no crece). Las dos abren la calculadora.
-      // En el celular, las chapas (la tuya abajo a la izquierda con el turno y, a su lado, la botonera con el chat; la del rival en la barra: `DuelBar`) y los avisos, que flotan sobre tu mano sólo
+      // En el celular, las chapas (la tuya abajo a la izquierda con el turno y, a su lado, la botonera con el chat; la del rival en la barra: `DuelBar`) y los avisos, que van debajo de la barra sólo
       // mientras están (la última jugada queda en el chat).
       life: phone ? (
         <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} badge active={turn === 'mine'} />
@@ -1952,17 +1954,17 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       ...(docked ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} badge active={turn !== 'mine'} /> } : {}),
       ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
       ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: chatToggle } : {}),
-      // Deshacer va en la barra de arriba (`MatUndoContext`).
-      undoInHeader: true,
+      // Deshacer: hasta 1100 px abajo, el primero de la botonera (↶ chat); en escritorio, en la barra de arriba (`MatUndoContext`).
+      undoInHeader: docked,
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (
-        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} {...(onSaveReplay ? { onSaveReplay } : {})} />
+        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} {...(onSaveReplay ? { onSaveReplay } : {})} {...(onWatchReplay ? { onWatchReplay } : {})} />
       ) : undefined,
       header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : chatToggle} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : logTicker} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} extraSettings={replaySetting || resume ? (close: () => void) => <>{replaySetting?.(close)}{resume ? <ResumeAutoSetting resume={resume} rivalName={rivalName} /> : null}</> : undefined} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, phone, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, replaySetting],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, phone, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, onWatchReplay, replaySetting],
   )
 
   const markTarget = markMenu?.target

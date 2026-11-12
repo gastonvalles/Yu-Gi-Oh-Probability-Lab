@@ -237,7 +237,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).queryByTestId('turn-banner')).not.toBeInTheDocument()
   })
 
-  it('el final es una hoja: el título en el color del resultado (lima si ganás, rojo si perdés), sin placa, y las vidas en grande', () => {
+  it('el final es la palabra del resultado en su color (lima si ganás, rojo si perdés) y una hoja: sin placa, y las vidas en grande', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
     click(guest, 'Rendirme')
@@ -249,12 +249,12 @@ describe('la pantalla del duelo', () => {
 
     expect(won).toHaveAttribute('data-tone', 'win')
     expect(won.querySelector('[data-medal]')).toBeNull()
-    expect(within(won).getByRole('heading', { name: '¡Ganaste!' })).toHaveClass('text-info')
-    // Rendirse no es un marcador: sin «8000 a 8000» (se lee como un empate); quedan el título y el motivo.
+    expect(won.querySelector('[data-result-word] p')).toHaveClass('text-info')
+    // Rendirse no es un marcador: sin «8000 a 8000» (se lee como un empate); quedan la palabra y el motivo.
     expect(won.querySelector('[data-score]')).toBeNull()
     expect(won).toHaveTextContent('Beto se rindió')
     expect(lost).toHaveAttribute('data-tone', 'lose')
-    expect(within(lost).getByRole('heading', { name: 'Perdiste' })).toHaveClass('text-danger-soft')
+    expect(lost.querySelector('[data-result-word] p')).toHaveClass('text-danger-soft')
     // Los botones de siempre siguen: ver la mesa y la revancha.
     expect(within(won).getByRole('button', { name: 'Revancha' })).toBeInTheDocument()
   })
@@ -276,7 +276,7 @@ describe('la pantalla del duelo', () => {
     flush()
 
     const end = within(watcher.container).getByRole('dialog', { name: 'Ganó Ana' })
-    expect(within(end).getByText('Beto se rindió.')).toBeInTheDocument()
+    expect(within(end).getByText('Ganó Ana. Beto se rindió.')).toBeInTheDocument()
     expect(end).toHaveAttribute('data-tone', 'win')
     expect(within(end).getByRole('button', { name: 'Volver al inicio' })).toBeInTheDocument()
 
@@ -797,16 +797,20 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
   })
 
-  it('la barra de arriba no parte sus filas en celular: el reloj, el chat, deshacer, el ⋯ y salir van juntos; debajo, el marcador con tus vidas, el turno una vez y las del rival', () => {
+  it('la barra de arriba no parte sus filas hasta 1100 px: el reloj, el chat, el ⋯ y salir van juntos (deshacer va abajo, donde llega el pulgar); debajo, el marcador con tus vidas, el turno una vez y las del rival', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
     const bar = within(host.container)
     const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).closest('div')!
 
-    // Reloj, chat, deshacer, el ⋯ (la vista, los sonidos, reconectar, rendirse) y salir: la misma fila, de 44 px, que no se parte.
+    // Reloj, chat, el ⋯ (la vista, los sonidos, reconectar, rendirse) y salir: la misma fila, de 44 px, que no se parte.
     const top = rowOf(/^Reloj de la ronda/)
-    for (const name of ['Chat', 'Deshacer', 'Más opciones', 'Salir del duelo']) expect(top).toContainElement(bar.getByRole('button', { name }))
+    for (const name of ['Chat', 'Más opciones', 'Salir del duelo']) expect(top).toContainElement(bar.getByRole('button', { name }))
+    // Deshacer (Gastón, 2026-11-12: «debería estar abajo, no arriba»): abajo a la derecha, de 44 px.
+    expect(top).not.toContainElement(bar.getByRole('button', { name: 'Deshacer' }))
+    expect(bar.getByRole('button', { name: 'Deshacer' }).closest('[data-mat-float]')).not.toBeNull()
+    expect(bar.getByRole('button', { name: 'Deshacer' })).toHaveClass('size-11')
     expect(top).toHaveClass('h-11')
     expect(top).not.toHaveClass('flex-wrap')
 

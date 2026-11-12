@@ -99,6 +99,49 @@ describe('la pantalla del replay de un duelo', () => {
     }
   })
 
+  it('una activación sale con la carta grande al centro, tuya o del rival, al reproducir o con «Siguiente»; se va sola y saltar con la línea de tiempo no la muestra', () => {
+    vi.useFakeTimers()
+    const replay = buildDuelReplay({
+      mode: 'link-auto',
+      view: 'public',
+      players: ['Ana', 'Beto'],
+      starter: 0,
+      mine: { initial: mine, actions: [{ type: 'activate', id: h0 }] },
+      theirs: { initial: createMatState(Array.from({ length: 20 }, (_, i) => `c${i + 1}`), [], 5), acts: [{ action: { type: 'activate', id: 'c1' }, reveal: { c1: 'card-55144522-1' } }] },
+      order: ['mine', 'theirs'],
+      life: [{ at: 0, lp: [8000, 8000] }],
+      nameOf: (code) => (code === 55144522 ? 'Pot of Greed' : 'Ash Blossom'),
+    })
+    const spotlight = () => document.querySelector('[data-kind="activate"][data-activation]')
+
+    try {
+      render(<DuelReplayScreen replay={replay} onClose={() => {}} actions={[]} />)
+      // Abre en el final: nada se anuncia.
+      expect(spotlight()).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      // Grande, sin cartel ni placa: el texto del paso ya está debajo y la imagen trae el nombre.
+      expect(spotlight()?.querySelector('[data-stage-card]')).not.toBeNull()
+      expect(spotlight()).toHaveTextContent('')
+      expect(screen.getByTestId('replay-step-text')).toHaveTextContent('Ash Blossom')
+      act(() => vi.advanceTimersByTime(1000))
+      expect(spotlight()).toBeNull()
+      // Reproduciendo, la del rival (se ve su carta, que mostró).
+      fireEvent.click(screen.getByRole('button', { name: 'Reproducir' }))
+      act(() => vi.advanceTimersByTime(900))
+      expect(spotlight()?.querySelector('[data-stage-card]')).not.toBeNull()
+      expect(screen.getByTestId('replay-step-text')).toHaveTextContent('Pot of Greed')
+      act(() => vi.advanceTimersByTime(1000))
+      expect(spotlight()).toBeNull()
+      // La línea de tiempo salta: ni una carta.
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      fireEvent.keyDown(screen.getByRole('slider', { name: 'Línea de tiempo del replay' }), { key: 'ArrowRight' })
+      expect(spotlight()).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('con «mi mano», la de quien grabó se ve; compartido, ofrece guardarlo', () => {
     const onSave = vi.fn()
     render(<DuelReplayScreen replay={replayOf('mine')} onClose={() => {}} shared={{ onSave }} actions={[]} />)

@@ -122,7 +122,7 @@ describe('la carta grande sale de su carta', () => {
   })
 })
 
-describe('en el celular la carta grande va arriba de la fila del medio (TI-172: la cadena siempre a la vista)', () => {
+describe('con el efecto escrito, en el celular la carta grande va arriba de la fila del medio (TI-172: la cadena siempre a la vista)', () => {
   it('su caja termina donde empieza la fila del medio (`--stage-room`, sólo `max-sm:`), la carta mide 92 px y el efecto escrito, tres renglones al lado', () => {
     render(
       <div>
@@ -141,5 +141,42 @@ describe('en el celular la carta grande va arriba de la fila del medio (TI-172: 
     render(<Spotlight kind="activate" cards={[CARD]} caption={null} />)
 
     expect(root().style.getPropertyValue('--stage-room')).toBe('')
+  })
+})
+
+describe('la carta grande de la activación: grande y sin repetir lo que ya se lee (TI-221)', () => {
+  const ART = { id: 'c1', name: 'Ash Blossom', art: 'https://images.example/ash.jpg' }
+
+  it('sola, mide la mitad del recuadro (nunca menos del 38 %, como la de adelante de la cadena) y va al medio, sin tope de 92 px ni caja pegada a la fila del medio', () => {
+    render(<Spotlight kind="activate" cards={[ART]} className="absolute inset-y-0 left-0 right-0" />)
+
+    const width = /w-\[min\((\d+)cqw,13rem\)\]/.exec(root().querySelector('figure')!.className)
+    expect(Number(width?.[1])).toBeGreaterThanOrEqual(38)
+    expect(root().querySelector('figure')).not.toHaveClass('max-sm:max-w-23')
+    expect(root().className).not.toContain('--stage-room')
+  })
+
+  it('con su imagen a la vista no lleva la placa con el nombre; sin imagen o de dorso con nombre, sí', () => {
+    render(<Spotlight kind="activate" cards={[ART]} />)
+    expect(root().querySelector('figcaption')).toBeNull()
+    cleanup()
+
+    render(<Spotlight kind="activate" cards={[{ ...ART, art: null }]} />)
+    expect(root().querySelector('figcaption')).toHaveTextContent('Ash Blossom')
+    cleanup()
+
+    render(<Spotlight kind="activate" cards={[{ ...ART, back: true }]} />)
+    expect(root().querySelector('figcaption')).toHaveTextContent('Ash Blossom')
+  })
+
+  it('el cartel de arriba es recto (no una píldora) y no sale donde no se le pasa texto', () => {
+    render(<Spotlight kind="activate" cards={[ART]} caption="Ana activa una carta" />)
+    const caption = root().querySelector('[data-stage-text]')
+    expect(caption).toHaveTextContent('Ana activa una carta')
+    expect(caption).not.toHaveClass('rounded-full')
+
+    cleanup()
+    render(<Spotlight kind="activate" cards={[ART]} />)
+    expect(root().querySelector('[data-stage-text]')).toBeNull()
   })
 })

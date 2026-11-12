@@ -57,10 +57,10 @@ function shuffle(cards: Iterable<Element>, plan: Plan, gather: boolean): void {
   const pending = animations.flatMap(arriving)
 
   if (pending.length > 0) {
-    Promise.all(pending.map((animation) => animation.finished)).then(
-      () => shuffle(list.filter((card) => card.isConnected), plan, gather),
-      () => {},
-    )
+    // Un vuelo que se cancela (la mesa se midió de nuevo y lo reemplazó por otro) rechaza su `finished`: se mira otra vez qué falta, en vez de perder el barajado.
+    const again = () => shuffle(list.filter((card) => card.isConnected), plan, gather)
+
+    Promise.all(pending.map((animation) => animation.finished)).then(again, again)
     return
   }
 

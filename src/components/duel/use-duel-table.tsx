@@ -156,7 +156,7 @@ const NOTICE_MS = 1400
  * Lo que el rival avanza en su turno, para verlo sin mirar su campo: cada fase que pasa (con su nombre) y, cuando llega a su End Phase y empieza el tuyo, el cartel
  * "Tu turno". Lo que ya había cuando se abrió la pantalla no se avisa, ni lo que se deshace sin cambiar de fase. `phase`: la de su mesa (undefined: no se avisa nada).
  */
-export function useRivalNotice(phase: MatPhase | undefined, turn: 'mine' | 'theirs', rival: string): DuelMatLink['notice'] {
+export function useRivalNotice(phase: MatPhase | undefined, turn: 'mine' | 'theirs', rival: string, /** El turno del duelo (1 el primero): el primero no es un pase, aunque la mesa arranque como si fuera del rival. */ turnNumber: number): DuelMatLink['notice'] {
   const seen = useRef({ phase, turn })
   const [shown, setShown] = useState<DuelMatLink['notice']>(undefined)
 
@@ -164,20 +164,26 @@ export function useRivalNotice(phase: MatPhase | undefined, turn: 'mine' | 'thei
     const before = seen.current
 
     seen.current = { phase, turn }
+    // El turno vuelve a vos: se avisa aunque ya no se mire su fase (el automático online deja de pasarla en tu turno, que empieza en la Draw Phase).
+    const flipped = before.turn === 'theirs' && turn === 'mine'
+    // El primer turno del duelo (también el de una revancha o del duelo siguiente de una serie) no es un pase: ni «Tu turno» ni su banda.
+    if (flipped && turnNumber <= 1) return
+    const back = flipped
+    const now = phase ?? (back ? 'draw' : undefined)
 
-    if (phase === undefined || before.phase === undefined || before.phase === phase) {
+    if (now === undefined || (!back && (before.phase === undefined || before.phase === now))) {
       return
     }
 
-    const name = PHASES.find((entry) => entry.id === phase)?.name ?? phase
+    const name = PHASES.find((entry) => entry.id === now)?.name ?? now
 
     // Llegó a su End Phase y ahora te toca a vos; si no, una fase más de su turno.
-    if (before.turn === 'theirs' && turn === 'mine') {
-      setShown({ key: Date.now(), phase, who: `${rival} · ${name}`, label: t('duel.bar.yourTurn') })
+    if (back) {
+      setShown({ key: Date.now(), phase: now, who: `${rival} · ${name}`, label: t('duel.bar.yourTurn') })
     } else {
-      setShown({ key: Date.now(), phase, who: rival })
+      setShown({ key: Date.now(), phase: now, who: rival })
     }
-  }, [phase, turn, rival])
+  }, [phase, turn, rival, turnNumber])
 
   useEffect(() => {
     if (!shown) return

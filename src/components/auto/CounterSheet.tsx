@@ -8,7 +8,7 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Stepper } from '../ui/Stepper'
 import { listItemSelected } from '../ui/surfaces'
-import { AutoPanel, PANEL_MAIN } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
 import { PickCount, type PickCard } from './CardPicker'
 
 interface CounterSheetProps {
@@ -48,7 +48,7 @@ export function CounterSheet({ cards, need, onPick, why }: CounterSheetProps) {
       }
       aside={<PickCount chosen={total} max={need} />}
       actions={
-        <Button variant="primary" className={cx(PANEL_MAIN, 'ml-auto')} disabled={total !== need} onClick={() => onPick(counts)}>
+        <Button variant="primary" className={cx(PANEL_PRIMARY, 'ml-auto')} disabled={total !== need} onClick={() => onPick(counts)}>
           {t('auto.counter.done')}
         </Button>
       }

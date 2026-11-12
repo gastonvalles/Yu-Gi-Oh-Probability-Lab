@@ -6,7 +6,7 @@ import { CardArt } from '../CardArt'
 import { AskWhy } from '../duel/AskWhy'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import { AutoPanel, PANEL_MAIN } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
 
 /** Un botón de una pregunta del núcleo: lo que dice (verbo y objeto) y qué contesta. */
 export interface AskChoice {
@@ -72,7 +72,7 @@ export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manua
           <Button variant="tertiary" onClick={no.onSelect}>
             {no.label}
           </Button>
-          <Button variant="primary" className={PANEL_MAIN} data-ask-primary="" onClick={yes.onSelect}>
+          <Button variant="primary" className={PANEL_PRIMARY} data-ask-primary="" onClick={yes.onSelect}>
             {yes.label}
           </Button>
         </>
