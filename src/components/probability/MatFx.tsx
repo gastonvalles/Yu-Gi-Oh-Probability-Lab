@@ -9,7 +9,6 @@ import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
-import { PLAYER_COLOR } from '../duel/player-color'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { CARD_BACK, FX_RGB, type FxTone } from './practice-styles'
@@ -182,8 +181,8 @@ const MEDAL_RING = Array.from({ length: 12 }, (_, i) => i * 30)
 
 /**
  * Los medallones de la cadena (Master Duel, al resolver): uno por eslabón, centrados en el lugar donde se activó (la casilla, aunque quede vacía; la pila; la mano: quien lo usa pone
- * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, del color de su dueño
- * (`PLAYER_COLOR`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira (`aria-hidden`): el eslabón va en el nombre de la
+ * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, blanco con luz celeste
+ * y el aro del metal de la escena (la misma familia que `ChainStage`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira (`aria-hidden`): el eslabón va en el nombre de la
  * carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
  */
 export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
@@ -194,7 +193,7 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
       data-chain-owner={medals[0]?.mine ? 'mine' : 'theirs'}
       className="pointer-events-none absolute inset-0 z-11 flex items-center justify-center -space-x-3"
     >
-      {medals.map(({ number, mine, voided, resolving }) => (
+      {medals.map(({ number, voided, resolving }) => (
         <span
           key={number}
           data-chain-medal={number}
@@ -206,14 +205,14 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
             <circle cx={20} cy={20} r={18} className="fill-background" />
             {MEDAL_RING.map((angle, i) =>
               i % 2 === 0 ? (
-                <rect key={angle} x={16.5} y={0.5} width={7} height={4.5} rx={2.25} strokeWidth={2.4} transform={`rotate(${angle} 20 20)`} className="fill-none stroke-soft" />
+                <rect key={angle} x={16.5} y={0.5} width={7} height={4.5} rx={2.25} strokeWidth={2.4} transform={`rotate(${angle} 20 20)`} className="fill-none stroke-chain-metal" />
               ) : (
-                <rect key={angle} x={16.5} y={1.25} width={7} height={3} rx={1.5} transform={`rotate(${angle} 20 20)`} className="fill-muted" />
+                <rect key={angle} x={16.5} y={1.25} width={7} height={3} rx={1.5} transform={`rotate(${angle} 20 20)`} className="fill-chain-metal-lo" />
               ),
             )}
             {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
           </svg>
-          <span className={cx('relative text-lead font-extrabold leading-none tabular-nums', PLAYER_COLOR[mine ? 'mine' : 'theirs'].text)}>{number}</span>
+          <span className="relative text-lead font-extrabold leading-none tabular-nums text-white text-shadow-md text-shadow-chain-glow">{number}</span>
         </span>
       ))}
     </span>

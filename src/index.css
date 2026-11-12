@@ -94,6 +94,16 @@
   --color-frame-spell-deep: #188461;
   --color-frame-trap-deep: #b65480;
 
+  /* La escena de la cadena (`ChainNotice.tsx`, como Master Duel): no dependen de la paleta. El halo blanco de cada carta, el número blanco con luz celeste, el destello de entrada,
+     el velo azulado y el metal de los eslabones (luz, medio y sombra). */
+  --shadow-chain-halo: 0 0 0 2px rgb(255 255 255 / 0.9), 0 0 14px 4px rgb(255 255 255 / 0.6), 0 0 32px 8px rgb(255 255 255 / 0.18);
+  --color-chain-glow: #5fe4ff;
+  --color-chain-flash: #fff3a6;
+  --color-chain-veil: #050b22;
+  --color-chain-metal-hi: #f7f9fc;
+  --color-chain-metal: #aeb7c4;
+  --color-chain-metal-lo: #3c4452;
+
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;
 

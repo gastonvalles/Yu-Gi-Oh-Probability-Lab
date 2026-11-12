@@ -9,7 +9,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { frameKindOf, frameOfType } from '../app/card-frame'
 import { CHAIN_LEAVE_MS, ChainStage, type ChainNoticeRow } from '../components/auto/ChainNotice'
-import { PLAYER_COLOR } from '../components/duel/player-color'
 
 // La cadena en grande (K-01 a K-03), sólo al encadenar: cartas grandes inclinadas con su número enorme y el borde de su tipo, unidas por una cadena de metal; resolviendo, no está
 // (quedan los medallones); una sola línea arriba; una activación sola entra igual con su «1». Sin «CL» escrito, sin hexágonos ni «Cómo se resuelve», y no ataja toques.
@@ -33,35 +32,42 @@ const bonds = () => [...document.querySelectorAll('[data-chain-bond]')].map((bon
 afterEach(() => vi.useRealTimers())
 
 describe('la cadena en grande', () => {
-  it('armando: cada carta inclinada entre 3 y 7°, con su número enorme del color de su dueño (con borde), el borde de su tipo y una cadena de metal a la anterior; la última adelante y más grande; el campo baja; el orden, sólo para el lector de pantalla', () => {
+  it('armando, como Master Duel: la última adelante, la más grande y a −8°, la anterior a +5°; cada una con su halo blanco, atada por dos esquinas; el número digital blanco y celeste para los dos; la cadena de metal cuelga entre ellas; el campo baja y se azula; el orden, sólo para el lector de pantalla', () => {
     stage([ENGAGE, ASH, CALLED])
 
     expect(pose()).toEqual(['1:slot', '2:slot', '3:slot'])
-    expect(cards().map((card) => card.className.match(/(?<![:\w-])-?rotate-\d+/)?.[0])).toEqual(['-rotate-3', 'rotate-6', '-rotate-6'])
-    for (const card of cards()) expect(card).toHaveClass('w-1/3', 'aspect-[421/614]')
+    expect(cards().map((card) => card.className.match(/(?<![:\w-])-?rotate-\d+/)?.[0])).toEqual(['-rotate-3', 'rotate-5', '-rotate-8'])
+    for (const card of cards()) expect(card).toHaveClass('w-1/3', 'aspect-[421/614]', 'shadow-chain-halo')
+    // Cada carta, atada por dos esquinas: dos tramos de cadena por delante de ella.
+    for (const card of cards()) expect(card.querySelectorAll('[data-chain-ties] > g').length).toBeGreaterThan(4)
     expect(cards()[0]).toHaveClass('bg-frame-spell')
     expect(cards()[1]).toHaveClass('bg-frame-effect')
     // La última que entró, adelante y la más grande, con un borde de luz y su número destellando; las de antes, cada vez más chicas.
-    expect(cards().map((card) => card.className.match(/(?<![:\w-])scale-\d+/)?.[0])).toEqual(['scale-75', 'scale-90', 'scale-150'])
+    expect(cards().map((card) => card.className.match(/(?<![:\w-])scale-\d+/)?.[0])).toEqual(['scale-75', 'scale-100', 'scale-150'])
     expect(cards()[2]).toHaveClass('z-5')
     expect(document.querySelectorAll('[data-chain-flash]')).toHaveLength(1)
     expect(cards()[2]!.querySelector('[data-chain-flash]')).toHaveClass('animate-fx-flash', 'motion-reduce:hidden')
     expect(cards()[2]!.querySelector('[data-chain-glow]')).toHaveClass('animate-fx-flash', 'motion-reduce:hidden')
     expect(document.querySelector('[data-chain-dim]')).toHaveClass('animate-chain-veil', 'motion-reduce:hidden')
     const number = (card: HTMLElement) => card.querySelector<HTMLElement>('[data-chain-number]')
-    expect(cards().map((card) => number(card)?.querySelector('text')?.textContent)).toEqual(['1', '2', '3'])
-    expect(number(cards()[1]!)).toHaveClass('text-hit', PLAYER_COLOR.theirs.text)
-    expect(number(cards()[0]!)!.querySelector('text')).toHaveClass('fill-current', 'stroke-background')
-    expect(number(cards()[0]!)!.querySelector('text')).toHaveAttribute('paint-order', 'stroke')
+    expect(cards().map((card) => number(card)?.dataset.chainNumber)).toEqual(['1', '2', '3'])
+    // Dibujado por nosotros: los segmentos del dígito, en blanco sobre un contorno y un halo celestes, igual para el tuyo y el del rival (sin color de dueño).
+    const layers = (card: HTMLElement) => [...number(card)!.querySelectorAll('svg:not(.animate-fx-flash) > g')].map((g) => g.firstElementChild?.getAttribute('class'))
+    expect(layers(cards()[1]!)).toEqual(layers(cards()[0]!))
+    expect(layers(cards()[0]!)).toEqual(['fill-chain-glow/30 stroke-chain-glow/25', 'fill-chain-glow stroke-chain-glow', 'fill-white'])
+    // El de adelante pisa la esquina de abajo a la izquierda; los de atrás, la de la derecha.
+    expect(number(cards()[2]!)!.querySelector('svg')).toHaveClass('left-0')
+    expect(number(cards()[1]!)!.querySelector('svg')).toHaveClass('right-0')
+    expect(veil()).toHaveClass('bg-chain-veil/65')
     // La cadena: eslabones de metal (huecos y de canto, alternados), que entran desde la carta anterior.
     expect(bonds()).toEqual(['2:on', '3:on'])
     const bond = document.querySelector('[data-chain-bond="2"]')!
     expect(bond.querySelectorAll('rect').length).toBeGreaterThan(4)
-    expect(bond).toHaveClass('starting:scale-x-0')
+    expect(bond).toHaveClass('starting:opacity-0')
     // «CADENA» destella al medio (con dos o más); el velo baja el campo y no ataja toques.
     expect(document.querySelector('[data-chain-word]')).toHaveTextContent('Cadena')
     expect(document.querySelector('[data-chain-word]')).toHaveClass('uppercase', 'animate-fx-flash', 'motion-reduce:hidden')
-    expect(veil()).toHaveClass('opacity-100', 'pointer-events-none', 'bg-background/60')
+    expect(veil()).toHaveClass('opacity-100', 'pointer-events-none', 'bg-chain-veil/65')
     // «Se resuelve del último al primero», sin línea a la vista (tapaba el Deck y el Extra del rival): en el status oculto.
     expect(screen.getByRole('status')).toHaveTextContent(/^Se resuelve del último al primero$/)
     expect(screen.getByRole('status')).toHaveClass('sr-only')
@@ -122,7 +128,7 @@ describe('la cadena en grande', () => {
     const view = stage([ENGAGE])
 
     expect(pose()).toEqual(['1:slot'])
-    expect(cards()[0]).toHaveTextContent('1')
+    expect(cards()[0]!.querySelector('[data-chain-number]')).toHaveAttribute('data-chain-number', '1')
     expect(document.querySelector('[data-chain-word]')).toBeNull()
     view.rerender(
       <Provider store={store}>
@@ -141,7 +147,7 @@ describe('la cadena en grande', () => {
     stage([ENGAGE, ASH, CALLED, fourth, fifth])
     expect(pose()).toEqual(['1:back', '2:slot', '3:slot', '4:slot', '5:slot'])
     expect(cards()[0]).toHaveClass('-translate-y-full', 'scale-50', 'opacity-0')
-    expect(cards().map((card) => card.className.match(/(?<![:\w-])scale-\d+/)?.[0])).toEqual(['scale-50', 'scale-60', 'scale-75', 'scale-90', 'scale-150'])
+    expect(cards().map((card) => card.className.match(/(?<![:\w-])scale-\d+/)?.[0])).toEqual(['scale-50', 'scale-60', 'scale-75', 'scale-100', 'scale-150'])
     expect(bonds()).toEqual(['3:on', '4:on', '5:on'])
   })
 
@@ -169,7 +175,7 @@ describe('la cadena en grande', () => {
     const code = readFileSync(path.join(__dirname, '../components/auto/ChainNotice.tsx'), 'utf8')
     // Lo que cambia entre armar e irse son clases de `translate`, `rotate`, `scale` y `opacity`: nunca `left`, `top` ni el tamaño.
     const poses = [...code.matchAll(/'([^'\n]*(?:translate|rotate|scale-)[^'\n]*)'/g)].flatMap((match) => match[1]!.split(' '))
-    for (const name of poses.filter((item) => !item.startsWith('transition-') && !item.startsWith('motion-reduce:') && !item.startsWith('starting:') && item !== '')) expect(name).toMatch(/^(-?translate-[xy]-|-?rotate-|scale-|z-5$|opacity-0$|absolute$|left-1\/3$|top-2\/7$|aspect-|w-1\/3$|p-1$|duration-|ease-)/)
+    for (const name of poses.filter((item) => !item.startsWith('transition-') && !item.startsWith('motion-reduce:') && !item.startsWith('starting:') && item !== '')) expect(name).toMatch(/^(-?translate-[xy]-|-?rotate-|scale-|z-5$|opacity-0$|absolute$|left-1\/3$|top-2\/7$|aspect-|w-1\/3$|p-1$|duration-|ease-|shadow-chain-halo$|bottom-0$|left-0$|right-0$)/)
     expect(code).not.toMatch(/transition-all|backdrop-blur|clip-path|transition-\[[^\]]*(filter|shadow)/)
     // Cada animación nueva se apaga con movimiento reducido.
     for (const match of code.matchAll(/className=\{?[`'"]([^`'"]*animate-[^`'"]*)/g)) expect(match[1]).toContain('motion-reduce:hidden')

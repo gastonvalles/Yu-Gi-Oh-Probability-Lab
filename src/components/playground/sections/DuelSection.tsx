@@ -284,8 +284,8 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
       className="col-span-full"
       note={
         <>
-          Como en Master Duel, sólo al resolver (al encadenar lo dice la escena grande): un medallón por eslabón, un aro de cadena redondo (una ficha) con su número en el color de su dueño, de 36
-          px, en el lugar donde se activó, aunque la carta se haya ido: la casilla (aunque quede vacía), la pila (Cementerio, Desterradas, Deck, Extra) o la mano (la tuya o el abanico del rival).
+          Como en Master Duel, sólo al resolver (al encadenar lo dice la escena grande): un medallón por eslabón, un aro de cadena redondo (una ficha, del metal de la escena) con su número blanco y
+          luz celeste (como la escena, para los dos), de 36 px, en el lugar donde se activó, aunque la carta se haya ido: la casilla (aunque quede vacía), la pila (Cementerio, Desterradas, Deck, Extra) o la mano (la tuya o el abanico del rival).
           Varios en un mismo lugar, corridos. Del último al primero: el que se resuelve late (con movimiento reducido, quieto) y, al empezar el siguiente, se va; sólo el negado o sin efecto se
           tacha en rojo. No ataja toques: el eslabón también va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>ChainBadge</Tag>)
         </>
