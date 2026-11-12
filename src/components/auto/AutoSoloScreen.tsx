@@ -373,19 +373,18 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   // En el celular, las chapas: la del rival en la fila de los íconos de la barra (`seat`) y la tuya abajo a la izquierda con el turno; el aviso flota sobre tu mano.
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const seated = docked || phone
-  const turnText = turn > 0 ? (turnMine ? t('auto.bar.turnMine', { turn }) : t('duel.bar.theirTurnN', { name: rivalName, turn })) : undefined
   const myLife = useMemo(
     () =>
       phone ? (
-        <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine turn={turnText} turnMine={turnMine} active={turnMine} />
+        <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine active={turnMine} />
       ) : rails || !docked ? null : (
         <span className="-mt-5 flex" data-corner="mine">
-          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
+          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine active={turnMine} />
         </span>
       ),
-    [phone, rails, docked, life.mine, turnText, turnMine],
+    [phone, rails, docked, life.mine, turnMine],
   )
-  const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} active={phone ? !turnMine : undefined} /> : undefined), [seated, rivalName, life.theirs, phone, turnMine])
+  const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} compact={phone} active={!turnMine} /> : undefined), [seated, rivalName, life.theirs, phone, turnMine])
   const header = useMemo(
     () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} lane={lane} dock {...(phone ? { seat: corner } : {})} {...options} />,
     [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, lane, options, phone, corner],

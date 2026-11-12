@@ -100,14 +100,14 @@ export function lifeCountMs(delta: number): number {
 
 /**
  * El número de unas vidas que cuenta hasta el valor nuevo, con la duración de su cambio (`lifeCountMs`). La duración se fija en el render que cambia el valor
- * (con `useState`, al cambiar el objetivo): un re-render a mitad del conteo no la vuelve a calcular ni reinicia el conteo.
+ * (con `useState`, al cambiar el objetivo): un re-render a mitad del conteo no la vuelve a calcular ni reinicia el conteo. `maxMs` la acorta si hace falta (la chapa cuenta en 700 como mucho).
  */
-export function useLifeNumber(target: number, into?: RefObject<HTMLElement | null>): number {
+export function useLifeNumber(target: number, into?: RefObject<HTMLElement | null>, maxMs = LIFE_COUNT_MAX_MS): number {
   const [count, setCount] = useState(() => ({ target, ms: LIFE_COUNT_MIN_MS }))
   let current = count
 
   if (count.target !== target) {
-    current = { target, ms: lifeCountMs(target - count.target) }
+    current = { target, ms: Math.min(maxMs, lifeCountMs(target - count.target)) }
     setCount(current)
   }
 

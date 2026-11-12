@@ -3755,7 +3755,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
       {link && !dragging ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
       {canAttack && !dragging ? <AttackMark /> : null}
       {/* Parada, la carta llega al pie de la casilla: la etiqueta de elegida va ahí, y el ATK/DEF, encima. */}
-      {spot === 'mz' || spot === 'emz' ? <StatTag stat={dragging ? null : (pickStat ?? stat)} sideways={sideways} className={cx(chosen && !sideways && 'bottom-4.5')} /> : null}
+      {spot === 'mz' || spot === 'emz' ? <StatTag stat={dragging ? null : (pickStat ?? stat)} className={cx(chosen && !sideways && 'bottom-4.5')} /> : null}
     </>
   )
 }

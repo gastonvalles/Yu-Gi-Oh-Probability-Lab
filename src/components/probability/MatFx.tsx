@@ -400,35 +400,33 @@ export function levelText(card: ApiCardReference | null | undefined): string | n
 const SHIFT_TONE = { up: 'text-success-soft', down: 'text-danger-soft' } as const
 
 /**
- * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), en una placa de 15 px al pie
- * de la carta, sobre su cuadro de texto (que a este tamaño no se lee): el arte queda entero. Nada más va sobre la carta: la ficha (`badge`: ★ Nivel, R Rango o LINK) sale de la mesa y vive en
- * la ficha de la carta (`levelText`); vuelve, arriba y al centro, sólo mientras se elige (la de `pickStatsOf`, o la casilla con `data-pick`: Sacrificios y materiales de la mesa manual), que
- * es cuando el Nivel decide. No cambian la caja de la carta ni la de la casilla. El número que cambió respecto del impreso (`printed`, sólo los de ahora), en menta si subió y en rojo claro si
- * bajó; un «?» y la mesa manual, sin color. La DEF que no cambió, apagada. Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla
- * no llega a los dos números de cuatro cifras (`@container`: el celular y la mesa de escritorio angosta), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`); el nombre
- * lleva los dos. Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla (`animate-chip-drop`, `animate-chip-rise` 70 ms después); con movimiento reducido,
- * quietas.
+ * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), en una placa de 10 px (`text-tag`) al pie
+ * de la carta, sobre su cuadro de texto (que a este tamaño no se lee): el arte queda entero. Siempre los dos números en un renglón, también en defensa (Gastón, 2026-11-12: «no depende de la posición»);
+ * un Link, sólo el ATK. Nada más va sobre la carta: la ficha (`badge`: ★ Nivel, R Rango o LINK) sale de la mesa y vive en la ficha de la carta (`levelText`); vuelve, arriba y al centro, sólo mientras se
+ * elige (la de `pickStatsOf`, o la casilla con `data-pick`: Sacrificios y materiales de la mesa manual), que es cuando el Nivel decide. No cambian la caja de la carta ni la de la casilla. El número que
+ * cambió respecto del impreso (`printed`, sólo los de ahora), en menta si subió y en rojo claro si bajó; un «?» y la mesa manual, sin color. La DEF que no cambió, apagada. Sólo se mira (`aria-hidden`): lo
+ * que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla (`animate-chip-drop`,
+ * `animate-chip-rise` 70 ms después); con movimiento reducido, quietas.
  */
-export function StatTag({ stat, sideways = false, className }: { stat: PickStat | null; sideways?: boolean; className?: string }) {
-  const def = stat !== null && stat.defense !== null && sideways
+export function StatTag({ stat, className }: { stat: PickStat | null; className?: string }) {
   const badge = stat?.badge
   const atkShift = stat ? statShift(stat.attack, stat.printed?.attack) : null
   const defShift = stat ? statShift(stat.defense, stat.printed?.defense) : null
 
   return (
     <>
-      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[16%] z-11 animate-chip-drop motion-reduce:animate-none" style={BADGE_ARRIVAL}>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[16%] z-11 grid justify-items-center animate-chip-drop motion-reduce:animate-none" style={BADGE_ARRIVAL}>
         {badge ? (
           <span data-stat-badge={badge.kind} className={cx(STAT_CHIP, stat.resting ? 'hidden in-data-[pick=true]:block' : 'block')}>{`${BADGE_MARK[badge.kind]}\u2009${badge.value}`}</span>
         ) : null}
       </span>
-      <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container animate-chip-rise motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
+      <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 grid justify-items-center animate-chip-rise motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
         {stat ? (
           <span data-pick-stat="" className={cx(STAT_CHIP, 'block')}>
-            <span data-shift={atkShift ?? undefined} className={cx(def && '@max-[5rem]:hidden', atkShift && SHIFT_TONE[atkShift])}>{stat.attack}</span>
+            <span data-shift={atkShift ?? undefined} className={cx(atkShift && SHIFT_TONE[atkShift])}>{stat.attack}</span>
             {stat.defense === null ? null : (
-              <span data-shift={defShift ?? undefined} className={cx('font-semibold', defShift ? SHIFT_TONE[defShift] : 'text-muted', def ? cx('@max-[5rem]:font-extrabold', !defShift && '@max-[5rem]:text-foreground') : '@max-[5rem]:hidden')}>
-                <span className={cx('text-muted', def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
+              <span data-shift={defShift ?? undefined} className={cx('font-semibold', defShift ? SHIFT_TONE[defShift] : 'text-muted')}>
+                <span className="text-muted">{STAT_SEPARATOR}</span>
                 {stat.defense}
               </span>
             )}
@@ -439,14 +437,11 @@ export function StatTag({ stat, sideways = false, className }: { stat: PickStat 
   )
 }
 
-/** 12 px con su renglón de 15 (`leading-tight`), cifras tabulares y el carbón al 92 % debajo: se lee sobre cualquier arte (≥4,5:1). Sin `block`: lo pone cada uso. */
-const STAT_CHIP = 'mx-auto w-fit max-w-full whitespace-nowrap bg-background/92 px-1 text-micro leading-tight font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
+/** 10 px (`text-tag`) con su renglón de 12,5 (`leading-tight`), apretado (`tracking-tighter`) y de cifras tabulares, con el carbón al 92 % debajo: se lee sobre cualquier arte (≥4,5:1). Sin `block`: lo pone cada uso. */
+const STAT_CHIP = 'w-fit whitespace-nowrap bg-background/92 px-px text-tag leading-tight tracking-tighter font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
 
-/**
- * La barra entre el ATK y la DEF, con espacios finos: «2500 / 2000» mide 80 px y entra justo en la casilla de 1440 px (80–81). El corte (`@max-[5rem]`) es el de cuatro cifras y
- * cuatro: un ATK de cinco cifras desborda unos 8 px el fondo de la etiqueta (se lee igual, no se corta); si se vuelve común, un corte por cantidad de cifras.
- */
-const STAT_SEPARATOR = '\u2009/\u2009'
+/** La barra entre el ATK y la DEF, sin espacios: «3000/2500» mide 52 px a 10 px y es lo que entra entre dos casillas a 360. */
+const STAT_SEPARATOR = '/'
 
 /**
  * El arte de una carta cuyo eslabón quedó negado o sin efecto (Gastón: «una carta negada debe verse gris parpadeando»), mientras se ve el aviso de la cadena: en escala de grises y con el pulso

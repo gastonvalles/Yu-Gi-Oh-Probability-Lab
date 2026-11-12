@@ -63,7 +63,7 @@ describe('auto · las fases al medio del campo', () => {
     })
   }
 
-  it('celular: sin línea entre el campo y tu mano (una marca de 0 px), tus vidas abajo sin el botón del turno y la chapa del que juega con su aro', () => {
+  it('celular: sin línea entre el campo y tu mano (una marca de 0 px), tus vidas abajo sin el botón del turno y la chapa del que juega con el borde de 3 px (sin texto de turno)', () => {
     viewport(COMPACT_FIELD_MEDIA_QUERY, 390, 844)
     const fake = renderAuto()
 
@@ -77,7 +77,10 @@ describe('auto · las fases al medio del campo', () => {
     expect(seat).toContainElement(mine!)
     expect(theirs!.closest('[data-bar-seat]')).not.toBeNull()
     expect(mine).toHaveAttribute('data-active', 'true')
-    expect(mine).toHaveClass('ring-2', 'ring-primary')
+    expect(mine).toHaveClass('border-[3px]', 'border-primary')
+    expect(mine.textContent).not.toMatch(/turno/i)
     expect(theirs).toHaveAttribute('data-active', 'false')
+    expect(theirs).toHaveClass('border-border-subtle')
+    expect(theirs).not.toHaveClass('border-[3px]')
   })
 })

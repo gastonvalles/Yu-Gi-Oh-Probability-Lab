@@ -576,7 +576,6 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   const logTicker = <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />
   // Un duelo que sigue a uno manual arranca en el turno 1 del núcleo: se le suma lo que llevaban las mesas de arranque (en uno de cero, nada).
   const turnNumber = Math.max(1, snap.overlay.turn) + duelTurnNumber(snap.initial.mine, snap.initial.theirs) - 1
-  const turnText = asks.turnMine ? t('duel.bar.yourTurnN', { turn: turnNumber }) : t('duel.bar.theirTurnN', { name: rivalName, turn: turnNumber })
   // Lo del pase a manual en la línea: la espera (con «Cancelar pedido») y el corte. Lo que hay que contestar del núcleo va antes.
   const manualLane: LaneNotice | null = switching
     ? { kind: 'thinking', text: t('auto.online.manualSwitching') }
@@ -623,13 +622,13 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): en el celular, las chapas (la tuya abajo con el turno y la botonera, la del rival en la barra: `DuelBar`) y el aviso, que
     // flota sobre tu mano sólo mientras está (la última jugada queda en el chat); de 640 a 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, cada chapa en su esquina (D2).
     life: phone ? (
-      <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge turn={turnText} turnMine={asks.turnMine} />
+      <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge active={asks.turnMine} />
     ) : docked ? (
       <span className="-mt-5 flex" data-corner="mine">
-        <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge />
+        <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge active={asks.turnMine} />
       </span>
     ) : null,
-    ...(docked ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge /> } : {}),
+    ...(docked ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge active={!asks.turnMine} /> } : {}),
     ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
     ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: chatToggle } : {}),
     tools: null,

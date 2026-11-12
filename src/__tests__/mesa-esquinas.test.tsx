@@ -217,7 +217,7 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
   it('las chapas de vidas, la botonera y el reloj de turnos son rectos: ningún círculo; el reloj no anima `stroke-dashoffset` sino una barra con `scaleX`', () => {
     render(
       <div className="mat-square">
-        <LifeBadge name="Vos" label="Vos" life={8000} mine turn="Tu turno · 1" onClick={() => {}} />
+        <LifeBadge name="Vos" label="Vos" life={8000} mine onClick={() => {}} />
         <LifeBadge name="Rival" label="Rival" life={8000} />
         <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
           <Icon name="list" />

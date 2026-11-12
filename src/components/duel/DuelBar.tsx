@@ -288,10 +288,10 @@ export function LaneBanner({ lane, rivalName, rail = false, detail }: { lane: La
 }
 
 /**
- * La chapa del rival en la fila de los íconos del celular (Gastón, 2026-11-12: sus vidas, a la barra de arriba; pieza C-01 del kit): la misma `LifeBadge`, sin relleno arriba y abajo y con el número
- * un paso más chico (`text-lead`), así entra en los 44 px de la fila y la barra no crece.
+ * El lugar de la chapa del rival en la fila de los íconos del celular (Gastón, 2026-11-12: sus vidas, a la barra de arriba; pieza C-01 del kit): lleva la `LifeBadge` `compact` (relleno mínimo y el número
+ * un paso más chico), así entra en los 44 px de la fila y la barra no crece.
  */
-export const BAR_SEAT = 'flex shrink-0 [&_[data-life-badge]]:py-0 [&_.text-stat]:text-lead'
+export const BAR_SEAT = 'flex shrink-0'
 
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
@@ -497,7 +497,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
         {/* En el celular, la chapa del rival antes de los íconos (la tuya va abajo, con la botonera). */}
         {phone ? (
           <span data-bar-seat="" className={cx(BAR_SEAT, 'ml-auto')}>
-            <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} badge active={turn !== 'mine'} />
+            <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} badge compact active={turn !== 'mine'} />
           </span>
         ) : null}
         <span className={cx('-mr-2 flex shrink-0 items-center', !phone && 'ml-auto')}>
@@ -652,19 +652,19 @@ export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
 }
 
 /** Tus puntos de vida, planos (`LifeScore`): en el marcador de la barra hasta 1100 px y en tu esquina (o tu lateral) en escritorio. Se tocan para abrir la calculadora (sincronizada con el duelo, sin salir de él). */
-export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey, size = 'sm', badge = false, turn, turnMine }: { snapshot: DuelSnapshot; myName: string; /** Sin esto no se tocan (el duelo automático: las lleva el núcleo). */ onOpen?: (() => void) | undefined; /** Lo que acabás de avisar (pensando, todo bien): un globo junto a tus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; /** La chapa (`LifeBadge`): en el celular, abajo a la izquierda, y en la esquina del campo en escritorio. */ badge?: boolean; /** Con `badge`, el turno junto a la etiqueta y de quién es. */ turn?: string; turnMine?: boolean }) {
+export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey, size = 'sm', badge = false, active }: { snapshot: DuelSnapshot; myName: string; /** Sin esto no se tocan (el duelo automático: las lleva el núcleo). */ onOpen?: (() => void) | undefined; /** Lo que acabás de avisar (pensando, todo bien): un globo junto a tus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; /** La chapa (`LifeBadge`): en el celular, abajo a la izquierda, y en la esquina del campo en escritorio. */ badge?: boolean; /** Con `badge`: es tu turno (tu chapa lleva el borde grueso; si no, tenue). */ active?: boolean | undefined }) {
   const name = myName || t('duel.bar.you')
   const life = snapshot.life.lp[snapshot.me]
 
-  return badge ? <LifeBadge name={name} label={t('duel.bar.you')} life={life} mine turn={turn} turnMine={turnMine} active={turnMine} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} label={t('duel.bar.you')} life={life} mine size={size} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
+  return badge ? <LifeBadge name={name} label={t('duel.bar.you')} life={life} mine active={active} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} label={t('duel.bar.you')} life={life} mine size={size} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
 }
 
 /** Los puntos de vida del rival, planos: en el marcador (a la derecha), en la esquina de arriba a la derecha del campo (escritorio) o en el lateral izquierdo. Se tocan igual que los tuyos. Con `badge`, su chapa. */
-export function RivalLife({ snapshot, onOpen, signal = null, signalKey, size = 'sm', align = 'end', badge = false, active }: { snapshot: DuelSnapshot; onOpen?: (() => void) | undefined; /** Su señal (pensando, continuá): un globo debajo de sus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; align?: 'start' | 'end'; badge?: boolean; /** Con `badge`: es su turno (su chapa se enciende con su aro; si no, se apaga). */ active?: boolean | undefined }) {
+export function RivalLife({ snapshot, onOpen, signal = null, signalKey, size = 'sm', align = 'end', badge = false, compact = false, active }: { snapshot: DuelSnapshot; onOpen?: (() => void) | undefined; /** Su señal (pensando, continuá): un globo debajo de sus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; align?: 'start' | 'end'; badge?: boolean; /** La chapa de la fila del celular (`compact`). */ compact?: boolean; /** Con `badge`: es su turno (su chapa lleva el borde grueso; si no, tenue). */ active?: boolean | undefined }) {
   const name = snapshot.peerName ?? t('duel.bar.rival')
   const life = snapshot.life.lp[snapshot.me === 0 ? 1 : 0]
 
-  return badge ? <LifeBadge name={name} label={t('duel.bar.rivalTag')} life={life} align={align} active={active} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} life={life} size={size} align={align} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
+  return badge ? <LifeBadge name={name} label={t('duel.bar.rivalTag')} life={life} align={align} compact={compact} active={active} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} life={life} size={size} align={align} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
 }
 
 /**

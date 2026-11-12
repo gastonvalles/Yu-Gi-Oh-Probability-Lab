@@ -40,7 +40,9 @@
   --text-stat--line-height: 1.15;
   --text-display: 2.75rem;
   --text-display--line-height: 1.1;
-  /* Aparte (como `text-score`), el daño de un golpe junto a la chapa de vidas (`LifeBadge`): 64 px en el celular y 84 desde 1101. */
+  /* Aparte (como `text-score`): `text-tag`, el ATK/DEF de la placa de la carta del campo (10 px: «3000/2500» mide 52 px y entra entre dos casillas vecinas a 360); `text-hit`, el número enorme de la cadena (64 px; 84 desde 1101). */
+  --text-tag: 0.625rem;
+  --text-tag--line-height: 0.875rem;
   --text-hit: 4rem;
   --text-hit--line-height: 1;
   --text-hit-lg: 5.25rem;
@@ -216,9 +218,8 @@
   --animate-slash-in: slash-in 120ms var(--ease-out) forwards;
   /* Se apaga: el trazo de un eslabón que se fue y lo que queda de la cadena al final. */
   --animate-fade-out: fade-out 200ms var(--ease-out) forwards;
-  /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida) y el «−N ▼» entra grande (1,6 → 1), se sostiene, sube 24 px y se funde. */
+  /* Las vidas: el número crece a 1,08 y vuelve (120 ms de ida); el «−N» chico de la chapa usa `animate-linger`. */
   --animate-life-bump: life-bump 240ms var(--ease-out);
-  --animate-life-delta: life-delta 1500ms var(--ease-out) both;
   /* La carta que un ataque saca del campo se parte en dos (`AttackFx`): las mitades del eslabón, más lentas. */
   --animate-card-split-a: split-a 520ms var(--ease-out) forwards;
   --animate-card-split-b: split-b 520ms var(--ease-out) forwards;
@@ -1188,28 +1189,6 @@
 
     50% {
       transform: scale(1.08);
-    }
-  }
-
-  @keyframes life-delta {
-    0% {
-      opacity: 0;
-      transform: scale(1.6);
-    }
-
-    12% {
-      opacity: 1;
-      transform: none;
-    }
-
-    70% {
-      opacity: 1;
-      transform: none;
-    }
-
-    100% {
-      opacity: 0;
-      transform: translateY(-24px);
     }
   }
 }

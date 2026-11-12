@@ -427,7 +427,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white">{placed.counters}</span> : null}
       </div>
       {link ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
-      {spot === 'mz' || spot === 'emz' ? <StatTag stat={stat} sideways={sideways} /> : null}
+      {spot === 'mz' || spot === 'emz' ? <StatTag stat={stat} /> : null}
     </>
   )
 }

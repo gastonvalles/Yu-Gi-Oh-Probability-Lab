@@ -34,6 +34,10 @@ function Numero({ life }: { life: number }) {
   return <output>{useLifeNumber(life)}</output>
 }
 
+function NumeroConTope({ life }: { life: number }) {
+  return <output>{useLifeNumber(life, undefined, 700)}</output>
+}
+
 let dibujos = 0
 
 /** El número con `into`: cuenta escribiendo el texto y React se entera sólo al final. */
@@ -75,6 +79,17 @@ describe('useLifeNumber: el número cuenta con la duración de su cambio', () =>
     view.rerender(<Numero life={0} />)
     cuadro(1000)
     cuadro(1900)
+    expect(view.container.textContent).toBe('0')
+  })
+
+  it('con tope (la chapa: 700 ms) llega al valor nuevo en el tope aunque el cambio pida 900', () => {
+    const view = render(<NumeroConTope life={8000} />)
+
+    view.rerender(<NumeroConTope life={0} />)
+    cuadro(1000)
+    cuadro(1350)
+    expect(view.container.textContent).not.toBe('0')
+    cuadro(1700)
     expect(view.container.textContent).toBe('0')
   })
 

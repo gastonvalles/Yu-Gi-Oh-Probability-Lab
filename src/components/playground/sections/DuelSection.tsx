@@ -144,8 +144,8 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
   const mineTurn = turn !== 'rival'
   const lane: LaneNotice | null = line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : line === 'moment' ? { kind: 'ask', text: 'Gene-Warped Warwolf ataca a Sky Striker Ace - Zeke · Rival −500', actions: [] } : null
   const content = line === 'chain' ? <ChainLine rows={SEAT_CHAIN} focus={1} onPick={() => {}} /> : lane ? <DuelLine lane={lane} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} /> : null
-  const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} active={!mineTurn} />
-  const mine = (turnText?: string) => <LifeBadge name="Vos" label="Vos" life={life.mine} mine turn={turnText} {...(turnText ? { active: mineTurn } : {})} />
+  const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} compact active={!mineTurn} />
+  const mine = <LifeBadge name="Vos" label="Vos" life={life.mine} mine active={mineTurn} />
   const buttons = (
     <span className="flex items-center gap-2">
       <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
@@ -164,7 +164,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
       className="col-span-full"
       note={
         <>
-          Las vidas: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color); en el celular la del rival va en la fila de los íconos de la barra, con el número un paso más chico (<Tag>BAR_SEAT</Tag>: entra en sus 44 px), y la tuya abajo con el turno y la botonera cuadrada. No hay línea entre el campo y tu mano: un aviso (o «Momento», lo que pasó al invocar, atacar o recibir daño, 1,5 s) flota sobre el borde de arriba de tu mano sólo mientras está, y la cadena va en una capa centrada sobre el campo. El cambio de vidas: el número late y el «−N ▼» sale en grande (64 px; 84 desde 1101), entra de 1,6, se sostiene, sube y se funde en 1,5 s (rojo tu daño, menta el del rival). La chapa del que juega se enciende con su aro y la otra se apaga. Las fases van en el botón del medio del campo. A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
+          Las vidas: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color); en el celular la del rival va en la fila de los íconos de la barra, con el número un paso más chico (<Tag>compact</Tag>: entra en sus 44 px), y la tuya abajo con la botonera cuadrada. El turno lo dice sólo el borde: grueso (3 px) en la chapa de quien juega y tenue en la otra, sin texto. No hay línea entre el campo y tu mano: un aviso (o «Momento», lo que pasó al invocar, atacar o recibir daño, 1,5 s) flota sobre el borde de arriba de tu mano sólo mientras está, y la cadena va en una capa centrada sobre el campo. El cambio de vidas, todo adentro de la chapa: tiembla, el número baja contando (700 ms como mucho) y el «−N» chico toma el lugar de la etiqueta 1,6 s (rojo tu daño, menta el del rival); no sale ningún número afuera. Las fases van en el botón del medio del campo. A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }
     >
@@ -208,13 +208,13 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
         </div>
         <div aria-hidden="true" className="h-24 bg-tint/8" />
         <div className="flex h-15 items-center justify-between gap-2">
-          {mine(mineTurn ? 'Tu turno · 3' : 'Turno de Ana · 3')}
+          {mine}
           {buttons}
         </div>
       </div>
       <div className="max-w-full overflow-x-auto">
         <div className="mat-square grid w-[90rem] grid-cols-[1fr_auto_1fr] items-end gap-6 bg-background p-4">
-          <div className="justify-self-end">{mine()}</div>
+          <div className="justify-self-end">{mine}</div>
           <div className="grid w-[40rem] gap-2 [--cell:4.625rem]">
             <DuelTable mine={duel.mine} theirs={duel.theirs} turn="theirs" />
             <div className="relative h-16 overflow-hidden">{content}</div>
@@ -316,7 +316,7 @@ function StatTagSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideV
       className="col-span-full"
       note={
         <>
-          Lo que se dice de una carta del campo va al pie o afuera, nunca sobre el arte: su ATK/DEF en una placa de 15 px (12 px de letra, el carbón al 92 % debajo) sobre el cuadro de texto, siempre y de los dos lados, y la espada de «puede atacar» en la esquina, medio afuera. En el duelo automático, el de ahora: en menta si subió y en rojo claro si bajó respecto del impreso («Cambiados»); en la mesa manual, el impreso y sin color. Un Link, sólo el ATK; un «?» se ve «?» y sin color; boca abajo, nada. En una casilla angosta (la de abajo, 57 px como a 390) va sólo el de su posición (ATK parada, DEF acostada). El Nivel (★), Rango (R) o LINK no va en la mesa: está en la ficha de la carta y vuelve, arriba, sólo mientras se elige («Eligiendo»). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
+          Lo que se dice de una carta del campo va al pie o afuera, nunca sobre el arte: su ATK/DEF en una placa (10 px de letra, <Tag>text-tag</Tag>, el carbón al 92 % debajo) sobre el cuadro de texto, siempre, los dos números en un renglón, también en defensa y de los dos lados, y la espada de «puede atacar» en la esquina, medio afuera. En el duelo automático, el de ahora: en menta si subió y en rojo claro si bajó respecto del impreso («Cambiados»); en la mesa manual, el impreso y sin color. Un Link, sólo el ATK; un «?» se ve «?» y sin color; boca abajo, nada. El Nivel (★), Rango (R) o LINK no va en la mesa: está en la ficha de la carta y vuelve, arriba, sólo mientras se elige («Eligiendo»). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
         </>
       }
     >
