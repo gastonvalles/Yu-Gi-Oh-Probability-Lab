@@ -113,6 +113,8 @@ const LAYOUT = {
 const SIDE_LEFT = ['left', 'right', 'left', 'right'] as const
 /** El número pisa la esquina de abajo del lado de afuera de su carta. */
 const NUMBER_CORNER = { left: 'bottom-0 left-0 -translate-x-1/3 translate-y-1/3', right: 'bottom-0 right-0 translate-x-1/3 translate-y-1/3' } as const
+/** Cuánto tarda en apagarse un tramo de cadena que quedó entre lugares viejos (lo que dura su transición). */
+const FADE_MS = 250
 /** Cuántas cartas se ven a la vez; las de antes se achican y se van hacia arriba, y vuelven cuando se resuelven las de adelante. */
 const SHOWN = LAYOUT.narrow.left.depth.length
 /** Cada cuánto va un eslabón a lo largo de la cadena y cuánto cuelga en el medio (en unidades del `viewBox`): eslabones chicos y apretados, como en Master Duel. */
@@ -177,10 +179,11 @@ function Links({ links, size = 1, offset = 0 }: { links: ReadonlyArray<{ x: numb
 }
 
 /**
- * La cadena entre dos cartas, colgando y por encima de ellas. Entra con opacidad. Al empezar a resolverse (`broken`) se corta en el medio: las dos mitades se separan y se apagan
- * (sólo `translate`/`opacity`, en lo que dura la salida de la escena; con movimiento reducido, sólo se apagan).
+ * La cadena entre dos cartas, colgando y por encima de ellas. Se dibuja entre los lugares a los que van las cartas, así que entra recién cuando llegaron (`delay-300`, con opacidad) y
+ * la que quedó entre los lugares viejos se apaga mientras viajan (`fading`), nunca de golpe. Al empezar a resolverse (`broken`) se corta en el medio: las dos mitades se separan y se
+ * apagan (sólo `translate`/`opacity`, en lo que dura la salida de la escena; con movimiento reducido, sólo se apagan).
  */
-function Bond({ number, from, to, fromAt, toAt, broken = false }: { number: number; from: Point; to: Point; fromAt: number; toAt: number; broken?: boolean }) {
+function Bond({ number, from, to, fromAt, toAt, broken = false, fading = false }: { number: number; from: Point; to: Point; fromAt: number; toAt: number; broken?: boolean; fading?: boolean }) {
   const length = Math.hypot(to[0] - from[0], to[1] - from[1]) || 1
   const [ux, uy] = [(to[0] - from[0]) / length, (to[1] - from[1]) / length]
   const start: Point = [from[0] + ux * BOND_TRIM[fromAt]!, from[1] + uy * BOND_TRIM[fromAt]!]
@@ -189,7 +192,12 @@ function Bond({ number, from, to, fromAt, toAt, broken = false }: { number: numb
   const half = Math.ceil(links.length / 2)
 
   return (
-    <g data-chain-bond={number} {...(broken ? { 'data-broken': '' } : {})} className="opacity-100 transition-opacity duration-300 ease-snap starting:opacity-0 motion-reduce:transition-opacity">
+    <g
+      data-chain-bond={number}
+      {...(broken ? { 'data-broken': '' } : {})}
+      {...(fading ? { 'data-fading': '' } : {})}
+      className={cx('transition-opacity duration-200 ease-out motion-reduce:transition-opacity', fading ? 'opacity-0' : 'opacity-100 delay-300 starting:opacity-0')}
+    >
       {[links.slice(0, half), links.slice(half)].map((piece, i) => (
         <g key={i} className={cx('transition-[translate,opacity] duration-200 ease-out motion-reduce:transition-opacity', broken && (i === 0 ? '-translate-x-3 translate-y-2 opacity-0' : 'translate-x-3 translate-y-2 opacity-0'))}>
           <Links links={piece} offset={i === 0 ? 0 : half} />
@@ -335,6 +343,27 @@ export function ChainStage({
   const depth = (index: number) => rows.length - 1 - index
   const pose = (index: number): Pose => (away ? 'out' : depth(index) >= SHOWN ? 'back' : 'slot')
   const hidden = away || over
+  // La cadena entre cada carta y la anterior, mientras las dos están en la escena: un tramo por par de lugares. Cuando las cartas se corren, el tramo viejo se apaga (`fading`, un rato)
+  // y el nuevo entra cuando llegan.
+  const bonds = rows.flatMap((link, index) =>
+    index === 0 || pose(index - 1) !== 'slot' || pose(index) !== 'slot'
+      ? []
+      : [{ key: `${link.number}:${BOND[depth(index - 1)]!.join()}:${BOND[depth(index)]!.join()}`, number: link.number, from: BOND[depth(index - 1)]!, to: BOND[depth(index)]!, fromAt: depth(index - 1), toAt: depth(index) }],
+  )
+  const [drawn, setDrawn] = useState(bonds)
+  const [fading, setFading] = useState<typeof bonds>([])
+  const isNow = (key: string) => bonds.some((bond) => bond.key === key)
+
+  if (bonds.map((bond) => bond.key).join() !== drawn.map((bond) => bond.key).join()) {
+    setFading([...fading, ...drawn].filter((bond) => !isNow(bond.key)))
+    setDrawn(bonds)
+  }
+  useEffect(() => {
+    if (!fading.length) return
+    const timer = window.setTimeout(() => setFading([]), FADE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [fading])
   const status = (
     <p data-testid={over ? 'chain-notice' : undefined} role="status" className="sr-only">
       {current < 0 || !row ? t('auto.chain.order') : t('auto.chain.say', { card: row.name, what: whatHappened(row, rows) })}
@@ -360,12 +389,9 @@ export function ChainStage({
         )}
       >
         <svg aria-hidden="true" viewBox="0 0 300 400" className="absolute inset-0 z-6 size-full overflow-visible">
-          {rows.map((link, index) =>
-            // La cadena entre esta carta y la anterior, mientras las dos están en la escena; cada vez que se corren, vuelve a salir.
-            index === 0 || pose(index - 1) !== 'slot' || pose(index) !== 'slot' ? null : (
-              <Bond key={`${link.number}-${depth(index)}`} number={link.number} from={BOND[depth(index - 1)]!} to={BOND[depth(index)]!} fromAt={depth(index - 1)} toAt={depth(index)} broken={over} />
-            ),
-          )}
+          {[...fading.map((bond) => ({ ...bond, gone: true })), ...bonds.map((bond) => ({ ...bond, gone: false }))].map(({ key, gone, ...bond }) => (
+            <Bond key={key} {...bond} broken={over} fading={gone} />
+          ))}
         </svg>
         {rows.map((link, index) => {
           const at = pose(index)
@@ -382,8 +408,9 @@ export function ChainStage({
               data-chain-card={link.number}
               data-pose={at}
               className={cx(
-                'absolute left-1/3 top-2/7 aspect-[421/614] w-1/3 shadow-chain-halo transition-[translate,rotate,scale,opacity,transform] duration-300 ease-snap starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0 motion-reduce:transition-opacity',
+                'absolute left-1/3 top-2/7 aspect-[421/614] w-1/3 shadow-chain-halo transition-[translate,rotate,scale,opacity,transform] duration-350 ease-in-out starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0 motion-reduce:transition-opacity',
                 link.art ? 'bg-input' : link.frame ? frameClass(link.frame) : 'bg-input',
+                newest && 'delay-100',
                 at === 'out' ? '-translate-y-1/4 scale-80 opacity-0' : at === 'back' ? '-translate-y-full scale-50 opacity-0' : DEPTH[depth(index)],
               )}
             >
@@ -405,7 +432,7 @@ export function ChainStage({
         })}
         {/* «CADENA» (con dos o más): grande, blanca e itálica, al medio, entre las cartas y por delante; aparece cuando la carta se asienta y se queda hasta que se va la escena. */}
         {rows.length > 1 && !hidden ? (
-          <span key={rows.length} aria-hidden="true" data-chain-word="" className="absolute inset-x-0 top-2/5 z-7 flex animate-pop justify-center text-title font-extrabold min-[1101px]:text-display uppercase italic text-white text-shadow-lg text-shadow-chain-glow motion-reduce:animate-none">
+          <span key={rows.length} aria-hidden="true" data-chain-word="" className="absolute inset-x-0 top-2/5 z-7 flex justify-center text-title font-extrabold uppercase italic text-white text-shadow-lg text-shadow-chain-glow transition-[opacity,scale] delay-100 duration-300 ease-out starting:scale-75 starting:opacity-0 motion-reduce:transition-opacity min-[1101px]:text-display">
             {t('auto.chain.title')}
           </span>
         ) : null}

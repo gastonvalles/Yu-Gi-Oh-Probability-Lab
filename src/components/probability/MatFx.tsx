@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type CSSProperties, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
@@ -6,6 +6,7 @@ import { printedBadge, statShift } from '../../app/field-stats'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
+import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
@@ -179,40 +180,75 @@ export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
 /** El aro de cadena del medallón: 12 eslabones alrededor, alternados de frente (huecos) y de canto (barras), en el `viewBox` de 40 × 40. */
 const MEDAL_RING = Array.from({ length: 12 }, (_, i) => i * 30)
 
+/** Cuánto se corre cada medallón respecto del de al lado cuando hay varios en un mismo lugar (se pisan un tercio), y lo que dura su salida. */
+const MEDAL_STEP_PX = 24
+const MEDAL_OUT_MS = 220
+const medalOffsets = (medals: readonly ChainMedal[]) => new Map(medals.map((medal, i) => [medal.number, (i - (medals.length - 1) / 2) * MEDAL_STEP_PX]))
+
 /**
  * Los medallones de la cadena (Master Duel, al resolver): uno por eslabón, centrados en el lugar donde se activó (la casilla, aunque quede vacía; la pila; la mano: quien lo usa pone
  * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, blanco con luz celeste
- * y el aro del metal de la escena (la misma familia que `ChainStage`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira (`aria-hidden`): el eslabón va en el nombre de la
- * carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
+ * y el aro del metal de la escena (la misma familia que `ChainStage`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira
+ * (`aria-hidden`): el eslabón va en el nombre de la carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
+ * - **Suave** (Gastón: «la animación de las cadenas debe ser smooth»): cada uno entra creciendo con opacidad y, al resolverse, se rompe (crece y se apaga, `MEDAL_OUT_MS`) en vez
+ *   de desaparecer; los que quedan en el mismo lugar se reacomodan con `translate` (cada uno, en su lugar por número), sin saltar. El último de un lugar sale igual si quien lo usa
+ *   lo envuelve en `Presence` (`useLeaving`). Sólo `translate`/`scale`/`opacity`; con movimiento reducido, sólo la opacidad.
  */
 export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
+  const closing = useLeaving()
+  // Los que se acaban de ir, en el lugar donde estaban, mientras se rompen.
+  const [kept, setKept] = useState(medals)
+  const [gone, setGone] = useState<Array<ChainMedal & { x: number }>>([])
+  const isNow = (number: number) => medals.some((medal) => medal.number === number)
+
+  if (medals.map((medal) => medal.number).join() !== kept.map((medal) => medal.number).join()) {
+    const before = medalOffsets(kept)
+
+    setGone([...gone.filter((medal) => !isNow(medal.number)), ...kept.filter((medal) => !isNow(medal.number)).map((medal) => ({ ...medal, resolving: false, x: before.get(medal.number) ?? 0 }))])
+    setKept(medals)
+  }
+  useEffect(() => {
+    if (!gone.length) return
+    const timer = window.setTimeout(() => setGone([]), MEDAL_OUT_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [gone])
+  const at = medalOffsets(medals)
+  const shown = [...gone.map((medal) => ({ ...medal, out: true })), ...medals.map((medal) => ({ ...medal, x: at.get(medal.number) ?? 0, out: closing }))].sort((a, b) => a.number - b.number)
+
   return (
     <span
       aria-hidden="true"
       data-chain-link={medals.map((medal) => medal.number).join(',')}
       data-chain-owner={medals[0]?.mine ? 'mine' : 'theirs'}
-      className="pointer-events-none absolute inset-0 z-11 flex items-center justify-center -space-x-3"
+      className="pointer-events-none absolute inset-0 z-11 grid place-items-center"
     >
-      {medals.map(({ number, voided, resolving }) => (
+      {shown.map(({ number, voided, resolving, x, out }) => (
         <span
           key={number}
-          data-chain-medal={number}
-          {...(resolving ? { 'data-resolving': '' } : {})}
+          {...(out ? { 'data-chain-medal-leaving': number } : { 'data-chain-medal': number })}
+          {...(resolving && !out ? { 'data-resolving': '' } : {})}
           {...(voided ? { 'data-voided': '' } : {})}
-          className={cx('relative grid size-9 shrink-0 place-items-center', resolving && 'animate-pulse motion-reduce:animate-none')}
+          style={{ translate: `${x}px 0` }}
+          className={cx(
+            'relative col-start-1 row-start-1 size-9 transition-[translate,scale,opacity] duration-200 ease-out starting:scale-75 starting:opacity-0 motion-reduce:transition-opacity',
+            out && 'scale-125 opacity-0',
+          )}
         >
-          <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
-            <circle cx={20} cy={20} r={18} className="fill-background" />
-            {MEDAL_RING.map((angle, i) =>
-              i % 2 === 0 ? (
-                <rect key={angle} x={16.5} y={0.5} width={7} height={4.5} rx={2.25} strokeWidth={2.4} transform={`rotate(${angle} 20 20)`} className="fill-none stroke-chain-metal" />
-              ) : (
-                <rect key={angle} x={16.5} y={1.25} width={7} height={3} rx={1.5} transform={`rotate(${angle} 20 20)`} className="fill-chain-metal-lo" />
-              ),
-            )}
-            {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
-          </svg>
-          <span className="relative text-lead font-extrabold leading-none tabular-nums text-white text-shadow-md text-shadow-chain-glow">{number}</span>
+          <span className={cx('grid size-full place-items-center', resolving && !out && 'animate-pulse motion-reduce:animate-none')}>
+            <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
+              <circle cx={20} cy={20} r={18} className="fill-background" />
+              {MEDAL_RING.map((angle, i) =>
+                i % 2 === 0 ? (
+                  <rect key={angle} x={16.5} y={0.5} width={7} height={4.5} rx={2.25} strokeWidth={2.4} transform={`rotate(${angle} 20 20)`} className="fill-none stroke-chain-metal" />
+                ) : (
+                  <rect key={angle} x={16.5} y={1.25} width={7} height={3} rx={1.5} transform={`rotate(${angle} 20 20)`} className="fill-chain-metal-lo" />
+                ),
+              )}
+              {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
+            </svg>
+            <span className="relative text-lead font-extrabold leading-none tabular-nums text-white text-shadow-md text-shadow-chain-glow">{number}</span>
+          </span>
         </span>
       ))}
     </span>

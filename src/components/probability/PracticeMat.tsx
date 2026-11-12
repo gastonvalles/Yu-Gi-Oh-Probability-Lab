@@ -2420,7 +2420,7 @@ function PracticeMatBody({
           </span>
         ) : null}
         {!shown && spot === 'emz' && duel ? duel.sharedZone(index) : null}
-        {duel?.medals?.get(drop) ? <ChainBadge medals={duel.medals.get(drop)!} /> : null}
+        <Presence>{duel?.medals?.get(drop) ? <ChainBadge medals={duel.medals.get(drop)!} /> : null}</Presence>
         {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
       </div>
     )
@@ -2469,7 +2469,7 @@ function PracticeMatBody({
           {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
           {marked ? <TargetMark key={`mira:${shown}`} /> : null}
         </span>
-        {duel?.medals?.get(pile) ? <ChainBadge medals={duel.medals.get(pile)!} /> : null}
+        <Presence>{duel?.medals?.get(pile) ? <ChainBadge medals={duel.medals.get(pile)!} /> : null}</Presence>
       </button>
     )
   }
@@ -3138,7 +3138,7 @@ function PracticeMatBody({
             ) : null}
             <PileBadge count={state.deck.length} />
             {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
-            {duel?.medals?.get('deck') ? <ChainBadge medals={duel.medals.get('deck')!} /> : null}
+            <Presence>{duel?.medals?.get('deck') ? <ChainBadge medals={duel.medals.get('deck')!} /> : null}</Presence>
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}

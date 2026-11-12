@@ -8,7 +8,9 @@ import { Provider } from 'react-redux'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { frameKindOf, frameOfType } from '../app/card-frame'
+import type { ChainMedal } from '../app/card-glow'
 import { CHAIN_LEAVE_MS, ChainStage, glyphCells, type ChainNoticeRow } from '../components/auto/ChainNotice'
+import { ChainBadge } from '../components/probability/MatFx'
 
 // La cadena en grande (K-01 a K-03), sólo al encadenar: cartas grandes inclinadas con su número enorme y el borde de su tipo, unidas por una cadena de metal; resolviendo, no está
 // (quedan los medallones); una sola línea arriba; una activación sola entra igual con su «1». Sin «CL» escrito, sin hexágonos ni «Cómo se resuelve», y no ataja toques.
@@ -69,7 +71,7 @@ describe('la cadena en grande', () => {
     // «CADENA» destella al medio (con dos o más); el velo baja el campo y no ataja toques.
     expect(document.querySelector('[data-chain-word]')).toHaveTextContent('Cadena')
     // «CADENA», itálica, al medio y por delante de las cartas (z-7 sobre z-5); aparece y se queda.
-    expect(document.querySelector('[data-chain-word]')).toHaveClass('uppercase', 'italic', 'z-7', 'animate-pop', 'motion-reduce:animate-none')
+    expect(document.querySelector('[data-chain-word]')).toHaveClass('uppercase', 'italic', 'z-7', 'delay-100', 'starting:opacity-0', 'motion-reduce:transition-opacity')
     // El estallido de rayos dorados, detrás de la carta que entra (sólo la nueva; con movimiento reducido, no está).
     expect(document.querySelectorAll('[data-chain-burst]')).toHaveLength(1)
     expect(cards()[2]!.querySelector('[data-chain-burst]')).toHaveClass('-z-1', 'animate-fx-flash', 'motion-reduce:hidden')
@@ -178,6 +180,45 @@ describe('la cadena en grande', () => {
     expect(rows(7)).toEqual(['###', '..#', '..#', '..#', '..#'])
     for (let digit = 0; digit < 10; digit += 1) expect(glyphCells(digit).length).toBeGreaterThan(6)
     expect(Math.max(...glyphCells(11).map((cell) => cell.x))).toBeGreaterThan(50)
+  })
+
+  it('suave: al entrar otra, la nueva aterriza un poco después; la cadena vieja se apaga (no se borra de golpe) y la nueva entra cuando llegan las cartas', () => {
+    vi.useFakeTimers()
+    const view = stage([ENGAGE, ASH])
+
+    expect(bonds()).toEqual(['2:on'])
+    view.rerender(
+      <Provider store={store}>
+        <ChainStage rows={[ENGAGE, ASH, CALLED]} current={-1} />
+      </Provider>,
+    )
+    expect(cards()[2]).toHaveClass('delay-100', 'ease-in-out', 'duration-350')
+    expect(cards()[1]).not.toHaveClass('delay-100')
+    // El tramo 1-2 entre los lugares viejos, apagándose; los de ahora, con su retraso.
+    const fading = [...document.querySelectorAll('[data-chain-bond][data-fading]')]
+    expect(fading.map((bond) => bond.getAttribute('data-chain-bond'))).toEqual(['2'])
+    expect(fading[0]).toHaveClass('opacity-0')
+    for (const bond of document.querySelectorAll('[data-chain-bond]:not([data-fading])')) expect(bond).toHaveClass('delay-300', 'starting:opacity-0')
+    act(() => vi.advanceTimersByTime(300))
+    expect(document.querySelectorAll('[data-chain-bond][data-fading]')).toHaveLength(0)
+  })
+
+  it('los medallones: entran creciendo, el que se resuelve se rompe (crece y se apaga) y los que quedan se reacomodan con translate', () => {
+    vi.useFakeTimers()
+    const medal = (number: number): ChainMedal => ({ number, mine: true, voided: false, resolving: number === 2 })
+    const view = render(<ChainBadge medals={[medal(1), medal(2)]} />)
+    const at = (number: number) => document.querySelector<HTMLElement>(`[data-chain-medal="${number}"]`)
+
+    expect(at(1)).toHaveClass('starting:opacity-0', 'starting:scale-75', 'motion-reduce:transition-opacity')
+    expect(at(1)!.style.translate).toBe('-12px 0')
+    expect(at(2)!.style.translate).toBe('12px 0')
+    view.rerender(<ChainBadge medals={[medal(1)]} />)
+    expect(at(1)!.style.translate).toBe('0px 0')
+    const leaving = document.querySelector('[data-chain-medal-leaving="2"]')
+    expect(leaving).toHaveClass('scale-125', 'opacity-0')
+    expect(leaving).not.toHaveAttribute('data-resolving')
+    act(() => vi.advanceTimersByTime(250))
+    expect(document.querySelector('[data-chain-medal-leaving]')).toBeNull()
   })
 
   it('con más de cuatro, las viejas se achican y se van hacia arriba', () => {
