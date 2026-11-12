@@ -26,6 +26,21 @@ export function computeHandLayout(width: number, slots: number, maxCardWidth: nu
   return { cardWidth, cardHeight: cardWidth * CARD_ASPECT, step, startX: Math.max(0, (width - total) / 2) }
 }
 
+/**
+ * La mano del duelo automático de escritorio crece con la mesa: desde su carta de siempre (`base` px de ancho) hasta lo que deja el alto libre debajo de ella (`below` px), nunca más que una casilla
+ * del campo (`cell`) ni que lo que le da el ancho de la mano (`width`, con `slots` cartas). Devuelve el ancho de la carta y el alto que suma (`extra`): la mano lo descuenta con un margen negativo y
+ * crece hacia abajo, así el campo no se corre.
+ */
+export function growHand({ base, below, cell, width, slots }: { base: number; below: number; cell: number; width: number; slots: number }): { cardWidth: number; extra: number } {
+  if (!(width > 0) || !(cell > 0)) return { cardWidth: base, extra: 0 }
+
+  const natural = computeHandLayout(width, slots, Number.POSITIVE_INFINITY).cardWidth
+  const from = Math.min(base, natural)
+  const cardWidth = Math.max(from, Math.floor(Math.min(cell, natural, base + Math.max(0, below) / CARD_ASPECT)))
+
+  return { cardWidth, extra: (cardWidth - from) * CARD_ASPECT }
+}
+
 export function slotLeft(layout: HandLayout, index: number): number {
   return layout.startX + index * layout.step
 }

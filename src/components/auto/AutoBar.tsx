@@ -275,14 +275,20 @@ function SoloSettings({ chain, onChain, place, onPlace, onRestart, onNewHand, on
  * Las herramientas de la mesa en «Jugar solo automático» (abajo a la derecha, dos cuadrados de 44 px; Gastón, 2026-11-12: «los botones son horribles»): ≡ «Pasos» (muestra u oculta el panel de la derecha;
  * sólo en escritorio, `steps`: en el celular ≡ es el de la mesa) y ⚙ «Opciones» (`OptionsGear`). La cadena, el modo manual y lo demás ya no tienen ficha: viven en Opciones.
  */
-export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps?: { open: boolean; onToggle: () => void } }) {
+export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps?: { open: boolean; onToggle: () => void; count?: number } }) {
   const concede = onConcede ? { onConcede, text: t('duel.options.concedeSolo') } : undefined
 
   return (
     <div role="group" aria-label={t('auto.dock.label')} data-mat-tools="" className="flex items-center gap-2">
       {steps ? (
-        <IconButton tone="tile" size="sm" aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} onClick={steps.onToggle}>
+        <IconButton tone="tile" size="sm" aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="relative" onClick={steps.onToggle}>
           <Icon name="list" />
+          {/* Plegado, cuántos pasos lleva el duelo (abierto ya lo dice la pestaña «Pasos»): el registro queda a un toque y se ve que sigue. */}
+          {!steps.open && steps.count ? (
+            <span aria-hidden="true" data-steps-count="" className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center border border-border-subtle bg-background px-1 text-micro font-bold leading-none tabular-nums text-foreground">
+              {steps.count}
+            </span>
+          ) : null}
         </IconButton>
       ) : null}
       <OptionsGear {...(concede ? { concede } : {})}>{(close) => <SoloSettings {...options} close={close} />}</OptionsGear>

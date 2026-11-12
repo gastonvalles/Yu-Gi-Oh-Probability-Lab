@@ -1089,7 +1089,7 @@ function DockSample() {
       title="AutoDock · la botonera y las esquinas (escritorio)"
       layout="column"
       className="col-span-full"
-      note={<>Desde 1101 px, en «Jugar solo automático»: las vidas del rival arriba a la derecha del campo y las tuyas abajo a la izquierda, cada una con las cartas de su mano (<Tag>LifeTile</Tag> <Tag>hand</Tag>); abajo a la derecha, dos cuadrados de 44 px: ≡ «Pasos» (oculta y muestra el panel) y ⚙ «Opciones». Opciones abre la hoja recta de siempre (en escritorio, su ventana, que se lleva de la barra): filas de 44 px con su interruptor o su segmentado a la derecha (Vista 3D, Menús flotantes, Respuestas, Casilla, el rival, reiniciar, replay, bot, modo manual) y «Rendirse ›» al final; no mueve el campo. Archivo: <Tag>auto/AutoBar.tsx</Tag></>}
+      note={<>Desde 1101 px, en «Jugar solo automático»: las vidas del rival arriba a la derecha del campo y las tuyas abajo a la izquierda, cada una con las cartas de su mano (<Tag>LifeTile</Tag> <Tag>hand</Tag>); abajo a la derecha, dos cuadrados de 44 px: ≡ «Pasos» (oculta y muestra el panel; plegado lleva cuántos pasos hay, y de fábrica va plegado debajo de 1440 px) y ⚙ «Opciones». Opciones abre la hoja recta de siempre (en escritorio, su ventana, que se lleva de la barra): filas de 44 px con su interruptor o su segmentado a la derecha (Vista 3D, Menús flotantes, Respuestas, Casilla, el rival, reiniciar, replay, bot, modo manual) y «Rendirse ›» al final; no mueve el campo. Archivo: <Tag>auto/AutoBar.tsx</Tag></>}
     >
       <div className="relative isolate grid min-h-48 grid-cols-[minmax(0,1fr)_auto] content-between gap-3 overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
@@ -1110,7 +1110,7 @@ function DockSample() {
             rival={{ kind: 'passive', summary: t('auto.rival.kind.passive'), onChange: () => undefined }}
             blind={false}
             onBlind={() => undefined}
-            steps={{ open: steps, onToggle: () => setSteps((open) => !open) }}
+            steps={{ open: steps, onToggle: () => setSteps((open) => !open), count: 7 }}
           />
         </span>
       </div>

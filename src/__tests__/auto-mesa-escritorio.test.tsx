@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
-import { DESKTOP_DECK_BUILDER_MEDIA_QUERY } from '../app/use-media-query'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY } from '../app/use-media-query'
 import { loc } from './support/auto-session-fake'
 import { core, renderAuto } from './support/auto-screen-harness'
 
@@ -29,7 +29,7 @@ const idle =(toBattle: boolean): CoreAsk => ({
 })
 
 beforeEach(() => {
-  window.matchMedia = ((query: string) => ({ matches: query === DESKTOP_DECK_BUILDER_MEDIA_QUERY || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  window.matchMedia = ((query: string) => ({ matches: query === DESKTOP_DECK_BUILDER_MEDIA_QUERY || query === DUEL_DETAIL_DOCK_MEDIA_QUERY || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
   const size = { width: window.innerWidth, height: window.innerHeight }
   Object.assign(window, { innerWidth: 1440, innerHeight: 900 })
   onTestFinished(() => void Object.assign(window, { innerWidth: size.width, innerHeight: size.height }))

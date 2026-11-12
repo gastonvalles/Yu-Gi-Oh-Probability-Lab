@@ -90,6 +90,30 @@ export function writeMatPanels(panels: MatPanels, storage: () => Storage = () =>
   }
 }
 
+/**
+ * El panel de Pasos del duelo automático de escritorio, abierto o plegado con ≡. De fábrica (`null`, nada elegido) va abierto desde 1440 px y plegado debajo, donde se come el campo; lo que se
+ * eligió con ≡ manda en todos los anchos.
+ */
+export const MAT_STEPS_KEY = 'ygo-lab:mat-steps'
+
+export function readStepsOpen(storage: () => Storage = () => localStorage): boolean | null {
+  try {
+    const stored = storage().getItem(MAT_STEPS_KEY)
+
+    return stored === 'open' ? true : stored === 'closed' ? false : null
+  } catch {
+    return null
+  }
+}
+
+export function writeStepsOpen(open: boolean, storage: () => Storage = () => localStorage): void {
+  try {
+    storage().setItem(MAT_STEPS_KEY, open ? 'open' : 'closed')
+  } catch {
+    // Sin almacenamiento: vale hasta recargar.
+  }
+}
+
 /** Lo que necesita el agarre del borde de un panel (`ResizeHandle`): su ancho, sus topes y qué hacer al arrastrarlo, al soltarlo y con el doble clic. */
 export interface PanelHandle {
   value: number

@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 
 import { setDuelFullscreen, useDuelFullscreen } from '../app/duel-fullscreen'
+import { MAT_STEPS_KEY } from '../app/mat-panels'
 import { useMatSession } from '../app/use-mat-session'
 import { AutoSoloScreen, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
 import { PracticeMat } from '../components/probability/PracticeMat'
@@ -31,9 +32,9 @@ function Practice() {
   return mat.session && mat.state ? <PracticeMat session={mat.session} state={mat.state} cardsById={CARDS} deckName="Test" onDispatch={mat.dispatch} onUndo={mat.undo} onSeek={mat.seek} onLoadCombo={() => {}} onNewHand={() => {}} onExit={() => {}} /> : null
 }
 
-/** Escritorio (desde 1101 px): jsdom es un celular. */
-const desktop = () => {
-  window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)' || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+/** Escritorio (desde 1101 px; `wide`, desde 1440): jsdom es un celular. */
+const desktop = (wide = true) => {
+  window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)' || (wide && query === '(min-width: 1440px)') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 }
 
 /** Los botones de la barra de arriba («Mesa»), con lo que se ve y lo que se lee de cada uno. */
@@ -279,7 +280,36 @@ describe('la barra de la mesa es una sola', () => {
     expect(screen.getByRole('dialog', { name: 'Pasos y combos' })).toBeInTheDocument()
   })
 
+  it('el panel de Pasos va plegado de fábrica por debajo de 1440 px (el campo gana alto) y abierto desde 1440; lo elegido con ≡ se recuerda y manda en todos los anchos; plegado, «Guardar combo» sigue en ⚙', () => {
+    localStorage.removeItem(MAT_STEPS_KEY)
+    onTestFinished(() => localStorage.removeItem(MAT_STEPS_KEY))
+    const steps = () => within(screen.getByRole('group', { name: 'Botonera del duelo' })).getByRole('button', { name: /^Pasos/ })
+
+    desktop(false)
+    renderAuto(fakeSession())
+    expect(screen.queryByRole('region', { name: 'Pasos y combos' })).toBeNull()
+    expect(steps()).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(screen.getByRole('button', { name: /^Opciones/ }))
+    expect(within(screen.getByRole('dialog', { name: 'Opciones' })).getByRole('button', { name: 'Guardar combo' })).toBeInTheDocument()
+    cleanup()
+
+    // Abierto a mano a 1101 px: se queda abierto al volver; plegado a mano a 1440, se queda plegado.
+    renderAuto(fakeSession())
+    fireEvent.click(steps())
+    expect(localStorage.getItem(MAT_STEPS_KEY)).toBe('open')
+    cleanup()
+    renderAuto(fakeSession())
+    expect(screen.getByRole('region', { name: 'Pasos y combos' })).toBeInTheDocument()
+    cleanup()
+
+    desktop()
+    localStorage.setItem(MAT_STEPS_KEY, 'closed')
+    renderAuto(fakeSession())
+    expect(screen.queryByRole('region', { name: 'Pasos y combos' })).toBeNull()
+  })
+
   it('las herramientas de escritorio, dos cuadrados de 44 px: ≡ oculta y muestra los pasos y ⚙ abre Opciones (la vista 3D, los menús flotantes, la cadena, la casilla, el modo manual, reiniciar y, al final, Rendirse)', () => {
+    onTestFinished(() => localStorage.removeItem(MAT_STEPS_KEY))
     desktop()
     const onManual = vi.fn()
     renderAuto(fakeSession(), () => {}, onManual)
