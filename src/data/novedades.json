@@ -1,6 +1,61 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-4-duelo-cadena-final-turno-mesa",
+      "date": "2026-11-12",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "La cadena rehecha, el final del duelo al centro, cambio de turno y la mesa más simple",
+        "novedades": [
+          "La cadena se ve de otra forma: las cartas entran enteras y grandes, inclinadas, unidas por una cadena de metal con el número de cada eslabón bien grande. La carta nueva entra con un estallido dorado, y la cadena también se ve al repasar tus pasos en Solo.",
+          "«VICTORIA», «DERROTA» o «EMPATE» aparecen enormes al medio del campo, con el motivo debajo, los botones al centro y el campo a la vista alrededor. «Ver el replay» abre el duelo que acabás de jugar, paso a paso y con los dos lados.",
+          "Al pasar el turno cruza el campo «CAMBIO DE TURNO», del color de quien empieza a jugar; después, la fase.",
+          "Deshacer está abajo, junto a Pasos y Opciones. Hay un solo menú de opciones (⚙) en Solo y en Online, y los avisos aparecen arriba y se sacan deslizándolos.",
+          "El botón de fase es cuadrado y su menú muestra las seis fases. Las cantidades de Deck, Extra, Cementerio y Desterradas son sólo el número.",
+          "Podés elegir la paleta: Carbón (la actual) o Índigo (la anterior), en el menú ☰, al lado de Idioma."
+        ],
+        "comoSeUsa": [
+          "Al terminar un duelo, tocá «Ver el replay» para repasarlo; «Volver al resultado» te trae de vuelta.",
+          "Tocá la ✕ para ver la mesa sola; «Ver el resultado» vuelve a abrir el cartel."
+        ],
+        "arreglos": [
+          "Tu mano vuelve a barajarse al buscar una carta del Deck, y la mano del bot se baraja cuando roba o busca.",
+          "Repasando un duelo, «Volver al duelo» está en la barra de arriba y ya no tapa tu mano.",
+          "Si una carta tiene dos maneras de invocarse de forma especial, los dos botones van numerados en vez de decir lo mismo."
+        ],
+        "ojo": [
+          "La cadena todavía no sale en los replays guardados ni en los videos descargables.",
+          "Con la paleta Índigo, el botón principal de los menús del duelo sale ámbar."
+        ]
+      },
+      "en": {
+        "title": "The chain redone, the duel ending at center, turn change and a simpler table",
+        "novedades": [
+          "The chain looks different: cards enter whole and big, tilted, joined by a metal chain with each link's number shown huge. The new card enters with a golden burst, and the chain also shows when you review your steps in Solo.",
+          "\"Victory\", \"Defeat\" or \"Draw\" appear huge in the middle of the field, with the reason below, the buttons at the center and the field visible around them. \"Watch the replay\" opens the duel you just played, step by step and from both sides.",
+          "When the turn passes, \"Turn change\" sweeps across the field in the color of whoever starts playing; then the phase.",
+          "Undo is at the bottom, next to Steps and Options. There is a single options menu (⚙) in Solo and Online, and notices appear at the top and swipe away.",
+          "The phase button is square and its menu shows all six phases. The Deck, Extra, Graveyard and Banished counts are just the number.",
+          "You can pick the palette: Charcoal (the current one) or Indigo (the previous one), in the ☰ menu, next to Language."
+        ],
+        "comoSeUsa": [
+          "When a duel ends, tap \"Watch the replay\" to review it; \"Back to the result\" brings you back.",
+          "Tap the ✕ to see the table alone; \"See the result\" opens the banner again."
+        ],
+        "arreglos": [
+          "Your hand shuffles again when you search a card from the Deck, and the bot's hand shuffles when it draws or searches.",
+          "While reviewing a duel, \"Back to the duel\" is in the top bar and no longer covers your hand.",
+          "When a card has two ways of being Special Summoned, the two buttons are numbered instead of saying the same thing."
+        ],
+        "ojo": [
+          "The chain still does not show in saved replays or downloadable videos.",
+          "With the Indigo palette, the main button of the duel menus comes out amber."
+        ]
+      }
+    },
+    {
       "id": "2026-11-12-3-duelo-cadena-fases-final",
       "date": "2026-11-12",
       "tags": [
