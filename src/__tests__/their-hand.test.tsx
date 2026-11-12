@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { TheirHand } from '../components/duel/DuelTable'
-import { THEIR_HAND, TheirHandSize } from '../components/duel/their-hand'
+import { THEIR_HAND, THEIR_HAND_CARDS, TheirHandSize } from '../components/duel/their-hand'
 import { computeHandLayout } from '../app/practice-hand-layout'
 import { RivalHandStrip } from '../components/probability/RivalHandStrip'
 import { readFileSync } from 'node:fs'
@@ -24,6 +24,22 @@ afterEach(() => {
 const cardsOf = () => [...screen.getByRole('img').querySelectorAll<HTMLElement>(':scope > span')]
 
 describe('la mano del rival', () => {
+  // El barajado a la vista (shuffleHand) busca las cartas por su marca, no por el rol del abanico: con la mano tocable (boca arriba, role group) también se baraja.
+  it('cada carta lleva su marca para el barajado, de dorso (img) o boca arriba y tocable (group)', () => {
+    viewport(true)
+    const { unmount } = render(<TheirHand count={3} />)
+
+    expect(screen.getByRole('img')).toBeInTheDocument()
+    expect(document.querySelectorAll(THEIR_HAND_CARDS)).toHaveLength(3)
+    unmount()
+    const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
+
+    render(<TheirHand count={2} cards={[{ name: 'Ash Blossom', art: null }, null]} onCard={() => {}} />, { wrapper: ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider> })
+    expect(screen.queryByRole('img', { name: /Mano del rival|rival/ })).toBeNull()
+    expect(screen.getByRole('group')).toBeInTheDocument()
+    expect(document.querySelectorAll(THEIR_HAND_CARDS)).toHaveLength(2)
+  })
+
   it('son los dorsos que tiene, en abanico y encimados, con el tamaño de la mano de escritorio', () => {
     viewport(true)
     render(<TheirHand count={5} />)

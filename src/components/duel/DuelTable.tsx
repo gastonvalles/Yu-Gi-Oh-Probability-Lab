@@ -260,6 +260,8 @@ export function TheirHand({
             <span
               key={index}
               title={card?.name}
+              // La marca que busca el barajado del rival: no depende del rol del abanico (`img` o `group`, según se pueda tocar).
+              data-their-card=""
               // El ancho manda y el alto sale de la proporción de la carta (nunca los dos fijos).
               className={cx('pointer-events-auto absolute bottom-0 left-0 block aspect-[421/614] overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
               style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${-raise}px) rotate(${-fanAngle(index, shown, 2.2)}deg)` }}

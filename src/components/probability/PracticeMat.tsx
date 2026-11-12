@@ -96,7 +96,7 @@ import { CardSheet } from './CardSheet'
 import { AskWhy } from '../duel/AskWhy'
 import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { artOfDrawId } from '../duel/duel-art'
-import { THEIR_HAND, TheirHandSize } from '../duel/their-hand'
+import { THEIR_HAND, THEIR_HAND_CARDS, TheirHandSize } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from './compact-field'
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, LayerBackContext, NoPlays, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
@@ -1213,7 +1213,7 @@ function PracticeMatBody({
 
     const root = sectionRef.current
     shuffleDeck(root?.querySelectorAll('[data-rival-drop="deck"] [data-layer]') ?? [])
-    shuffleHand(root?.querySelectorAll('[data-rival-drop="hand"] [role="img"] > span') ?? [])
+    shuffleHand(root?.querySelectorAll(THEIR_HAND_CARDS) ?? [])
   }, [rivalShuffle])
   // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
   useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')

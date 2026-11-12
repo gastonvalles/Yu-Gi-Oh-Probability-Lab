@@ -20,6 +20,7 @@ import { useAutoPrefs } from '../../app/auto-prefs'
 import { useEndReveal, type LethalHit } from '../../app/end-reveal'
 import { useHeldValue } from '../../app/life-effects'
 import { prefersReducedMotion } from '../../app/motion'
+import { useRivalShuffle } from '../../app/rival-shuffle'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
 import type { Activity } from '../../app/duel-protocol'
@@ -985,6 +986,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const opponentCells = useMemo(() => <SideCells side={opponent} owner="theirs" />, [opponent])
   const sharedZone = useCallback((index: number) => sharedZoneCard(opponent, index), [opponent])
   const rivalFlights = useMemo(() => ({ state: theirs, artOf: opponent.artOf }), [theirs, opponent.artOf])
+  // Su deck y su mano se barajan a la vista cuando toca su deck o le suma una carta a la mano (lo mismo que cuenta el duelo por enlace).
+  const rivalShuffle = useRivalShuffle(theirs)
   const rivalEmzTaken = useMemo(() => theirs.emz.map(Boolean), [theirs.emz])
   const hoverDock = dock.hover
   const rivalHandCount = theirs.hand.length
@@ -1336,6 +1339,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       />
     ) : undefined,
     rivalFlights,
+    rivalShuffle,
     ...(chainNotice ? { chain: chainNotice } : {}),
     turnNumber,
     rivalEmz: rivalEmzTaken,

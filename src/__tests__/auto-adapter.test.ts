@@ -304,6 +304,17 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     expect(adapter.idAt(at(0, L.MZONE, 0))).toBe(`f.${two}`)
   })
 
+  it('barajar la mano (`shuffle_hand`) llega a la mesa como un barajado, el tuyo y el del rival (la mano de la mesa no cambia de orden)', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 0, drawn: [{ code: 111, position: 10 }, { code: 222, position: 10 }] }))
+    const mine = adapter.apply(events(0, { type: 'shuffle_hand', player: 0, cards: [222, 111] }))
+
+    expect(mine.mine).toEqual([{ type: 'shuffle', seed: expect.any(Number) }])
+    expect(adapter.mine.hand).toEqual(['card-111-1', 'card-222-1'])
+    expect(adapter.apply(events(0, { type: 'shuffle_hand', player: 1, cards: [0, 0] })).theirs).toEqual([{ action: { type: 'shuffle', seed: expect.any(Number) }, reveal: {} }])
+  })
+
   it('una bolsa sigue el orden del núcleo: la carta que el núcleo nombró en un lugar es la que sale de ahí después, aunque salga oculta', () => {
     const adapter = make()
 

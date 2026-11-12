@@ -12,5 +12,8 @@ export const THEIR_HAND = {
 /** El duelo del celular (`phoneDuelLayout`): la mano del rival a 0,8 de la tuya, su carta y el ancho de su abanico. Lo da la mesa; sin él, `THEIR_HAND`. */
 export const TheirHandSize = createContext<{ cardWidth: number; maxWidth: number; room: number } | null>(null)
 
+/** Las cartas de la mano del rival, de dorso o boca arriba (se tocan o no): lo que se baraja a la vista (`shuffleHand`). */
+export const THEIR_HAND_CARDS = '[data-rival-drop="hand"] [data-their-card]'
+
 /** Cuánto suben las puntas del abanico (el centro es lo más cercano al campo): el de tu mano (1,6) a 0,8. */
 export const THEIR_FAN_RISE = 1.28
