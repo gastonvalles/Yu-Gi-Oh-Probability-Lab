@@ -50,7 +50,8 @@ export function MaterialStack({ count, sideways, rival = false, className }: Mat
       aria-hidden="true"
       data-material-stack={count}
       className={cx(
-        'pointer-events-none absolute inset-x-0 top-0 isolate mx-auto aspect-[421/614] w-[68.57%]',
+        // La caja de la carta de la zona (`ZONE_CARD` de la mesa: en el duelo del celular, `--field-card` y centrada en la fila).
+        'pointer-events-none absolute inset-x-0 top-[var(--field-card-top,0px)] isolate mx-auto aspect-[421/614] w-[var(--field-card,68.57%)]',
         '[transition:transform_var(--motion-duration)_var(--ease-snap),opacity_var(--motion-duration)_var(--ease-out),filter_var(--motion-duration)_var(--ease-out)] motion-reduce:transition-none',
         TURN[turn],
         className,

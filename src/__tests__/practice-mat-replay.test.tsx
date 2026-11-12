@@ -455,8 +455,9 @@ describe('la mesa de práctica', () => {
 
     const [standing, lying] = Array.from(lines('Zona de monstruo 1'))
 
-    expect(standing).toHaveClass('inset-y-0', 'w-[68.57%]', 'border-field-line/70')
-    expect(lying).toHaveClass('inset-x-0', 'h-[68.57%]', 'border-field-line/70')
+    // Fuera del duelo del celular, del alto de la casilla cuadrada (`--field-card` sin poner: 68,57 % de su ancho); en él, la carta de `phoneDuelLayout` y sin la acostada.
+    expect(standing).toHaveClass('aspect-[421/614]', 'w-[var(--field-card,68.57%)]', 'top-[var(--field-card-top,0px)]', 'border-field-line/70')
+    expect(lying).toHaveClass('inset-x-0', 'h-[68.57%]', 'border-field-line/70', 'in-data-phone:hidden')
     expect(zone('Zona de monstruo 1')).toHaveClass('border-transparent')
     expect(zone('Zona de campo').querySelectorAll(':scope > span.pointer-events-none > span')).toHaveLength(0)
   })
@@ -469,16 +470,16 @@ describe('la mesa de práctica', () => {
     ])
     render(<Harness initial={initial} />)
 
-    // Cuadradas: la carta parada ocupa el alto de la casilla y la acostada, el ancho; así dos en defensa, una al lado de la otra, no se tocan.
+    // Cuadradas (`--zone-aspect` sin poner; en el duelo del celular, de carta): la carta parada ocupa el alto de la casilla y la acostada, el ancho; así dos en defensa, una al lado de la otra, no se tocan.
     for (const name of ['Zona de monstruo 1', 'Zona de magia y trampa 1', 'Zona extra de monstruo 1']) {
-      expect(zone(name)).toHaveClass('aspect-square')
+      expect(zone(name)).toHaveClass('aspect-[var(--zone-aspect,1)]')
     }
 
     // Las de los costados tienen la forma de una carta (la de campo y las pilas nunca se acuestan), y miden 0,6857 de una del centro.
     expect(screen.getByLabelText('Campo')).toHaveClass('grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)]')
     for (const cell of [zone('Zona de campo'), ...['Main: 1', 'Extra: 1', 'GY: 0', 'Banish: 0'].map((name) => screen.getByRole('button', { name }))]) {
       expect(cell).toHaveClass('aspect-[421/614]')
-      expect(cell).not.toHaveClass('aspect-square')
+      expect(cell).not.toHaveClass('aspect-[var(--zone-aspect,1)]')
     }
 
     // En una casilla cuadrada la carta mide el alto de la casilla y 421/614 de ancho, parada o acostada; sólo cambia el giro.
@@ -486,7 +487,7 @@ describe('la mesa de práctica', () => {
     const upright = within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Maxx C' })
 
     for (const placed of [sideways, upright]) {
-      expect(placed).toHaveClass('aspect-[421/614]', 'w-[68.57%]')
+      expect(placed).toHaveClass('aspect-[421/614]', 'w-[var(--field-card,68.57%)]')
     }
 
     expect(sideways).toHaveClass('[transform:rotate(90deg)]')

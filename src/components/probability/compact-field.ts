@@ -18,33 +18,45 @@ const HAND_ROOM = 30
 const CARD_RATIO = 1.4612
 const HAND_CARD_MAX = 140
 const HAND_CARD_MIN = 64
-/** La línea (`data-duel-line`): entre 56 y 96 px. */
-const LINE_MIN = 56
-const LINE_MAX = 96
+/** La mano del rival es la tuya espejada a 0,8 (Gastón, 2026-11-12); su caja suma 8 px a la carta (lo que suben las puntas del abanico) y queda a 6 px del campo. */
+const RIVAL_SCALE = 0.8
+const RIVAL_FAN = 8
+const RIVAL_GAP = 6
+/** Del borde de abajo del campo a la caja de tu mano: sin línea en el medio (los avisos flotan sobre tu mano). */
+const HAND_GAP = 8
+/** Una carta en defensa gira sobre su casilla y pisa hasta 11 px de cada vecina (no se achica para entrar). */
+const DEFENSE_OVERLAP = 11
 
 export interface PhoneDuelOptions {
   tilted: boolean
-  /** Lo de arriba del campo que no es suyo: la barra de la pantalla (con el marcador). */
+  /** Lo de arriba del campo que no es suyo: la barra de la pantalla (con las vidas del rival). */
   bar: number
-  /** El lugar de la mano del rival arriba del campo (su caja y su aire). */
-  rival: number
-  /** Lo de abajo de tu mano: el margen de la columna y, si la hay, la fila de abajo. */
+  /** Lo de abajo de tu mano: el margen de la columna y la fila de abajo. */
   bottom: number
 }
 
 export interface PhoneDuelLayout {
-  /** La casilla (px) y el campo: ancho, alto, la `y` de su caja y la que se ve (en 3D la perspectiva baja su borde de arriba `drop` px). */
+  /** La casilla: el ancho (de la pantalla) y el alto de la fila (de una carta, o menos hasta cuadrada); la carta de adentro (ancho y alto) y cuánto baja desde el borde de la casilla. */
   cell: number
+  row: number
+  card: number
+  cardHeight: number
+  cardTop: number
+  /** El campo: ancho, alto, la `y` de su caja y la que se ve (en 3D la perspectiva baja su borde de arriba `drop` px). */
   fieldWidth: number
   fieldHeight: number
   fieldBoxTop: number
   fieldTop: number
   drop: number
+  /** La mano del rival: su carta, el ancho de su abanico, su caja y su `y`; cuelga del borde de arriba del campo a `rivalGap`. */
+  rivalCard: number
+  rivalWidth: number
+  rivalRoom: number
+  rivalGap: number
   rivalTop: number
+  /** El borde de abajo del campo (la marca de 0 px `data-duel-line`, el techo de las hojas) y el hueco hasta tu mano. */
   lineTop: number
-  lineHeight: number
-  /** El aire entre la línea y tu mano (lo que sobra va ahí: nunca arriba del campo). */
-  air: number
+  gap: number
   handTop: number
   handHeight: number
   handCard: number
@@ -52,29 +64,44 @@ export interface PhoneDuelLayout {
 }
 
 /**
- * La geometría del duelo en el celular (Gastón, 2026-11-10: «en mobile tenemos espacio para usar el campo default, el de desktop»; «el cartel con la info de la carta empujaría el campo y no debería»).
- * Pura: sale sólo del ancho y el alto de la pantalla (y de lo que miden la barra y la fila de abajo), nunca de lo que se muestra, así **el campo y la mano no se mueven nunca** (una carta tocada, un cartel,
- * la cadena, un aviso o las vidas apoyan encima). De arriba abajo: la barra, la mano del rival, el campo de siete columnas, la línea (alto fijo), el aire que sobre, tu mano y la fila de abajo.
- * - La casilla es la que entra a lo ancho: `(ancho − 2 orillas de 4 − 6 huecos de 3) / 6,3714` (57 px a 390, 52 a 360); el campo mide 5 casillas y 4 huecos de alto.
- * - Tu mano, la más grande que entra a lo ancho (hasta 140 px); si no queda lugar para la línea mínima, se achica (hasta 64 px; abajo de eso la columna scrollea).
- * - 3D: la perspectiva baja el borde de arriba del campo `h² tan θ / (p + h tan θ)` (23 px a 390); la mano del rival cuelga de ese borde, así que ese hueco se le quita a su lugar y lo gana la línea.
+ * La geometría del duelo en el celular (Gastón, 2026-11-12: «evitar espacio vacío entre campo y mano, siempre intentar agrandar el campo»; «la mano del oponente siempre debe ser un espejo exacto de
+ * nuestra mano, aunque un poco más pequeña»). Pura: sale sólo del ancho y el alto de la pantalla (y de lo que miden la barra y la fila de abajo), nunca de lo que se muestra, así **el campo y la mano no
+ * se mueven nunca**. De abajo arriba: la fila de abajo, tu mano, 8 px, el campo de siete columnas, 6 px y la mano del rival; lo que sobra queda arriba, debajo de la barra.
+ * - La casilla es la que entra a lo ancho: `(ancho − 2 orillas de 4 − 6 huecos de 3) / 6,3714` (57 px a 390, 52 a 360). La fila, de una carta (×1,4612); tu mano se lleva lo que queda (de 64 px
+ *   hasta la que entra a lo ancho) y, si ni con 64 px entra, la fila baja hasta cuadrada (360 × 640). La carta de la casilla: 3 px menos que ella, sin pisar más de 11 px en defensa.
+ * - La mano del rival, a 0,8 de la tuya: su carta y el ancho de su abanico.
+ * - 3D: la perspectiva baja el borde de arriba del campo `drop` px (con el de abajo fijo); la caja crece eso hacia arriba, así lo que se ve queda donde de arriba (y la mano del rival, que cuelga
+ *   de ese borde, también).
  */
-export function phoneDuelLayout(width: number, height: number, { tilted, bar, rival, bottom }: PhoneDuelOptions): PhoneDuelLayout {
+export function phoneDuelLayout(width: number, height: number, { tilted, bar, bottom }: PhoneDuelOptions): PhoneDuelLayout {
   const cell = (width - 2 * PHONE_EDGE - 6 * PHONE_GAP) / FIELD_CELLS
   const fieldWidth = cell * FIELD_CELLS + 6 * PHONE_GAP
-  const fieldHeight = cell * 5 + 4 * PHONE_GAP
-  const drop = tilted ? (fieldHeight * fieldHeight * Math.tan(TILT)) / (PERSPECTIVE + fieldHeight * Math.tan(TILT)) : 0
-  const fieldTop = bar + rival
-  const fieldBoxTop = fieldTop - drop
-  const fieldBottom = fieldBoxTop + fieldHeight
+  const avail = height - bar - bottom
+  // Todo lo que no es campo, con una carta de mano `hand`: las dos manos (la del rival a 0,8), sus cajas y los dos huecos.
+  const hands = (hand: number) => hand * CARD_RATIO * (1 + RIVAL_SCALE) + HAND_ROOM + RIVAL_FAN + RIVAL_GAP + HAND_GAP
+  const rows = (row: number) => row * 5 + 4 * PHONE_GAP
+  const tallRow = cell * CARD_RATIO
   const fit = Math.min(HAND_CARD_MAX, (width - 2 * PHONE_EDGE) / HAND_FIT)
-  const free = height - bottom - (fit * CARD_RATIO + HAND_ROOM) - fieldBottom
-  const handCard = free >= LINE_MIN ? fit : Math.max(HAND_CARD_MIN, (height - bottom - LINE_MIN - fieldBottom - HAND_ROOM) / CARD_RATIO)
+  const handCard = Math.max(HAND_CARD_MIN, Math.min(fit, (avail - rows(tallRow) - hands(0)) / (CARD_RATIO * (1 + RIVAL_SCALE))))
+  const seen = rows(Math.max(cell, Math.min(tallRow, (avail - hands(handCard) - 4 * PHONE_GAP) / 5)))
+  // En 3D la caja es más alta: la que, inclinada, se ve del alto de la de arriba (`h − h² tan θ / (p + h tan θ) = visto`), así el campo sigue llenando el alto entre las dos manos.
+  const fieldHeight = tilted ? (seen * PERSPECTIVE) / (PERSPECTIVE - seen * Math.tan(TILT)) : seen
+  const drop = fieldHeight - seen
+  const row = (fieldHeight - 4 * PHONE_GAP) / 5
+  const card = Math.min(cell - PHONE_GAP, (cell + 2 * DEFENSE_OVERLAP) / CARD_RATIO, row / CARD_RATIO)
   const handHeight = handCard * CARD_RATIO + HAND_ROOM
-  const lineHeight = Math.max(LINE_MIN, Math.min(LINE_MAX, free))
-  const handTop = Math.max(fieldBottom + lineHeight, height - bottom - handHeight)
+  const handTop = height - bottom - handHeight
+  const lineTop = handTop - HAND_GAP
+  const fieldTop = lineTop - seen
+  const rivalCard = handCard * RIVAL_SCALE
+  const rivalRoom = rivalCard * CARD_RATIO + RIVAL_FAN
 
-  return { cell, fieldWidth, fieldHeight, fieldBoxTop, fieldTop, drop, rivalTop: bar, lineTop: fieldBottom, lineHeight, air: handTop - fieldBottom - lineHeight, handTop, handHeight, handCard, bottomTop: handTop + handHeight }
+  return {
+    cell, row, card, cardHeight: card * CARD_RATIO, cardTop: (row - card * CARD_RATIO) / 2,
+    fieldWidth, fieldHeight, fieldBoxTop: fieldTop - drop, fieldTop, drop,
+    rivalCard, rivalWidth: (width - 2 * PHONE_EDGE) * RIVAL_SCALE, rivalRoom, rivalGap: RIVAL_GAP, rivalTop: fieldTop - RIVAL_GAP - rivalRoom,
+    lineTop, gap: HAND_GAP, handTop, handHeight, handCard, bottomTop: handTop + handHeight,
+  }
 }
 
 /**

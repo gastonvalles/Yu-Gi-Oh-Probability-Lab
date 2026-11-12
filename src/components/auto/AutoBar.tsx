@@ -5,10 +5,10 @@ import type { RivalKind } from '../../app/handtraps'
 import { useDuelRails } from '../../app/duel-rails'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t, type MessageKey } from '../../i18n'
-import { LaneBanner, RAIL_LANE_STYLE, Setting, type LaneNotice } from '../duel/DuelBar'
+import { BAR_SEAT, LaneBanner, RAIL_LANE_STYLE, Setting, type LaneNotice } from '../duel/DuelBar'
 import { LifeScore } from '../duel/LifeScore'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext } from '../probability/MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext } from '../probability/MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
@@ -76,6 +76,8 @@ interface AutoBarProps extends AutoOptions {
   lane?: LaneNotice | null
   /** La línea del registro (sólo en el celular; `DuelLogTicker`). */
   log?: ReactNode
+  /** El celular: la chapa del rival (sus vidas), en la fila de los íconos, a la izquierda de deshacer. */
+  seat?: ReactNode
 }
 
 export { Setting }
@@ -239,11 +241,13 @@ export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: b
  * debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se
  * mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, onExit, onUndo, canUndo, onNewHand, lane = null, log, ...options }: AutoBarProps) {
+export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, onExit, onUndo, canUndo, onNewHand, lane = null, log, seat, ...options }: AutoBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const rails = useDuelRails()
+  // La píldora de las salidas (o el aviso de deshacer) va antes de la chapa del rival: la fila la lee acá y se la saca a los íconos.
+  const rules = useContext(MatRulesContext)
   // Repasando un combo en el celular: el paso va en el segundo renglón del aviso (la mesa lo da; los botones y la línea de tiempo quedan abajo).
   const replay = useContext(MatReplayContext)
 
@@ -319,10 +323,18 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
       <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-1 h-11', MAT_BAR_ROW)}>
         <ShellMenuButton className="-ml-2" />
         <MatExitButton onExit={onExit} />
-        {/* Los íconos, a la derecha, como en la práctica (el engranaje, al final, donde ella tiene «Guardar combo» y los pasos). */}
-        {actions('ml-auto')}
+        {/* Los íconos, a la derecha, como en la práctica (el engranaje, al final, donde ella tiene «Guardar combo» y los pasos). En el celular, antes de ellos, la chapa del rival. */}
+        {phone && seat ? (
+          <>
+            {rules}
+            <span data-bar-seat="" className={cx(BAR_SEAT, !rules && 'ml-auto')}>{seat}</span>
+            <MatRulesContext value={null}>{actions()}</MatRulesContext>
+          </>
+        ) : (
+          actions('ml-auto')
+        )}
       </div>
-      {/* En el celular la barra es sólo esta fila: las vidas van en las chapas junto a cada lado de la mesa y los avisos, en la línea (las pone la pantalla). */}
+      {/* En el celular la barra es sólo esta fila: las vidas del rival van en ella, las tuyas en tu chapa (abajo) y los avisos flotan sobre tu mano (los pone la pantalla). */}
       {phone ? null : (
         <>
           {/* El marcador, plano (Gastón, 2026-10-27, opción A; de 640 a 1100 px): «VOS 8000 · Tu turno · 1 · RIVAL 8000». La fase, en el botón del campo. */}

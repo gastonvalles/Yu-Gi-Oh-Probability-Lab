@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { useContext, useLayoutEffect, useRef, type CSSProperties } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import { pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
@@ -9,14 +9,14 @@ import { useMatView } from '../../app/mat-view'
 import { computeHandLayout, fanAngle } from '../../app/practice-hand-layout'
 import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
-import { THEIR_FAN_RISE, THEIR_HAND } from './their-hand'
+import { THEIR_FAN_RISE, THEIR_HAND, TheirHandSize } from './their-hand'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from '../probability/MatFx'
 import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
-import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
-import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
+import { CardBack, PILE_TITLES } from '../probability/MatDialogs'
+import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZONE_CARD, ZoneLines } from '../probability/PracticeMat'
 import { PileStack } from '../probability/PileStack'
 import { DECK_LAYERS } from '../probability/practice-styles'
 import { MaterialCount, MaterialStack } from '../probability/MaterialStack'
@@ -188,7 +188,7 @@ export function TheirHand({
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const view = useMatView()
   const boxRef = useRef<HTMLDivElement | null>(null)
-  const { cardWidth, maxWidth, room } = desktop ? THEIR_HAND.desktop : THEIR_HAND.mobile
+  const { cardWidth, maxWidth, room } = useContext(TheirHandSize) ?? (desktop ? THEIR_HAND.desktop : THEIR_HAND.mobile)
   const shown = Math.min(cards?.length ?? count, 12)
   // El tamaño sale de una mano de 5 y no cambia al jugar; la separación sí (con más cartas se juntan más).
   const layout = computeHandLayout(maxWidth, Math.max(1, shown), cardWidth, 5)
@@ -244,8 +244,8 @@ export function TheirHand({
       <div data-pointed={pointed ? 'true' : undefined} className="pointer-events-auto absolute inset-y-0" style={fanBox} />
       <div role={open ? 'group' : 'img'} aria-label={cards ? (cards.includes(null) ? (cards.some(Boolean) ? t('duel.hand.theirsPublic', { count: cards.length, cards: cards.flatMap((card) => (card ? [card.name] : [])).join(', ') }) : t('duel.hand.theirs', { count })) : t('duel.hand.theirsShown', { cards: cards.map((card) => card!.name).join(', ') })) : t('duel.hand.theirs', { count })} className="absolute inset-0 z-7">
         {Array.from({ length: shown }, (_, index) => {
-          // Ascendente, como la nuestra: el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
-          const raise = (((shown - 1) / 2) ** 2 - Math.abs(index - (shown - 1) / 2) ** 2) * THEIR_FAN_RISE
+          // El espejo de la nuestra (Gastón, 2026-11-12): el centro es lo más cercano al campo y las puntas suben, abiertas hacia el rival.
+          const raise = Math.abs(index - (shown - 1) / 2) ** 2 * THEIR_FAN_RISE
           const card = cards?.[index]
 
           return (
@@ -254,7 +254,7 @@ export function TheirHand({
               title={card?.name}
               // El ancho manda y el alto sale de la proporción de la carta (nunca los dos fijos).
               className={cx('pointer-events-auto absolute bottom-0 left-0 block aspect-[421/614] overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
-              style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
+              style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${-raise}px) rotate(${-fanAngle(index, shown, 2.2)}deg)` }}
             >
               {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
               {card?.public ? <i aria-hidden="true" data-public="" className="pointer-events-none absolute inset-0 border-2 border-warning motion-safe:animate-pulse" /> : null}
@@ -413,7 +413,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         data-attack-target={side.pickable?.has(placed.id) ? 'true' : undefined}
         data-glow={acting ? 'true' : 'false'}
         data-glow-kind={acting ? 'act' : undefined}
-        className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
+        className={cx(spot === 'field' ? 'absolute inset-x-0 top-0 mx-auto aspect-[421/614] w-full' : ZONE_CARD, 'overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, sideways && '[transform:rotate(90deg)]')}
       >
         <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180', link?.voided && VOIDED_ART)}>
           {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={link ? chainLinkLabel(named, link) : named} className="block h-full w-full object-cover" />}
@@ -468,7 +468,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
       <span className="absolute inset-0 overflow-hidden">
       {/* La carta de arriba del rival, como las de su campo, mira hacia él. */}
       {!rivalDeck && cards.length > 0 ? (art ? <CardArt key={shown} remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} /> : <CardBack key={shown} className={cx('h-full', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} />) : null}
-      <PileBadge label={PILE_SHORT[pile]} count={cards.length} />
+      <PileBadge count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {marked ? <TargetMark key={`mira:${shown}`} /> : null}
       </span>

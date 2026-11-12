@@ -367,14 +367,10 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const { turnMine, lane } = asks
   // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
   const newHand = useCallback(() => (resumed ? resumed.onNewHand() : redeal ? redeal() : session.restart(randomSeed())), [resumed, redeal, session])
-  const header = useMemo(
-    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} lane={lane} dock {...options} />,
-    [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, lane, options],
-  )
   // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
   // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 20 px sobre el borde de la mano (`-mt-5`, la chapa: la fila no crece y el campo no se corre). Con
   // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
-  // En el celular, las chapas: la del rival arriba a la derecha, junto a su mano, y la tuya abajo a la izquierda con el turno (la barra queda sólo con los íconos); el aviso va en la línea.
+  // En el celular, las chapas: la del rival en la fila de los íconos de la barra (`seat`) y la tuya abajo a la izquierda con el turno; el aviso flota sobre tu mano.
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const seated = docked || phone
   const turnText = turn > 0 ? (turnMine ? t('auto.bar.turnMine', { turn }) : t('duel.bar.theirTurnN', { name: rivalName, turn })) : undefined
@@ -390,7 +386,11 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     [phone, rails, docked, life.mine, turnText, turnMine],
   )
   const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} active={phone ? !turnMine : undefined} /> : undefined), [seated, rivalName, life.theirs, phone, turnMine])
-  // La línea, sólo con un aviso o un momento (invocar, atacar, el daño: `duel-moment.ts`, 1,5 s): sin ellos, la mesa pone la pista de fases (nunca queda vacía). El momento sólo se dice: nada lo espera.
+  const header = useMemo(
+    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} lane={lane} dock {...(phone ? { seat: corner } : {})} {...options} />,
+    [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, lane, options, phone, corner],
+  )
+  // La línea, sólo con un aviso o un momento (invocar, atacar, el daño: `duel-moment.ts`, 1,5 s), flotando sobre tu mano; sin ellos no hay nada. El momento sólo se dice: nada lo espera.
   const moment = useMoment(asks.matSession, life, snap.initial, reviewing, cardsById, nameOf)
   const shownLane = useMemo<LaneNotice | null>(() => lane ?? (moment ? { kind: 'ask', text: moment, actions: [] } : null), [lane, moment])
   const line = useMemo(() => (phone && shownLane ? <DuelLine lane={shownLane} rivalName={rivalName} /> : undefined), [phone, shownLane, rivalName])
@@ -401,7 +401,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     header,
     tools: null,
     life: myLife,
-    ...(seated ? { corner } : {}),
+    ...(docked ? { corner } : {}),
     ...(docked ? {} : { scoreInHeader: true }),
     ...(line ? { line } : {}),
     ...(docked ? { dock } : {}),

@@ -127,7 +127,7 @@ describe('auto-screen · el rival de handtraps', () => {
     expect(readHandtrapConfig().enabled).toBe(false)
   })
 
-  it('lo que activa el rival se cuenta después con la carta grande; la cadena va en su aviso, de a un eslabón y del último al primero (lo negado, en su eslabón); un rearme no lo repite', () => {
+  it('lo que activa el rival no sale en grande (en el automático lo muestra la cadena: decisión 9 de la fase); la cadena va en su aviso, de a un eslabón y del último al primero (lo negado, en su eslabón); un rearme no lo repite', () => {
     const { fakes } = mount()
     const fake = fakes[0]!
     const overlay = fake.getSnapshot().overlay
@@ -148,7 +148,8 @@ describe('auto-screen · el rival de handtraps', () => {
     expect(pill()).toHaveTextContent('Cadena · CL1 · VosEn espera')
     expect(pill().firstElementChild).toHaveTextContent(/^Cadena · CL1 · Vos$/)
     act(() => fake.set({ overlay: { ...overlay, chain: [mine, theirs] }, chainSteps: two }))
-    expect(screen.getByText('Rival responde a Maxx C')).toBeInTheDocument()
+    // Sin `Spotlight` de activar en el automático (ni lo propio ni lo del rival): lo cuenta la cadena.
+    expect(screen.queryByText('Rival responde a Maxx C')).toBeNull()
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
     expect(pill()).toHaveTextContent('Cadena · CL2 · RivalEn espera')
     expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. En espera', `Eslabón 2: ${ASH.name}, del rival. En espera`])

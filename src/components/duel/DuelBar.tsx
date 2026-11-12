@@ -287,6 +287,12 @@ export function LaneBanner({ lane, rivalName, rail = false, detail }: { lane: La
   )
 }
 
+/**
+ * La chapa del rival en la fila de los íconos del celular (Gastón, 2026-11-12: sus vidas, a la barra de arriba; pieza C-01 del kit): la misma `LifeBadge`, sin relleno arriba y abajo y con el número
+ * un paso más chico (`text-lead`), así entra en los 44 px de la fila y la barra no crece.
+ */
+export const BAR_SEAT = 'flex shrink-0 [&_[data-life-badge]]:py-0 [&_.text-stat]:text-lead'
+
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
@@ -307,7 +313,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
 
   useHostToasts(toastHost, rails)
   const [moreOpen, setMoreOpen] = useState(false)
-  // El celular (`phoneDuelLayout`): la barra es sólo la fila de los íconos; las vidas van en las chapas junto a cada lado de la mesa y el registro y los avisos, en la línea (las pone la pantalla).
+  // El celular (`phoneDuelLayout`): la barra es sólo la fila de los íconos, con la chapa del rival; la tuya va abajo y los avisos flotan sobre tu mano (los pone la pantalla).
   const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   // Con un aviso puesto sobre la línea del registro, esa línea no se ve (la misma fila: el campo no se mueve).
   const laneOpen = lane !== null
@@ -488,7 +494,13 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
         {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
         <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
         {clockButton}
-        <span className="-mr-2 ml-auto flex shrink-0 items-center">
+        {/* En el celular, la chapa del rival antes de los íconos (la tuya va abajo, con la botonera). */}
+        {phone ? (
+          <span data-bar-seat="" className={cx(BAR_SEAT, 'ml-auto')}>
+            <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} badge active={turn !== 'mine'} />
+          </span>
+        ) : null}
+        <span className={cx('-mr-2 flex shrink-0 items-center', !phone && 'ml-auto')}>
           {phone ? null : chat}
           {undo}
           {actions}
@@ -540,8 +552,8 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
 }
 
 /**
- * La línea del celular (`data-duel-line`, de alto fijo entre el campo y tu mano): una sola cosa por vez. Un aviso (el pedido de volver atrás, el del rival de pasar de fase, lo que está haciendo, el
- * núcleo que resuelve) se apoya encima de la última jugada (`log`) en el mismo lugar y del mismo alto; la cadena la pone la mesa antes que esto. Repasando un combo, el aviso dice el paso que se mira.
+ * Lo de la línea del celular, que flota sobre el borde de arriba de tu mano sólo mientras hay algo (no ocupa lugar): un aviso (el pedido de volver atrás, el del rival de pasar de fase, lo que está haciendo, el
+ * núcleo que resuelve), encima de la última jugada (`log`) si se la da. Repasando un combo, el aviso dice el paso que se mira.
  */
 export function DuelLine({ lane, rivalName, log = null }: { lane: LaneNotice | null; rivalName: string; log?: ReactNode }) {
   const replay = useContext(MatReplayContext)

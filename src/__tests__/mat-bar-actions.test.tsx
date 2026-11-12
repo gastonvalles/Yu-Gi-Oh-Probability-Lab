@@ -214,12 +214,12 @@ describe('la barra de la mesa es una sola', () => {
     expect(after(rival)).toBe(false)
     expect(after(mine)).toBe(true)
     expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-    // La fase, una sola vez: sin píldora en la barra; en el automático de escritorio, la pista de la línea de abajo del campo (el campo ya no lleva la ficha).
+    // La fase, una sola vez: sin píldora en la barra; su botón va en el medio del campo, entre las dos Zonas Extra (`p2`).
     expect(screen.queryByTestId('auto-phase')).toBeNull()
-    expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ }).closest('[data-duel-line]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ }).parentElement).toHaveStyle({ gridArea: 'p2' })
   })
 
-  it('en el celular en vertical las vidas salen de la barra: las chapas van junto a cada lado (la tuya abajo con el turno y «Pasos y combos» en la botonera, la del rival junto a su mano) y el ⋯ no repite «Pasos y combos»', () => {
+  it('en el celular en vertical las vidas salen del marcador: tu chapa abajo (con el turno y «Pasos y combos» en la botonera) y la del rival en la fila de los íconos de la barra; el ⋯ no repite «Pasos y combos»', () => {
     const original = window.matchMedia
 
     onTestFinished(() => {
@@ -234,7 +234,8 @@ describe('la barra de la mesa es una sola', () => {
 
     expect(mine).toHaveAttribute('data-life-badge')
     expect(within(seat).getByRole('button', { name: 'Pasos y combos' })).toBeInTheDocument()
-    expect(document.querySelector('[data-corner="theirs"] [data-life-badge]')).toHaveAccessibleName('Puntos de vida de Rival: 8000')
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('group', { name: 'Puntos de vida de Rival: 8000' })).toHaveAttribute('data-life-badge')
+    expect(document.querySelector('[data-corner="theirs"]')).toBeNull()
     expect(menuRows().map((row) => row.text)).not.toContain('Pasos y combos')
   })
 

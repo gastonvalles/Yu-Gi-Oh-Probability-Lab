@@ -1944,7 +1944,8 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
       // Sin barra de abajo (Gastón, 2026-10-27): hasta 1100 px las vidas van en el marcador de la barra (`scoreInHeader`, con las vidas de 44 px); en escritorio, planas y cada una en su esquina
       // (opción D2): la del rival arriba a la derecha del campo, junto a su mano, y la tuya abajo a la izquierda, subida 20 px sobre el borde de tu mano (`-mt-5`, la chapa: la fila no crece). Las dos abren la calculadora.
-      // En el celular, las chapas (la tuya abajo a la izquierda con el turno y, a su lado, la botonera con el chat; la del rival junto a su mano) y la línea con la última jugada y los avisos.
+      // En el celular, las chapas (la tuya abajo a la izquierda con el turno y, a su lado, la botonera con el chat; la del rival en la barra: `DuelBar`) y los avisos, que flotan sobre tu mano sólo
+      // mientras están (la última jugada queda en el chat).
       life: phone ? (
         <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} badge turn={turn === 'mine' ? t('duel.bar.yourTurnN', { turn: turnNumber }) : t('duel.bar.theirTurnN', { name: rivalName, turn: turnNumber })} turnMine={turn === 'mine'} />
       ) : docked ? (
@@ -1952,9 +1953,9 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
           <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} badge />
         </span>
       ) : null,
-      ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} badge active={phone ? turn !== 'mine' : undefined} /> } : {}),
+      ...(docked ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} badge /> } : {}),
       ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
-      ...(phone ? { line: <DuelLine lane={lane} rivalName={rivalName} log={logTicker} />, dock: chatToggle } : {}),
+      ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: chatToggle } : {}),
       // Deshacer va en la barra de arriba (`MatUndoContext`).
       undoInHeader: true,
       cover: paused ? (

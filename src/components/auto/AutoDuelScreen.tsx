@@ -620,8 +620,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         {...(reason ? { resultReason: reason } : {})}
       />
     ),
-    // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): en el celular, las chapas (la tuya abajo con el turno y la botonera, la del rival junto a su mano) y la línea; de 640
-    // a 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, cada chapa en su esquina (D2).
+    // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): en el celular, las chapas (la tuya abajo con el turno y la botonera, la del rival en la barra: `DuelBar`) y el aviso, que
+    // flota sobre tu mano sólo mientras está (la última jugada queda en el chat); de 640 a 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, cada chapa en su esquina (D2).
     life: phone ? (
       <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge turn={turnText} turnMine={asks.turnMine} />
     ) : docked ? (
@@ -629,9 +629,9 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge />
       </span>
     ) : null,
-    ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge active={phone ? !asks.turnMine : undefined} /> } : {}),
+    ...(docked ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge /> } : {}),
     ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
-    ...(phone ? { line: <DuelLine lane={lane} rivalName={rivalName} log={logTicker} />, dock: chatToggle } : {}),
+    ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: chatToggle } : {}),
     tools: null,
     // El chat: en escritorio, fijo a la derecha (con las reacciones); hasta 1100 px, en su panel (lo abre su botón de la barra), con las reacciones.
     aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,

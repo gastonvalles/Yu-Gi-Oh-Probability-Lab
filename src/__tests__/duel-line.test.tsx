@@ -8,15 +8,14 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import type { DuelConnect } from '../app/use-duel'
 import { ChainNotice } from '../components/auto/ChainNotice'
 import { LifeBadge } from '../components/duel/LifeScore'
-import { THEIR_HAND } from '../components/duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, phoneDuelLayout } from '../components/probability/compact-field'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 import { t } from '../i18n'
 import { asSocket, createDuelHarness, phaseChip, render } from './support/duel-screen-harness'
 
 /**
- * La mesa del duelo en el celular (Gastón, 2026-11-10: «el cartel con la info de la carta empujaría el campo y no debería»): las vidas en chapas junto a cada lado y, entre el campo y tu mano, la
- * línea de alto fijo con una sola cosa por vez (la cadena, un aviso o la última jugada). Nada de lo que aparece cambia su alto ni mueve el campo.
+ * La mesa del duelo en el celular (Gastón, 2026-11-12: «evitar espacio vacío entre campo y mano»): las vidas en chapas (la del rival en la barra) y, entre el campo y tu mano, nada: la línea es una
+ * marca de 0 px y lo que dice (un aviso) flota sobre tu mano sólo mientras está. Nada de lo que aparece mueve el campo.
  */
 vi.setConfig({ testTimeout: 20_000 })
 
@@ -52,46 +51,52 @@ afterEach(() => {
 })
 
 describe('la línea del celular', () => {
-  it('mide siempre lo mismo y el campo no se mueve: sin nada, con la última jugada y con un aviso encima', () => {
+  it('no ocupa lugar: es una marca de 0 px en el borde de abajo del campo; la última jugada no sale en la mesa y un aviso flota sobre tu mano sólo mientras está, sin mover el campo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
-    const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 58, rival: THEIR_HAND.mobile.room + 14, bottom: 68 })
+    const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 58, bottom: 68 })
     // Quien tiene el turno pasa de fase y le pregunta al otro: su línea dice que espera.
     const [mover, other] = phaseChip(host).hasAttribute('disabled') ? [guest, host] : [host, guest]
     const line = () => mover.container.querySelector<HTMLElement>('[data-duel-line]')!
     const field = () => within(mover.container).getByLabelText('Campo')
-    const geometry = () => ({ line: line().style.height, air: line().style.marginBottom, field: [field().style.width, field().style.height, field().style.marginTop] })
+    const geometry = () => ({ line: [line().className, line().style.marginBottom], field: [field().style.width, field().style.height, field().style.marginTop, field().style.gridTemplateRows] })
     const before = geometry()
 
-    expect(line().style.height).toBe(`${layout.lineHeight}px`)
-    expect(line().querySelector('[data-lane]')).toBeNull()
+    expect(line()).toHaveClass('h-0')
+    expect(line().style.marginBottom).toBe(`${layout.gap}px`)
+    expect(field().style.height).toBe(`${layout.fieldHeight}px`)
+    expect(line().childElementCount).toBe(0)
 
-    // La última jugada: el registro, en la línea (las vidas que cambia el rival con su calculadora).
+    // La última jugada (las vidas que cambia el rival con su calculadora) queda en el chat: la mesa no la muestra.
     changeLife(other, ['1', '0', '0', '0'])
-    expect(within(line()).getByRole('button', { name: new RegExp(`^${t('duel.log.open')}`) })).toBeInTheDocument()
+    expect(within(line()).queryByRole('button', { name: new RegExp(`^${t('duel.log.open')}`) })).toBeNull()
     expect(geometry()).toEqual(before)
 
-    // Un aviso se apoya encima de la última jugada, en el mismo lugar y del mismo alto.
+    // Un aviso flota sobre el borde de arriba de tu mano (no ocupa lugar ni corre el campo).
     fireEvent.click(phaseChip(mover))
     fireEvent.click(screen.getByRole('menuitem', { name: /Battle Phase/ }))
     flush()
     expect(line().querySelector('[data-lane="passAsking"]')).not.toBeNull()
+    expect(line().firstElementChild).toHaveClass('absolute', 'top-0', 'h-11', 'pointer-events-none')
     expect(geometry()).toEqual(before)
   })
 
-  it('la cadena va adentro de la línea (sus filas, no una hoja aparte) y llena su alto', () => {
+  it('la cadena va en su capa, sobre el campo: sus filas en una franja, no una hoja aparte', () => {
     const rows = [
       { number: 1, who: 'Vos', mine: true, name: 'Engage', art: null, state: 'chained' as const },
       { number: 2, who: 'Rival', mine: false, name: 'Ash Blossom', art: null, state: 'chained' as const },
     ]
-    const { container } = render(
-      <div data-duel-line="" style={{ height: 96 }}>
-        <ChainNotice rows={rows} focus={1} resolving={false} open compact onOpenChange={() => {}} onPick={() => {}} />
+    // La franja de la capa (`PracticeMat`, 96 px), como la arma la mesa.
+    render(
+      <div data-testid="duel-chain-layer">
+        <div className="h-24">
+          <ChainNotice rows={rows} focus={1} resolving={false} open compact onOpenChange={() => {}} onPick={() => {}} />
+        </div>
       </div>,
     )
     const chain = screen.getByTestId('chain-notice')
 
-    expect(container.querySelector('[data-duel-line]')).toContainElement(chain)
+    expect(screen.getByTestId('duel-chain-layer')).toContainElement(chain)
     expect(chain).toHaveClass('h-full', 'bg-card-background/88')
     expect(within(chain).getAllByRole('listitem')).toHaveLength(2)
     expect(document.querySelector('[data-lowered]')).toBeNull()
