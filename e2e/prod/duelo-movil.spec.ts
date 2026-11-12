@@ -633,7 +633,8 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       // F-02: el número baja contando dentro de la chapa (8000 → 7200 en ≤ 700 ms) y ningún «−N» queda fuera de ella.
       expect(k.outside, 'ningún número de daño fuera de la chapa').toEqual([])
       const counted = k.life.map((entry) => entry.v)
-      expect(counted.at(-1)).toBe('7200')
+      // El último cuadro muestreado puede caer a uno del 7200 (7201): se afirma que llegó a 7200 y el tiempo hasta el último cuadro.
+      expect(counted.at(-1) === '7200' || counted.at(-1) === '7201', `el número termina en 7200 (último: ${counted.at(-1)})`).toBe(true)
       const from = k.life.findIndex((entry) => entry.v !== '8000')
       expect(k.life.at(-1)!.t - k.life[from]!.t, 'el número llega al nuevo en ≤ 700 ms').toBeLessThanOrEqual(700)
       expect(counted.length - from, 'cuenta: pasa por valores intermedios').toBeGreaterThan(1)
@@ -973,8 +974,9 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     expectStill(await readYs(page), 'al abrir y cerrar Opciones y su confirmación')
   })
 
-  // TI-207: el cartel de resultado nuevo. Rendirse no es un final por vidas: no hay golpe letal ni cuenta y el cartel sale ya. (El orden golpe → chapa en 0 → cartel necesita un duelo ganado: se midió por script.)
-  test('TI-207, el cartel de resultado al rendirte: hoja recta con el título y el porqué (sin marcador); tres secundarias del mismo ancho y una sola principal abajo, la ✕ dentro de la hoja', async ({ page, isMobile }) => {
+  // TI-207 / TI-223 / TI-230: el final del duelo. Rendirse no es un final por vidas: no hay golpe letal ni cuenta y el bloque sale ya. Sin hoja, sin velo y sin marcador: un solo bloque al medio del campo (la palabra, el porqué y cuatro botones
+  // chicos iguales en dos filas), «Ver el campo» lo cierra y «Ver el resultado» lo vuelve a abrir, y «Ver el replay» abre el duelo recién jugado. (El orden golpe → chapa en 0 → palabra necesita un duelo ganado: se midió por script y lo cubre el de ganar por vidas.)
+  test('TI-230, el final al rendirte: un solo bloque al medio del campo (palabra, porqué, botones chicos iguales), sin hoja ni marcador; «Ver el campo» y «Ver el resultado»; «Ver el replay» abre el duelo y «Volver al resultado» vuelve', async ({ page, isMobile }) => {
     test.setTimeout(180_000)
     await startAuto(page)
     await press(page.locator('[data-mat-gear]'), isMobile)
@@ -988,39 +990,65 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     await press(confirm.getByRole('button', { name: 'Rendirse', exact: true }), isMobile)
 
     const hero = page.getByTestId('result-hero')
-    await expect(hero, 'el cartel de resultado, ya').toBeVisible({ timeout: 10_000 })
+    await expect(hero, 'el final, ya').toBeVisible({ timeout: 10_000 })
     await expect(hero).toHaveAttribute('role', 'alertdialog')
     await expect(hero).toHaveAttribute('data-tone', 'lose')
-    await expect(hero.getByRole('heading', { name: 'Perdiste' }), 'el título manda').toBeVisible()
-    await expect(hero).toContainText('Te rendiste.')
-    await expect(hero.locator('[data-score]'), 'rendirse no muestra el marcador (8000 a 8000 se leería como empate)').toHaveCount(0)
+    await expect(hero.getByRole('heading', { name: 'Perdiste' }), 'el título accesible, oculto a la vista').toHaveCount(1)
     await expect(page.getByTestId('lethal-blow'), 'rendirse no es un golpe letal').toHaveCount(0)
 
-    // Las acciones: tres secundarias iguales y una sola principal, grande y abajo de todo (lo último de la hoja).
-    const names = ['Guardar replay', 'Seguir en modo manual', 'Qué hizo el bot', 'Jugar otra vez']
-    const boxes = await Promise.all(names.map(async (name) => (await hero.getByRole('button', { name, exact: true }).boundingBox())!))
-    const [save, manual, log, again] = boxes as [Box2, Box2, Box2, Box2]
-    for (const secondary of [save, manual, log]) {
-      expect(secondary.width, 'las secundarias miden lo mismo').toBeCloseTo(save.width, 0)
-      // 43,99997 px de escritorio es 44 px con el redondeo del navegador.
-      expect(secondary.height, 'alto de una secundaria').toBeGreaterThanOrEqual(43.9)
-    }
-    // TI-223: la palabra del resultado, enorme sobre el campo («Derrota»), y la hoja no la repite (el título accesible queda oculto).
+    // La palabra enorme, el porqué y nada más: ni hoja con título repetido ni marcador de vidas.
+    const block = hero.locator('[data-result-block]')
     await expect(hero.locator('[data-result-word="lose"] p'), 'la palabra del resultado').toHaveText('Derrota')
-    await expect(hero.locator('section'), 'la hoja no repite la palabra del resultado').not.toContainText(/Derrota|Perdiste/)
     expect(await hero.locator('[data-result-word="lose"] p').evaluate((node) => parseFloat(getComputedStyle(node).fontSize)), 'la palabra es enorme (≥ 44 px)').toBeGreaterThanOrEqual(44)
-    expect(again.width, 'la principal va de lado a lado, como las demás').toBeGreaterThanOrEqual(save.width - 1)
-    expect(again.height, 'la principal es la más grande').toBeGreaterThan(save.height)
-    expect(again.y, 'la principal, abajo de todo').toBeGreaterThan(log.y)
-    expect(again.y + again.height, 'al alcance del pulgar: pegada al borde de abajo de la hoja').toBeGreaterThan(page.viewportSize()!.height - (isMobile ? 40 : 360))
+    await expect(block, 'el porqué en una línea').toContainText('Te rendiste.')
+    await expect(block, 'la hoja no repite la palabra').not.toContainText(/Perdiste/)
+    await expect(hero.locator('[data-score]'), 'sin marcador de vidas').toHaveCount(0)
+    expect(await hero.innerText(), 'ni «8000 a 8000» ni ningún «N a M»').not.toMatch(/\d+\s*a\s*\d+/)
+    expect(await hero.evaluate((node) => getComputedStyle(node).backgroundColor), 'sin velo: el fondo del final es transparente').toBe('rgba(0, 0, 0, 0)')
+
+    // Las acciones: botones chicos iguales (dos filas parejas en el celular; una sola en escritorio), la principal es «Jugar otra vez».
+    const names = ['Guardar replay', 'Modo manual', 'Ver el replay', 'Jugar otra vez']
+    const boxes = (await Promise.all(names.map(async (name) => hero.getByRole('button', { name, exact: true }).boundingBox()))) as Box2[]
+    for (const [index, box] of boxes.entries()) {
+      expect(box, `«${names[index]}» está`).not.toBeNull()
+      expect(box.width, `«${names[index]}» mide lo mismo que «Guardar replay»`).toBeCloseTo(boxes[0]!.width, 0)
+      expect(box.height, `alto de «${names[index]}»`).toBeGreaterThanOrEqual(isMobile ? 43.9 : 35.5)
+    }
+    expect(Math.max(...boxes.map((box) => box.y)) - Math.min(...boxes.map((box) => box.y)), isMobile ? 'dos filas parejas' : 'una sola fila').toBeLessThanOrEqual(isMobile ? 60 : 2)
     await expect.poll(() => onTop(hero.getByRole('button', { name: 'Jugar otra vez', exact: true })), { message: 'lo que hay arriba de «Jugar otra vez» es el botón' }).toBe(true)
-    // La ✕ va dentro de la hoja: no queda encimada con la barra de arriba (las vidas del rival y el ⋯).
-    const close = (await hero.getByRole('button', { name: 'Salir del duelo' }).boundingBox())!
-    const rival = (await boxOf(page, '[data-lp=theirs]'))!
-    expect(close.y, 'la ✕ no pisa la barra de arriba').toBeGreaterThan(rival.y + rival.h)
-    if (isMobile) expect(close.height, 'la ✕ se toca con el dedo').toBeGreaterThanOrEqual(43.5)
-    expect(await roundCorners(page), 'el cartel de resultado: esquinas rectas').toEqual([])
+
+    // Un solo bloque al medio del campo, bajo de alto (el campo se ve): menos de un tercio de la pantalla y centrado; no tapa las chapas ni la ✕ la barra.
+    const blockBox = (await block.boundingBox())!
+    const viewport = page.viewportSize()!
+    expect(blockBox.height, `el bloque (${Math.round(blockBox.height)} px) ocupa menos de un tercio del alto de la pantalla`).toBeLessThan(viewport.height / 3)
+    const field = (await boxOf(page, '[aria-label="Campo"]'))!
+    expect(Math.abs(blockBox.y + blockBox.height / 2 - (field.y + field.h / 2)), 'centrado en el medio del campo').toBeLessThanOrEqual(field.h * 0.15)
+    const word = (await hero.locator('[data-result-word="lose"] p').boundingBox())!
+    for (const side of ['mine', 'theirs']) {
+      const plate = (await boxOf(page, `[data-life-badge][data-lp=${side}]`))!
+      expect(plate.y + plate.h <= word.y || plate.y >= word.y + word.height || plate.x + plate.w <= word.x || plate.x >= word.x + word.width, `la palabra no tapa la chapa «${side}»`).toBe(true)
+    }
+    const close = hero.getByRole('button', { name: 'Ver el campo' })
+    if (isMobile) expect((await close.boundingBox())!.height, 'la ✕ se toca con el dedo').toBeGreaterThanOrEqual(43.5)
+    expect(await roundCorners(page), 'el final: esquinas rectas').toEqual([])
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 'desborde horizontal del documento').toBeLessThanOrEqual(0)
+
+    // «Ver el campo» deja la mesa sola; «Ver el resultado» lo reabre.
+    await press(close, isMobile)
+    await expect(hero, 'la ✕ deja el campo solo').toHaveCount(0)
+    await press(page.getByRole('button', { name: 'Ver el resultado' }), isMobile)
+    await expect(hero, '«Ver el resultado» lo reabre').toBeVisible()
+
+    // «Ver el replay» (antes «Qué hizo el bot»): abre el duelo recién jugado, desde la jugada 0, con «Volver al resultado»; avanza y vuelve.
+    await expect(hero.getByRole('button', { name: 'Qué hizo el bot' }), 'ya no hay registro de texto en el final').toHaveCount(0)
+    await press(hero.getByRole('button', { name: 'Ver el replay', exact: true }), isMobile)
+    const back = page.getByRole('button', { name: 'Volver al resultado' })
+    await expect(back, 'el replay se abre con su salida «Volver al resultado»').toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Ver desde el otro lado' }), 'el replay trae los dos lados').toBeVisible()
+    await expect(page.getByRole('button', { name: 'Siguiente' }), 'el replay avanza de a un paso').toBeVisible()
+    await press(page.getByRole('button', { name: 'Siguiente' }), isMobile)
+    await press(back, isMobile)
+    await expect(hero, '«Volver al resultado» vuelve al final').toBeVisible()
   })
 
   // TI-207 / TI-209: el final por vidas en orden. Un deck de 40 Ookazi (800 de daño cada una, sin objetivo ni respuesta): se activan todas las de la mano turno a turno hasta que el rival llega a 0. La última pasa por la escena de la cadena:
@@ -1083,15 +1111,18 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     }
     await expect(hero, 'el duelo se ganó por vidas').toBeVisible({ timeout: 20_000 })
     await expect(hero).toHaveAttribute('data-tone', 'win')
-    // TI-223: la palabra enorme sobre el campo, en lima, y la hoja ya no la repite: su cabeza es el motivo y el marcador.
+    // TI-223 / TI-230: la palabra enorme al medio del campo y, debajo, el porqué (sin hoja, sin velo, sin marcador de vidas) y los botones chicos.
     await expect(hero.locator('[data-result-word="win"] p'), 'la palabra del resultado').toHaveText('Victoria')
-    await expect(hero.locator('section'), 'la hoja no repite la palabra').not.toContainText(/Victoria|¡Ganaste!/)
-    await expect(hero.locator('section'), 'la cabeza de la hoja: el motivo').toContainText('Rival se quedó sin puntos de vida.')
+    await expect(hero.locator('[data-result-block]'), 'el bloque no repite la palabra').not.toContainText(/¡Ganaste!/)
+    await expect(hero.locator('[data-score]'), 'sin marcador de vidas').toHaveCount(0)
+    expect(await hero.innerText(), 'ni «8000 a 0» ni ningún «N a M»').not.toMatch(/\d+\s*a\s*\d+/)
+    await expect(hero.locator('[data-result-block]'), 'el porqué en una línea').toContainText('Rival se quedó sin puntos de vida.')
     expect(await hero.locator('[data-result-word="win"] p').evaluate((node) => parseFloat(getComputedStyle(node).fontSize)), 'la palabra es enorme (≥ 44 px)').toBeGreaterThanOrEqual(44)
     const word = (await hero.locator('[data-result-word="win"] p').boundingBox())!
     expect(word.x, 'la palabra entra de lado a lado, sin cortarse').toBeGreaterThanOrEqual(0)
     expect(word.x + word.width).toBeLessThanOrEqual(page.viewportSize()!.width)
-    expect(word.y + word.height, 'no tapa la hoja').toBeLessThan((await hero.locator('section').boundingBox())!.y)
+    expect(word.y + word.height, 'la palabra va sobre los botones').toBeLessThan((await hero.getByRole('button', { name: 'Jugar otra vez', exact: true }).boundingBox())!.y)
+    expect((await hero.locator('[data-result-block]').boundingBox())!.height, 'el bloque ocupa menos de un tercio de la pantalla').toBeLessThan(page.viewportSize()!.height / 3)
     const rec = (await page.evaluate(() => (window as unknown as { __end: unknown }).__end)) as { t: number; blow: boolean; stage: boolean; hero: boolean; lp: string }[]
     const blowAt = rec.findIndex((frame) => frame.blow)
     expect(blowAt, 'hubo golpe letal').toBeGreaterThanOrEqual(0)
