@@ -1,4 +1,5 @@
 import { effectSentences, type TextRange } from '../card-text'
+import { READ_MS } from '../chain-motion'
 import type { CardRef, ChainLink } from './adapter'
 import { LOCATION as L, splitDesc, type WireEvent } from './protocol'
 
@@ -154,10 +155,13 @@ export const CHAIN_SOLVE_MS = 750
 /** Cuánto se ve un eslabón que se suma (y una activación suelta al resolverse): breve. */
 export const CHAIN_LINK_MS = 700
 
+/** La pausa de lectura de lo negado o sin efecto (`READ_MS` de chain-motion.ts): el eslabón se queda con su tajo y «por quién» antes de soltarse. Sólo ahí. */
+export const CHAIN_READ_MS = READ_MS
+
 /**
  * Cuánto queda a la vista el paso `i` antes de mostrar el siguiente: un eslabón que se suma, `CHAIN_LINK_MS` (una activación suelta no se cuenta dos veces: pasa directo a
- * resolverse); uno que se resuelve o se niega, `CHAIN_SOLVE_MS` (suelto, `CHAIN_LINK_MS`); el que terminó de resolverse, llegar a uno ya negado (ya se leyó «Negada») y el
- * final, nada (el siguiente ya lo dice).
+ * resolverse); uno que se resuelve, `CHAIN_SOLVE_MS` (suelto, `CHAIN_LINK_MS`); uno que se niega o queda sin efecto, además `CHAIN_READ_MS`; el que terminó de resolverse,
+ * llegar a uno ya negado (ya se leyó «Negada») y el final, nada (el siguiente ya lo dice).
  */
 export function chainDwell(steps: readonly ChainStep[], i: number): number {
   const step = steps[i]
@@ -169,7 +173,7 @@ export function chainDwell(steps: readonly ChainStep[], i: number): number {
   if (step.kind === 'chain') return size === 1 && steps[i + 1]?.kind === 'solving' ? 0 : CHAIN_LINK_MS
   if (step.kind === 'solving' && feed?.rows[step.index]?.state !== 'solving') return 0
 
-  return size > 1 ? CHAIN_SOLVE_MS : CHAIN_LINK_MS
+  return (size > 1 ? CHAIN_SOLVE_MS : CHAIN_LINK_MS) + (step.kind === 'negated' || step.kind === 'disabled' ? CHAIN_READ_MS : 0)
 }
 
 /** Cuántos pasos llegaron hasta la jugada `cursor` de tu mesa (los que se dan por vistos al saltar o al rearmarse). */

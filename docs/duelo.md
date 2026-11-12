@@ -14,7 +14,7 @@ Dos personas juegan la mesa de práctica una contra la otra, cada una en su disp
 La de la práctica (`PracticeMat` con la prop `duel`), con el campo del rival espejado arriba y las Extra Monster Zones compartidas en el medio. Barajar y repartir: `app/shuffle-fx.ts` y `app/deal-flight.ts`, con muestra en `/playground`. Robar no baraja tu mano; sumar una carta a la mano del rival sí, para que no se adivine cuál es la nueva (`hiddenHand` de `matEffects`).
 
 - **Cada uno es dueño de lo suyo:** cada jugador mueve sólo sus cartas, sus vidas y su reloj de turnos; lo que le pasa a una carta del rival lo hace él en su mesa, a pedido por el chat, Target o Señalar. Deshacer vuelve la última jugada de la mesa, sea de quien sea: con el rival presente se le pide permiso, y si la jugada es suya la deshace él. Cambiar el control de una carta son dos jugadas, una en cada mesa, que se completan solas (`mat-control.ts`) y no se deshacen; un Xyz pasa con sus materiales si los dos anunciaron `xyz-materials` (si no, van al cementerio de quien da), y una ficha se da si el otro anunció `token-control` (pone una suya; sin lugar, se pierde). Quien llega a cero en el reloj de turnos se rinde desde su propio dispositivo: un cliente modificado podría no hacerlo y no hay servidor que lo corte.
-- **ATK/DEF siempre y Nivel/Rango/LINK si es seguro** en cada monstruo boca arriba de los dos lados, sin cambiar su caja (`StatTag`).
+- **ATK/DEF al pie, nunca sobre el arte** (`StatTag`), en cada monstruo boca arriba; el Nivel/Rango/LINK va en la ficha y vuelve al elegir.
 - **La mesa no valida:** el que juega manda (los materiales son opcionales) y el asistente avisa, no decide (`docs/motor-de-cartas.md`, capa 2).
 - **Péndulo de varias:** «Invocar varias por Péndulo» elige de la mano y del Extra boca arriba en una hoja (`PendulumPicker`) y emite una jugada `place` por carta, con la posición y la zona de siempre (sin cambiar el protocolo). El rango (`app/pendulum-range.ts`) marca y avisa lo que no entra, no lo frena: un efecto puede cambiarlo; con una escala sin dato (deck guardado sin `scale`) es «sin rango», nunca un número inventado. Un Péndulo que va al Extra va siempre boca arriba, por cualquier ruta (`extraToward` en `practice-mat.ts`).
 - **La mesa no se mueve:** nada de lo que aparece (avisos, pregunta de fase, resultado, línea de jugadas) suma alto, y las manos nunca tapan el campo; el alto de las manos sale del presupuesto de la casilla (`classicCell` en `duel-rails.ts`).
@@ -24,7 +24,7 @@ La de la práctica (`PracticeMat` con la prop `duel`), con el campo del rival es
 
 ### En un celular
 
-- El campo de siete columnas de escritorio, con geometría fija bajo 640 px (`phoneDuelLayout`): cada pieza sale del tamaño de la pantalla y nada de lo que aparece la mueve; la cadena va en la línea de alto fijo.
+- El campo de siete columnas de escritorio, con geometría fija bajo 640 px (`phoneDuelLayout`): cada pieza sale del tamaño de la pantalla y nada de lo que aparece la mueve; la cadena va en la línea de alto fijo. En el automático la línea (también desde 1101 px, con el botón del turno) reemplaza la ficha de la fase, que queda de 640 a 1100 px.
 - Hasta 1100 px no hay barra de abajo: las vidas van en el marcador de arriba (`LifeScore`), y las salidas y problemas de la mano de apertura, en una píldora (`RulesPill`) que nunca flota sobre el campo ni se abre sola. La caja de la mano del rival no cambia de ancho: el abanico se corre con la `transform` de cada dorso.
 
 ### Visor de pilas

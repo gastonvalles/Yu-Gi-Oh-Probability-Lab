@@ -124,9 +124,36 @@ describe('la barra de arriba de escritorio', () => {
     shell({ immersive: true })
 
     expect(screen.queryByTestId('app-navbar')).not.toBeInTheDocument()
-    expect(within(document.querySelector('aside') as HTMLElement).getByRole('button', { name: 'Contraer menú' })).toBeInTheDocument()
+    expect(within(document.querySelector('aside') as HTMLElement).getByRole('button', { name: 'Expandir menú' })).toBeInTheDocument()
 
     fireEvent.keyDown(window, { key: '/' })
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
+  it('en la mesa el menú se pliega al riel sin tocar la preferencia; abrirlo vale por ese rato y al salir vuelve como estaba; el lobby no se pliega', () => {
+    localStorage.setItem('ygo-lab:sidebar-collapsed', '0')
+    const view = (immersive: boolean, navbar: boolean) => (
+      <AppShell groups={GROUPS} activeKey="duel" onSelect={() => {}} immersive={immersive} navbar={navbar}>
+        <p>pantalla</p>
+      </AppShell>
+    )
+    const { rerender } = render(view(true, true))
+    const aside = () => document.querySelector('aside') as HTMLElement
+
+    // El lobby (pantalla completa, con la barra de arriba): el menú como lo dejaste.
+    expect(aside()).toHaveAttribute('data-collapsed', 'false')
+
+    rerender(view(true, false))
+    expect(aside()).toHaveAttribute('data-collapsed', 'true')
+    expect(aside().style.width).toBe('76px')
+
+    fireEvent.click(within(aside()).getByRole('button', { name: 'Expandir menú' }))
+    expect(aside()).toHaveAttribute('data-collapsed', 'false')
+    fireEvent.click(within(aside()).getByRole('button', { name: 'Contraer menú' }))
+    expect(aside()).toHaveAttribute('data-collapsed', 'true')
+    expect(localStorage.getItem('ygo-lab:sidebar-collapsed')).toBe('0')
+
+    rerender(view(false, true))
+    expect(aside()).toHaveAttribute('data-collapsed', 'false')
   })
 })

@@ -70,7 +70,7 @@ describe('la ficha de una carta en el automático', () => {
     expect(within(sheet).queryByText(/Más|⋯/)).toBeNull()
     expect(within(sheet).getByRole('menu').firstElementChild).toHaveClass('grid-cols-5', '@min-[36rem]:grid-cols-8')
     // Esquinas rectas (los radios de los tokens en 0) y fondo al 92 % sin desenfoque.
-    expect(sheet).toHaveClass('mat-square', 'bg-card-background/92')
+    expect(sheet).toHaveClass('mat-square', 'bg-card-background')
     expect(sheet.className).not.toMatch(/backdrop-/)
     expect(fixedRadii(sheet)).toEqual([])
 

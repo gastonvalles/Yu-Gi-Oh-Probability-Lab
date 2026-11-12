@@ -5,6 +5,7 @@ import '@testing-library/jest-dom'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { READ_MS } from '../app/chain-motion'
 import { ChainLinks, ChainListRows, type ChainNoticeRow } from '../components/auto/chain-parts'
 
 // La pila de la cadena se anima sólo cuando un eslabón cambia entre un dibujo y el siguiente (comparado por su número): nunca al montarse ya armada ni con movimiento reducido.
@@ -129,10 +130,13 @@ describe('los eslabones de la línea (`ChainLinks`): encajan, se tensan, se suel
     act(() => void vi.advanceTimersByTime(270))
     expect(li(2)).toBeNull()
 
-    // Sin efecto: se desliza abajo (y queda apagado mientras).
+    // Sin efecto: el eslabón se apaga (no su texto), se queda quieto READ_MS para leerlo y después se desliza abajo.
     view.rerender(links([link(1, 'disabled', 2), link(2, 'solved')]))
     act(() => void vi.advanceTimersByTime(160))
-    expect(li(1)).toHaveClass('animate-slide-off', 'opacity-45')
+    expect(li(1)!.className).not.toMatch(/animate-slide-off/)
+    expect(li(1)!.querySelectorAll('.opacity-45')).toHaveLength(2)
+    act(() => void vi.advanceTimersByTime(READ_MS))
+    expect(li(1)).toHaveClass('animate-slide-off')
     view.rerender(links([link(1, 'disabled', 2), link(2, 'solved')], true))
     expect(document.querySelector('ol')).toHaveClass('animate-fade-out')
   })
@@ -144,6 +148,17 @@ describe('los eslabones de la línea (`ChainLinks`): encajan, se tensan, se suel
     view.rerender(links([link(1, 'negated', 2), link(2, 'solving')]))
     expect(li(1)!.querySelector('[class*="animate-slash-in"]')).toHaveClass('bg-danger-soft')
     expect(li(1)!.querySelector('.bg-danger')).toHaveClass('animate-glow-in')
+  })
+
+  it('el que resuelve va lleno de lima (lo único lima de la línea) con el texto en carbón; los demás, un aro', () => {
+    reduce(false)
+    const view = render(links([link(1, 'chained'), link(2, 'solving')]))
+
+    view.rerender(links([link(1, 'negated', 2), link(2, 'solving')]))
+    const lime = li(2)!.querySelector('.bg-info')!
+    expect(lime.querySelector('.bg-card-background')).toBeNull()
+    expect(li(2)!.querySelector('button')!.querySelectorAll('.text-background')).toHaveLength(2)
+    expect(li(1)!.querySelector('.bg-danger')!.querySelector('.bg-card-background')).not.toBeNull()
   })
 
   it('con movimiento reducido nada se va: cambian el color y el texto; con más de cuatro, «+N»', () => {

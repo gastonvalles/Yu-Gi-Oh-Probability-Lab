@@ -52,12 +52,28 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   const bigWindow = useDuelFullscreen()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null)
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // En la mesa (la práctica, la mesa de un duelo: a pantalla completa y sin la barra de arriba; el lobby la lleva) el menú se pliega al riel para darle el ancho al campo.
+  // Abrirlo ahí vale mientras dure la mesa y no toca la preferencia guardada: al salir, el menú vuelve como estaba.
+  const onTable = isDesktop && immersive && !navbar
+  const [openOnTable, setOpenOnTable] = useState(false)
+  const railed = onTable ? !openOnTable : collapsed
+
+  useEffect(() => {
+    if (!onTable) setOpenOnTable(false)
+  }, [onTable])
+
   const toggleCollapsed = useCallback(() => {
+    if (onTable) {
+      setOpenOnTable((current) => !current)
+      return
+    }
+
     setCollapsed((current) => {
       writeSidebarCollapsed(!current)
       return !current
     })
-  }, [])
+  }, [onTable])
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
   const openDrawer = useCallback(() => setDrawerOpen(true), [])
   // Una pantalla a pantalla completa puede traer su propia hamburguesa (`ShellMenuButton`): entonces la barra de arriba sobra y el alto es para la mesa.
@@ -76,7 +92,6 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   const [topBarTools, setTopBarTools] = useState<HTMLElement | null>(null)
   const openFind = useCallback(() => setFindOpen(true), [])
   const closeFind = useCallback(() => setFindOpen(false), [])
-  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // La calculadora de LP con el celular acostado es un marcador: la barra de abajo le robaría casi un cuarto del alto. Se sale por la hamburguesa de la barra de arriba, que sigue.
   const scoreboard = useMediaQuery(fitScreen ? PHONE_LANDSCAPE_MEDIA_QUERY : null)
   const tabBar = !immersive && !scoreboard
@@ -123,10 +138,10 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   // Los botones flotantes (y las mascotas, mientras nadie las mueva) dejan libres el menú lateral (con su ancho de ahora) y el pie. En el celular no hay menú fijo.
   // Va en un layout effect para que el cambio (contraer el menú, girar la pantalla) se vea en el mismo cuadro; el valor del primer cuadro ya lo trae el módulo.
   useLayoutEffect(() => {
-    setShellInsets(shellInsetsFor(collapsed, isDesktop && !bigWindow, tabBar))
+    setShellInsets(shellInsetsFor(railed, isDesktop && !bigWindow, tabBar))
 
     return () => setShellInsets(NO_SHELL_INSETS)
-  }, [collapsed, isDesktop, bigWindow, tabBar])
+  }, [railed, isDesktop, bigWindow, tabBar])
 
   return (
     <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:overflow-hidden', bigWindow ? 'min-[1101px]:grid-cols-[minmax(0,1fr)]' : 'min-[1101px]:grid-cols-[auto_minmax(0,1fr)]', showNavbar && 'min-[1101px]:grid-rows-[auto_minmax(0,1fr)]', immersive ? 'max-[1101px]:h-dvh max-[1101px]:overflow-hidden' : tabBar && 'max-[1101px]:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]')}>
@@ -139,7 +154,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
         {t('shell.skipToContent')}
       </button>
       {showNavbar ? <AppNavbar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} onSearch={openFind} onMascots={() => onSelect('mascots')} className="min-[1101px]:col-span-2" /> : null}
-      {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
+      {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={railed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && (tabBar ? 'max-[1101px]:h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))]' : 'max-[1101px]:h-dvh'), ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
         {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} onHome={homeKey ? () => onSelect(homeKey) : undefined} toolsRef={setTopBarTools} className="min-[1101px]:hidden" />}
         {/* Sin red, el aviso va arriba de la pantalla; en la mesa no (la mesa no se mueve mientras se juega y el duelo dice solo si se cortó). */}

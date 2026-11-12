@@ -62,7 +62,13 @@ const ON_BRAND: Record<ButtonColor, string> = {
  * Al apuntarlo (mouse o teclado) el borde, el texto y el ícono se encienden en lima, como el borde de la tarjeta. Como `onBrand`, no cambia con `color`.
  */
 const OUTLINE_LOOK = 'border border-tint/45 bg-transparent text-foreground hover:border-info/80 hover:text-info-soft focus-visible:border-info/80 focus-visible:text-info-soft'
-const OUTLINE: Record<ButtonColor, string> = { brand: OUTLINE_LOOK, danger: OUTLINE_LOOK, success: OUTLINE_LOOK, confirm: OUTLINE_LOOK }
+/** `danger`: lo que cierra algo sin borrarlo («Terminar turno» del duelo automático): sobre la caja levantada, con borde rojo de 2 px; al apuntarlo, el rojo tiñe el fondo. */
+const OUTLINE: Record<ButtonColor, string> = {
+  brand: OUTLINE_LOOK,
+  danger: 'border-2 border-danger-soft bg-surface-raised text-foreground hover:bg-danger/12 focus-visible:bg-danger/12',
+  success: OUTLINE_LOOK,
+  confirm: OUTLINE_LOOK,
+}
 
 const COLORS = { primary: FILLED, secondary: QUIET, tertiary: GHOST, onBrand: ON_BRAND, outline: OUTLINE } as const
 

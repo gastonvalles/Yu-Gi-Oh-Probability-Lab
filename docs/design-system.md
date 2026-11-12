@@ -30,7 +30,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 
 ## 3. Tokens
 
-- **Texto:** `text-foreground` → `text-muted` → `text-soft` (`*-soft` sobre fondos teñidos), en seis tamaños (`text-micro`, de 12 px, … `text-display`; aparte, `text-score`, el número de la calculadora de vidas) y nunca `text-[…]`.
+- **Texto:** `text-foreground` → `text-muted` → `text-soft` (`*-soft` sobre fondos teñidos), en seis tamaños (`text-micro`, de 12 px, … `text-display`; aparte, `text-score` (calculadora) y `text-hit` (daño)) y nunca `text-[…]`.
 - **Radios, sombras y espacio:** `rounded-tag/control/card/panel` (rectos en la mesa y sus hojas: `mat-square`); `shadow-card/overlay/focus` (un foco); la escala de Tailwind (base 4 px, 16 px entre bloques), `px-gutter` en el celular y `max-w-content`.
 - **Movimiento:** las curvas, qué se anima y cómo no trabar la mesa, en `docs/movimiento.md`.
 - **Objetivos táctiles de 44 px** con puntero táctil (`pointer-coarse`), salvo la mesa (las pilas, la mano no jugable y las fases miden por el campo) y los campos dentro de un `FieldBox` (el `label` es toda la tarjeta).
@@ -42,7 +42,7 @@ Los de `ui/` (los estilos sueltos de las superficies, en `ui/surfaces.ts`; los t
 - **Todo título pasa por `Heading`; todo hipervínculo, por `textLink`** (lima, un solo estilo: `link-rules.test.ts`).
 - **Un botón sólo ícono** va sin fondo y se enciende en lima (`icon-buttons.test.tsx`). En la mesa, todo lo que se toca es `IconButton tone="tile"` (`TileButton`) y el violeta lleno, sólo el texto. `MatBarActions` es la barra de toda mesa: salir, deshacer y el ⋯ (`MatMoreMenu`; lo prendido, en su interruptor).
 - **Todo diálogo es `Modal`** (tamaños, regla 10); una confirmación, `ConfirmDialog`, con el texto como la muestra «Confirmación».
-- **Toda hoja de abajo del celular es `BottomSheet`** (la cadena, las preguntas de la mesa y el visor de una pila): una sola a la vez (`SheetHost`), se arrastra siempre y lo que se decide va en su pie. Toda pregunta (`MatPrompt`) es opaca de borde a borde en cada estado (nada asoma debajo de lo pegado: regla 11) y, si la mesa la sabe, dice arriba la fase y el turno (`PromptTurnContext`). En escritorio, todo cartel, diálogo y visor de la mesa se arrastra por la cabeza (`useDraggableOffset`).
+- **Toda hoja de abajo del celular es `BottomSheet`** (la cadena, las preguntas, el visor de pila), opaca de borde a borde (regla 11): una sola a la vez (`SheetHost`; en el automático gana la pregunta, luego la ficha, luego el visor; lo tapado vuelve con «‹»), se arrastra y lo que se decide va en su pie. Si la mesa la sabe, la pregunta dice arriba la fase y el turno (`PromptTurnContext`). En escritorio, todo cartel, diálogo y visor de la mesa se arrastra por la cabeza (`useDraggableOffset`).
 - **`Switch disabled`:** el porqué va en el texto de al lado.
 - **`Icon` es el único set:** nada de SVG suelto. El $ de los precios va sin círculo (el del círculo no está en el registro).
 - **Las cartas enteras, de a varias, se inclinan** hacia el mouse (`TiltCard`, `CardArt tilt`) y no llevan hovers propios; nada que se toque va adentro del elemento con `TILT_ART` (se inclinaría con la carta).

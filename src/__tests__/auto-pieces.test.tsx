@@ -162,7 +162,7 @@ describe('AutoPanel en el celular: apoyado abajo, sobre la mano, con techo en la
     const sheet = screen.getByRole('dialog')
 
     expect(sheet).toHaveAttribute('data-prompt', 'ask')
-    expect(sheet).toHaveClass('fixed', 'inset-x-0', 'bottom-0', 'mat-square', 'bg-card-background/92', 'max-h-[calc(100dvh-var(--panel-ceiling,50dvh))]')
+    expect(sheet).toHaveClass('fixed', 'inset-x-0', 'bottom-0', 'mat-square', 'bg-card-background', 'max-h-[calc(100dvh-var(--panel-ceiling,50dvh))]')
     expect(sheet.className).not.toMatch(/backdrop-blur|min-h-\[|(^| )h-\d/)
     expect(names(within(sheet).getAllByRole('button'))).toEqual(['Minimizar', 'No activar', 'Activar efecto'])
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()

@@ -7,10 +7,9 @@ import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { clampOffset, matCardPositionKey, readOffset } from '../app/use-draggable-offset'
-import { ChainNotice } from '../components/auto/ChainNotice'
 import { MatPrompt } from '../components/duel/MatPrompt'
 
-// En escritorio, los carteles de la mesa (la pregunta del medio y su asa, la pila de la cadena) se llevan con el mouse a cualquier lado, como las mascotas: por su cabeza, sin redibujar,
+// En escritorio, los carteles de la mesa (la pregunta del medio y su asa) se llevan con el mouse a cualquier lado, como las mascotas: por su cabeza, sin redibujar,
 // acotados a la ventana, recordados por lugar; doble clic, a su lugar; Alt + flechas con el foco adentro. Con el dedo sigue el gesto de minimizar. jsdom no mide: cada cartel está en
 // (400, 300) y mide 384 × 200 (el asa, 240 × 56), corrido por su `translate`, en una ventana de 1280 × 800.
 
@@ -33,7 +32,7 @@ beforeEach(() => {
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
   window.matchMedia = ((query: string) => ({ matches: desktop && query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
   Element.prototype.getBoundingClientRect = function (this: HTMLElement) {
-    const card = this.matches('[data-prompt], [data-testid="chain-notice"] > div')
+    const card = this.matches('[data-prompt]')
     const handle = this.matches('[data-minimized]')
     const { x, y } = offsetOf(this.style?.translate ?? '')
     // El armazón de la app (recorta al lado del menú de 76 px).
@@ -80,7 +79,7 @@ const prompt = () =>
   )
 const cartel = () => document.querySelector<HTMLElement>('[data-prompt="ask"]')!
 const head = () => screen.getByText('¿Activás el efecto?', { selector: 'p' })
-const saved = (place: 'prompt' | 'chain') => JSON.parse(localStorage.getItem(matCardPositionKey(place)) ?? 'null') as unknown
+const saved = (place: 'prompt') => JSON.parse(localStorage.getItem(matCardPositionKey(place)) ?? 'null') as unknown
 
 describe('acotar y recordar (lógica pura)', () => {
   const box = { left: 400, top: 300, width: 384, height: 200 }
@@ -198,30 +197,16 @@ describe('la pregunta del medio (MatPrompt) desde 1101 px', () => {
     expect(cartel().style.translate).toBe('')
     expect(cartel()).not.toHaveAttribute('aria-keyshortcuts')
   })
-})
-
-describe('la pila de la cadena (ChainNotice) en escritorio', () => {
-  const rows = [{ number: 1, who: 'Rival', mine: false, name: 'Ash Blossom', art: null, state: 'chained' as const }]
-  const notice = (compact = false) => render(<ChainNotice rows={rows} focus={0} resolving={false} open compact={compact} onOpenChange={() => {}} onPick={() => {}} />)
-  const card = () => screen.getByTestId('chain-notice').firstElementChild as HTMLElement
-
-  it('su fila de arriba la lleva a otro lado, con su propia posición; doble clic, a su lugar', () => {
-    notice()
-    drag(screen.getByRole('status'), -80, 200)
-    expect(card().style.translate).toBe('-80px 200px')
-    expect(saved('chain')).toEqual({ x: -80, y: 200 })
-    expect(saved('prompt')).toBeNull()
-    fireEvent.doubleClick(screen.getByRole('status'))
-    expect(card().style.translate).toBe('')
-  })
 
   it('no pasa por debajo de lo que la recorta (el armazón, al lado del menú)', () => {
     render(
       <div data-frame="" style={{ overflowX: 'hidden', overflowY: 'hidden' }}>
-        <ChainNotice rows={rows} focus={0} resolving={false} open onOpenChange={() => {}} onPick={() => {}} />
+        <MatPrompt kind="ask" label="¿Activás el efecto?" head={<p className="m-0">¿Activás el efecto?</p>}>
+          <button type="button">Sí</button>
+        </MatPrompt>
       </div>,
     )
-    drag(screen.getByRole('status'), -5000, 0)
-    expect(card().style.translate).toBe('-324px 0')
+    drag(head(), -5000, 0)
+    expect(cartel().style.translate).toBe('-324px 0')
   })
 })

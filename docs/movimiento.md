@@ -4,7 +4,7 @@ Cómo se anima sin trabar la app (sobre todo la mesa, en un celular). La regla d
 
 ## Curvas
 
-Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas, no más: `--ease-out` para lo que entra o se queda, `--ease-in-out` para lo que viaja (vuelos, barajado, el ataque) y `--ease-snap` para lo que arranca ya en movimiento (pops, lo que suelta un gesto, la moneda, las medallas). Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out` de CSS). En el JS, `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts` (la Web Animations API no lee `var()`); en un `@keyframes`, el valor literal. Lo vigila `motion-curves.test.ts`.
+Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas, no más: `--ease-out` para lo que entra o se queda, `--ease-in-out` para lo que viaja (vuelos, barajado, el ataque) y `--ease-snap` para lo que arranca ya en movimiento (pops, lo que suelta un gesto, la moneda, las placas del duelo). Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out` de CSS). En el JS, `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts` (la Web Animations API no lee `var()`); en un `@keyframes`, el valor literal. Lo vigila `motion-curves.test.ts`.
 
 ## La mesa: nada en el hilo principal
 
@@ -24,5 +24,5 @@ Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin
 
 - Lo que entra en tanda va con `stagger`; un `fixed` adentro de eso se corre (el `transform` lo vuelve su bloque contenedor): va por portal.
 - **Lo que se cierra también sale** (`app/use-presence.ts`). Trampas: `<Presence>` sola no anima (el hijo llama a `usePresence`, o pasa por `Modal` / `SideDrawer` con `isOpen={!useLeaving()}` y ata Escape, el scroll y el foco a `!leaving`); una `key` que cambia al cerrar, un `return null` antes del `Modal` o una entrada sin su fotograma en `EXITS` matan la salida (para esconder sin cerrar, `hidden`).
-- **La cadena** reacciona a cada cambio de un eslabón (`app/chain-motion.ts`), nunca al montarse: resolver es 750 ms por eslabón (se ilumina; se tensa a los 120, ejecuta a los 320, se suelta a los 480) y 200 de cierre, 2,45 s con tres; el trazo de la mesa se mide con `offsetLeft` (en 3D, `getBoundingClientRect` da la caja proyectada).
+- **La cadena** reacciona a cada cambio de un eslabón (`app/chain-motion.ts`), nunca al montarse: resolver: 750 ms por eslabón (se ilumina; se tensa, ejecuta y se suelta a los 120, 320 y 480) y 200 de cierre, 2,45 s con tres (+1,6 s si uno se niega); el trazo de la mesa se mide con `offsetLeft` (en 3D, `getBoundingClientRect` da la caja proyectada).
 - **Sin animar, a propósito:** las cubiertas del duelo, los carteles con temporizador (el turno, la moneda y el dado, los avisos), lo que despliega en el flujo (`InfoTip`, `MultiSelect`, `<details>`) y lo que se cierra navegando.

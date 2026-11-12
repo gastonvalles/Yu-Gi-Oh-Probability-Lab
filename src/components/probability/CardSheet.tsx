@@ -14,6 +14,7 @@ import { Icon } from '../ui/Icon'
 import { CloseButton, IconButton } from '../ui/IconButton'
 import { overline } from '../ui/typography'
 import { GHOST_CLICK_MS, type MenuItem } from './MatDialogs'
+import { levelText } from './MatFx'
 import { CARD_BACK } from './practice-styles'
 
 interface CardSheetProps {
@@ -136,7 +137,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
         ref={ref}
         aria-label={name}
         tabIndex={-1}
-        className={cx('mat-square fixed inset-x-0 bottom-0 z-210 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background/92 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none', !armed && 'pointer-events-none')}
+        className={cx('mat-square fixed inset-x-0 bottom-0 z-210 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none', !armed && 'pointer-events-none')}
       >
         <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 bg-primary-soft/50" />
         <CloseButton size="sm" tone="ghost" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
@@ -159,7 +160,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
           <div className="min-w-0 pr-8">
             {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
             <h3 className="m-0 line-clamp-2 text-lead font-bold leading-tight text-foreground">{name}</h3>
-            {apiCard?.cardType ? <p className="m-0 mt-0.5 text-body font-semibold text-accent">{apiCard.cardType}</p> : null}
+            {apiCard?.cardType ? <p className="m-0 mt-0.5 text-body font-semibold text-accent">{[apiCard.cardType, levelText(apiCard)].filter(Boolean).join(' · ')}</p> : null}
             {/* Los rasgos son pastillas (`Badge pill`): en la mesa, rectas como todo lo demás. */}
             {traits ? <CardEffectTraits ygoprodeckId={apiCard?.ygoprodeckId} className="mt-1 [&_span]:rounded-none" /> : null}
           </div>

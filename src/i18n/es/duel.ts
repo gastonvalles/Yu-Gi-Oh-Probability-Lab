@@ -481,6 +481,7 @@ export const duel = {
   'duel.result.matchWin': '¡Ganaste el Match!',
   'duel.result.matchLose': 'Perdiste el Match',
   'duel.result.matchScore': 'Match {mine}–{theirs}.',
+  'duel.result.scoreTo': 'a',
   'duel.series.chip': 'Duelo {game} · {mine}–{theirs}',
   'duel.result.rematchWaiting': 'Esperando a {name}…',
   'duel.result.rematchOffered': '{name} quiere la revancha.',

@@ -1,14 +1,16 @@
-import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { PickStat } from '../../app/auto/ask-ui'
 import type { ChainBadgeData } from '../../app/card-glow'
+import { printedBadge, statShift } from '../../app/field-stats'
 import { cuesBetween, fated, play, type Cue, type LinkLook } from '../../app/chain-motion'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { PHASES, type MatPhase, type MatSpot } from '../../app/practice-mat'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
 import { t } from '../../i18n'
+import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -45,15 +47,16 @@ export const DUEL_GLOW = [
 ].join(' ')
 
 /**
- * «Puede atacar»: la ficha celeste con la espada, montada sobre el borde de arriba de un monstruo tuyo que puede atacar en tu Battle Phase (además de su brillo `can`). Va al lado de la carta (la carta
- * recorta lo que se sale) y mide el 38 % de su ancho (18 px a 390 px). Decorativa: lo dice la descripción de la carta (`practice.card.canAttack`). Quieta, como el brillo.
+ * «Puede atacar»: la ficha celeste con la espada, en la esquina de arriba a la derecha de un monstruo tuyo que puede atacar en tu Battle Phase (además de su brillo `can`), medio afuera: no tapa
+ * el arte (la de la izquierda es de la insignia de la cadena, `chainBadgeAt`). Va al lado de la carta (la carta recortaría lo que se sale) y mide el 26 % de la casilla (15 px a 390). Decorativa:
+ * lo dice la descripción de la carta (`practice.card.canAttack`). Quieta, como el brillo.
  */
 export function AttackMark() {
   return (
     <span
       aria-hidden="true"
       data-attack-mark=""
-      className="pointer-events-none absolute left-1/2 top-0 z-11 grid aspect-square w-[26%] min-w-4 -translate-x-1/2 -translate-y-[55%] animate-fx-frame-in place-items-center rounded-[3px] bg-[rgb(var(--playable-rgb))] text-background shadow-[0_0_0_1.5px_var(--background),0_2px_6px_rgb(0_0_0/0.5)] motion-reduce:animate-none"
+      className="pointer-events-none absolute right-[15.71%] top-0 z-11 grid aspect-square w-[26%] min-w-4 -translate-y-1/2 translate-x-1/2 animate-fx-frame-in place-items-center bg-[rgb(var(--playable-rgb))] text-background shadow-[0_0_0_1.5px_var(--background),0_2px_6px_rgb(0_0_0/0.5)] motion-reduce:animate-none"
     >
       <Icon name="sword" strokeWidth={2.4} className="size-[72%]" />
     </span>
@@ -387,33 +390,45 @@ const STAT_ARRIVAL_MS = Math.round(FLIGHT_MS * LANDING_AT)
 const BADGE_ARRIVAL: CSSProperties = { animationDelay: `${STAT_ARRIVAL_MS}ms` }
 const STAT_ARRIVAL: CSSProperties = { animationDelay: `${STAT_ARRIVAL_MS + 70}ms` }
 
+/** El Nivel, Rango o LINK impreso de una carta para su ficha («Nivel 4», «Rango 4», «LINK-2»; `printedBadge`), o null: en la mesa no va (sólo mientras se elige, `StatTag`). */
+export function levelText(card: ApiCardReference | null | undefined): string | null {
+  const badge = printedBadge(card)
+  return badge ? t(`practice.mat.badge.${badge.kind}`, { value: badge.value }) : null
+}
+
+/** El color de un número que cambió respecto del impreso (`statShift`): menta si subió, rojo claro si bajó. */
+const SHIFT_TONE = { up: 'text-success-soft', down: 'text-danger-soft' } as const
+
 /**
- * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), abajo y al centro de su
- * casilla, sobre el pie de la carta (donde la impresa lleva los suyos), y su ficha (`badge`: ★ Nivel, R Rango o LINK) arriba y al centro, sobre la fila de estrellas de la carta y debajo de la
- * espada de atacar: no cambian la caja de la carta ni la de la casilla, y no se salen de ella. El ATK en blanco y la DEF apagada, como en la carta; sin DEF, un Link; sin `badge`, sin ficha
- * (no se sabe con certeza). Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla no llega a los dos números de cuatro cifras
- * (`@container`: el celular, de 56 a 65 px, y la mesa de escritorio angosta, de 63 a 73), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`), como se lee la carta; el
- * nombre lleva los dos. Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla: la ficha baja desde arriba (`animate-chip-drop`) y, 70 ms después, el
- * ATK/DEF sube desde abajo (`animate-chip-rise`), con un pop corto; lo que llega después (los números del núcleo), al toque si ya llegó. Con movimiento reducido, quietas.
+ * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), en una placa de 15 px al pie
+ * de la carta, sobre su cuadro de texto (que a este tamaño no se lee): el arte queda entero. Nada más va sobre la carta: la ficha (`badge`: ★ Nivel, R Rango o LINK) sale de la mesa y vive en
+ * la ficha de la carta (`levelText`); vuelve, arriba y al centro, sólo mientras se elige (la de `pickStatsOf`, o la casilla con `data-pick`: Sacrificios y materiales de la mesa manual), que
+ * es cuando el Nivel decide. No cambian la caja de la carta ni la de la casilla. El número que cambió respecto del impreso (`printed`, sólo los de ahora), en menta si subió y en rojo claro si
+ * bajó; un «?» y la mesa manual, sin color. La DEF que no cambió, apagada. Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla
+ * no llega a los dos números de cuatro cifras (`@container`: el celular y la mesa de escritorio angosta), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`); el nombre
+ * lleva los dos. Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla (`animate-chip-drop`, `animate-chip-rise` 70 ms después); con movimiento reducido,
+ * quietas.
  */
 export function StatTag({ stat, sideways = false, className }: { stat: PickStat | null; sideways?: boolean; className?: string }) {
   const def = stat !== null && stat.defense !== null && sideways
   const badge = stat?.badge
+  const atkShift = stat ? statShift(stat.attack, stat.printed?.attack) : null
+  const defShift = stat ? statShift(stat.defense, stat.printed?.defense) : null
 
   return (
     <>
       <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[16%] z-11 animate-chip-drop motion-reduce:animate-none" style={BADGE_ARRIVAL}>
         {badge ? (
-          <span data-stat-badge={badge.kind} className={STAT_CHIP}>{`${BADGE_MARK[badge.kind]}\u2009${badge.value}`}</span>
+          <span data-stat-badge={badge.kind} className={cx(STAT_CHIP, stat.resting ? 'hidden in-data-[pick=true]:block' : 'block')}>{`${BADGE_MARK[badge.kind]}\u2009${badge.value}`}</span>
         ) : null}
       </span>
       <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container animate-chip-rise motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
         {stat ? (
-          <span data-pick-stat="" className={STAT_CHIP}>
-            <span className={cx(def && '@max-[5rem]:hidden')}>{stat.attack}</span>
+          <span data-pick-stat="" className={cx(STAT_CHIP, 'block')}>
+            <span data-shift={atkShift ?? undefined} className={cx(def && '@max-[5rem]:hidden', atkShift && SHIFT_TONE[atkShift])}>{stat.attack}</span>
             {stat.defense === null ? null : (
-              <span className={cx('font-semibold text-muted', def ? '@max-[5rem]:font-extrabold @max-[5rem]:text-foreground' : '@max-[5rem]:hidden')}>
-                <span className={cx(def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
+              <span data-shift={defShift ?? undefined} className={cx('font-semibold', defShift ? SHIFT_TONE[defShift] : 'text-muted', def ? cx('@max-[5rem]:font-extrabold', !defShift && '@max-[5rem]:text-foreground') : '@max-[5rem]:hidden')}>
+                <span className={cx('text-muted', def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
                 {stat.defense}
               </span>
             )}
@@ -424,7 +439,8 @@ export function StatTag({ stat, sideways = false, className }: { stat: PickStat 
   )
 }
 
-const STAT_CHIP = 'mx-auto block w-fit max-w-full whitespace-nowrap rounded-tag bg-background/85 px-1 text-micro font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
+/** 12 px con su renglón de 15 (`leading-tight`), cifras tabulares y el carbón al 92 % debajo: se lee sobre cualquier arte (≥4,5:1). Sin `block`: lo pone cada uso. */
+const STAT_CHIP = 'mx-auto w-fit max-w-full whitespace-nowrap bg-background/92 px-1 text-micro leading-tight font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
 
 /**
  * La barra entre el ATK y la DEF, con espacios finos: «2500 / 2000» mide 80 px y entra justo en la casilla de 1440 px (80–81). El corte (`@max-[5rem]`) es el de cuatro cifras y
@@ -450,8 +466,8 @@ const SPARKS = [
 ] as const
 
 /**
- * Una carta que cae en una zona de monstruo: un fogonazo, dos ondas que se expanden y chispas. Del color de cómo llega (Normal dorado,
- * Especial celeste, Fusión violeta, Sincronía blanca, Xyz azul, Enlace verde agua) y cuando la carta, que viene volando, toca la zona (`LANDING_AT` del vuelo).
+ * Una carta que cae en una zona de monstruo: un fogonazo, el aro lima del golpe que se abre, otro del color de cómo llega (Normal dorado,
+ * Especial celeste, Fusión violeta, Sincronía blanca, Xyz azul, Enlace verde agua) y chispas, cuando la carta, que viene volando, toca la zona (`LANDING_AT` del vuelo).
  */
 export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolean }) {
   // El retraso va en línea en cada pieza: una variable en el token de la animación se resolvería en la raíz, no acá.
@@ -460,8 +476,9 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
   return (
     <span aria-hidden="true" data-fx="landing" data-tone={tone} className="pointer-events-none absolute inset-0 z-4 motion-reduce:hidden" style={fxVars(LANDING_TONE[tone])}>
       <span className="absolute inset-0 animate-fx-flash bg-[radial-gradient(circle,rgb(255_255_255/0.95),rgb(var(--fx-rgb)/0.75)_35%,transparent_72%)]" style={delay()} />
-      <span className="absolute inset-0 animate-fx-shock border-[3px] opacity-0 border-[color:rgb(var(--fx-rgb))] shadow-[0_0_14px_rgb(var(--fx-rgb)/0.8)]" style={delay()} />
-      <span className="absolute inset-0 animate-fx-shock border opacity-0 border-[color:rgb(var(--fx-rgb)/0.8)]" style={delay(110)} />
+      {/* El golpe: un aro lima que se abre desde la casilla cuando la carta la toca, y detrás otro del color de cómo llegó. */}
+      <span className="absolute inset-0 animate-fx-shock border-[3px] border-info opacity-0 shadow-[0_0_14px_var(--color-info)]" style={delay()} />
+      <span className="absolute inset-0 animate-fx-shock border-2 opacity-0 border-[color:rgb(var(--fx-rgb))] shadow-[0_0_14px_rgb(var(--fx-rgb)/0.8)]" style={delay(110)} />
       {SPARKS.map(([x, y]) => (
         <span
           key={`${x}:${y}`}
@@ -474,8 +491,8 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
 }
 
 /**
- * El cartel de una fase nueva (y del turno, si empieza otro): una banda violeta que cruza el campo y se apaga en los bordes, con el nombre de la
- * fase en grande y el turno arriba en verde. Nada más: las seis fases ya están en los botones de la mesa. En un duelo, `label` cambia la frase grande
+ * El cartel de una fase nueva (y del turno, si empieza otro): una placa plana y recta de borde violeta, como las del comienzo y el final, con el nombre
+ * de la fase en grande y el turno arriba en lavanda. Nada más: las seis fases ya están en los botones de la mesa. En un duelo, `label` cambia la frase grande
  * ("Tu turno") y `who` dice de quién es la fase cuando no es tuya. Con menos movimiento se ve igual, quieto, el mismo rato (lo saca quien lo monta).
  */
 export function PhaseBanner({ phase, turn, who, label, className }: { phase: MatPhase; turn: number | null; who?: string; label?: string; className?: string }) {
@@ -483,11 +500,9 @@ export function PhaseBanner({ phase, turn, who, label, className }: { phase: Mat
 
   return (
     <div aria-hidden="true" data-fx="banner" className={cx('pointer-events-none grid place-items-center', className)}>
-      <div className="relative grid w-full animate-fx-banner justify-items-center motion-reduce:animate-none gap-1.5 bg-[linear-gradient(90deg,transparent,rgb(var(--primary-rgb)/0.5)_16%,rgb(var(--background-rgb)/0.92)_50%,rgb(var(--primary-rgb)/0.5)_84%,transparent)] py-3.5 shadow-[0_0_34px_rgb(var(--primary-rgb)/0.45)] min-[1101px]:py-5">
-        <span className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgb(var(--accent-rgb))_22%,rgb(var(--accent-rgb))_78%,transparent)] shadow-[0_0_10px_rgb(var(--accent-rgb)/0.8)]" />
-        <span className="absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgb(var(--accent-rgb))_22%,rgb(var(--accent-rgb))_78%,transparent)] shadow-[0_0_10px_rgb(var(--accent-rgb)/0.8)]" />
-        {turn !== null ? <span className="animate-fx-banner-text text-micro motion-reduce:animate-none font-bold uppercase tracking-[0.28em] text-accent">{t('practice.mat.turn', { turn })}</span> : who ? <span className="animate-fx-banner-text text-micro motion-reduce:animate-none font-bold uppercase tracking-[0.28em] text-accent">{who}</span> : null}
-        <span className="animate-fx-banner-text text-title motion-reduce:animate-none font-extrabold uppercase leading-none tracking-[0.22em] text-foreground [text-shadow:0_0_24px_rgb(var(--primary-hover-rgb))] min-[1101px]:text-stat">{name}</span>
+      <div className="grid animate-fx-banner justify-items-center gap-1 border-2 border-primary bg-background/92 px-6 py-3 motion-reduce:animate-none min-[1101px]:px-8 min-[1101px]:py-4">
+        {turn !== null || who ? <span className="animate-fx-banner-text text-micro font-bold text-accent motion-reduce:animate-none">{turn !== null ? t('practice.mat.turn', { turn }) : who}</span> : null}
+        <span className="animate-fx-banner-text text-title font-extrabold leading-none text-foreground motion-reduce:animate-none min-[1101px]:text-stat">{name}</span>
       </div>
     </div>
   )
@@ -575,9 +590,7 @@ function showArtAtOnce(face: HTMLElement): () => void {
  * resplandor y la onda esperan a que llegue. El CSS de la carta (`animate-card-activate-*`) queda sólo para la espera y la salida: `--stage-entered` le saca la
  * entrada. Sin ninguna carta a la vista (o con movimiento reducido) no se toca nada: aparecen en el centro como siempre.
  */
-function useStageTravel(origin: SpotlightProps['origin']) {
-  const rootRef = useRef<HTMLDivElement | null>(null)
-
+function useStageTravel(rootRef: RefObject<HTMLDivElement | null>, origin: SpotlightProps['origin']) {
   useLayoutEffect(() => {
     const root = rootRef.current
 
@@ -588,7 +601,9 @@ function useStageTravel(origin: SpotlightProps['origin']) {
     root.style.setProperty('--stage-entered', '1')
 
     const bounds = root.getBoundingClientRect()
-    const inside = (pose: CardPose) => pose.width >= 1 && pose.height >= 1 && pose.x >= bounds.left && pose.x <= bounds.right && pose.y >= bounds.top && pose.y <= bounds.bottom
+    // En el celular la caja termina en la fila del medio (`useStageRoom`): una carta tuya, más abajo, igual sale de su lugar (abajo vale la mesa entera).
+    const bottom = Math.max(bounds.bottom, root.parentElement?.getBoundingClientRect().bottom ?? 0)
+    const inside = (pose: CardPose) => pose.width >= 1 && pose.height >= 1 && pose.x >= bounds.left && pose.x <= bounds.right && pose.y >= bounds.top && pose.y <= bottom
     const faces = [...root.querySelectorAll<HTMLElement>('[data-stage-card]')].map((face) => {
       const pose = origin(face.dataset.stageCard ?? '')
 
@@ -626,8 +641,19 @@ function useStageTravel(origin: SpotlightProps['origin']) {
     // Sólo al aparecer: el nombre que llega después (la carta del rival) no la hace viajar de nuevo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+}
 
-  return rootRef
+/**
+ * En el celular la carta grande va arriba de la fila del medio, nunca encima de la línea de la cadena (Gastón, «Las 7»: «la cadena siempre a la vista»): la caja termina donde empieza esa fila
+ * (`--stage-room`, que usa `max-sm:`; medida en pantalla, así en 3D es la fila como se ve). Sin campo (el catálogo), la mesa entera. Se mide una vez, antes del viaje: el campo no se mueve.
+ */
+function useStageRoom(rootRef: RefObject<HTMLDivElement | null>) {
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    const row = root?.parentElement?.querySelector('[data-drop="emz:0"]')
+
+    if (root && row) root.style.setProperty('--stage-room', `${Math.max(0, row.getBoundingClientRect().top - root.getBoundingClientRect().top)}px`)
+  }, [rootRef])
 }
 
 /** El resplandor de cada carta del centro (el color del paso, con una sombra abajo). */
@@ -648,21 +674,33 @@ const STAGE_CARD_WIDTH_WITH_DETAIL = 'w-[min(34cqw,10.5rem)]'
 export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, origin, className }: SpotlightProps) {
   const tone = STAGE_TONE[kind]
   const shown = cards.slice(0, 4)
-  const rootRef = useStageTravel(origin)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useStageRoom(rootRef)
+  useStageTravel(rootRef, origin)
 
   return (
-    <div ref={rootRef} data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className)} style={fxVars(tone)}>
+    <div
+      ref={rootRef}
+      data-activation={shown[0]?.id}
+      data-kind={kind}
+      aria-hidden="true"
+      // En el celular, apoyada sobre la fila del medio (como la lámina): arriba queda la barra a la vista.
+      className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className, 'max-sm:bottom-auto max-sm:h-[var(--stage-room,100%)] max-sm:items-end max-sm:pb-2')}
+      style={fxVars(tone)}
+    >
       <span data-stage-glow className="absolute left-1/2 top-1/2 aspect-square w-[min(100cqw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
       <span data-stage-glow className="absolute left-1/2 top-1/2 aspect-square w-[min(56cqw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 motion-reduce:hidden" />
-      <div className={cx('relative motion-reduce:animate-none', detail ? 'animate-card-activate-read' : linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
+      {/* En el celular el efecto escrito va al lado de la carta, no debajo: el conjunto entra arriba de la fila del medio. */}
+      <div className={cx('relative motion-reduce:animate-none', detail ? 'animate-card-activate-read max-sm:flex max-sm:items-start max-sm:gap-2' : linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
         {caption ? (
-          <span data-stage-text className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
+          <span data-stage-text className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] max-sm:mb-1.5 -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
             {caption}
           </span>
         ) : null}
         <div className="flex items-start justify-center gap-3">
           {shown.map((card) => (
-            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
+            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2 max-sm:max-w-23', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
               {/* Dos caras: la de adelante (la carta) y la de atrás (el dorso), que se muestra primero y se da vuelta en 3D. */}
               <div data-stage-card={card.id} className="relative aspect-[421/614] w-full [perspective:900px]">
                 <div className={cx('absolute inset-0 [transform-style:preserve-3d]', flip && 'animate-fx-flip-in motion-reduce:animate-none')}>
@@ -683,9 +721,10 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
         </div>
         {/* El efecto que activa el rival (Gastón, 2026-10-20: «sería ideal que el rival pueda ver qué efecto estoy activando»): cuándo se activa y qué hace, tal cual el texto de la carta. */}
         {detail ? (
-          <div data-stage-text className="mx-auto mt-3 grid w-[min(88cqw,24rem)] gap-0.5 rounded-card border border-[color:rgb(var(--fx-rgb)/0.6)] bg-background/92 px-3 py-2 text-left">
-            <p className="m-0 text-micro font-bold text-info-soft">{detail.lead}</p>
-            <p className="m-0 line-clamp-6 text-body font-semibold leading-snug text-foreground">{detail.text}</p>
+          <div data-stage-text className="mx-auto mt-3 grid w-[min(88cqw,24rem)] gap-0.5 rounded-card border border-[color:rgb(var(--fx-rgb)/0.6)] bg-background/92 px-3 py-2 text-left max-sm:mx-0 max-sm:mt-0 max-sm:w-[min(60cqw,16rem)]">
+            <p className="m-0 text-micro font-bold text-info-soft max-sm:line-clamp-2">{detail.lead}</p>
+            {/* En el celular, tres renglones: tiene que entrar arriba de la fila del medio (el texto entero está en la ficha). */}
+            <p className="m-0 line-clamp-6 text-body font-semibold leading-snug text-foreground max-sm:line-clamp-3">{detail.text}</p>
           </div>
         ) : null}
       </div>

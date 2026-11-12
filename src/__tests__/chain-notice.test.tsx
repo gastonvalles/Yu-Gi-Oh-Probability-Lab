@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AskPrompt } from '../components/auto/AskPrompt'
 import type { PickCard } from '../components/auto/CardPicker'
-import { ChainNotice, type ChainNoticeRow } from '../components/auto/ChainNotice'
+import { ChainLine, ChainNotice, type ChainNoticeRow } from '../components/auto/ChainNotice'
 import { RespondBand } from '../components/auto/RespondBand'
 import { PLAYER_COLOR } from '../components/duel/player-color'
 import { SheetHost, type SheetYield } from '../components/ui/BottomSheet'
@@ -321,38 +321,33 @@ describe('lo que hizo un eslabón resuelto (`outcome`): un solo chip, en lugar d
   })
 })
 
-describe('ChainNotice desplegada en escritorio (como abre cada cadena)', () => {
-  it('la píldora es el título de la pila («Cadena · 2»): el eslabón, su dueño y su estado van sólo en su fila (el resumen, para el lector de pantalla)', () => {
-    const { status } = pill([PONIX, ASH], { open: true, compact: false })
-
-    expect(status.firstElementChild).toHaveTextContent(/^Cadena · 2$/)
-    for (const line of [...status.children].slice(1)) expect(line).toHaveClass('sr-only')
-    // Sin lugar para la lista con una pregunta abierta (`data-squeezed` en la capa), se ve el resumen y no la lista.
-    for (const line of [...status.children].slice(1)) expect(line).toHaveClass('group-data-squeezed/chain:not-sr-only')
-    expect(status.firstElementChild).toHaveClass('group-data-squeezed/chain:hidden')
-    expect(screen.getByRole('list', { name: /Eslabones de la cadena/ })).toHaveAttribute('data-chain-list')
-    expect(screen.getByRole('list', { name: /Eslabones de la cadena/ })).toHaveClass('group-data-squeezed/chain:hidden')
-    expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Ocultar la cadena' })).toHaveAttribute('aria-expanded', 'true')
-  })
-
-  it('un solo cartel recto: el título y los eslabones van en la misma tarjeta (un borde, una sombra), separados por una línea fina; nada redondeado', () => {
-    const { status } = pill([PONIX, ASH], { open: true, compact: false })
+describe('ChainNotice desde 1101 px', () => {
+  it('va en la línea de abajo del campo, como en el celular (no flota ni se pliega): la cuenta, el eslabón del que habla y su estado, y los eslabones', () => {
+    const { status } = pill([{ ...PONIX, state: 'disabled', by: 2 }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true, open: true, compact: false })
+    const line = screen.getByTestId('chain-notice')
     const list = screen.getByRole('list', { name: /Eslabones de la cadena/ })
-    const boxes = [...screen.getByTestId('chain-notice').querySelectorAll('[class*="shadow-overlay"]')]
 
-    expect(boxes).toHaveLength(1)
-    expect(boxes[0]).toHaveClass('border')
-    // Esquinas rectas (Gastón, 2026-11-10: «no me gustan los bordes redondeados»): ni la tarjeta ni sus eslabones (los botones de la cabeza los cuadra la mesa, `mat-square`).
-    expect([boxes[0]!, list, ...list.querySelectorAll('*')].filter((element) => /\brounded(?!-none)/.test(element.getAttribute('class') ?? ''))).toEqual([])
-    expect(boxes[0]).toContainElement(status)
-    expect(boxes[0]).toContainElement(list)
-    expect(list).toHaveClass('border-t')
-    expect(list).not.toHaveClass('border')
+    expect(line).toHaveAttribute('data-chain-line')
+    expect(status).toHaveTextContent(/^Cadena · 2CL1 · Sin efecto por Ash Blossom$/)
+    expect(line).toContainElement(within(list).getByRole('button', { name: /^Eslabón 2: Ash Blossom/ }))
+    expect(screen.queryByRole('button', { name: /^(Ocultar|Ver) la cadena$/ })).toBeNull()
   })
+})
 
-  it('plegada: el eslabón y de quién arriba; debajo, su estado con quién lo negó, sin el nombre; la cuenta, porque no es ese número', () => {
-    expect(pill([{ ...PONIX, state: 'disabled', by: 2 }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true, compact: false }).status).toHaveTextContent(/^Cadena · 2 · CL1 · VosSin efecto · por CL2$/)
-    expect(screen.getByRole('button', { name: 'Ver la cadena' })).toHaveAttribute('aria-expanded', 'false')
+describe('la línea del celular (`ChainLine`)', () => {
+  it('lo negado o sin efecto se lee con el nombre de la carta que lo hizo (TI-172): «Negada por Ash Blossom»; sin saber quién, sólo el estado', () => {
+    const line = (rows: ChainNoticeRow[], focus: number) =>
+      render(
+        <Provider store={store}>
+          <ChainLine rows={rows} focus={focus} still onPick={() => {}} />
+        </Provider>,
+      )
+
+    line([{ ...PONIX, state: 'negated', by: 2 }, { ...ASH, state: 'solving' }], 0)
+    expect(screen.getByRole('status')).toHaveTextContent(/^Cadena · 2CL1 · Negada por Ash Blossom$/)
+    // El eslabón, angosto, sigue diciendo «por CL2».
+    expect(screen.getByRole('button', { name: 'Eslabón 1: Ponix, tuyo. Negada · por CL2' })).toBeInTheDocument()
+    line([{ ...PONIX, state: 'disabled' }, { ...ASH, state: 'solving' }], 0)
+    expect(screen.getAllByRole('status')[1]).toHaveTextContent(/^Cadena · 2CL1 · Sin efecto$/)
   })
 })

@@ -157,8 +157,9 @@ const BADGE_TAG = { mine: 'bg-primary text-white', theirs: 'bg-info text-backgro
  * La chapa de vidas del duelo (Gastón, 2026-11-10: el diseño de la mesa del celular, como Master Duel): junto a cada lado de la mesa, la del rival arriba a la derecha y la tuya abajo a la izquierda (en
  * escritorio, a los costados del campo). Recta, con fondo carbón al 82 % en alfa plano (sin desenfoque: el texto blanco pasa AA sobre el remolino) y el borde del dueño; arriba la etiqueta («Vos» violeta,
  * «Rival» lima) y, si se da, el turno (`turn`); abajo, el número de 33 px.
- * - **El cambio de vidas:** el número crece a 1,08 y vuelve (`animate-life-bump`) y al lado sale «−1100 ▼» que sube y se funde (`animate-life-delta`): rojo si te conviene poco (tu daño, lo que el rival
- *   gana), menta si te conviene (el daño al rival, lo que ganás). Sólo `transform`/`opacity`; con movimiento reducido el «−1100» queda quieto y se va solo. Lo anuncia el lector de pantalla (`aria-live`).
+ * - **El cambio de vidas:** el número crece a 1,08 y vuelve (`animate-life-bump`) y sale «−1100 ▼» en grande (`text-hit`, 64 px; 84 desde 1101), que entra de 1,6, se sostiene, sube y se funde en 1,5 s
+ *   (`animate-life-delta`): el del rival a la izquierda de su chapa, sobre su mano; el tuyo arriba de tu chapa (nunca sobre el botón del turno). Rojo si te conviene poco (tu daño, lo que el rival
+ *   gana), menta si te conviene (el daño al rival, lo que ganás). Sólo `transform`/`opacity`; con movimiento reducido aparece quieto y se va solo. Lo anuncia el lector de pantalla (`aria-live`).
  * - Crítico (2000 o menos) y en 0, el número en rojo. `onClick` (el duelo manual): un botón de 44 px que abre la calculadora. `bubble`: la señal de su dueño, como en `LifeScore`.
  * - Usos: los duelos (manual, por enlace y automático) en el celular y en las esquinas del campo en escritorio; la marca y la fila de 640 a 1100 px siguen con `LifeScore`.
  */
@@ -171,6 +172,7 @@ export const LifeBadge = memo(function LifeBadge({
   align = mine ? 'start' : 'end',
   turn,
   turnMine,
+  active,
   onClick,
   bubble = null,
   bubbleKey,
@@ -184,6 +186,8 @@ export const LifeBadge = memo(function LifeBadge({
   /** El turno, junto a la etiqueta («tu turno 3»), en el color de quién lo tiene. */
   turn?: string | undefined
   turnMine?: boolean | undefined
+  /** De quién es el turno (el duelo): la chapa del que juega se enciende con su aro (sombra: no cambia la medida) y la del otro se apaga (borde tenue). Sin esto, como siempre. */
+  active?: boolean | undefined
   onClick?: (() => void) | undefined
   bubble?: string | null
   bubbleKey?: number | undefined
@@ -212,7 +216,8 @@ export const LifeBadge = memo(function LifeBadge({
   const lifeOf = `${t('duel.bar.lifeOf', { name })}: ${life}`
   const body = (
     <>
-      <span className={cx('flex min-w-0 items-center gap-1.5 text-micro font-bold leading-4', align === 'end' && 'flex-row-reverse')}>
+      {/* `max-w-full`: si la chapa cede ancho (la fila de abajo del celular), el turno se recorta con «…» en vez de salirse. */}
+      <span className={cx('flex min-w-0 max-w-full items-center gap-1.5 text-micro font-bold leading-4', align === 'end' && 'flex-row-reverse')}>
         <span aria-hidden="true" className={cx('shrink-0 px-1.5 uppercase tracking-wider', BADGE_TAG[owner])}>{label}</span>
         {turn ? <span className={cx('min-w-0 truncate', turnMine === false ? 'text-info-soft' : 'text-accent')}>{turn}</span> : null}
       </span>
@@ -224,9 +229,19 @@ export const LifeBadge = memo(function LifeBadge({
           </span>
         </span>
         {change ? (
-          // Flota al costado del número (no ensancha la chapa ni corre nada): hacia la mesa, a la derecha la tuya y a la izquierda la del rival.
-          <span key={`delta-${change.key}`} aria-hidden="true" data-life-delta={good ? 'good' : 'bad'} className={cx('pointer-events-none absolute z-30 animate-life-delta whitespace-nowrap text-lead font-extrabold tabular-nums motion-reduce:animate-none', align === 'end' ? 'right-full mr-3' : 'left-full ml-3', good ? 'text-success' : 'text-danger-soft')}>
-            {deltaText} {change.delta < 0 ? '▼' : '▲'}
+          // En grande y sin ocupar lugar (no ensancha la chapa ni corre nada): el del rival a su izquierda, sobre su mano (son dorsos); el tuyo arriba de tu chapa, nunca sobre el botón del turno.
+          <span
+            key={`delta-${change.key}`}
+            aria-hidden="true"
+            data-life-delta={good ? 'good' : 'bad'}
+            className={cx(
+              'pointer-events-none absolute z-30 flex animate-life-delta items-center gap-1 whitespace-nowrap text-hit font-extrabold tabular-nums drop-shadow-[0_2px_6px_rgb(0_0_0/0.7)] motion-reduce:animate-none min-[1101px]:text-hit-lg',
+              mine ? 'bottom-full left-0 mb-6 origin-bottom-left' : 'right-full mr-3 origin-right',
+              good ? 'text-success' : 'text-danger-soft',
+            )}
+          >
+            {deltaText}{' '}
+            <span className="text-title min-[1101px]:text-stat">{change.delta < 0 ? '▼' : '▲'}</span>
           </span>
         ) : null}
       </span>
@@ -241,14 +256,19 @@ export const LifeBadge = memo(function LifeBadge({
     </>
   )
   // Recta y traslúcida (82 %, alfa plano), con el borde de su dueño.
-  const plate = cx('relative grid shrink-0 gap-0.5 border bg-background/82 px-2 py-1', owner === 'mine' ? 'border-primary' : 'border-info', align === 'end' ? 'justify-items-end text-right' : 'justify-items-start text-left')
+  const plate = cx(
+    'relative grid shrink-0 gap-0.5 border bg-background/82 px-2 py-1',
+    active === false ? 'border-border-subtle' : owner === 'mine' ? 'border-primary' : 'border-info',
+    active && (owner === 'mine' ? 'ring-2 ring-primary' : 'ring-2 ring-info'),
+    align === 'end' ? 'justify-items-end text-right' : 'justify-items-start text-left',
+  )
 
   return onClick ? (
-    <button ref={setBox} type="button" data-lp={side} data-life-score="" data-life-badge="" aria-label={`${lifeOf}. ${t('duel.bar.openCalculator')}`} className={cx(plate, 'min-h-11 min-w-11 cursor-pointer rounded-none transition-colors hover:border-info focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button ref={setBox} type="button" data-lp={side} data-life-score="" data-life-badge="" data-active={active} aria-label={`${lifeOf}. ${t('duel.bar.openCalculator')}`} className={cx(plate, 'min-h-11 min-w-11 cursor-pointer rounded-none transition-colors hover:border-info focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (
-    <div ref={setBox} role="group" data-lp={side} data-life-score="" data-life-badge="" aria-label={lifeOf} className={plate}>
+    <div ref={setBox} role="group" data-lp={side} data-life-score="" data-life-badge="" data-active={active} aria-label={lifeOf} className={plate}>
       {body}
     </div>
   )

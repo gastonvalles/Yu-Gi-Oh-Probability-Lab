@@ -1,6 +1,69 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-1-duelo-mejoras",
+      "date": "2026-11-12",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "El duelo, segunda vuelta: siete mejoras",
+        "novedades": [
+          "Los menús de abajo ya no se pisan. En el celular hay una sola hoja abierta por vez, opaca. Una carta abierta desde una pila lleva «‹ GY» arriba para volver.",
+          "La cadena siempre a la vista. La carta que se activa se muestra arriba del medio del campo y ya no tapa la cadena. Un eslabón negado se queda un momento para que lo leas, con quién lo negó. En escritorio, en el duelo automático, la carta, la cadena y los pasos van en una sola columna con pestañas.",
+          "La mesa se lee. El ATK va al pie de cada carta, sin tapar el arte, y cambia de color si subió o bajó; el Nivel se lee en la ficha de la carta. En escritorio, mientras jugás, el menú lateral se pliega y la mesa es más grande.",
+          "El turno en el pulgar (duelo automático). Las fases se ven en la línea de abajo del campo y, al alcance del pulgar, «Ir a Batalla» o «Terminar turno» en un toque. La chapa de quien juega se enciende.",
+          "Los momentos pesan. Al invocar, la casilla marca el golpe; al atacar, el atacante embiste y la carta destruida se parte; el daño aparece en grande. Las placas de comienzo y final son planas, como la mesa, con el resultado en grande."
+        ],
+        "comoSeUsa": [
+          "En el duelo automático, mirá la línea de abajo del campo: ahí están las fases. Tocala para elegir otra.",
+          "Abajo tenés «Ir a Batalla» o «Terminar turno»: un toque.",
+          "Desde una pila, tocá una carta y después «‹ GY» para volver a la pila.",
+          "En escritorio, usá las pestañas «Carta · Cadena · Pasos» de la derecha. Si querés el menú lateral, abrilo con el botón de siempre."
+        ],
+        "arreglos": [
+          "En el duelo automático, la ficha «M1» ya no está en el campo del celular ni de escritorio: la fase se lee en la línea. En el modo manual y en tablet sigue donde estaba.",
+          "La línea de abajo del campo ya no queda vacía: cuando no pasa nada muestra las fases.",
+          "Las hojas y los carteles son opacos: ya no se ve la mano a través.",
+          "En escritorio, la cadena va en la línea, como en el celular."
+        ],
+        "ojo": [
+          "En escritorio tu mano se ve un poco más chica, para darle lugar a la mesa.",
+          "«Terminar turno» pasa el turno sin preguntar. En Solo podés deshacerlo; en un duelo online, deshacer le pide permiso al rival.",
+          "La carta que se parte en dos se ve sólo cuando la destruye un ataque.",
+          "No se probó en un celular real."
+        ]
+      },
+      "en": {
+        "title": "The duel, second round: seven improvements",
+        "novedades": [
+          "The bottom menus no longer overlap. On your phone only one sheet is open at a time, and it is opaque. A card opened from a pile has a \"‹ GY\" at the top to go back.",
+          "The chain is always in view. The card being activated shows above the middle of the field and no longer covers the chain. A negated link stays for a moment so you can read it, with who negated it. On desktop, in the automatic duel, the card, the chain and the steps share a single column with tabs.",
+          "The table is easier to read. ATK sits at the foot of each card, without covering the art, and changes color if it went up or down; the Level is read on the card sheet. On desktop, while you play, the side menu folds away and the table is bigger.",
+          "The turn at your thumb (automatic duel). The phases show on the line under the field and, within thumb reach, \"Go to Battle\" or \"End turn\" in one tap. The plate of whoever is playing lights up.",
+          "Moments have weight. On a summon, the zone marks the hit; on an attack, the attacker charges and the destroyed card splits; the damage shows up big. The start and end plates are flat, like the table, with the result big."
+        ],
+        "comoSeUsa": [
+          "In the automatic duel, look at the line under the field: the phases are there. Tap it to pick another one.",
+          "Below you have \"Go to Battle\" or \"End turn\": one tap.",
+          "From a pile, tap a card and then \"‹ GY\" to go back to the pile.",
+          "On desktop, use the \"Card · Chain · Steps\" tabs on the right. If you want the side menu, open it with the usual button."
+        ],
+        "arreglos": [
+          "In the automatic duel, the \"M1\" tag is no longer on the field on phone or desktop: the phase is read on the line. In manual mode and on tablet it stays where it was.",
+          "The line under the field is no longer empty: when nothing is happening it shows the phases.",
+          "Sheets and prompts are opaque: you no longer see your hand through them.",
+          "On desktop, the chain goes on the line, like on phone."
+        ],
+        "ojo": [
+          "On desktop your hand looks a bit smaller, to make room for the table.",
+          "\"End turn\" passes the turn without asking. In Solo you can undo it; in an online duel, undoing asks the opponent for permission.",
+          "The card that splits in two only shows when an attack destroys it.",
+          "It was not tested on a real phone."
+        ]
+      }
+    },
+    {
       "id": "2026-11-11-2-menus-y-vidas",
       "date": "2026-11-11",
       "tags": [

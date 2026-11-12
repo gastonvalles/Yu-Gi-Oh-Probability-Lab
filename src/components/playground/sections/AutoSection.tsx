@@ -16,12 +16,14 @@ import { AutoCardSheet, AutoPhases } from '../../auto/AutoPanel'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
+import { ChainListRows } from '../../auto/chain-parts'
 import { ChainNotice } from '../../auto/ChainNotice'
 import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { AskWhy } from '../../duel/AskWhy'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
+import { DuelCardDock } from '../../duel/DuelCardDock'
 import { TheirHand } from '../../duel/DuelTable'
 import { PromptTurnContext } from '../../duel/MatPrompt'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
@@ -39,6 +41,7 @@ import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probab
 import { SheetHost, type SheetYield } from '../../ui/BottomSheet'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
+import { Tabs } from '../../ui/Tabs'
 import { cx } from '../../ui/cx'
 import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
@@ -327,6 +330,8 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       <div className={cx('grid gap-3 border border-border-subtle bg-background py-3', variant && 'min-h-[36rem] justify-items-center overflow-hidden')}>
         <AutoCardSheet name={ASH.name} kicker={t('auto.picker.place.mine.hand')} art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} variant={variant} />
         <AutoPhases items={phases} onClose={reply(t('common.cancel'))} variant={variant} />
+        {/* Abierta desde el visor del GY (celular): lo reemplaza, y «‹ GY · 2» la cierra y lo deja a la vista. */}
+        {variant ? null : <AutoCardSheet name={ASH.name} kicker="GY" art={ASH.art} apiCard={card} items={plays} onInspect={reply('Ver carta')} onClose={reply('Cerrar')} crumb={{ label: 'GY · 2', onBack: reply('Volver a GY · 2') }} />}
       </div>
     </div>
   )
@@ -336,15 +341,59 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       title="La familia del automático · la ficha y las fases"
       layout="column"
       className="col-span-full"
-      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo; apoyado sobre la mano con techo en la línea; 92 % en alfa plano, esquinas rectas. En escritorio es una ventana: barra de título violeta (el asa: flechas la mueven, Alt + flechas la estiran, Enter o doble clic la vuelven), se estira del borde derecho, del de abajo y de la esquina, y recuerda lugar y tamaño por tipo. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
+      note={<>Sólo con <Tag>duel.auto</Tag> (la mesa manual sigue con <Tag>CardSheet</Tag>, <Tag>CardMenu</Tag> y <Tag>PhaseRow</Tag>). Texto arriba, bandeja u opciones, botones abajo; apoyado sobre la mano con techo en la línea; opaco, esquinas rectas. En el celular, una sola hoja abajo: gana la pregunta del núcleo, después la ficha y después el visor de una pila; lo que pierde vuelve como estaba y la cabeza lo dice con su flecha (la tercera: la ficha abierta desde el GY, con «‹ GY · 2»). En escritorio es una ventana: barra de título violeta (el asa: flechas la mueven, Alt + flechas la estiran, Enter o doble clic la vuelven), se estira del borde derecho, del de abajo y de la esquina, y recuerda lugar y tamaño por tipo. En la mesa va en un portal; acá, en su marco. Archivo: <Tag>auto/AutoPanel.tsx</Tag></>}
     >
       <SheetHost phone>
         <div className="flex flex-wrap items-start gap-4">
           {frame('w-full max-w-[24.375rem]', '390 px')}
           {frame('min-w-0 flex-1 basis-[38.75rem]', '1440 px: la ventana (arrastrala de la barra violeta, estirala del borde o la esquina; doble clic, a su lugar)', 'floating')}
+          <ColumnSample card={card} plays={plays} onAnswer={onAnswer} />
         </div>
       </SheetHost>
     </Specimen>
+  )
+}
+
+/**
+ * Desde 1101 px, sólo en el automático: la columna de la derecha con pestañas (`PracticeMat`). «Carta», el detalle de la carta tocada y su ficha al pie (`AutoCardSheet variant="column"`); «Cadena», la pila
+ * entera (`ChainListRows`); «Pasos», los pasos y combos de siempre (acá, vacío). Las flechas cambian de pestaña. Las preguntas siguen siendo ventanas.
+ */
+function ColumnSample({ card, plays, onAnswer }: { card: ApiCardSearchResult; plays: MenuItem[]; onAnswer: (answer: string) => void }) {
+  const [tab, setTab] = useState<'card' | 'chain' | 'side'>('card')
+  const rows = (['solved', 'solving', 'chained'] as const).map((state, index) => ({ number: index + 1, who: index === 1 ? 'Rival' : t('duel.bar.you'), mine: index !== 1, name: ASH.name, art: ASH.art, state }))
+
+  return (
+    <div className="grid w-80 content-start gap-2">
+      <p className="m-0 text-micro text-muted">Escritorio, sólo el automático: la columna</p>
+      <div className="mat-square flex h-[36rem] flex-col border border-border-subtle bg-background **:rounded-none! **:normal-case! **:tracking-normal!">
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          label={t('practice.panel.label')}
+          fullWidth
+          className="shrink-0 px-1"
+          options={[
+            { value: 'card', label: t('practice.column.card') },
+            { value: 'chain', label: t('auto.chain.title') },
+            { value: 'side', label: t('practice.panel.steps') },
+          ]}
+        />
+        {tab === 'card' ? (
+          <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3">
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <DuelCardDock peek={{ name: ASH.name, card }} />
+            </section>
+            <AutoCardSheet name={ASH.name} art={ASH.art} apiCard={card} items={plays} onClose={() => onAnswer('Cerrar')} variant="column" />
+          </div>
+        ) : tab === 'chain' ? (
+          <ol className="m-0 grid min-h-0 flex-1 list-none content-start gap-1 overflow-y-auto p-3">
+            <ChainListRows rows={rows} onPick={(index) => onAnswer(`CL${index + 1}`)} />
+          </ol>
+        ) : (
+          <p className="m-0 p-3 text-micro text-muted">{t('auto.steps.empty')}</p>
+        )}
+      </div>
+    </div>
   )
 }
 

@@ -25,7 +25,7 @@ import type { SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
-import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { usePracticeSounds } from '../../app/use-practice-sounds'
 import { showToastMessage } from '../../app/use-toast-message'
 import { Presence } from '../../app/use-presence'
@@ -47,7 +47,7 @@ import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { AutoCardSheet, AutoPhases } from './AutoPanel'
 import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard, type PickFrom } from './CardPicker'
-import { outcomeChip } from './chain-parts'
+import { ChainListRows, outcomeChip } from './chain-parts'
 import { ChainNotice } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
@@ -270,7 +270,6 @@ export interface AutoAsks {
 
 export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand, onManual, rival, rivalPhases = false }: AutoAsksInput): AutoAsks {
   const prefs = useAutoPrefs()
-  const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const dock = useDockPeek()
   const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
@@ -874,10 +873,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   /** Mostrar una carta del rival: en el detalle de la izquierda o, sin él, grande (como «Ver carta»); una de dorso, sólo en el detalle. */
   const showRival = useCallback(
     (peek: CardPeek, rect: DOMRect) => {
-      if (wide) lockDock(peek)
+      if (desktop) lockDock(peek)
       else if ('drawId' in peek) setRivalCard({ drawId: peek.drawId, rect })
     },
-    [wide, lockDock],
+    [desktop, lockDock],
   )
   // Las cartas del rival que la pregunta deja elegir (a qué atacar, el objetivo de un efecto) o activar (una obligatoria de su campo): laten y se tocan; las elegidas llevan la mira.
   const rivalPlays = shown?.theirs
@@ -1072,10 +1071,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       setLinkRead({ code: row.code, card, ...(row.description ? { description: row.description } : {}) })
       // Desde 1101 px leer un eslabón le da a la pila otro rato desde el toque (cuenta de nuevo `CHAIN_LINGER_MS` si ya terminó); la cinta del celular no, y se va sola al terminar.
       if (desktop) setChainTouch({ key: feed.key, open: true })
-      if (wide && card) lockDock({ name: nameOf(row.card, row.code), card })
+      if (desktop && card) lockDock({ name: nameOf(row.card, row.code), card })
       else showRival(row.code ? { drawId: drawIdOf(row.code) } : { faceDown: true }, rect)
     },
-    [feed, cardsById, byCode, wide, desktop, lockDock, nameOf, showRival],
+    [feed, cardsById, byCode, desktop, lockDock, nameOf, showRival],
   )
   // La cadena que se puede pasar, en la banda de responder: a qué eslabón y con qué cartas (con su lugar). Con una sola de un solo efecto, ya viene elegida; una con varios efectos
   // abre su lista (como su menú en la mesa).
@@ -1108,6 +1107,20 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
       return { key, name: nameOf(ref), art: artOf(ref), ...(from ? pickPlace(from, ref.side === 'theirs') : {}) }
     }) ?? []
+  const chainRows = useMemo(
+    () => feed?.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}), ...(row.outcome ? { outcome: outcomeChip(row.outcome) } : {}) })) ?? [],
+    [feed, rivalName, nameOf, artOf],
+  )
+  // La pestaña «Cadena» de la columna de escritorio: la pila entera (la línea muestra hasta cuatro eslabones), también la última cadena después de irse de la línea.
+  const chainList = useMemo(
+    () =>
+      desktop && feed && !reviewing ? (
+        <ol key={feed.key} className="m-0 grid list-none content-start gap-1 p-0">
+          <ChainListRows rows={chainRows} onPick={readLink} />
+        </ol>
+      ) : null,
+    [desktop, feed, reviewing, chainRows, readLink],
+  )
   const chainNotice = useMemo(
     () =>
       chainShown && feed ? (
@@ -1115,7 +1128,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           // Una cadena nueva es otra (sus números vuelven a empezar): los eslabones de la anterior no se animan contra ella.
           key={feed.key}
           done={feed.done}
-          rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}), ...(row.outcome ? { outcome: outcomeChip(row.outcome) } : {}) }))}
+          rows={chainRows}
           focus={feed.focus}
           resolving={feed.resolving}
           open={chainOpen && !viewerOpen}
@@ -1125,7 +1138,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           onPick={readLink}
         />
       ) : null,
-    [chainShown, feed, rivalName, nameOf, artOf, chainOpen, viewerOpen, desktop, readLink],
+    [chainShown, feed, chainRows, chainOpen, viewerOpen, desktop, readLink],
   )
   const linkText = linkRead?.card ?? linkRivalCard
   const linkHighlight = useMemo<CardTextHighlight | null>(() => {
@@ -1194,7 +1207,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const rivalAim = useMemo(() => (shown ? rivalAttackInCourse(attacks, snap.order, snap.mineActions, snap.theirsActs, snap.lifeSteps) : null), [shown, attacks, snap.order, snap.mineActions, snap.theirsActs, snap.lifeSteps])
 
   const dockHighlight = highlight ?? linkHighlight
-  const detail = useMemo(() => (wide ? <DuelCardDock peek={peeked} highlight={dockHighlight} stats={reviewing ? null : dockStats} /> : undefined), [wide, peeked, dockHighlight, reviewing, dockStats])
+  const detail = useMemo(() => (desktop ? <DuelCardDock peek={peeked} highlight={dockHighlight} stats={reviewing ? null : dockStats} /> : undefined), [desktop, peeked, dockHighlight, reviewing, dockStats])
   const limits = useMemo(() => (reviewing ? null : <LimitsChip texts={limitTexts} />), [reviewing, limitTexts])
   const mat: AutoAsks['mat'] = {
     undoPlay,
@@ -1281,12 +1294,15 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ) : undefined,
     rivalFlights,
     ...(chainNotice ? { chain: chainNotice } : {}),
+    ...(chainList ? { chainList } : {}),
     turnNumber,
     rivalEmz: rivalEmzTaken,
     // El ATK/DEF de ahora es del duelo vivo: repasando, el detalle muestra la carta impresa.
-    ...(wide ? { detail } : {}),
+    ...(desktop ? { detail } : {}),
     onPeek: dock.lock,
     onHover: dock.hover,
+    // Lo que se tocó y quedó fijo en el detalle (una carta, un eslabón, una del rival): la columna de escritorio pasa a «Carta».
+    peekLock: dock.locked ? dock.shown : null,
     onRivalHover,
     rivalViewing: rivalPile !== null,
     onActivity,
@@ -1294,6 +1310,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     auto,
     limits,
     menus: AUTO_MENUS,
+    // Un cartel de abajo con una pregunta (el de `prompt` o uno de `pieces`): en el celular la ficha y el visor de una pila le ceden el lugar.
+    asking: Boolean(prompt || offer || (forced && forcedFirst && lane === null) || list || options || sub?.children || shown?.sort || shown?.counters),
   }
 
   const pieces = (
@@ -1392,14 +1410,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         targeted={rivalTargeted}
         glow={(id) => (rivalActing.has(id) ? 'act' : null)}
         onPick={(id, rect) => {
-          if (!wide) showRival(rivalPeekOf(id), rect)
+          if (!desktop) showRival(rivalPeekOf(id), rect)
         }}
         onPeek={(id) => lockDock(rivalPeekOf(id))}
         onHover={(id) => hoverDock(rivalPeekOf(id))}
         onClose={() => setRivalPile(null)}
       />
     ),
-    [rivalPile, rivalViewerHidden, theirs, rivalPeekOf, nameOf, artOf, rivalTargeted, rivalActing, wide, showRival, lockDock, hoverDock],
+    [rivalPile, rivalViewerHidden, theirs, rivalPeekOf, nameOf, artOf, rivalTargeted, rivalActing, desktop, showRival, lockDock, hoverDock],
   )
   return {
     rivalViewer,

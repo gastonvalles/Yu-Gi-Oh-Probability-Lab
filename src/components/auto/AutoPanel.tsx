@@ -11,7 +11,8 @@ import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { PromptTurnContext, promptTurnText } from '../duel/MatPrompt'
-import { GHOST_CLICK_MS, type MenuItem } from '../probability/MatDialogs'
+import { GHOST_CLICK_MS, LayerBackContext, type MenuItem } from '../probability/MatDialogs'
+import { levelText } from '../probability/MatFx'
 import { phaseRowEntries } from '../probability/PhaseRow'
 import { CARD_BACK } from '../probability/practice-styles'
 import { useSheetHost } from '../ui/BottomSheet'
@@ -21,8 +22,11 @@ import { Icon, type IconName } from '../ui/Icon'
 import { CloseButton, IconButton, TileButton } from '../ui/IconButton'
 import { overline } from '../ui/typography'
 
-/** `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px). Sin decirlo, según el ancho. */
-type AutoPanelVariant = 'docked' | 'floating'
+/**
+ * `docked`: apoyado abajo, sobre tu mano (el celular). `floating`: la ventana que se arrastra y se estira (el escritorio, desde 1101 px). Sin decirlo, según el ancho. `column`: en su lugar, dentro de la
+ * pestaña «Carta» de la columna del escritorio (la ficha de una carta: su nombre, la X y sus jugadas debajo del detalle), sin portal, sin barra ni velo.
+ */
+type AutoPanelVariant = 'docked' | 'floating' | 'column'
 
 /**
  * Dónde recuerda cada ventana su lugar y su tamaño: las preguntas comparten una (la próxima sale donde quedó la anterior); la ficha de una carta y las fases, la suya; las del catálogo (`playground`),
@@ -60,6 +64,8 @@ interface AutoPanelProps {
   describedBy?: string
   /** Se cierra (la ficha de una carta, las fases): la X, Escape y tocar afuera; el foco queda adentro y vuelve a lo que lo tenía. Sin esto, hay que contestar: sólo se minimiza. */
   onDismiss?: () => void
+  /** Lo que este cartel tapa en el celular (el visor de una pila bajo la ficha): arriba, «‹ GY · 2», que lo cierra y lo deja a la vista. Una pregunta lo lee de `LayerBackContext`, sin botón. */
+  crumb?: { label: string; onBack: () => void }
   variant?: AutoPanelVariant
   className?: string
 }
@@ -67,24 +73,26 @@ interface AutoPanelProps {
 /**
  * El cascarón de los carteles del duelo automático (la pregunta, la bandeja, las opciones, la ficha de una carta y las fases): **texto arriba, bandeja si hay, botones abajo**, apoyado sobre tu mano
  * desde abajo y con techo en el borde de abajo de la línea (`data-duel-line`): nunca empuja ni tapa el campo ni la cadena (va en un portal `fixed`; la mesa no se entera). Mide lo de su contenido (sin
- * alto fijo): 8 px entre grupos y la pregunta en `text-body`; fondo al 92 % en alfa plano, sin desenfoque, y esquinas rectas (`mat-square`). Arrastrar la franja de arriba hacia abajo (o «Minimizar», o
+ * alto fijo): 8 px entre grupos y la pregunta en `text-body`; fondo opaco, sin desenfoque, y esquinas rectas (`mat-square`). Arrastrar la franja de arriba hacia abajo (o «Minimizar», o
  * Escape con `escape`) lo deja en una tira con la pregunta y sus botones; nunca se cierra solo.
  * En escritorio (`floating`) es una ventana: sale en el mismo lugar (620 px de ancho, centrada en la columna de la mesa: `--mat-x`, `--mat-w`, apoyada sobre tu mano), con una barra de título violeta
  * que es el asa (`useDraggableOffset`: se lleva con el mouse; enfocada, flechas, Alt + flechas la estiran, Enter o doble clic la vuelven a su lugar y su tamaño) y se estira del borde derecho, del de
  * abajo y de la esquina. Lugar y tamaño se recuerdan por tipo (`autoWindowKey`); nunca cambia la geometría de la mesa. Con la hoja de la cadena abierta en el celular (`SheetHost`), va en su pie: una sola hoja. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AutoPanel({ kind, label, head, top, aside, children, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, variant, className }: AutoPanelProps) {
+export function AutoPanel({ kind, label, head, top, aside, children, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, crumb, variant, className }: AutoPanelProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const titleId = useId()
   const leaving = useLeaving()
   const host = useSheetHost()
   const slot = host?.slot ?? null
-  // En un marco del catálogo (`SheetHost phone`), en su lugar: ni portal ni `fixed`.
-  const inline = host?.phone === true && !slot
+  const column = variant === 'column'
+  // En un marco del catálogo (`SheetHost phone`) o en la columna, en su lugar: ni portal ni `fixed`.
+  const inline = (host?.phone === true && !slot) || column
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
   // En el pie de la hoja de la cadena (celular) nunca es ventana.
   const floating = !slot && (variant === 'floating' || (variant === undefined && desktop))
   const turn = useContext(PromptTurnContext)
+  const saved = useContext(LayerBackContext)
   const [minimized, setMinimized] = useState(false)
   // La ventana se lleva de la barra y se estira del borde y la esquina; posición y tamaño, por tipo (`autoWindowKey`). En la mesa se centra con su `translate`: el corrimiento va en `--drag-x/y`.
   const move = useDraggableOffset(autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, WINDOW_MIN)
@@ -127,13 +135,14 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
     return () => window.removeEventListener('resize', place)
   }, [slot, inline, minimized])
 
-  const named = labelledBy ?? titleId
+  // En la columna el nombre es su propio título (la cabeza de la ficha no se dibuja: el detalle de arriba ya muestra la carta).
+  const named = column ? titleId : (labelledBy ?? titleId)
   const attrs = {
     role,
     // Minimizado, su nombre es la pregunta corta de la tira (lo que lo nombraba abierto ya no está).
     ...(minimized ? { 'aria-label': label } : { 'aria-labelledby': named, ...(describedBy ? { 'aria-describedby': describedBy } : {}) }),
     'data-prompt': kind,
-    'data-auto-panel': floating ? 'floating' : 'docked',
+    'data-auto-panel': column ? 'column' : floating ? 'floating' : 'docked',
     // `data-lowered`: el mismo estado con el nombre de las hojas del celular (lo leen la mesa y sus pruebas).
     ...(minimized ? { 'data-minimized': '', 'data-lowered': '' } : {}),
   }
@@ -145,17 +154,17 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
         'fixed inset-x-0 bottom-0 z-[130] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] border-t border-primary/60 shadow-overlay',
         'min-[1101px]:inset-x-auto min-[1101px]:left-[var(--mat-x,50%)] min-[1101px]:w-[min(38.75rem,var(--mat-w,100vw))] min-[1101px]:-translate-x-1/2 min-[1101px]:border-x',
         'pb-[env(safe-area-inset-bottom,0px)]',
-        // Una sola capa abajo: con el visor de una pila abierto en el celular (`data-pile-sheet`), las preguntas se esconden sin cerrarse (como la hoja de la cadena) y vuelven al cerrarlo; la ficha y
-        // las fases (`onDismiss`), al revés, esconden el visor (`PracticeMat`).
-        !onDismiss && 'in-[body:has([data-pile-sheet])]:hidden',
+        // Una sola hoja abajo en el celular: lo que abrís con una pregunta abierta (la ficha, las fases, el visor de una pila) va encima y la esconde sin cerrarla; al cerrarlo, vuelve. Lo que ya
+        // estaba abierto cuando llegó la pregunta, al revés, queda guardado debajo de ella (`PracticeMat`).
+        !onDismiss && 'in-[body:has(>[data-auto-panel=docked][data-prompt=card],>[data-auto-panel=docked][data-prompt=phases],[data-pile-sheet]:not([hidden]))]:hidden',
       )
-  const surface = 'mat-square pointer-events-auto bg-card-background/92 text-body text-foreground motion-safe:animate-sheet-in'
+  const surface = 'mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-sheet-in'
 
   // La ventana del escritorio: apoyada sobre tu mano y centrada en la columna de la mesa como el cartel de siempre (no empuja ni tapa el campo al abrirse); corrida, flota encima de lo que haya.
   const windowPlace = inline
     ? 'relative w-[min(38.75rem,100%)] border border-primary'
     : 'fixed bottom-0 left-[var(--mat-x,50%)] z-[130] w-[min(38.75rem,var(--mat-w,100vw))] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] translate-x-[calc(var(--drag-x,0px)-50%)] translate-y-[var(--drag-y,0px)] border border-primary shadow-overlay'
-  const windowSurface = 'mat-square pointer-events-auto bg-card-background/92 text-body text-foreground motion-safe:animate-dialog-enter'
+  const windowSurface = 'mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-dialog-enter'
   /** Con la barra enfocada: las flechas la mueven 16 px (Mayús: 64), Alt + flechas la estiran y Enter la vuelve a su lugar y su tamaño. */
   const onBarKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey) return
@@ -224,7 +233,32 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
     </>
   )
 
-  const view = floating ? (
+  // «Volver» (una sola hoja en el celular): en la ficha, un botón que la cierra y deja a la vista lo que tapaba; en una pregunta, sólo qué vuelve al contestarla.
+  const back = crumb ? (
+    <Button variant="tertiary" size="sm" icon="chevron-left" data-layer-back="" aria-label={t('auto.layer.back', { place: crumb.label })} className="min-h-11! justify-self-start px-0! text-info" onClick={crumb.onBack}>
+      {crumb.label}
+    </Button>
+  ) : saved && !onDismiss ? (
+    <p data-layer-back="" className="m-0 flex min-w-0 items-center gap-1 text-micro font-semibold text-info">
+      <Icon name="chevron-left" size={14} strokeWidth={2} className="shrink-0" />
+      <span className="sr-only">{t('auto.layer.after')}</span>
+      <span className="truncate">{saved}</span>
+    </p>
+  ) : null
+
+  const view = column ? (
+    // La ficha en la pestaña «Carta»: su nombre y la X, y las jugadas al pie del detalle (sin cabeza, barra, agarres ni velo; no se minimiza).
+    <div ref={ref} {...attrs} className={cx('flex min-w-0 shrink-0 flex-col gap-2 border-t border-border-subtle pt-2', className)}>
+      <div className="flex min-w-0 items-center gap-2">
+        <h2 id={titleId} className="m-0 min-w-0 flex-1 truncate text-body font-semibold">
+          {label}
+        </h2>
+        {onDismiss ? <CloseButton size="lg" tone="ghost" className="-my-1 shrink-0" aria-label={t('common.close')} onClick={onDismiss} /> : null}
+      </div>
+      {children}
+      {actions ? <div className="flex min-w-0 items-center justify-between gap-2">{actions}</div> : null}
+    </div>
+  ) : floating ? (
     minimized ? (
       // La tira: la barra con la pregunta y sus botones, en el mismo lugar y con el mismo ancho (el alto, el suyo).
       <div ref={ref} {...attrs} className={cx(windowSurface, windowPlace, 'flex h-auto! min-w-0 flex-col', className)}>
@@ -237,6 +271,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-2">
           <div className="flex min-w-0 shrink-0 items-start gap-2">
             <div className="grid min-w-0 flex-1 gap-1">
+              {back}
               {top}
               {head ?? (
                 <h2 id={titleId} className="m-0 text-body font-semibold break-words">
@@ -274,6 +309,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, actions, fo
       <Swipe dir="down" onFold={() => setMinimized(true)} follow={follow} className="relative flex min-w-0 touch-none select-none items-start gap-2 pt-2">
         <span aria-hidden="true" className="absolute left-1/2 top-0.5 h-1 w-10 -translate-x-1/2 bg-muted/50" />
         <div className="grid min-w-0 flex-1 gap-1">
+          {back}
           {turn ? (
             <p data-prompt-turn="" className="m-0 text-micro text-muted">
               {promptTurnText(turn)}
@@ -361,9 +397,13 @@ export interface AutoCardSheetProps {
   items: readonly MenuItem[]
   /** Sin jugadas: por qué (`NoPlays`). */
   empty?: ReactNode
+  /** Sin jugadas: «Seguir en modo manual», en el pie junto a «Ver carta» (siempre a la vista, aunque lo de arriba no entre). */
+  onManual?: () => void
   /** «Ver carta»: el texto entero. */
   onInspect?: () => void
   onClose: () => void
+  /** En el celular, el visor de una pila que la ficha tapa («GY · 2»): arriba, su «volver» (`AutoPanel.crumb`). */
+  crumb?: { label: string; onBack: () => void }
   /** Sólo el catálogo lo fuerza (la ventana a 1440 px en su marco); en la mesa, según el ancho. */
   variant?: AutoPanelVariant
 }
@@ -373,12 +413,30 @@ export interface AutoCardSheetProps {
  * jugadas que ofrece el núcleo como botones cuadrados con ícono y rótulo (`menuitem`): la principal primero, violeta y de doble ancho; las demás en una grilla de 5 columnas (8 desde 576 px de cartel: en escritorio). Sin «Más»,
  * sin «⋯» y sin submenús (`flatPlays`). Se cierra con la X, Escape o tocando afuera; el foco vuelve a la carta. Reemplaza a `CardSheet`/`CardMenu` sólo con `duel.auto` (la mesa manual no cambia).
  */
-export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null, items, empty, onInspect, onClose, variant }: AutoCardSheetProps) {
+export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null, items, empty, onManual, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
   const nameId = useId()
   const [armed, setArmed] = useState(false)
   const plays = flatPlays(items)
   const first = plays.findIndex((item) => !item.disabled)
   const stats = apiCard?.atk != null ? [`${t('duel.dock.atk')} ${apiCard.atk}`, ...(apiCard.def != null ? [`${t('duel.dock.def')} ${apiCard.def}`] : [])].join(' / ') : null
+  const inspect = onInspect ? (
+    <Button variant="tertiary" size="sm" iconEnd="chevron-right" className="min-h-8! justify-self-start px-0! text-info pointer-coarse:min-h-11!" onClick={onInspect}>
+      {t('practice.dialog.viewCard')}
+    </Button>
+  ) : null
+  // Sin jugadas (a 360×740, desde el Cementerio, la cabeza se comía la hoja): «Ver carta» y «Seguir en modo manual» van al pie, siempre a la vista; el porqué queda solo en el cuerpo.
+  const bare = plays.length === 0
+  const foot =
+    bare && (inspect || onManual) ? (
+      <>
+        {inspect}
+        {onManual ? (
+          <Button variant="secondary" size="sm" className="ml-auto" onClick={onManual}>
+            {t('auto.bar.manual')}
+          </Button>
+        ) : null}
+      </>
+    ) : undefined
 
   // La ficha sale al levantar el dedo de la carta: el clic que el celular manda después caería en una jugada. Un instante no atiende toques.
   useEffect(() => {
@@ -386,11 +444,15 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
 
     return () => window.clearTimeout(timer)
   }, [])
-  // Cerrada, el foco vuelve a la carta que se tocó.
+  // Cerrada, el foco vuelve a la carta que se tocó, si se perdió (si lo tomó una pregunta del núcleo que la tapó, se queda ahí).
   useEffect(() => {
     const back = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
-    return () => back?.focus({ preventScroll: true })
+    return () => {
+      const active = document.activeElement
+
+      if (!active || active === document.body) back?.focus({ preventScroll: true })
+    }
   }, [])
 
   return (
@@ -401,23 +463,22 @@ export function AutoCardSheet({ name, kicker, art, back = false, apiCard = null,
       labelledBy={nameId}
       focus='[role="menuitem"]'
       onDismiss={onClose}
+      {...(crumb ? { crumb } : {})}
       variant={variant}
       className={armed ? undefined : 'pointer-events-none'}
+      actions={foot}
       head={
         <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2">
           <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden bg-input">{back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} className="block h-full w-full object-cover" />}</figure>
           <div className="grid min-w-0 gap-0.5">
-            {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
+            {/* Con «‹ GY · 2» arriba, el lugar ya está dicho. */}
+            {kicker && !crumb ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
             <h2 id={nameId} className="m-0 line-clamp-2 text-body font-bold text-foreground">
               {name}
             </h2>
-            {apiCard ? <p className="m-0 truncate text-micro text-muted">{[apiCard.cardType, stats].filter(Boolean).join(' · ')}</p> : null}
+            {apiCard ? <p className="m-0 truncate text-micro text-muted">{[apiCard.cardType, levelText(apiCard), stats].filter(Boolean).join(' · ')}</p> : null}
             {apiCard?.description ? <p className="m-0 line-clamp-3 text-micro text-muted">{apiCard.description}</p> : null}
-            {onInspect ? (
-              <Button variant="tertiary" size="sm" iconEnd="chevron-right" className="min-h-8! justify-self-start px-0! text-info pointer-coarse:min-h-11!" onClick={onInspect}>
-                {t('practice.dialog.viewCard')}
-              </Button>
-            ) : null}
+            {bare ? null : inspect}
           </div>
         </div>
       }

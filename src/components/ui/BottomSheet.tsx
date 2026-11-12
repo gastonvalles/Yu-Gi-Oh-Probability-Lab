@@ -80,10 +80,10 @@ interface BottomSheetProps extends Omit<HTMLAttributes<HTMLDivElement>, 'childre
  * - **Dos alturas:** subida, todo; bajada, la fila `peek` (o la tira del asa, 44 px, con el título). `footer` va debajo en las dos. Arranca subida y `raiseKey` la vuelve a subir.
  * - **Sin huecos:** de borde a borde y apoyada abajo, abraza lo que lleva (hasta 55 dvh o, `tall`, 70) y el borde del sistema (`safe-area`) va adentro, en su pie. Lo que baja se recorta en el borde del pie.
  * - **Una sola a la vez** (`SheetHost`): el pie de la cadena recibe las preguntas; cediendo (`grip`) queda su asa sobre la línea de estado y sin pie (un toque o arrastrarla la muestra igual); escondida (`hide`), no está.
- * - **Recta y traslúcida** (Gastón, 2026-11-10): todas sus hojas son de la mesa, así que va siempre con `mat-square` y el fondo al 92 % en alfa plano (sin desenfoque), y el asa también es recta.
+ * - **Recta y opaca** (Gastón, 2026-11-10 y 2026-11-11): todas sus hojas son de la mesa, así que va siempre con `mat-square` y el fondo entero (nada de la mano se lee a través), y el asa también es recta.
  * - Sólo `transform`/`translate`: entra con `animate-sheet-up` y sale al revés (dentro de un `Presence`). Bajada, lo tapado es inerte y el foco pasa al asa.
  */
-export function BottomSheet({ label, head, peek, status, footer, hostsFooter = false, children, raiseKey, startLowered = false, escape = false, tall = false, over = false, yields = false, onDismiss, ref, className, ...props }: BottomSheetProps) {
+export function BottomSheet({ label, head, peek, status, footer, hostsFooter = false, children, raiseKey, startLowered = false, escape = false, tall = false, over = false, yields = false, onDismiss, ref, className, hidden = false, ...props }: BottomSheetProps) {
   const host = useSheetHost()
   const inline = host?.phone === true
   const yieldTo = yields ? (host?.yieldTo ?? null) : null
@@ -119,7 +119,7 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
       ref={ref}
       {...props}
       data-lowered={lowered ? '' : undefined}
-      hidden={yieldTo === 'hide'}
+      hidden={hidden || yieldTo === 'hide'}
       className={cx(
         // `mat-square`: es una hoja de la mesa, con sus esquinas rectas (sale por un portal: no hereda los radios en 0 de la raíz de la mesa).
         'mat-square pointer-events-none inset-x-0 bottom-0 flex flex-col motion-safe:animate-sheet-up',
@@ -132,7 +132,7 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
     >
       {/* Lo que la hoja deja abajo al bajar se recorta en el borde de arriba del pie. `overflow-clip` y no `hidden`: una caja `hidden` se deja desplazar (un `scrollIntoView` de adentro la subía). */}
       <div className="flex min-h-0 flex-1 items-end overflow-clip">
-        <div ref={panelRef} style={tab ? { ...drag.style, translate: `0 calc(100% - ${TAB_PX}px)` } : drag.style} className="pointer-events-auto flex max-h-full w-full flex-col rounded-t-panel border border-b-0 border-border bg-card-background/92 shadow-overlay">
+        <div ref={panelRef} style={tab ? { ...drag.style, translate: `0 calc(100% - ${TAB_PX}px)` } : drag.style} className="pointer-events-auto flex max-h-full w-full flex-col rounded-t-panel border border-b-0 border-border bg-card-background shadow-overlay">
           <div
             {...(tab ? swipe : drag.handlers)}
             className="flex-none touch-none select-none"
@@ -180,15 +180,17 @@ export function BottomSheet({ label, head, peek, status, footer, hostsFooter = f
         </div>
       </div>
       {/* El pie: lo que se decide y el borde del sistema. Sigue a la hoja sin borde de arriba ni radio: es la misma superficie. */}
-      <div ref={hostsFooter ? host?.setSlot : undefined} hidden={tab} inert={tab} className="pointer-events-auto flex-none border-x border-border bg-card-background/92 pb-[env(safe-area-inset-bottom,0px)]">
+      <div ref={hostsFooter ? host?.setSlot : undefined} hidden={tab} inert={tab} className="pointer-events-auto flex-none border-x border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)]">
         {footer}
       </div>
     </div>
   )
+  // Escondida (`hidden`: otra hoja le ganó el lugar), sigue montada como estaba (bajada, si lo estaba) y su fondo no ataja toques.
   const view = onDismiss ? (
     <>
       <div
         aria-hidden="true"
+        hidden={hidden}
         className={cx('inset-0', inline ? 'absolute' : 'fixed', over ? 'z-180' : 'z-[135]', lowered && 'pointer-events-none')}
         onPointerDown={(event) => {
           pressed.current = event.target === event.currentTarget

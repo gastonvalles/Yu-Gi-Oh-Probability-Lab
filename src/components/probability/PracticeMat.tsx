@@ -1,4 +1,4 @@
-import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -87,10 +87,12 @@ import { Button } from '../ui/Button'
 import { ConfirmDialog } from './ConfirmDialog'
 import { SheetHost } from '../ui/BottomSheet'
 import { cx } from '../ui/cx'
+import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { ResizeHandle } from '../ui/ResizeHandle'
+import { tabId, Tabs } from '../ui/Tabs'
 import { AttackFx, AttackTrail, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { AskWhy } from '../duel/AskWhy'
@@ -98,9 +100,10 @@ import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from './compact-field'
 import { stepTone } from './step-tone'
-import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { CardBack, CardMenu, LayerBackContext, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
+import { PhaseTrack, TurnAction } from './PhaseTrack'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -136,6 +139,15 @@ const MAT_GAP = 8
 const HAND_TOP_ROOM = 8
 /** Escritorio: cuánto se separa del campo la mano del rival (arriba). Las manos nunca tapan el campo (Gastón, 2026-10-19: «ya no quiero que las cartas tapen la mesa nunca»). */
 const DESKTOP_HAND_GAP = 8
+/**
+ * El duelo automático desde 1101 px (sin laterales): la mano del rival sube al medio de la barra, que está vacío (la flecha a la izquierda; los íconos y el turno a la derecha), y su chapa queda
+ * justo debajo del turno. Con eso, la línea de abajo del campo y la casilla de 88 px a 1440 × 900 entran sin scroll.
+ */
+const DESKTOP_AUTO_RISE = 58
+/** Su casilla: lo que deja el alto sin la barra, la mano del rival (menos lo que sube), la línea, tu mano (`DESKTOP_AUTO_HAND`) y la fila de abajo (28,7 rem). A 1101 × 700 baja hasta 48 px y entra entera. */
+const DESKTOP_AUTO_CELL = 'max(3rem, min(12rem, calc((100dvh - 28.7rem) / 5)))'
+/** Y su mano: un poco más chica que la de los otros duelos de escritorio (100 px), para que la casilla crezca. */
+const DESKTOP_AUTO_HAND = 80
 /** Celular: cuánto se separan las manos del campo (la del rival sube, la tuya baja) sin moverlo: se corren con `transform` y `margin` de un elemento absoluto, que no cambian el alto de lo que se centra. */
 const MOBILE_HAND_GAP = 14
 /**
@@ -153,11 +165,6 @@ const REVIEW_LIFT = '-translate-y-11'
 const PHONE_BAR = 58
 const PHONE_RIVAL = THEIR_HAND.mobile.room + MOBILE_HAND_GAP
 const PHONE_BOTTOM = 68
-/**
- * Debajo de un cartel del automático apoyado abajo (la ficha, las fases, una pregunta: `AutoPanel` va en un portal, hijo de `body`), tu mano y tu fila se atenúan mientras está abierto: a través de su fondo al 92 %
- * se leían «Vos 8000» y los textos de las cartas y competían con sus botones. Sólo `opacity` (nada se corre); minimizado, vuelven.
- */
-const UNDER_PANEL = 'transition-opacity motion-reduce:transition-none in-[body:has(>[data-auto-panel=docked]:not([data-minimized]))]:opacity-30'
 const onResize = (listener: () => void) => {
   window.addEventListener('resize', listener)
   return () => window.removeEventListener('resize', listener)
@@ -237,6 +244,10 @@ export interface DuelMatLink {
   chain?: ReactNode
   /** La línea del celular sin cadena (`DuelLine`): un aviso o un pedido del rival y, si no hay nada, la última jugada. La cadena va antes. */
   line?: ReactNode
+  /** El automático desde 1101 px: la pila entera de la cadena, para la pestaña «Cadena» de la columna (en la línea entran hasta cuatro eslabones). */
+  chainList?: ReactNode
+  /** Lo que quedó fijo en el detalle por un toque (`null`: nada). Cuando cambia, la columna del automático pasa a «Carta». */
+  peekLock?: unknown
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
   pointed?: { card?: string; pile?: MatPile } | null
   /** Señalar una carta mía a la vista en el campo (se ve en las dos pantallas un rato; no es una jugada). */
@@ -302,6 +313,8 @@ export interface DuelMatLink {
    * trae la pantalla del automático: la mesa no importa sus piezas (el modo automático entra por `lazy`, `auto-isolation.test.ts`).
    */
   menus?: { Card: ComponentType<AutoCardSheetProps>; Phases: ComponentType<{ items: MenuItem[]; onClose: () => void }> }
+  /** El duelo automático tiene una pregunta abierta en un cartel de abajo (`AutoPanel`): en el celular gana ella, y la ficha y el visor de una pila ceden sin cerrarse. */
+  asking?: boolean
 }
 
 interface PracticeMatProps {
@@ -833,6 +846,9 @@ function PracticeMatBody({
     | null
   >(null)
   const [viewer, setViewer] = useState<MatPile | null>(null)
+  // Lo que estaba abierto cuando llegó una pregunta del núcleo (celular, automático): queda guardado debajo de ella hasta contestarla (`menuShelved`, `pileShelved`).
+  const [shelf, setShelf] = useState<{ menu: typeof menu; pile: MatPile | null } | null>(null)
+  const [lastAsking, setLastAsking] = useState(false)
   const [inspected, setInspected] = useState<{ id: string; rect: DOMRect } | null>(null)
   // La pausa y el final del duelo tapan la mesa: un menú o el detalle de una carta que estaba abierto se cierra, y el visor de una pila se esconde (sigue abierto: al cerrar el deck se baraja, y eso no es de la pausa).
   const covered = Boolean(duel?.cover)
@@ -872,14 +888,27 @@ function PracticeMatBody({
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
-  // El ancho de los paneles de los costados (el detalle a la izquierda; los pasos y combos o el chat a la derecha): 20 rem hasta que se arrastra su borde (`ResizeHandle`), y se recuerda.
-  const panels = useMatPanels(sectionRef, { left: Boolean(detail), right: sidePanel })
+  // El automático desde 1101 px: una sola columna a la derecha con pestañas («Carta · Cadena · Pasos», o «Chat» en el duelo por enlace), sin el detalle de la izquierda. La práctica y el
+  // duelo manual siguen con sus dos paneles.
+  const column = isDesktop && Boolean(duel?.auto)
+  const leftDetail = Boolean(detail) && !column
+  const rightCol = sidePanel || column
+  // La pestaña de la columna: «Carta», «Cadena» o la del panel de siempre (`side`: los pasos o el chat; sin él, «Carta»).
+  const [columnTab, setColumnTab] = useState<'card' | 'chain' | 'side'>('side')
+  const tab = columnTab === 'side' && !sidePanel ? 'card' : columnTab
+  const columnId = useId()
+  // El ancho de los paneles de los costados (el detalle a la izquierda; los pasos y combos o el chat a la derecha, o la columna): 20 rem hasta que se arrastra su borde (`ResizeHandle`), y se recuerda.
+  const panels = useMatPanels(sectionRef, { left: leftDetail, right: rightCol }, column)
   const view = useMatView()
   const isDuel = Boolean(duel)
   // El duelo en el celular: geometría fija, sacada sólo del tamaño de la pantalla (`phoneDuelLayout`): el campo y tu mano no se mueven con nada de lo que aparece.
   const [screenWidth, screenHeight] = screen.split('x').map(Number) as [number, number]
   const phone = compact && bare ? phoneDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_BAR, rival: PHONE_RIVAL, bottom: PHONE_BOTTOM }) : null
   const isAuto = Boolean(duel?.auto)
+  // El automático desde 1101 px: la línea de abajo del campo (la cadena o la pista de fases, y el botón del turno) en lugar de la ficha de la fase.
+  const deskLine = isDesktop && isAuto
+  // Sin laterales, la mano del rival sube al medio de la barra (`DESKTOP_AUTO_RISE`).
+  const rise = deskLine && !rails ? DESKTOP_AUTO_RISE : 0
   // La ficha y las fases del automático (sólo con `duel.auto`): la frontera con los menús de la mesa manual.
   const autoMenus = isAuto ? duel?.menus : undefined
   // El ATK/DEF de cada monstruo boca arriba (`StatTag`, siempre): el de ahora si hay núcleo (`duel.auto.stats`, que arma la pantalla), el impreso si no.
@@ -1280,6 +1309,8 @@ function PracticeMatBody({
     (pile: MatPile) => {
       if (viewer === 'deck' && pile !== 'deck') closeViewer()
       setViewer(pile)
+      // Guardado debajo de una pregunta del núcleo, tocar su pila lo trae encima.
+      setShelf((current) => (current?.pile === pile ? { ...current, pile: null } : current))
     },
     [viewer, closeViewer],
   )
@@ -2282,6 +2313,16 @@ function PracticeMatBody({
       className="min-h-0 flex-1"
     />
   )
+  // La columna pasa a «Carta» cuando algo queda fijo en el detalle (tocar una carta, un eslabón, una del rival) o se abre la ficha de una carta, y a los pasos cuando se vuelven a mostrar
+  // (el botón «Pasos» de la botonera).
+  const peekLock = duel?.peekLock
+  const sheetMenu = column && menu !== null && menu.kind !== 'phases' ? menu : null
+  useEffect(() => {
+    if ((column && peekLock) || sheetMenu) setColumnTab('card')
+  }, [column, peekLock, sheetMenu])
+  useEffect(() => {
+    if (stepsPanel) setColumnTab('side')
+  }, [stepsPanel])
 
   // Eligiendo Sacrificios o materiales, los monstruos del campo se encienden y el elegido lleva su etiqueta.
   const choosingOnField = picking?.kind === 'tributes' || picking?.kind === 'materials' || counterMode !== null
@@ -2574,7 +2615,7 @@ function PracticeMatBody({
     }
   }, [stripOpen, fieldNode, view, rails, isDuel, duel?.chain])
 
-  // El aviso de la cadena (`duel.chain`), debajo de la barra y del lugar de su aviso (sin laterales la barra es lo primero de la columna; con laterales, arriba del campo).
+  // El aviso de la cadena (`duel.chain`, de 640 a 1100 px), debajo de la barra (lo primero de la columna) y del lugar de su aviso.
   const chainRef = useRef<HTMLDivElement | null>(null)
   const hasChain = Boolean(duel?.chain)
 
@@ -2585,7 +2626,7 @@ function PracticeMatBody({
     if (!hasChain || !layer || !section) return
     const place = () => {
       const top = section.getBoundingClientRect().top
-      const bar = rails ? null : columnRef.current?.firstElementChild?.getBoundingClientRect().bottom
+      const bar = columnRef.current?.firstElementChild?.getBoundingClientRect().bottom
 
       layer.style.paddingTop = `${Math.round(bar == null ? 8 : bar - top + CHAIN_BELOW_BAR_PX)}px`
     }
@@ -2593,7 +2634,7 @@ function PracticeMatBody({
     place()
     window.addEventListener('resize', place)
     return () => window.removeEventListener('resize', place)
-  }, [hasChain, rails, view])
+  }, [hasChain, view])
 
   // El lugar fijo de los carteles de la mesa (Gastón, 2026-10-28: «todos los modales del duelo deben salir fijos en el mismo lugar»; `matSpot`): la pregunta del medio (`duel.prompt`) y el asa de
   // lo minimizado apoyan su borde de abajo sobre la fila de las Zonas Extra y crecen hacia el campo del rival (tu campo y la fila Extra se ven siempre); las hojas del duelo (`Modal anchor="mat"`) van
@@ -2644,16 +2685,13 @@ function PracticeMatBody({
       const list = notice ? chain!.querySelector<HTMLElement>('[data-chain-list]') : null
       const listBox = list?.getBoundingClientRect()
       // Sube lo justo, nunca por encima de la barra (con la mesa más alta que la ventana, la píldora ya está arriba de todo).
-      const lift = notice && !isDesktop && !rails && !section.querySelector('[data-lane]') ? Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - bar))) : 0
+      const lift = notice && !section.querySelector('[data-lane]') ? Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - bar))) : 0
       const boxHeight = box?.getBoundingClientRect().height ?? 0
       const promptTop = spot && open && box ? Math.max(bar, spot.top - boxHeight) : null
       // Las cartas del cartel (escritorio): lo que mide todo lo demás (el cartel entero, con lo que se desplaza, menos una carta) y lo que queda para la carta, del alto de la capa.
       const body = isDesktop && open ? box?.querySelector('[data-prompt-body]') : null
       const art = body?.querySelector('[data-pick-art]')
       const rest = body && art ? boxHeight + body.scrollHeight - body.clientHeight - art.getBoundingClientRect().height : null
-      // La lista de la cadena se acorta de a eslabones enteros: dónde empiezan los dos primeros (sin lo desplazado) y cuánto mide entera.
-      const rows = list ? [...list.children].slice(0, 2).map((row) => row.getBoundingClientRect().top + list.scrollTop - (listBox?.top ?? 0)) : []
-      const listFull = list?.scrollHeight ?? 0
 
       // Las escrituras, todas al final.
       if (!spot) {
@@ -2676,22 +2714,12 @@ function PracticeMatBody({
       }
       if (!chain || !notice) return
       if (lift > 0 && promptTop !== null) chain.style.translate = `0 ${-lift}px`
-      // Si la persona corrió la pila o la pregunta (escritorio, `useDraggableOffset`), ya no comparten franja: la pila no se acorta.
-      if (!list || !listBox) return
-      const shared = promptTop !== null && !chain.querySelector('[data-moved]') && !box?.querySelector('[data-moved]')
-      const room = Math.min(listBox.height, shared ? promptTop - 8 - (listBox.top - lift) : Infinity)
-      const [edge, next] = rows
+      if (!list || !listBox || promptTop === null) return
+      // La hoja de la cadena, lo que queda.
+      const room = Math.min(listBox.height, promptTop - 8 - (listBox.top - lift))
 
-      if (shared && room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
-      // En el celular (la hoja de la cadena), lo que queda, como siempre.
-      else if (!isDesktop) {
-        if (shared && room < listBox.height) list.style.maxHeight = `${Math.floor(room)}px`
-      } else if (edge !== undefined && next !== undefined && next > edge && room < listFull) {
-        // Lo que entra, de a eslabones enteros (corta justo donde empieza el siguiente): ninguno asoma por el borde, y al desplazarse caen en su lugar (`snap`).
-        const fit = Math.max(1, Math.floor((room - edge) / (next - edge)))
-
-        list.style.maxHeight = `${Math.floor(edge + fit * (next - edge))}px`
-      }
+      if (room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
+      else if (room < listBox.height) list.style.maxHeight = `${Math.floor(room)}px`
     }
     const later = () => {
       cancelAnimationFrame(frame)
@@ -2789,7 +2817,8 @@ function PracticeMatBody({
   // Una carta tuya sin jugadas en automático: por qué (lo que se sabe) y el atajo a la mesa manual, en lugar de «No hay nada para hacer desde acá».
   const whyNot = duel?.auto?.whyNot && menu?.kind === 'card' && !menu.drop ? duel.auto.whyNot(menu.id) : null
   const manual = duel?.auto?.manual
-  const noPlays = whyNot ? <NoPlays reasons={whyNot} {...(manual ? { onManual: () => { setMenu(null); manual() } } : {})} /> : undefined
+  const toManual = whyNot && manual ? { onManual: () => { setMenu(null); manual() } } : {}
+  const noPlays = whyNot ? <NoPlays reasons={whyNot} {...toManual} /> : undefined
 
   // La fase de ahora y de quién es el turno: el botón de las fases (`p3`, en el medio del campo) es el mismo en un duelo y en la práctica; al tocarlo muestra las seis y elegir una pasa a ella (la Draw Phase
   // después de la End Phase pasa el turno: ahí sube la cuenta de turnos). En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`). En un duelo la fase es la compartida, la de quien
@@ -2800,6 +2829,20 @@ function PracticeMatBody({
   // El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos).
   // Eligiendo se apoya sobre la fila de abajo que ese momento no se usa (`absolute inset-0`): no suma ni quita alto. En un duelo de escritorio es una cápsula centrada que sí recibe toques (la barra de abajo no los ataja: el medio es de la mano).
   const pileSheet = !isDesktop && !covered && (viewerPile !== null || rivalViewing)
+  // En el celular, una sola hoja abajo (duelo automático): la pregunta del núcleo que llega gana a lo que estaba abierto (la ficha o las fases, `menu`, y el visor de una pila), que queda guardado
+  // (`shelf`) y vuelve como estaba al contestarla; lo que abrís con la pregunta ya abierta va encima de ella (la esconde `AutoPanel`) hasta que lo cerrás. La ficha gana al visor. La cabeza de lo que
+  // gana dice qué tapa («‹ GY · 2», «‹ Ficha de X»). Una búsqueda del núcleo en el visor es la pregunta misma: ésa no cede.
+  const asking = !isDesktop && Boolean(autoMenus) && !covered && Boolean(duel?.asking)
+
+  if (asking !== lastAsking) {
+    setLastAsking(asking)
+    setShelf(asking && (menu !== null || viewerPile !== null) ? { menu, pile: viewerPile } : null)
+  }
+  const menuShelved = asking && menu !== null && shelf?.menu === menu
+  const pileShelved = asking && viewerPile !== null && shelf?.pile === viewerPile && !autoViewer
+  const pileYield = !isDesktop && Boolean(autoMenus) && !covered && (menu !== null || pileShelved)
+  const pileTitle = viewerPile !== null ? `${PILE_TITLES[viewerPile]} · ${viewerList.length}` : null
+  const layerBack = menuShelved && menu.kind === 'card' ? t('auto.layer.card', { name: menuTitle }) : pileShelved ? pileTitle : null
   const status = (
     <div
       className={cx(
@@ -2846,8 +2889,39 @@ function PracticeMatBody({
     </div>
   )
 
+  // Lo de la línea (`data-duel-line`), una sola cosa por vez: la cadena y, si no hay, la línea de la pantalla (un aviso sobre la última jugada). Repasando, el aviso dice el paso. En el automático,
+  // sin nada de eso, la pista de fases.
+  const lineContent = (
+    <MatReplayContext.Provider value={replayLink}>
+      {duel?.chain ?? duel?.line ?? (duel?.auto ? <PhaseTrack phase={phaseNow} items={duel.auto.phaseItems} disabled={!myTurn} onOpen={(rect) => setMenu({ kind: 'phases', rect })} /> : null)}
+    </MatReplayContext.Provider>
+  )
+
   // Los bordes de los paneles de los costados se arrastran para cambiarles el ancho (Gastón, 2026-10-22), sólo donde hay panel: el del detalle desde 1440 px y el de la derecha (los pasos o el chat)
   // desde 1101. Cada agarre va sobre su borde, fuera de la grilla (no ocupa lugar ni corre nada) y encima de la mesa y de los paneles; en el orden del foco, junto a su panel.
+  // El duelo automático: la ficha con todas las jugadas que da el núcleo, la misma en el celular y en escritorio (la mesa manual sigue con `CardSheet` y `CardMenu`); en escritorio, una sola jugada sigue
+  // siendo su etiqueta (`PlayTag`).
+  const cardSheet =
+    autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay && !menuShelved ? (
+      <autoMenus.Card
+        key={menu.kind === 'card' ? menu.id : menu.kind}
+        name={menuTitle}
+        kicker={menuKicker}
+        art={menuCard ? artOf(menuCard) : null}
+        back={menuCard === null}
+        apiCard={menuCard?.apiCard ?? null}
+        items={menuItems}
+        // La ficha lleva «Seguir en modo manual» en su pie (siempre a la vista), no en el porqué.
+        empty={whyNot ? <NoPlays reasons={whyNot} /> : undefined}
+        {...toManual}
+        // «Ver carta», salvo con el detalle fijo (tocar la carta ya la muestra ahí).
+        onInspect={isDesktop ? menuInspect : menu.kind === 'card' && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        onClose={() => setMenu(null)}
+        // Tapa el visor de una pila (celular): «‹ GY · 2» la cierra y el visor vuelve como estaba (si la carta ya no está ahí, igual).
+        {...(pileYield && pileTitle !== null ? { crumb: { label: pileTitle, onBack: () => setMenu(null) } } : {})}
+        {...(column ? { variant: 'column' as const } : {})}
+      />
+    ) : null
   const rightHandle = <ResizeHandle panel="right" {...panels.right} label={t('practice.mat.resizePanel')} title={t('practice.mat.resizeHint')} className="hidden right-[var(--mat-right,20rem)] translate-x-1/2 min-[1101px]:block" />
 
   const mat = (
@@ -2865,18 +2939,18 @@ function PracticeMatBody({
         // (`rounded-full` de `IconButton`, la píldora de salidas, las fichas, los interruptores del ⋯, los efectos) también queda recto, sin cambiar esos componentes fuera de la mesa.
         'mat-square relative isolate **:rounded-none! grid h-full min-h-0 select-none grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] bg-background',
         // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
-        sidePanel && 'min-[1101px]:grid-cols-[minmax(0,1fr)_var(--mat-right,20rem)]',
+        rightCol && 'min-[1101px]:grid-cols-[minmax(0,1fr)_var(--mat-right,20rem)]',
         // Con el detalle fijo a la izquierda (y los pasos o el chat a la derecha) son tres columnas: el detalle, la mesa y el panel (20 rem cada uno, o lo que se les dé arrastrando su borde).
-        Boolean(detail) && (sidePanel ? 'min-[1440px]:grid-cols-[var(--mat-left,20rem)_minmax(0,1fr)_var(--mat-right,20rem)]' : 'min-[1440px]:grid-cols-[var(--mat-left,20rem)_minmax(0,1fr)]'),
+        leftDetail && (sidePanel ? 'min-[1440px]:grid-cols-[var(--mat-left,20rem)_minmax(0,1fr)_var(--mat-right,20rem)]' : 'min-[1440px]:grid-cols-[var(--mat-left,20rem)_minmax(0,1fr)]'),
       )}
     >
       {/* El fondo de la mesa (la arena): la columna de la mesa, a todo el alto. Es decoración: va detrás de todo y no ocupa lugar en la grilla. */}
-      <MatScene className={cx('absolute inset-0 -z-10 col-start-1 row-span-2 row-start-1', Boolean(detail) && 'min-[1440px]:col-start-2')} />
+      <MatScene className={cx('absolute inset-0 -z-10 col-start-1 row-span-2 row-start-1', leftDetail && 'min-[1440px]:col-start-2')} />
       {/* Barra (práctica): el turno a la izquierda y, a la derecha, los íconos de la mesa (`MatBarActions`, los mismos que en «Jugar solo automático») y (en el celu) el panel. En un duelo la barra es la de la pantalla (`duel.header`). */}
       {duel ? null : (
         // En un celular angosto los botones y el turno no entran en una fila: se achican (`MAT_BAR_ROW`) y el turno se esconde.
         // Con el detalle fijo a la izquierda (columna 1), la barra va arriba de la mesa (columna 2), no encima del detalle.
-        <div className={cx('relative col-start-1 row-start-1 px-2 pt-2 max-[419px]:px-1 min-[1101px]:px-4 min-[1101px]:pt-3', MAT_BAR_ROW, Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
+        <div className={cx('relative col-start-1 row-start-1 px-2 pt-2 max-[419px]:px-1 min-[1101px]:px-4 min-[1101px]:pt-3', MAT_BAR_ROW, leftDetail && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
           {onExit ? <MatExitButton onExit={onExit} /> : null}
           <span className="whitespace-nowrap bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[419px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
@@ -2907,11 +2981,13 @@ function PracticeMatBody({
       <div
         ref={columnRef}
         // Con laterales: una grilla de tres columnas (lateral, campo, lateral) y tres filas (arriba, el medio que se estira y abajo); el campo ocupa las tres. `--cell-h` es la casilla que deja el alto: sin la barra de arriba ni la de abajo sobran 17,25 rem.
-        style={rails ? ({ '--cell-h': 'max(3.5rem, min(12rem, calc((100dvh - 22.95rem) / 5)))' } as CSSProperties) : undefined}
+        // En el automático, también la línea de abajo del campo y su aire (3,75 rem).
+        style={rails ? ({ '--cell-h': `max(3.5rem, min(12rem, calc((100dvh - ${deskLine ? 26.7 : 22.95}rem) / 5)))` } as CSSProperties) : undefined}
         className={cx(
           !duel && '@container',
-          Boolean(detail) && 'min-[1440px]:col-start-2',
-          'col-start-1 row-start-2 min-h-0 overflow-y-auto overflow-x-hidden pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2',
+          leftDetail && 'min-[1440px]:col-start-2',
+          'col-start-1 row-start-2 min-h-0 overflow-y-auto overflow-x-hidden pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pt-2',
+          deskLine ? 'min-[1101px]:pb-2' : 'min-[1101px]:pb-4',
           // En el celular la orilla de 4 px de `phoneDuelLayout`.
           phone ? 'px-1' : 'px-1.5',
           rails ? 'grid grid-cols-[minmax(13rem,1fr)_minmax(0,calc(var(--cell-h)*6.3714+3rem))_minmax(13rem,1fr)] grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-x-4' : 'flex flex-col gap-2',
@@ -2934,7 +3010,7 @@ function PracticeMatBody({
         <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative flex flex-col', phone ? 'mt-auto mb-15' : 'my-auto gap-2', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
         {/* Las vidas del rival en la esquina de arriba a la derecha (sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
         {duel?.corner && !rails && (isDesktop || duel.rivalHand) ? (
-          <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room }}>
+          <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: isDesktop ? THEIR_HAND.desktop.room - rise : THEIR_HAND.mobile.room }}>
             {duel.corner}
           </div>
         ) : null}
@@ -2964,7 +3040,7 @@ function PracticeMatBody({
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
           // En el celular, la caja del campo de `phoneDuelLayout`: arriba, el lugar de la mano del rival (en 3D, menos lo que la perspectiva baja su borde) y abajo, nada (la línea va pegada).
-          style={duel ? ({ '--areas': duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.8rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(phone ? { width: phone.fieldWidth, height: phone.fieldHeight, marginInline: 'auto', marginTop: PHONE_RIVAL - phone.drop } : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare, Boolean(duel.scoreTall))) } as CSSProperties) : undefined}
+          style={duel ? ({ '--areas': duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : deskLine ? DESKTOP_AUTO_CELL : 'max(3.5rem, min(12rem, calc((100dvh - 30.8rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP - rise : THEIR_HAND.mobile.room } : null), ...(phone ? { width: phone.fieldWidth, height: phone.fieldHeight, marginInline: 'auto', marginTop: PHONE_RIVAL - phone.drop } : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare, Boolean(duel.scoreTall))) } as CSSProperties) : undefined}
         >
           {/* Tu magia de campo boca arriba: su arte de fondo, sólo en tu mitad (la del rival va en `duel.opponent`). Sale de la mesa, no de la carta que espera en la zona a que se elija cómo sale. */}
           <FieldArt side="mine" src={fieldArtSrc(state.field, artById)} />
@@ -2981,8 +3057,10 @@ function PracticeMatBody({
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
           <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel?.auto ? duel.limits : tokenButton}</div>
           <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
+              {/* En el automático del celular y desde 1101 px la fase va en la línea (`PhaseTrack`) y el turno se pasa con su botón (`TurnAction`): la casilla queda vacía. De 640 a 1100 px, la ficha. */}
               {/* Sólo la sigla de dos letras, en todos los anchos y en todos los duelos (Gastón, 2026-10-27: «está bien que sólo muestre 2 letras y se abra el menú al tocarlo»): el nombre completo lo
                   dicen la línea de fases que abre y su `aria-label`. La caja de la mesa (`tile`): en ámbar cuando el turno es tuyo (es lo que se toca); en el del rival, la sigla en lila. */}
+              {isAuto && (phone || isDesktop) ? null : (
               <IconButton
                 tone="tile"
                 size="sm"
@@ -3000,8 +3078,9 @@ function PracticeMatBody({
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
               </IconButton>
+              )}
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
-              {isDesktop && myTurn && phaseNow === 'end' ? (
+              {isDesktop && !isAuto && myTurn && phaseNow === 'end' ? (
                 <Button
                   variant="primary"
                   size="sm"
@@ -3095,8 +3174,15 @@ function PracticeMatBody({
         {/* La línea (celular): una ranura de alto fijo entre el campo y tu mano, con el aire que sobre debajo. Acá va la cadena; lo que se apoya encima (la ficha, los carteles) llega hasta su borde de abajo. */}
         {phone ? (
           <div data-duel-line="" className="relative shrink-0 overflow-hidden" style={{ height: phone.lineHeight, marginBottom: phone.air }}>
-            {/* Una sola cosa por vez: la cadena y, si no hay, la línea de la pantalla (un aviso sobre la última jugada). Repasando, el aviso dice el paso. */}
-            <MatReplayContext.Provider value={replayLink}>{duel?.chain ?? duel?.line}</MatReplayContext.Provider>
+            {lineContent}
+          </div>
+        ) : deskLine && duel?.auto ? (
+          // El automático desde 1101 px: la misma línea, de 56 px y a 4 del campo, y a su derecha el botón del turno (lámina 6). Mide siempre lo mismo: el campo y la mano no se mueven con la cadena.
+          <div data-duel-line="" className="mx-auto -mt-1 flex h-14 w-full max-w-160 shrink-0 gap-2">
+            <div className="relative min-w-0 flex-1 overflow-hidden">{lineContent}</div>
+            <div className="flex w-44 shrink-0">
+              <TurnAction items={duel.auto.phaseItems} endTurn={duel.auto.endTurn} live={myTurn && !duel.chain} />
+            </div>
           </div>
         ) : null}
 
@@ -3118,9 +3204,8 @@ function PracticeMatBody({
           <PracticeHand
             cards={handCards}
             sizeSlots={Math.max(session.initial.hand.length, 1)}
-            maxCardWidth={phone ? phone.handCard : isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
+            maxCardWidth={phone ? phone.handCard : isDesktop ? (deskLine ? DESKTOP_AUTO_HAND : duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
-            className={duel?.auto ? UNDER_PANEL : undefined}
             glowOf={glowKindOf}
             {...(duel?.links?.size ? { links: duel.links } : {})}
             dimUnlit={dimUnlit}
@@ -3166,8 +3251,11 @@ function PracticeMatBody({
           <div className={cx('pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55', phone && !splitReplay ? 'h-15' : 'h-11')} data-mat-float="">
             {/* El celular: tu fila de abajo (60 px), tu chapa a la izquierda y la botonera cuadrada a la derecha; lo que falta elegir se apoya encima (`status`). */}
             {phone && !splitReplay ? (
-              <div inert={choosing} data-mat-seat="" className={cx('absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto', duel?.auto && UNDER_PANEL)}>
+              // Tu chapa cede el ancho que le falta al botón del turno (recorta «Turno de Rival · 12» con «…»): el botón no se corta nunca.
+              <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto [&>[data-life-badge]]:min-w-0 [&>[data-life-badge]]:shrink">
                 {duel?.life}
+                {/* El automático: el botón del turno entre tu chapa y la botonera, al alcance del pulgar (lámina 4, «B» y «D»). */}
+                {duel?.auto ? <TurnAction items={duel.auto.phaseItems} endTurn={duel.auto.endTurn} live={myTurn && !duel.chain} /> : null}
                 <span className="flex items-center gap-2">
                   {duel?.steps ? stepsButton : null}
                   {duel?.dock}
@@ -3237,16 +3325,69 @@ function PracticeMatBody({
         {rails && duel && replayBar ? <div className="relative z-55 col-span-full row-start-4 pt-2">{replayBar}</div> : null}
       </div>
 
-      {/* El panel fijo de un duelo (el chat), a la derecha y a todo el alto, sólo en escritorio. */}
-      {duel?.aside ? (
+      {/* El automático desde 1101 px: una sola columna a la derecha, a todo el alto, con pestañas. «Carta»: el detalle de la carta tocada y, al pie, su ficha con todas las jugadas; «Cadena»: la pila
+          entera; la tercera, los pasos y combos (o el chat del duelo por enlace). Las de atrás quedan montadas y escondidas (no pierden su lugar ni su scroll); la mesa no se mueve al cambiar. */}
+      {column ? (
         <>
           {rightHandle}
-          <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col', 'min-[1101px]:col-start-2', Boolean(detail) && 'min-[1440px]:col-start-3')}>{duel.aside}</section>
+          <section
+            aria-label={t('practice.panel.label')}
+            data-mat-column=""
+            // Sin mayúsculas espaciadas en sus rótulos; el detalle crece con el ancho de la columna (`--mat-left`, el que lee su carta).
+            className="hidden min-h-0 border-l border-border-subtle **:normal-case! **:tracking-normal! [--mat-left:var(--mat-right,20rem)] min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col"
+          >
+            <Tabs
+              value={tab}
+              onChange={setColumnTab}
+              label={t('practice.panel.label')}
+              fullWidth
+              panelId={columnId}
+              className="shrink-0 px-1"
+              options={[
+                { value: 'card', label: t('practice.column.card') },
+                { value: 'chain', label: t('auto.chain.title') },
+                ...(sidePanel ? [{ value: 'side' as const, label: stepsPanel ? t('practice.panel.steps') : t('practice.column.chat') }] : []),
+              ]}
+            />
+            <div role="tabpanel" id={tab === 'card' ? columnId : undefined} aria-labelledby={tabId(columnId, 'card')} hidden={tab !== 'card'} className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3">
+              <section aria-label={t('duel.dock.label')} data-card-dock="" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {detail}
+              </section>
+              <Presence>{column ? cardSheet : null}</Presence>
+            </div>
+            <div role="tabpanel" id={tab === 'chain' ? columnId : undefined} aria-labelledby={tabId(columnId, 'chain')} hidden={tab !== 'chain'} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+              {duel?.chainList ?? (
+                <EmptyState icon="link" title={t('practice.column.noChain')}>
+                  {t('practice.column.noChainHint')}
+                </EmptyState>
+              )}
+            </div>
+            {sidePanel ? (
+              <div role="tabpanel" id={tab === 'side' ? columnId : undefined} aria-labelledby={tabId(columnId, 'side')} hidden={tab !== 'side'} className="flex min-h-0 flex-1 flex-col">
+                {stepsPanel ? (
+                  <section className="flex min-h-0 flex-1 flex-col gap-3 px-3 pb-3 pt-3" aria-label={t('practice.mat.stepsAndCombos')}>
+                    {panel}
+                    {footer && isDealt ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+                  </section>
+                ) : (
+                  <section className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3">{duel?.aside}</section>
+                )}
+              </div>
+            ) : null}
+          </section>
+        </>
+      ) : null}
+
+      {/* El panel fijo de un duelo (el chat), a la derecha y a todo el alto, sólo en escritorio. */}
+      {duel?.aside && !column ? (
+        <>
+          {rightHandle}
+          <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col', 'min-[1101px]:col-start-2', leftDetail && 'min-[1440px]:col-start-3')}>{duel.aside}</section>
         </>
       ) : null}
 
       {/* El detalle fijo (la carta que se tocó) de un duelo y de la práctica, a la izquierda y a todo el alto, sólo en escritorio: la columna está siempre (vacía hasta la primera carta), así la mesa no se corre. */}
-      {detail ? (
+      {leftDetail ? (
         <>
           <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-primary/30 bg-linear-to-b from-card-background to-background px-4 pb-4 pt-4 shadow-[inset_0_1px_0_rgb(var(--foreground-rgb)/0.06),10px_0_28px_-14px_rgb(0_0_0/0.7)] min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
           {/* Su borde derecho se arrastra (como el del panel de la derecha: `rightHandle`). */}
@@ -3258,11 +3399,15 @@ function PracticeMatBody({
           El mismo en la práctica y en «Jugar solo automático» (`duel.steps`). */}
       {stepsPanel ? (
         <>
-          {rightHandle}
-          <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3', Boolean(detail) && 'min-[1440px]:col-start-3')} aria-label={t('practice.mat.stepsAndCombos')}>
-            {panel}
-            {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
-          </section>
+          {column ? null : (
+            <>
+              {rightHandle}
+              <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3', leftDetail && 'min-[1440px]:col-start-3')} aria-label={t('practice.mat.stepsAndCombos')}>
+                {panel}
+                {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+              </section>
+            </>
+          )}
 
           <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" veil={false} movable square kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
             {panel}
@@ -3272,22 +3417,9 @@ function PracticeMatBody({
 
       {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera (y baja: `Presence` la deja montada mientras sale). */}
       {/* El duelo automático: la ficha con todas las jugadas que da el núcleo, la misma en el celular y en escritorio (la mesa manual sigue con `CardSheet` y `CardMenu`); en escritorio, una sola jugada sigue siendo su etiqueta (`PlayTag`). */}
-      <Presence>{autoMenus && menu && menu.kind !== 'phases' && !covered && !lonePlay ? (
-        <autoMenus.Card
-          key={menu.kind === 'card' ? menu.id : menu.kind}
-          name={menuTitle}
-          kicker={menuKicker}
-          art={menuCard ? artOf(menuCard) : null}
-          back={menuCard === null}
-          apiCard={menuCard?.apiCard ?? null}
-          items={menuItems}
-          empty={noPlays}
-          // «Ver carta», salvo con el detalle fijo a la izquierda (desde 1440 px tocar la carta ya la muestra ahí).
-          onInspect={isDesktop ? menuInspect : menu.kind === 'card' && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
-          onClose={() => setMenu(null)}
-        />
-      ) : null}</Presence>
-      <Presence>{phasesOpen && autoMenus ? <autoMenus.Phases items={menuItems} onClose={() => setMenu(null)} /> : null}</Presence>
+      {/* En la columna (el automático desde 1101 px) la ficha va al pie de «Carta»; si no, flota (escritorio sin columna) o va abajo (celular). */}
+      <Presence>{column ? null : cardSheet}</Presence>
+      <Presence>{phasesOpen && autoMenus && !menuShelved ? <autoMenus.Phases items={menuItems} onClose={() => setMenu(null)} /> : null}</Presence>
       <Presence>{sheeted && menu && !autoMenus ? (
         <CardSheet
           name={menuTitle}
@@ -3368,8 +3500,8 @@ function PracticeMatBody({
         {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
         {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede (o termina, si se puede terminar sin elegir más). */}
         <PileStripContext.Provider value={pileStrip}>
-        {/* En el celular la ficha de una carta y las fases del automático esconden los visores (el tuyo y el del rival) sin cerrarlos: su tira bajada tapaba las jugadas (una sola capa abajo). */}
-        <PileYieldContext.Provider value={!isDesktop && Boolean(autoMenus) && menu !== null && !covered}>
+        {/* En el celular una pregunta del núcleo, la ficha de una carta y las fases del automático esconden los visores (el tuyo y el del rival) sin cerrarlos (`pileYield`). */}
+        <PileYieldContext.Provider value={pileYield}>
         <PileViewer
           pile={viewerPile}
           hidden={covered || stripHidden}
@@ -3444,7 +3576,7 @@ function PracticeMatBody({
               caption={splitReplay ? null : (steps[shown.step - 1] ?? null)}
               flip={shown.flip}
               origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
-              className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
+              className={cx('absolute inset-y-0 left-0 right-0 z-[120]', rightCol && 'min-[1101px]:right-[var(--mat-right,20rem)]', leftDetail && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
             />
           ) : null
         }
@@ -3461,7 +3593,7 @@ function PracticeMatBody({
           caption={duel.rivalEffect.caption}
           detail={duel.rivalEffect.detail}
           origin={(id) => cardPose(sectionRef.current, duel.rivalFlights?.state ?? null, id, 'theirs')}
-          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
+          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', rightCol && 'min-[1101px]:right-[var(--mat-right,20rem)]', leftDetail && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
         />
       ) : null}
 
@@ -3476,10 +3608,10 @@ function PracticeMatBody({
 
       {/* En el celular la cadena y las preguntas son la hoja de abajo (`BottomSheet`): una sola (la cadena presta su pie a la pregunta); mientras se elige en la mesa o la mano se reduce a su asa y,
           con el visor de una pila abierto (otra hoja), se esconde. */}
-      <SheetHost yieldTo={pileSheet ? 'hide' : choosing ? 'grip' : null}>
-      {/* La cadena (duelo automático): arriba de la columna de la mesa; sólo la píldora y su lista reciben toques. */}
-      {duel?.chain && !phone ? (
-        <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
+      <SheetHost yieldTo={pileSheet && !pileShelved ? 'hide' : choosing ? 'grip' : null}>
+      {/* La cadena (duelo automático) de 640 a 1100 px: arriba de la columna de la mesa; sólo su hoja recibe toques. En el celular y desde 1101 px va en la línea. */}
+      {duel?.chain && !phone && !isDesktop ? (
+        <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', rightCol && 'min-[1101px]:right-[var(--mat-right,20rem)]', leftDetail && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
           {duel.chain}
         </div>
       ) : null}
@@ -3489,10 +3621,12 @@ function PracticeMatBody({
           Contestada, sigue mientras sale (`Presence`) y mientras tanto su caja tampoco ataja toques (`data-leaving`). */}
       <Presence>
         {duel?.prompt ? (
-          <div ref={promptLayerRef} data-testid="duel-prompt-layer" data-spot="extra" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] flex flex-col items-center justify-end px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
+          <div ref={promptLayerRef} data-testid="duel-prompt-layer" data-spot="extra" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] flex flex-col items-center justify-end px-4', rightCol && 'min-[1101px]:right-[var(--mat-right,20rem)]', leftDetail && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
             <div ref={promptRef} className="pointer-events-auto flex min-h-0 w-[min(24rem,100%)] max-w-full flex-col has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
-              <PromptTurnContext value={duel.turnMine === undefined ? null : { phase: duel.phase, mine: duel.turnMine }}>{duel.prompt}</PromptTurnContext>
+              <PromptTurnContext value={duel.turnMine === undefined ? null : { phase: duel.phase, mine: duel.turnMine }}>
+                <LayerBackContext value={layerBack}>{duel.prompt}</LayerBackContext>
+              </PromptTurnContext>
             </div>
           </div>
         ) : null}
@@ -3500,7 +3634,7 @@ function PracticeMatBody({
       </SheetHost>
 
       {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
-      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
+      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', rightCol && 'min-[1101px]:right-[var(--mat-right,20rem)]', leftDetail && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
 
       {drag
         ? createPortal(

@@ -106,7 +106,7 @@ interface CardMenuProps {
  */
 export function NoPlays({ reasons, onManual }: { reasons: readonly string[]; onManual?: () => void }) {
   return (
-    <div className="grid gap-1 px-2 py-1.5 text-left" data-testid="no-plays">
+    <div className="grid gap-1 text-left" data-testid="no-plays">
       <p className="m-0 text-body font-semibold text-foreground">{t('auto.why.title')}</p>
       {(reasons.length > 0 ? reasons : [t('auto.why.unknown')]).map((reason, index) => (
         <p key={index} className="m-0 text-micro text-muted">
@@ -142,8 +142,8 @@ const keyboardFocus = (element: HTMLElement): boolean => {
 const MENU_ROW =
   'relative w-full rounded-tag border-0 bg-transparent py-1.5 text-body font-medium text-foreground outline-none transition-[background-color,box-shadow] duration-100 hover:bg-tint/12 focus-visible:bg-tint/12 focus-visible:shadow-focus aria-expanded:bg-tint/12'
 
-/** El panel del menú y del submenú: el de siempre, traslúcido al 92 % en alfa plano (sin desenfoque, que repinta). */
-const MENU_PANEL = 'rounded-panel border border-border-subtle bg-card-background/92 shadow-overlay'
+/** El panel del menú y del submenú: el de siempre, opaco (sin desenfoque, que repinta). */
+const MENU_PANEL = 'rounded-panel border border-border-subtle bg-card-background shadow-overlay'
 
 /** Lo que se elige con las flechas: las apagadas se enfocan con Tab (se leen), pero las flechas las saltean. */
 const CHOOSABLE = '[role="menuitem"]:not([aria-disabled="true"])'
@@ -568,8 +568,14 @@ interface PileViewerProps {
  */
 export const PileStripContext = createContext(false)
 
-/** En el celular, una sola capa abajo: mientras la mesa muestra encima la ficha de una carta o las fases del duelo automático (`PracticeMat`), los visores se esconden sin cerrarse y al cerrarse la ficha vuelven como estaban. */
+/**
+ * En el celular, una sola hoja abajo (duelo automático): gana la pregunta del núcleo, después la ficha de una carta (o las fases) y después el visor de una pila. Lo que pierde se esconde sin
+ * cerrarse y vuelve como estaba (`PracticeMat` decide quién cede).
+ */
 export const PileYieldContext = createContext(false)
+
+/** Lo que una pregunta del núcleo tapa y vuelve al contestarla («Ficha de X», «GY · 2»): la cabeza de la pregunta lo dice con su flecha (`AutoPanel`). */
+export const LayerBackContext = createContext<string | null>(null)
 
 /**
  * Las cartas de una pila. El deck y el Extra se muestran en el orden de `ids` (el real: tope primero; al cerrar el
@@ -603,7 +609,9 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   const statusId = useId()
   const titleId = useId()
   const yielded = useContext(PileYieldContext)
-  const open = pile !== null && !hidden && !yielded
+  // Cediendo el lugar (`yielded`) sigue montado y escondido: vuelve como estaba (bajado, si lo estaba).
+  const mounted = pile !== null && !hidden
+  const open = mounted && !yielded
   // Al abrirse, la hoja sale con cada carta en su esqueleto (como la muestra `CardArt` antes de tener la imagen) y las artes llegan en el render siguiente, de menor prioridad
   // (React lo hace de a pedazos): la entrada arranca sin esperar a las ~40 artes. Abierto, no se difiere nada más (pasar a otra pila o buscar dibuja todo de una).
   const arts = useDeferredValue(open)
@@ -648,7 +656,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
 
   // El de cerrar va antes que el de salir del modo: así el de salir queda arriba y el primer Escape sale del modo y el segundo cierra. Escondido, ninguno.
   useEscapeKey(onClose, open)
-  useEscapeKey(exit, choosing && !hidden)
+  useEscapeKey(exit, choosing && open)
 
   // Al abrirse, y al pasar a otra pila, el foco entra al panel: al buscador (con puntero táctil no: abriría el teclado) o, si no, a la primera carta. Sin trampa: no es un modal y Tab sale a la mesa.
   useEffect(() => {
@@ -853,8 +861,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
 
   // Al cerrarse sigue montado mientras sale (`usePresence`: la inversa de `sheet-in`); el foco ya volvió.
   return usePresence(
-    open,
-    !open || typeof document === 'undefined' ? null : desktop ? (
+    mounted,
+    !mounted || typeof document === 'undefined' ? null : desktop ? (
       // Escritorio: llena la caja que le da quien lo monta, sin velo; con otro visor que sale mientras éste entra, los dos van en la misma celda (no se reparten el alto). La tira va abajo de su
       // caja y al medio, y no pasa de ella (de alto, lo que sobra se desliza); de ancho, el de sus cartas en fila o, con buscador, toda la caja: así no se achica ni corre mientras se escribe.
       <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} {...move.root} className={cx(surface.panel, 'pointer-events-auto col-start-1 row-start-1 flex min-h-0 flex-col overflow-hidden outline-none animate-sheet-in motion-reduce:animate-none', strip && cx('max-h-full max-w-full self-end justify-self-center', search ? 'w-full' : 'w-max'))}>
@@ -864,7 +872,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
     ) : (
       // Celular: la hoja de abajo estándar (`BottomSheet`), por encima de la mesa y debajo del menú de una carta (`CardSheet`), hasta 55 dvh (el campo se ve arriba), con un fondo sin velo que la cierra
       // al tocar afuera. Se baja sin cerrarse: queda la tira del asa con su título, el fondo deja de atajar toques (se toca la mano y el campo) y lo de adentro queda como estaba, inerte, hasta que se sube.
-      // Mientras está, las hojas de la mesa (la cadena, las preguntas) se esconden: una sola hoja. Las cartas van al medio de la hoja: no quedan dos a la izquierda y una franja vacía a la derecha.
+      // Mientras está, la hoja de la cadena se esconde y, ante una pregunta del automático, cede él (`PileYieldContext`): una sola hoja. Las cartas van al medio de la hoja: no quedan dos a la izquierda y una franja vacía a la derecha.
       <BottomSheet
         ref={(node) => {
           panelRef.current = node
@@ -874,8 +882,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
         tabIndex={-1}
         label={title}
         over
-        // Las preguntas del automático se esconden mientras está (`AutoPanel`): una sola capa abajo.
         data-pile-sheet=""
+        hidden={yielded}
         raiseKey={pile}
         onDismiss={onClose}
         className="outline-none"

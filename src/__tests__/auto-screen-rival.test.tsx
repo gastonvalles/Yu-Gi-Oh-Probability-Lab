@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { CardRef } from '../app/auto/adapter'
-import { CHAIN_LINGER_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, CHAIN_LINK_MS, CHAIN_READ_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
 import { setAutoPref } from '../app/auto-prefs'
 import { readHandtrapConfig, writeHandtrapConfig } from '../app/handtraps'
 import { AutoSoloScreen, RIVAL_READ_MS, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
@@ -165,7 +165,10 @@ describe('auto-screen · el rival de handtraps', () => {
     // Quién se resuelve y qué le pasa (sin `by` no se sabe quién lo negó: sólo su estado; el nombre va en el chip).
     expect(pill()).toHaveTextContent('Cadena · Resuelve CL2Sin efecto')
     expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. Sin efecto', `Eslabón 2: ${ASH.name}, del rival. Resolviendo`])
+    // Lo que quedó sin efecto se queda a leer 1,6 s más (TI-172).
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
+    expect(pill()).toHaveTextContent('Cadena · Resuelve CL2Sin efecto')
+    act(() => vi.advanceTimersByTime(CHAIN_READ_MS))
     expect(pill()).toHaveTextContent('Cadena · 2 · Resuelve CL1Sin efecto')
     expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. Sin efecto', `Eslabón 2: ${ASH.name}, del rival. Resuelta`])
     // Nada de la cadena en la línea.

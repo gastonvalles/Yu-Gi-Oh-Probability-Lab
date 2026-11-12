@@ -4,6 +4,7 @@ import { screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { replayMat, type MatAction } from '../app/practice-mat'
+import { StatTag } from '../components/probability/MatFx'
 import type { MatCard } from '../components/probability/PracticeMat'
 import { Harness, INITIAL, card, render, zone } from './support/practice-mat-harness'
 
@@ -53,7 +54,7 @@ describe('la mesa manual · ATK/DEF de los monstruos', () => {
     expect(document.querySelector('[data-stat-badge]')).toBeNull()
   })
 
-  it('la ficha de arriba: ★ Nivel, R Rango (Xyz) y LINK, con su nombre; un Pendulum, sin ficha', () => {
+  it('la ficha de arriba: ★ Nivel, R Rango (Xyz) y LINK, con su nombre; un Pendulum, sin ficha; en reposo no se ve (vuelve en la casilla que se elige) y el número va sin color', () => {
     const cards: ReadonlyMap<string, MatCard> = new Map([
       ['card-1-1', { name: 'Ponix', apiCard: { ...monster(1, { atk: '1900', def: '1000' }), level: 4 } }],
       ['card-2-1', { name: 'Zeus', apiCard: { ...monster(2, { atk: '2800', def: '2400' }), frameType: 'xyz', level: 4 } }],
@@ -80,5 +81,26 @@ describe('la mesa manual · ATK/DEF de los monstruos', () => {
     expect(screen.getByRole('button', { name: 'Odd-Eyes, ATK 2500, DEF 2000' })).toBeInTheDocument()
     // Decorativas: la ficha y su caja no se leen.
     expect(document.querySelector('[data-stat-badge]')!.closest('[aria-hidden="true"]')).not.toBeNull()
+    // El Nivel sale de la mesa: escondido, salvo en una casilla que se elige (`data-pick`, Sacrificios y materiales).
+    for (const badge of document.querySelectorAll('[data-stat-badge]')) expect(badge).toHaveClass('hidden', 'in-data-[pick=true]:block')
+    // La mesa manual muestra el impreso y no lo pinta.
+    expect(document.querySelector('[data-shift]')).toBeNull()
+  })
+
+  it('el de ahora (duelo automático) se pinta si cambió: menta si subió, rojo claro si bajó, un «?» sin color; la ficha de elegir se ve', () => {
+    const { container } = render(
+      <>
+        <div data-testid="up"><StatTag stat={{ attack: 2100, defense: 1000, printed: { attack: 1600, defense: 1200 }, badge: { kind: 'level', value: 4 } }} /></div>
+        <div data-testid="same"><StatTag stat={{ attack: '?', defense: 1000, printed: { attack: 1600, defense: 1000 }, resting: true }} /></div>
+      </>,
+    )
+    const up = screen.getByTestId('up')
+    const same = screen.getByTestId('same')
+
+    expect(up.querySelector('[data-shift="up"]')).toHaveClass('text-success-soft')
+    expect(up.querySelector('[data-shift="down"]')).toHaveClass('text-danger-soft')
+    expect(up.querySelector('[data-stat-badge]')).toHaveClass('block')
+    expect(same.querySelector('[data-shift]')).toBeNull()
+    expect(container.querySelectorAll('[data-pick-stat]')).toHaveLength(2)
   })
 })

@@ -4,7 +4,7 @@ import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatScene, PickMarks } from '../../probability/MatArena'
 import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, fxVars } from '../../probability/MatFx'
 import { glowFrame } from '../../probability/practice-styles'
-import { ChevronTrail } from '../../probability/AttackFx'
+import { AttackFx, ChevronTrail, measureStrike, type Strike } from '../../probability/AttackFx'
 import { t } from '../../../i18n'
 import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL, CELL_MONSTER, CELL_SPELL, PileBadge, ZoneLines } from '../../probability/PracticeMat'
@@ -21,6 +21,8 @@ import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
 import { DuelLine, DuelLogTicker } from '../../duel/DuelBar'
 import { LifeBadge } from '../../duel/LifeScore'
+import { PhaseTrack, TurnAction } from '../../probability/PhaseTrack'
+import { PHASES } from '../../../app/practice-mat'
 import { ChainLine, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { IconButton } from '../../ui/IconButton'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
@@ -137,16 +139,26 @@ const SEAT_CHAIN: ChainNoticeRow[] = [
  * costados del campo. La línea, de alto fijo entre el campo y tu mano, con una sola cosa por vez: nada (la última jugada), un aviso o la cadena. «Bajar vidas» prueba el cambio.
  */
 function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
-  const [line, setLine] = useState<'last' | 'notice' | 'chain'>('last')
+  const [line, setLine] = useState<'last' | 'notice' | 'chain' | 'track' | 'moment'>('last')
+  const [turn, setTurn] = useState<'main1' | 'battle' | 'rival'>('main1')
   const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
+  const mineTurn = turn !== 'rival'
+  // Las fases que el núcleo ofrecería: en la Main Phase 1, la Battle y la End Phase; en la Battle, la Main Phase 2 y la End Phase.
+  const phaseItems = PHASES.map((phase) => (phase.id === (mineTurn ? turn : 'main1') ? { label: phase.name, current: true, onSelect: () => {} } : { label: phase.name, disabled: !mineTurn || !(turn === 'main1' ? ['battle', 'end'] : ['main2', 'end']).includes(phase.id), onSelect: () => {} }))
   const content =
     line === 'chain' ? (
       <ChainLine rows={SEAT_CHAIN} focus={1} onPick={() => {}} />
+    ) : line === 'track' ? (
+      <PhaseTrack phase={mineTurn ? turn : 'main1'} items={phaseItems} disabled={!mineTurn} onOpen={() => {}} />
     ) : (
-      <DuelLine lane={line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : null} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} />
+      <DuelLine
+        lane={line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : line === 'moment' ? { kind: 'ask', text: 'Gene-Warped Warwolf ataca a Sky Striker Ace - Zeke · Rival −500', actions: [] } : null}
+        rivalName="Ana"
+        log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />}
+      />
     )
-  const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} />
-  const mine = (turn?: string) => <LifeBadge name="Vos" label="Vos" life={life.mine} mine turn={turn} />
+  const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} active={!mineTurn} />
+  const mine = (turnText?: string) => <LifeBadge name="Vos" label="Vos" life={life.mine} mine turn={turnText} {...(turnText ? { active: mineTurn } : {})} />
   const buttons = (
     <span className="flex items-center gap-2">
       <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
@@ -165,7 +177,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
       className="col-span-full"
       note={
         <>
-          Las vidas salen de la barra: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color) junto a su lado de la mesa; la tuya lleva el turno y, en el celular, la botonera cuadrada. La línea mide siempre lo mismo (96 px a 390 × 844) y muestra una sola cosa: la cadena, un aviso o la última jugada. El cambio de vidas: el número late y el «−N ▼» sube y se funde (rojo tu daño, menta el del rival). A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
+          Las vidas salen de la barra: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color) junto a su lado de la mesa; la tuya lleva el turno y, en el celular, la botonera cuadrada. La línea mide siempre lo mismo (96 px a 390 × 844) y muestra una sola cosa: la cadena, un aviso o la última jugada. El cambio de vidas: el número late y el «−N ▼» sale en grande (64 px; 84 desde 1101), entra de 1,6, se sostiene, sube y se funde en 1,5 s: el del rival a la izquierda de su chapa, sobre su mano; el tuyo arriba de tu chapa, nunca sobre el botón del turno (rojo tu daño, menta el del rival). «Momento»: en el automático, la línea dice 1,5 s lo que pasó al invocar, atacar o recibir daño, con la frase del paso, y vuelve a la pista. La chapa del que juega se enciende con su aro y la otra se apaga. En el automático, sin cadena ni aviso, la línea muestra la pista de fases y abajo va el botón del turno: «Ir a Batalla» o «Terminar turno» (borde rojo); en el turno del rival, apagado. A 390 y a 1440 px. Archivos: <Tag>probability/PhaseTrack.tsx</Tag> <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }
     >
@@ -179,6 +191,19 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
             { value: 'last', label: 'Nada' },
             { value: 'notice', label: 'Aviso' },
             { value: 'chain', label: 'Cadena' },
+            { value: 'track', label: 'Fases' },
+            { value: 'moment', label: 'Momento' },
+          ]}
+        />
+        <Segmented
+          label="De quién es el turno"
+          variant="track"
+          value={turn}
+          onChange={setTurn}
+          options={[
+            { value: 'main1', label: 'Tuyo · M1' },
+            { value: 'battle', label: 'Tuyo · BP' },
+            { value: 'rival', label: 'Del rival' },
           ]}
         />
         <Button size="sm" variant="secondary" onClick={() => setLife((now) => ({ mine: now.mine - 1100, theirs: now.theirs - 1000 }))}>
@@ -191,8 +216,10 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
         <div data-duel-line="" className="relative h-24 overflow-hidden">
           {content}
         </div>
-        <div className="flex h-15 items-center justify-between">
-          {mine('Tu turno · 3')}
+        <div className="flex h-15 items-center justify-between gap-2">
+          {mine(mineTurn ? 'Tu turno · 3' : 'Turno de Ana · 3')}
+          {/* El duelo automático: el botón del turno al alcance del pulgar. */}
+          <TurnAction items={phaseItems} endTurn={() => {}} live={mineTurn} />
           {buttons}
         </div>
       </div>
@@ -266,16 +293,30 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
   )
 }
 
+/** Un número del duelo automático que cambió por un efecto: `by` sobre el impreso (un «?» queda «?»). */
+const shifted = (value: number | '?' | null, by: number) => (typeof value === 'number' ? Math.max(0, value + by) : value)
+
 /**
- * El ATK/DEF de cada monstruo boca arriba del campo (`StatTag`), siempre: sobre el pie de la carta, sin cambiar ninguna caja. Las cifras son las impresas (`fieldStatsOf`, como en la mesa
- * manual; en el duelo automático, las de ahora). Eligiendo, la de cada elegible (`pickStatsOf`) es la misma etiqueta, no otra: su nombre suma «elegible».
+ * El ATK/DEF de cada monstruo boca arriba del campo (`StatTag`), siempre: una placa al pie de la carta, sin cambiar ninguna caja. Las cifras son las impresas (`fieldStatsOf`, como en la mesa
+ * manual; en el duelo automático, las de ahora, y en «Cambiados» las tuyas suben 500 y las del rival bajan 500). Eligiendo, la de cada elegible (`pickStatsOf`) es la misma etiqueta y vuelve el
+ * Nivel: su nombre suma «elegible».
  */
 function StatTagSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
-  const [on, setOn] = useState<'on' | 'pick' | 'off'>('on')
+  const [on, setOn] = useState<'on' | 'shift' | 'pick' | 'off'>('on')
   const sides = useMemo(() => {
-    const picking = (side: DuelSideView) => ({ ...side, pickable: new Set(side.stats?.keys()), pickStats: new Map<string, PickStat>(side.stats) })
+    // La de elegir (`pickStatsOf`) no es la de siempre (`resting`): su ficha se ve.
+    const picking = (side: DuelSideView) => ({
+      ...side,
+      pickable: new Set(side.stats?.keys()),
+      pickStats: new Map([...(side.stats ?? [])].map(([id, stat]): [string, PickStat] => [id, { attack: stat.attack, defense: stat.defense, ...(stat.badge ? { badge: stat.badge } : {}) }])),
+    })
     const bare = (side: DuelSideView) => ({ ...side, stats: undefined })
+    const shift = (side: DuelSideView, by: number) => ({
+      ...side,
+      stats: new Map([...(side.stats ?? [])].map(([id, stat]): [string, PickStat] => [id, { ...stat, attack: shifted(stat.attack, by) ?? '?', defense: shifted(stat.defense, by), printed: { attack: stat.attack, defense: stat.defense } }])),
+    })
 
+    if (on === 'shift') return { mine: shift(duel.mine, 500), theirs: shift(duel.theirs, -500) }
     return on === 'pick' ? { mine: picking(duel.mine), theirs: picking(duel.theirs) } : on === 'off' ? { mine: bare(duel.mine), theirs: bare(duel.theirs) } : duel
   }, [duel, on])
 
@@ -286,12 +327,15 @@ function StatTagSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideV
       className="col-span-full"
       note={
         <>
-          Cada monstruo boca arriba lleva su ATK/DEF abajo de su casilla y, arriba, su Nivel (★), Rango (R) o LINK si se sabe con certeza (baja con la carta que llega y el ATK/DEF sube 70 ms después), siempre y de los dos lados: en el duelo automático el de ahora (con lo que le cambiaron los efectos), en la mesa manual el impreso. El ATK en blanco y la DEF apagada; un Link, sólo el ATK; un valor «?» se ve «?»; boca abajo, nada. En una casilla angosta va sólo el de su posición (ATK parada, DEF acostada). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
+          Lo que se dice de una carta del campo va al pie o afuera, nunca sobre el arte: su ATK/DEF en una placa de 15 px (12 px de letra, el carbón al 92 % debajo) sobre el cuadro de texto, siempre y de los dos lados, y la espada de «puede atacar» en la esquina, medio afuera. En el duelo automático, el de ahora: en menta si subió y en rojo claro si bajó respecto del impreso («Cambiados»); en la mesa manual, el impreso y sin color. Un Link, sólo el ATK; un «?» se ve «?» y sin color; boca abajo, nada. En una casilla angosta (la de abajo, 57 px como a 390) va sólo el de su posición (ATK parada, DEF acostada). El Nivel (★), Rango (R) o LINK no va en la mesa: está en la ficha de la carta y vuelve, arriba, sólo mientras se elige («Eligiendo»). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
         </>
       }
     >
-      <Segmented label="Etiqueta" variant="track" value={on} onChange={setOn} options={[{ value: 'on', label: 'Siempre' }, { value: 'pick', label: 'Eligiendo' }, { value: 'off', label: 'Sin etiqueta' }]} />
+      <Segmented label="Etiqueta" variant="track" value={on} onChange={setOn} options={[{ value: 'on', label: 'Siempre' }, { value: 'shift', label: 'Cambiados' }, { value: 'pick', label: 'Eligiendo' }, { value: 'off', label: 'Sin etiqueta' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
+      <div className="mx-auto w-full max-w-[24.375rem] [--cell:3.57rem]">
+        <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
+      </div>
     </Specimen>
   )
 }
@@ -542,8 +586,19 @@ const TRAIL_ANG = Math.atan2(TRAIL_TO.y - TRAIL_FROM.y, TRAIL_TO.x - TRAIL_FROM.
 const TRAIL = { x: TRAIL_FROM.x + Math.cos(TRAIL_ANG) * 29.4, y: TRAIL_FROM.y + Math.sin(TRAIL_ANG) * 29.4, len: Math.hypot(TRAIL_TO.x - TRAIL_FROM.x, TRAIL_TO.y - TRAIL_FROM.y) - 38.5, ang: TRAIL_ANG }
 const TRAIL_CARD = 'absolute aspect-[421/614] w-12 overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]'
 
-/** La estela del ataque (`ChevronTrail`; en la mesa la mide y la sigue `AttackTrail`), en movimiento y como queda con el movimiento reducido. */
+/** La estela del ataque (`ChevronTrail`; en la mesa la mide y la sigue `AttackTrail`), en movimiento y como queda con el movimiento reducido; «Atacar» corre el ataque entero (`AttackFx`) y el objetivo sale del campo. */
 function TrailSample() {
+  const boxRef = useRef<HTMLDivElement | null>(null)
+  const [strike, setStrike] = useState<Strike | null>(null)
+  const [gone, setGone] = useState(false)
+  // El objetivo se va después del impacto (como cuando la mesa lo manda al cementerio) y vuelve para otra prueba.
+  const attack = () => {
+    setGone(false)
+    setStrike(measureStrike({ from: '[data-card-id="muestra-atacante"]', to: '[data-rival-card-id="muestra-objetivo"]', bounds: boxRef.current }))
+    window.setTimeout(() => setGone(true), 420)
+    window.setTimeout(() => setGone(false), 2400)
+  }
+
   return (
     <Specimen
       title="Estela del ataque · quién ataca a quién"
@@ -552,28 +607,35 @@ function TrailSample() {
         <>
           Mientras elegís a quién atacar, tu monstruo lleva el aro rojo quieto y, con el mouse sobre un objetivo, la estela va hasta él (en el celular, sólo el aro). Cuando ataca el rival, la estela queda de su
           monstruo a tu carta o a tus vidas mientras le podés responder y se va con el daño. Es un solo renglón de chevrones con su halo de fondo (dos nodos) y sólo se anima <Tag>translate</Tag>
-          (<Tag>animate-chevrons</Tag>); con el movimiento reducido queda quieta. Sin estela en la mesa manual, los replays ni el video. Archivos: <Tag>probability/AttackFx.tsx</Tag> (<Tag>ChevronTrail</Tag>,{' '}
-          <Tag>AttackTrail</Tag>) y <Tag>app/attack-trail.ts</Tag>.
+          (<Tag>animate-chevrons</Tag>); con el movimiento reducido queda quieta. Sin estela en la mesa manual, los replays ni el video. «Probar el ataque»: el atacante embiste (28 px), la espada golpea y el objetivo,
+          que sale del campo, se parte en dos (<Tag>animate-card-split-a/b</Tag>, sólo el objetivo de un ataque: el núcleo no dice otras destrucciones). Archivos: <Tag>probability/AttackFx.tsx</Tag> (<Tag>ChevronTrail</Tag>,{' '}
+          <Tag>AttackTrail</Tag>, <Tag>AttackFx</Tag>) y <Tag>app/attack-trail.ts</Tag>.
         </>
       }
     >
       <div className="grid grid-cols-2 gap-4">
         {[false, true].map((still) => (
           <div key={String(still)} className="grid justify-items-center gap-2">
-            <div className="relative h-44 w-40">
-              <div data-glow="true" data-glow-kind="aim" style={fxVars('red')} className={cx(TRAIL_CARD, 'bottom-0 left-2', FX_CARD)}>
+            <div ref={still ? undefined : boxRef} className="relative h-44 w-40">
+              <div data-card-id={still ? undefined : 'muestra-atacante'} data-glow="true" data-glow-kind="aim" style={fxVars('red')} className={cx(TRAIL_CARD, 'bottom-0 left-2', FX_CARD)}>
                 <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />
                 <FxFrame {...glowFrame('aim')!} />
               </div>
-              <div className={cx(TRAIL_CARD, 'right-2 top-0')}>
-                <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full rotate-180 object-cover" />
-              </div>
-              <ChevronTrail {...TRAIL} still={still} />
+              {still || !gone ? (
+                <div data-rival-card-id={still ? undefined : 'muestra-objetivo'} className={cx(TRAIL_CARD, 'right-2 top-0')}>
+                  <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full rotate-180 object-cover" />
+                </div>
+              ) : null}
+              {still || !strike ? <ChevronTrail {...TRAIL} still={still} /> : null}
             </div>
             <span className="text-micro text-muted">{still ? 'Movimiento reducido: quieta' : 'En movimiento'}</span>
           </div>
         ))}
       </div>
+      <Button size="sm" variant="secondary" onClick={attack}>
+        Probar el ataque
+      </Button>
+      {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
     </Specimen>
   )
 }
@@ -927,7 +989,7 @@ const MEDALS: Array<{ tone: MedalTone; label: string; numeral?: string; icon?: '
   { tone: 'draw', label: 'draw · empate', icon: 'swap' },
 ]
 
-/** Los carteles 3D del duelo: la medalla en sus cinco colores, el final (ganar pesa más que perder) y el cartel del comienzo, que se ve dos segundos y se va. */
+/** Los carteles del duelo: la placa en sus cinco colores, el final (con las vidas en grande) y el cartel del comienzo, que se ve dos segundos y se va. */
 function BannerSamples() {
   const [run, setRun] = useState(0)
   const [first, setFirst] = useState<boolean | null>(null)
@@ -939,7 +1001,7 @@ function BannerSamples() {
       className="col-span-full"
       note={
         <>
-          La medalla 3D (<Tag>DuelMedal</Tag>, una pila de discos con aro y disco) y los carteles que la usan: el del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos) y el del final (<Tag>ResultHero</Tag>, en la tarjeta del resultado y para quien mira). El color del metal dice qué pasó; con <Tag>prefers-reduced-motion</Tag> quedan quietos. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
+          La placa (<Tag>DuelMedal</Tag>: un cuadrado plano con su aro, de esquinas rectas como la mesa, sin degradados ni brillos) y los carteles que la usan: el del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos) y el del final (<Tag>ResultHero</Tag>, con cómo te fue en la placa y las vidas, «3100 a 0», en grande; en la tarjeta del resultado, en el final del automático y, sin vidas, para quien mira). El color dice qué pasó; entra una vez (700 ms) y nada gira sin fin; con <Tag>prefers-reduced-motion</Tag> aparece quieta. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
         </>
       }
     >
@@ -957,15 +1019,15 @@ function BannerSamples() {
       <div key={run} className="grid gap-8 py-4">
         <div className="flex flex-wrap items-start justify-center gap-10">
           {MEDALS.map((medal) => (
-            <div key={medal.tone} className="grid justify-items-center gap-2">
+            <div key={medal.tone} className="grid justify-items-center gap-4">
               <DuelMedal tone={medal.tone} size="md" numeral={medal.numeral} icon={medal.icon} />
               <Tag>{medal.label}</Tag>
             </div>
           ))}
         </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] justify-items-center gap-6">
-          <ResultHero tone="win" icon="trophy" title="¡Ganaste!" reason="Beto se rindió." />
-          <ResultHero tone="lose" icon="flag" title="Perdiste" reason="Te rendiste." />
+          <ResultHero tone="win" icon="trophy" title="¡Ganaste!" reason="Beto se quedó sin puntos de vida." score={{ mine: 3100, theirs: 0, rival: 'Beto' }} />
+          <ResultHero tone="lose" icon="flag" title="Perdiste" reason="Te rendiste." score={{ mine: 2400, theirs: 5600, rival: 'Beto' }} />
           <ResultHero tone="draw" icon="swap" title="Empate" reason="Los dos se quedaron sin puntos de vida." />
         </div>
       </div>

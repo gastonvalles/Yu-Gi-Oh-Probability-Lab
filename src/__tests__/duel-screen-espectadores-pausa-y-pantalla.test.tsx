@@ -227,7 +227,7 @@ describe('la pantalla del duelo', () => {
     expect(banner(guest)).toHaveAttribute('data-turn', 'second')
     expect(within(banner(guest)).getByRole('heading', { name: 'Vas segundo' })).toBeInTheDocument()
     expect(within(banner(guest)).getByText('Empieza Ana. Tu turno viene después.')).toBeInTheDocument()
-    // La medalla es 3D (un número en un disco de metal) y no recibe toques: la mesa se puede usar mientras tanto.
+    // La placa (un número en un cuadrado) no recibe toques: la mesa se puede usar mientras tanto.
     expect(banner(host).querySelector('[data-medal="first"]')).not.toBeNull()
     expect(banner(host)).toHaveClass('pointer-events-none')
 
@@ -238,7 +238,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).queryByTestId('turn-banner')).not.toBeInTheDocument()
   })
 
-  it('el final es un cartel con una medalla 3D: ganar es ámbar con rayos y confeti; perder es roja, se agrieta y no lleva confeti', () => {
+  it('el final es un cartel con una placa plana: lima si ganás, roja si perdés, con cómo te fue adentro y las vidas en grande', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
     click(guest, 'Rendirme')
@@ -250,11 +250,10 @@ describe('la pantalla del duelo', () => {
 
     expect(within(won).getByTestId('result-hero')).toHaveAttribute('data-tone', 'win')
     expect(won.querySelector('[data-medal="win"]')).not.toBeNull()
-    expect(won.querySelector('.medal-rays')).not.toBeNull()
-    expect(won.querySelector('[data-fx="confetti"]')).not.toBeNull()
+    expect(within(won.querySelector<HTMLElement>('[data-medal="win"]')!).getByRole('heading', { name: '¡Ganaste!' })).toBeInTheDocument()
+    expect(won.querySelector('[data-score]')).toHaveTextContent('Vos 8000 a Beto 8000')
     expect(within(lost).getByTestId('result-hero')).toHaveAttribute('data-tone', 'lose')
-    expect(lost.querySelector('[data-medal="lose"] path')).not.toBeNull()
-    expect(lost.querySelector('[data-fx="confetti"]')).toBeNull()
+    expect(lost.querySelector('[data-medal="lose"]')).toHaveClass('bg-danger')
     // Los botones de siempre siguen: ver la mesa y la revancha.
     expect(within(won).getByRole('button', { name: 'Revancha' })).toBeInTheDocument()
   })
