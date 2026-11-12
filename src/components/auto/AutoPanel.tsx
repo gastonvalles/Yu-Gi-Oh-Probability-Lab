@@ -1,6 +1,7 @@
 import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { distinctLabels } from '../../app/auto/ask-ui'
 import { cardTypeLabel, frameKindOf, frameTextClass } from '../../app/card-frame'
 import { useMatMenus } from '../../app/mat-menus'
 import { useDraggableOffset } from '../../app/use-draggable-offset'
@@ -47,6 +48,14 @@ const WINDOW_KEYS = 'ArrowUp ArrowDown ArrowLeft ArrowRight Alt+ArrowUp Alt+Arro
  * (`tertiary`) va sin esto, a su ancho y a la izquierda. Todos `size="md"` (44 px) y en un renglón (lo pone la fila).
  */
 export const PANEL_MAIN = 'flex-1 group-data-[auto-panel=floating]/panel:min-w-32 group-data-[auto-panel=floating]/panel:flex-none'
+/**
+ * El color de la principal de los menús del duelo (Gastón, 2026-11-12): lima (`info`) con letras oscuras (`info-foreground`: carbón; con Índigo, el ámbar con su violeta casi negro). Vive acá, en un solo
+ * lugar, y no toca el `primary` del resto de la app (los `!` ganan al relleno de `Button`). Al apuntarlo se aclara (`info-soft`), apretado vuelve al lima, y apagado es una caja lisa con texto suave
+ * (el 40 % de opacidad de siempre dejaría el lima y su texto ilegibles).
+ */
+export const PANEL_LIME = 'bg-info! text-info-foreground! hover:bg-info-soft! active:bg-info! disabled:bg-surface-raised! disabled:text-soft! disabled:opacity-100!'
+/** La principal de la fila de abajo: `PANEL_MAIN` (ancho y lugar) con el color de los menús (`PANEL_LIME`). */
+export const PANEL_PRIMARY = `${PANEL_MAIN} ${PANEL_LIME}`
 /** La fila de abajo: un renglón, la principal al final (a la derecha); en la ventana, todo a la derecha y pegada al borde de abajo (`mt-auto`: estirada, el aire queda entre el contenido y ella). */
 const ACTIONS = 'flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap group-data-[auto-panel=floating]/panel:mt-auto group-data-[auto-panel=floating]/panel:justify-end'
 
@@ -417,9 +426,11 @@ export interface AutoCardSheetProps {
 export function AutoCardSheet({ name, art, back = false, apiCard = null, items, empty, onManual, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
   const nameId = useId()
   const [armed, setArmed] = useState(false)
-  const plays = flatPlays(items)
+  // Dos botones de una ficha nunca dicen lo mismo: los del mismo nombre se numeran en el orden del núcleo, antes de pasar la principal al final (`distinctLabels`).
+  const numbered = distinctLabels(items)
+  const plays = flatPlays(numbered)
   // La principal, al final: las demás jugadas en su orden y ella abajo a la derecha. Los efectos de una misma jugada («Efecto 2», «Efecto 3») van juntos y en su orden.
-  const groups = items.map((item) => item.children ?? [item])
+  const groups = numbered.map((item) => item.children ?? [item])
   const first = groups.findIndex((group) => group.some((play) => !play.disabled))
   const ordered = (first < 0 ? groups : [...groups.filter((_, index) => index !== first), groups[first]!]).flat()
   // Sin imagen, la carta sobre el color de su tipo (lámina T), como el chip.
@@ -447,7 +458,7 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
               variant={main ? 'primary' : 'secondary'}
               aria-disabled={item.disabled || undefined}
               title={item.hint ?? item.label}
-              className={cx('min-w-0 whitespace-nowrap px-3! group-data-[auto-panel=floating]/panel:min-w-32', ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
+              className={cx('min-w-0 whitespace-nowrap px-3! group-data-[auto-panel=floating]/panel:min-w-32', main && PANEL_LIME, ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
               onClick={item.disabled ? undefined : item.onSelect}
             >
               <span className="min-w-0 truncate">{item.label}</span>

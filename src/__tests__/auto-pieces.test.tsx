@@ -906,6 +906,27 @@ describe('la carta del menú se toca (sin «Ver carta» visible)', () => {
     expect(sheet.querySelector('[data-panel-body]')).toBeNull()
   })
 
+  it('la ficha de una carta con dos jugadas del mismo nombre las numera: nunca dos botones con el mismo texto', () => {
+    const same = [{ label: 'Invocación Especial', onSelect: () => {} }, { label: 'Invocación Especial', onSelect: () => {} }, { label: 'Colocar', onSelect: () => {} }]
+
+    render(<AutoCardSheet name="Dragón" art={null} items={same} onClose={() => {}} />)
+    const labels = within(screen.getByRole('menu')).getAllByRole('menuitem').map((item) => item.textContent)
+
+    expect([...labels].sort()).toEqual(['Colocar', 'Invocación Especial 1', 'Invocación Especial 2'])
+    expect(new Set(labels).size).toBe(labels.length)
+    // La principal de los menús del duelo va en lima con letras oscuras (una sola, la última); el resto de la app sigue en violeta.
+    const buttons = within(screen.getByRole('menu')).getAllByRole('menuitem')
+
+    expect(buttons.at(-1)).toHaveClass('bg-info!', 'text-info-foreground!', 'hover:bg-info-soft!')
+    expect(buttons.slice(0, -1).some((button) => button.className.includes('bg-info!'))).toBe(false)
+  })
+
+  it('la principal de cada cartel (sí/no, responder, elegir cartas, ordenar) lleva el lima de los menús y su apagado liso', () => {
+    render(<AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
+    expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveClass('bg-info!', 'text-info-foreground!', 'disabled:bg-surface-raised!', 'disabled:opacity-100!')
+    expect(screen.getByRole('button', { name: 'No activar' })).not.toHaveClass('bg-info!')
+  })
+
   it('Sincronía lleva el aro claro en el chip (para no confundirse con la Ficha), como Xyz y Enlace; la Ficha no', () => {
     const chip = (frameType: string, cardType: string) => {
       const view = render(<AutoCardSheet name="X" art={null} apiCard={{ ygoprodeckId: 1, frameType, cardType, race: 'Dragon', attribute: 'DARK', level: 4, atk: '1000', def: '1000', description: null } as never} items={plays} onClose={() => {}} />)

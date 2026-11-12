@@ -486,6 +486,33 @@ export function itemsInto(items: readonly AskItem[], into: Into): AskItem[] {
 }
 
 /**
+ * Dos botones de una misma ficha nunca llevan el mismo texto. Una carta con dos procedimientos de invocación (una de Sincronía con el suyo propio) llega del núcleo como la misma carta dos veces
+ * en `special_summons`, sin nada que diga cuál es cuál: se numeran («Invocación Especial 1», «… 2»), como los efectos, y no se inventa una diferencia. La misma jugada con la misma respuesta
+ * repetida es una sola.
+ */
+export function distinctLabels<T extends { label: string; answer?: unknown }>(items: readonly T[]): T[] {
+  const seenPlay = new Set<string>()
+  const unique = items.filter((item) => {
+    if (item.answer === undefined) return true
+    const key = `${item.label}|${JSON.stringify(item.answer)}`
+
+    return seenPlay.has(key) ? false : (seenPlay.add(key), true)
+  })
+  const counts = new Map<string, number>()
+
+  for (const item of unique) counts.set(item.label, (counts.get(item.label) ?? 0) + 1)
+  const seen = new Map<string, number>()
+
+  return unique.map((item) => {
+    if ((counts.get(item.label) ?? 0) < 2) return item
+    const n = (seen.get(item.label) ?? 0) + 1
+
+    seen.set(item.label, n)
+    return { ...item, label: t('auto.play.numbered', { label: item.label, n }) }
+  })
+}
+
+/**
  * Los ítems de cada carta, de mi mesa (`items`) y del rival (`theirs`: lo que la pregunta deja activar de una carta suya). «Activar efecto» de una carta con varias entradas pregunta
  * cuál (`children`): cada uno con su texto o, sin él, con la palabra de su activación. Sin número: el orden de la pregunta no es el del texto de la carta (el núcleo saca lo que ahora no se puede).
  */
@@ -574,8 +601,9 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
       activations(ask.selects, (index) => ({ type: 'select_chain', index }))
       break
   }
+  const distinct = (map: ReadonlyMap<string, AskItem[]>) => new Map([...map].map(([id, list]) => [id, distinctLabels(list)] as const))
 
-  return out
+  return { items: distinct(out.items), theirs: distinct(out.theirs) }
 }
 
 /** Las ventanas de tus fases por el `hint_timing` de una cadena (`TIMING_DRAW_PHASE`, `TIMING_STANDBY_PHASE`, `TIMING_END_PHASE`): en el turno del rival vienen en `hint_timing_other`. */

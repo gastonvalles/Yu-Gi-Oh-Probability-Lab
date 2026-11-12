@@ -1,6 +1,6 @@
 import { applyLocale, loadLocale, t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, effectAskText, effectText, itemsInto, listOrder, namesList, openAsk, optionsTitle, pickStatsOf, pickTitle, placeLabel, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type CardPick, type AskContext, type AskGesture, type AskOptionsView, type AskQueries, type AskState, type AskView } from '../app/auto/ask-ui'
+import { askView, distinctLabels, effectAskText, effectText, itemsInto, listOrder, namesList, openAsk, optionsTitle, pickStatsOf, pickTitle, placeLabel, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type CardPick, type AskContext, type AskGesture, type AskOptionsView, type AskQueries, type AskState, type AskView } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
@@ -190,6 +190,27 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
         expect(played.auto?.why).not.toBe('none')
       }
     }
+  })
+
+  it('una carta con dos procedimientos de invocación (la misma dos veces en special_summons) no lleva dos botones con el mismo texto: se numeran, sin inventar cuál es cuál', () => {
+    const idle = ASKS[1] as Extract<CoreAsk, { type: 'select_idlecmd' }>
+    const view = askView(open({ ...idle, special_summons: [loc(500, L.EXTRA, 0), loc(500, L.EXTRA, 0), loc(960, L.SZONE, 0)] }, ctx(MESA)))
+    const sums = view.items.get('card-500-1')!.map((item) => [item.label, item.answer])
+
+    expect(sums).toEqual([
+      [t('auto.play.numbered', { label: t('practice.menu.specialSummon'), n: 1 }), { type: 'select_idlecmd', action: 1, index: 0 }],
+      [t('auto.play.numbered', { label: t('practice.menu.specialSummon'), n: 2 }), { type: 'select_idlecmd', action: 1, index: 1 }],
+    ])
+    // Una sola vez, sin número.
+    expect(askView(open(idle, ctx(MESA))).items.get('card-500-1')!.map((item) => item.label)).toEqual([t('practice.menu.specialSummon')])
+  })
+
+  it('distinctLabels: la misma jugada con la misma respuesta es una sola; dos con respuestas distintas se numeran en su orden; las que no se repiten, intactas', () => {
+    const play = (label: string, index?: number) => ({ label, ...(index === undefined ? {} : { answer: { type: 'select_idlecmd', action: 1, index } }) })
+
+    expect(distinctLabels([play('A', 0), play('A', 0), play('B', 1)] as never).map((item) => item.label)).toEqual(['A', 'B'])
+    expect(distinctLabels([play('A', 0), play('B', 1), play('A', 2)] as never).map((item) => item.label)).toEqual(['A 1', 'B', 'A 2'])
+    expect(distinctLabels([play('A'), play('A')]).map((item) => item.label)).toEqual(['A 1', 'A 2'])
   })
 
   it('las jugadas del turno: cada carta con sus palabras de siempre, «¿cuál efecto?» en un segundo paso, todo lo legal a un toque (menos barajar la mano) y sólo brilla lo que se activa', () => {

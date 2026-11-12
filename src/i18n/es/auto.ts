@@ -137,6 +137,8 @@ export const auto = {
   'auto.ask.effectN': '¿Aplicás el efecto {n} de «{name}»?',
   // El rótulo de un efecto de la carta: el `strN` viene sólo en inglés, así que en español va su número.
   'auto.effect.number': 'Efecto {n}',
+  // Dos jugadas del mismo nombre en una ficha (los dos procedimientos de invocación de una carta): se numeran.
+  'auto.play.numbered': '{label} {n}',
   'auto.ask.kicker': 'Efecto que se dispara',
   'auto.ask.afterEvent': 'Tras la {event}',
   'auto.ask.inPhase': 'En la {phase}',

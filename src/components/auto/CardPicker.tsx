@@ -16,7 +16,7 @@ import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
 import { SearchField } from '../ui/SearchField'
 import { Skeleton } from '../ui/Skeleton'
-import { AutoPanel, PANEL_MAIN } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
 
 /** De qué lugar es una carta para elegir: la mano, una pila, el campo o debajo de un Xyz. */
 export type PickFrom = MatPile | 'field' | 'material'
@@ -346,7 +346,7 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
               </Button>
             ) : null}
             {primary ? (
-              <Button variant="primary" className={cx(PANEL_MAIN, 'ml-auto')} disabled={!done} onClick={onPick}>
+              <Button variant="primary" className={cx(PANEL_PRIMARY, 'ml-auto')} disabled={!done} onClick={onPick}>
                 {action ?? (chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length }))}
               </Button>
             ) : null}
@@ -431,7 +431,7 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
               </Button>
             ) : null}
             {single && !finish ? null : (
-              <Button variant="primary" className={cx(PANEL_MAIN, 'ml-auto')} disabled={!ready} onClick={() => onPick([...chosen])}>
+              <Button variant="primary" className={cx(PANEL_PRIMARY, 'ml-auto')} disabled={!ready} onClick={() => onPick([...chosen])}>
                 {chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length })}
               </Button>
             )}

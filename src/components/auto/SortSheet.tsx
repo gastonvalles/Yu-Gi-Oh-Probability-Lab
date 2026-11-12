@@ -4,7 +4,7 @@ import type { AskWhyView } from '../../app/auto/ask-why'
 import { t } from '../../i18n'
 import { AskWhy } from '../duel/AskWhy'
 import { Button } from '../ui/Button'
-import { AutoPanel, PANEL_MAIN } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
 import { PickCount, PickGrid, TRAY, usePicked, type PickCard } from './CardPicker'
 
 interface SortSheetProps {
@@ -53,7 +53,7 @@ export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hi
           <Button variant="tertiary" onClick={() => onSort(null)}>
             {t('auto.sort.asIs')}
           </Button>
-          <Button variant="primary" className={PANEL_MAIN} disabled={order.length < cards.length} onClick={() => onSort(order)}>
+          <Button variant="primary" className={PANEL_PRIMARY} disabled={order.length < cards.length} onClick={() => onSort(order)}>
             {done}
           </Button>
         </>

@@ -130,6 +130,7 @@ export const auto: Translated<typeof es> = {
   'auto.ask.effectOf': 'Activate the effect of "{name}"?',
   'auto.ask.effectN': 'Apply effect {n} of "{name}"?',
   'auto.effect.number': 'Effect {n}',
+  'auto.play.numbered': '{label} {n}',
   'auto.ask.kicker': 'Trigger effect',
   'auto.ask.afterEvent': 'After the {event}',
   'auto.ask.inPhase': 'During the {phase}',

@@ -316,6 +316,7 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     { label: t('practice.menu.normalSummon'), onSelect: reply(t('practice.menu.normalSummon')) },
     { label: t('practice.menu.set'), onSelect: reply(t('practice.menu.set')) },
     { label: t('practice.menu.specialSummon'), onSelect: reply(t('practice.menu.specialSummon')) },
+    { label: t('practice.menu.specialSummon'), onSelect: reply(t('practice.menu.specialSummon')) },
     { label: t('practice.menu.activateEffect'), onSelect: () => {}, children: [1, 2].map((n) => ({ label: t('auto.effect.number', { n }), onSelect: reply(t('auto.effect.number', { n })) })) },
   ]
   const phases: MenuItem[] = PHASES.map((phase, index) => ({ label: phase.name, current: index === 2, disabled: index < 2 || index === 4, onSelect: reply(phase.name) }))

@@ -53,9 +53,9 @@ Los de `ui/` (los estilos sueltos de las superficies, en `ui/surfaces.ts`; los t
 
 Las reglas 1 a 4 las revisa `button-rules.test.ts` en el código de los componentes.
 
-1. **Una principal por grupo** (`primary`): dos llenas juntas compiten. Si dos grupos de una vista compiten, uno baja a `secondary`; con opciones de igual valor (Moneda / Dado, Ir primero / Ir segundo) no hay principal.
+1. **Una principal por grupo** (`primary`): dos llenas juntas compiten. Si dos grupos compiten, uno baja a `secondary`; con opciones de igual valor (Moneda / Dado) no hay principal.
 2. **Lo que descarta o vuelve, al lado de una principal, es `tertiary`** (sin caja): Cancelar, Volver, Cerrar. `secondary` es para una alternativa que de verdad hace algo o para acciones de igual peso. Un disparador que borra va con `color="danger"`; el que lo confirma, `primary` + `danger`.
-3. **La principal va al final** del pie de un diálogo, de una barra o de una fila alineada a la derecha («Cancelar · Guardar»).
+3. **La principal va al final** del pie de un diálogo, de una barra o de una fila alineada a la derecha («Cancelar · Guardar»); en los menús del duelo, lima (`PANEL_LIME`).
 4. **El texto dice qué hace:** un verbo en infinitivo (en inglés, imperativo), siempre el mismo para la misma acción (Borrar, no Eliminar; Elegir, no Seleccionar). La principal nombra el objeto si la pantalla no lo dice y **nunca es un «Sí», «No», «Aceptar», «OK», «Continuar» o «Confirmar» a secas**: la de una confirmación repite la acción. Sólo los estados se salvan: «Estoy listo», «Listo», «Entendido».
 5. **«Salir» es una X** (`CloseButton` con `aria-label` «Salir»), nunca un botón con la palabra. **«Estoy listo» es verde** (`color="success"`). El Side Deck de un Match se llama **Sidedeck** en los dos idiomas.
 6. **Un botón apagado que explica** (`disabledFocusable`): se ve apagado pero se enfoca y su clic marca lo que falta («Crear regla» de una regla incompleta), recién después de ese intento.

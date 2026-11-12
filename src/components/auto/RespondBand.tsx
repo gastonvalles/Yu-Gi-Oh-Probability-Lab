@@ -2,7 +2,7 @@ import { useId } from 'react'
 
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
-import { AutoPanel, PANEL_MAIN } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
 import { PickGrid, TRAY, type PickCard } from './CardPicker'
 
 const NAME_AT = String.fromCharCode(1)
@@ -63,7 +63,7 @@ export function RespondBand({ title, about, cards, chosen, onToggle, onChain, on
           <Button variant="tertiary" onClick={onPass}>
             {t('auto.lane.pass')}
           </Button>
-          <Button variant="primary" className={PANEL_MAIN} disabled={chosen === null} onClick={onChain}>
+          <Button variant="primary" className={PANEL_PRIMARY} disabled={chosen === null} onClick={onChain}>
             {t('auto.respond.start')}
           </Button>
         </>
