@@ -171,6 +171,7 @@ export const LifeBadge = memo(function LifeBadge({
   align = mine ? 'start' : 'end',
   turn,
   turnMine,
+  active,
   onClick,
   bubble = null,
   bubbleKey,
@@ -184,6 +185,8 @@ export const LifeBadge = memo(function LifeBadge({
   /** El turno, junto a la etiqueta («tu turno 3»), en el color de quién lo tiene. */
   turn?: string | undefined
   turnMine?: boolean | undefined
+  /** De quién es el turno (el duelo): la chapa del que juega se enciende con su aro (sombra: no cambia la medida) y la del otro se apaga (borde tenue). Sin esto, como siempre. */
+  active?: boolean | undefined
   onClick?: (() => void) | undefined
   bubble?: string | null
   bubbleKey?: number | undefined
@@ -241,14 +244,19 @@ export const LifeBadge = memo(function LifeBadge({
     </>
   )
   // Recta y traslúcida (82 %, alfa plano), con el borde de su dueño.
-  const plate = cx('relative grid shrink-0 gap-0.5 border bg-background/82 px-2 py-1', owner === 'mine' ? 'border-primary' : 'border-info', align === 'end' ? 'justify-items-end text-right' : 'justify-items-start text-left')
+  const plate = cx(
+    'relative grid shrink-0 gap-0.5 border bg-background/82 px-2 py-1',
+    active === false ? 'border-border-subtle' : owner === 'mine' ? 'border-primary' : 'border-info',
+    active && (owner === 'mine' ? 'ring-2 ring-primary' : 'ring-2 ring-info'),
+    align === 'end' ? 'justify-items-end text-right' : 'justify-items-start text-left',
+  )
 
   return onClick ? (
-    <button ref={setBox} type="button" data-lp={side} data-life-score="" data-life-badge="" aria-label={`${lifeOf}. ${t('duel.bar.openCalculator')}`} className={cx(plate, 'min-h-11 min-w-11 cursor-pointer rounded-none transition-colors hover:border-info focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button ref={setBox} type="button" data-lp={side} data-life-score="" data-life-badge="" data-active={active} aria-label={`${lifeOf}. ${t('duel.bar.openCalculator')}`} className={cx(plate, 'min-h-11 min-w-11 cursor-pointer rounded-none transition-colors hover:border-info focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (
-    <div ref={setBox} role="group" data-lp={side} data-life-score="" data-life-badge="" aria-label={lifeOf} className={plate}>
+    <div ref={setBox} role="group" data-lp={side} data-life-score="" data-life-badge="" data-active={active} aria-label={lifeOf} className={plate}>
       {body}
     </div>
   )

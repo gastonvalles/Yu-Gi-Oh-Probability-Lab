@@ -644,15 +644,15 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey, s
   const name = myName || t('duel.bar.you')
   const life = snapshot.life.lp[snapshot.me]
 
-  return badge ? <LifeBadge name={name} label={t('duel.bar.you')} life={life} mine turn={turn} turnMine={turnMine} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} label={t('duel.bar.you')} life={life} mine size={size} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
+  return badge ? <LifeBadge name={name} label={t('duel.bar.you')} life={life} mine turn={turn} turnMine={turnMine} active={turnMine} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} label={t('duel.bar.you')} life={life} mine size={size} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
 }
 
 /** Los puntos de vida del rival, planos: en el marcador (a la derecha), en la esquina de arriba a la derecha del campo (escritorio) o en el lateral izquierdo. Se tocan igual que los tuyos. Con `badge`, su chapa. */
-export function RivalLife({ snapshot, onOpen, signal = null, signalKey, size = 'sm', align = 'end', badge = false }: { snapshot: DuelSnapshot; onOpen?: (() => void) | undefined; /** Su señal (pensando, continuá): un globo debajo de sus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; align?: 'start' | 'end'; badge?: boolean }) {
+export function RivalLife({ snapshot, onOpen, signal = null, signalKey, size = 'sm', align = 'end', badge = false, active }: { snapshot: DuelSnapshot; onOpen?: (() => void) | undefined; /** Su señal (pensando, continuá): un globo debajo de sus vidas. */ signal?: string | null; signalKey?: number | undefined; size?: 'sm' | 'lg'; align?: 'start' | 'end'; badge?: boolean; /** Con `badge`: es su turno (su chapa se enciende con su aro; si no, se apaga). */ active?: boolean | undefined }) {
   const name = snapshot.peerName ?? t('duel.bar.rival')
   const life = snapshot.life.lp[snapshot.me === 0 ? 1 : 0]
 
-  return badge ? <LifeBadge name={name} label={t('duel.bar.rivalTag')} life={life} align={align} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} life={life} size={size} align={align} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
+  return badge ? <LifeBadge name={name} label={t('duel.bar.rivalTag')} life={life} align={align} active={active} onClick={onOpen} bubble={signal} bubbleKey={signalKey} /> : <LifeScore name={name} life={life} size={size} align={align} onClick={onOpen} bubble={signal} bubbleKey={signalKey} />
 }
 
 /**

@@ -379,7 +379,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const myLife = useMemo(
     () =>
       phone ? (
-        <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine turn={turnText} turnMine={turnMine} />
+        <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine turn={turnText} turnMine={turnMine} active={turnMine} />
       ) : rails || !docked ? null : (
         <span className="-mt-5 flex" data-corner="mine">
           <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
@@ -387,8 +387,9 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       ),
     [phone, rails, docked, life.mine, turnText, turnMine],
   )
-  const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} /> : undefined), [seated, rivalName, life.theirs])
-  const line = useMemo(() => (phone ? <DuelLine lane={lane} rivalName={rivalName} /> : undefined), [phone, lane, rivalName])
+  const corner = useMemo(() => (seated ? <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} active={phone ? !turnMine : undefined} /> : undefined), [seated, rivalName, life.theirs, phone, turnMine])
+  // La línea, sólo con un aviso: sin él, la mesa pone la pista de fases (nunca queda vacía).
+  const line = useMemo(() => (phone && lane ? <DuelLine lane={lane} rivalName={rivalName} /> : undefined), [phone, lane, rivalName])
   const toggleSteps = useCallback(() => setStepsOpen((open) => !open), [])
   const dock = useMemo(() => (docked ? <AutoDock {...options} steps={{ open: stepsOpen, onToggle: toggleSteps }} /> : undefined), [docked, options, stepsOpen, toggleSteps])
   const link: DuelMatLink = {

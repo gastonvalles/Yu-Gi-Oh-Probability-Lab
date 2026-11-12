@@ -101,6 +101,7 @@ import { stepTone } from './step-tone'
 import { CardBack, CardMenu, LayerBackContext, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
+import { PhaseTrack, TurnAction } from './PhaseTrack'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -2997,8 +2998,10 @@ function PracticeMatBody({
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
           <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel?.auto ? duel.limits : tokenButton}</div>
           <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
+              {/* En el automático del celular la fase va en la línea (`PhaseTrack`) y el turno se pasa con el botón de abajo (`TurnAction`): la casilla queda vacía. */}
               {/* Sólo la sigla de dos letras, en todos los anchos y en todos los duelos (Gastón, 2026-10-27: «está bien que sólo muestre 2 letras y se abra el menú al tocarlo»): el nombre completo lo
                   dicen la línea de fases que abre y su `aria-label`. La caja de la mesa (`tile`): en ámbar cuando el turno es tuyo (es lo que se toca); en el del rival, la sigla en lila. */}
+              {phone && isAuto ? null : (
               <IconButton
                 tone="tile"
                 size="sm"
@@ -3016,6 +3019,7 @@ function PracticeMatBody({
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
               </IconButton>
+              )}
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
               {isDesktop && myTurn && phaseNow === 'end' ? (
                 <Button
@@ -3111,8 +3115,12 @@ function PracticeMatBody({
         {/* La línea (celular): una ranura de alto fijo entre el campo y tu mano, con el aire que sobre debajo. Acá va la cadena; lo que se apoya encima (la ficha, los carteles) llega hasta su borde de abajo. */}
         {phone ? (
           <div data-duel-line="" className="relative shrink-0 overflow-hidden" style={{ height: phone.lineHeight, marginBottom: phone.air }}>
-            {/* Una sola cosa por vez: la cadena y, si no hay, la línea de la pantalla (un aviso sobre la última jugada). Repasando, el aviso dice el paso. */}
-            <MatReplayContext.Provider value={replayLink}>{duel?.chain ?? duel?.line}</MatReplayContext.Provider>
+            {/* Una sola cosa por vez: la cadena y, si no hay, la línea de la pantalla (un aviso sobre la última jugada). Repasando, el aviso dice el paso. En el automático, sin nada de eso, la pista de fases. */}
+            <MatReplayContext.Provider value={replayLink}>
+              {duel?.chain ??
+                duel?.line ??
+                (duel?.auto ? <PhaseTrack phase={phaseNow} items={duel.auto.phaseItems} disabled={!myTurn} onOpen={(rect) => setMenu({ kind: 'phases', rect })} /> : null)}
+            </MatReplayContext.Provider>
           </div>
         ) : null}
 
@@ -3183,6 +3191,8 @@ function PracticeMatBody({
             {phone && !splitReplay ? (
               <div inert={choosing} data-mat-seat="" className="absolute inset-0 flex items-center justify-between gap-2 *:pointer-events-auto">
                 {duel?.life}
+                {/* El automático: el botón del turno entre tu chapa y la botonera, al alcance del pulgar (lámina 4, «B» y «D»). */}
+                {duel?.auto ? <TurnAction items={duel.auto.phaseItems} endTurn={duel.auto.endTurn} live={myTurn && !duel.chain} /> : null}
                 <span className="flex items-center gap-2">
                   {duel?.steps ? stepsButton : null}
                   {duel?.dock}

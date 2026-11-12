@@ -21,6 +21,8 @@ import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
 import { DuelLine, DuelLogTicker } from '../../duel/DuelBar'
 import { LifeBadge } from '../../duel/LifeScore'
+import { PhaseTrack, TurnAction } from '../../probability/PhaseTrack'
+import { PHASES } from '../../../app/practice-mat'
 import { ChainLine, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { IconButton } from '../../ui/IconButton'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
@@ -137,16 +139,22 @@ const SEAT_CHAIN: ChainNoticeRow[] = [
  * costados del campo. La línea, de alto fijo entre el campo y tu mano, con una sola cosa por vez: nada (la última jugada), un aviso o la cadena. «Bajar vidas» prueba el cambio.
  */
 function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
-  const [line, setLine] = useState<'last' | 'notice' | 'chain'>('last')
+  const [line, setLine] = useState<'last' | 'notice' | 'chain' | 'track'>('last')
+  const [turn, setTurn] = useState<'main1' | 'battle' | 'rival'>('main1')
   const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
+  const mineTurn = turn !== 'rival'
+  // Las fases que el núcleo ofrecería: en la Main Phase 1, la Battle y la End Phase; en la Battle, la Main Phase 2 y la End Phase.
+  const phaseItems = PHASES.map((phase) => (phase.id === (mineTurn ? turn : 'main1') ? { label: phase.name, current: true, onSelect: () => {} } : { label: phase.name, disabled: !mineTurn || !(turn === 'main1' ? ['battle', 'end'] : ['main2', 'end']).includes(phase.id), onSelect: () => {} }))
   const content =
     line === 'chain' ? (
       <ChainLine rows={SEAT_CHAIN} focus={1} onPick={() => {}} />
+    ) : line === 'track' ? (
+      <PhaseTrack phase={mineTurn ? turn : 'main1'} items={phaseItems} disabled={!mineTurn} onOpen={() => {}} />
     ) : (
       <DuelLine lane={line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : null} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} />
     )
-  const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} />
-  const mine = (turn?: string) => <LifeBadge name="Vos" label="Vos" life={life.mine} mine turn={turn} />
+  const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} active={!mineTurn} />
+  const mine = (turnText?: string) => <LifeBadge name="Vos" label="Vos" life={life.mine} mine turn={turnText} {...(turnText ? { active: mineTurn } : {})} />
   const buttons = (
     <span className="flex items-center gap-2">
       <IconButton tone="tile" size="sm" aria-label="Pasos y combos">
@@ -165,7 +173,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
       className="col-span-full"
       note={
         <>
-          Las vidas salen de la barra: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color) junto a su lado de la mesa; la tuya lleva el turno y, en el celular, la botonera cuadrada. La línea mide siempre lo mismo (96 px a 390 × 844) y muestra una sola cosa: la cadena, un aviso o la última jugada. El cambio de vidas: el número late y el «−N ▼» sube y se funde (rojo tu daño, menta el del rival). A 390 y a 1440 px. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
+          Las vidas salen de la barra: cada jugador con su chapa (recta, carbón al 82 % en alfa plano, la etiqueta en su color) junto a su lado de la mesa; la tuya lleva el turno y, en el celular, la botonera cuadrada. La línea mide siempre lo mismo (96 px a 390 × 844) y muestra una sola cosa: la cadena, un aviso o la última jugada. El cambio de vidas: el número late y el «−N ▼» sube y se funde (rojo tu daño, menta el del rival). La chapa del que juega se enciende con su aro y la otra se apaga. En el automático, sin cadena ni aviso, la línea muestra la pista de fases y abajo va el botón del turno: «Ir a Batalla» o «Terminar turno» (borde rojo); en el turno del rival, apagado. A 390 y a 1440 px. Archivos: <Tag>probability/PhaseTrack.tsx</Tag> <Tag>duel/LifeScore.tsx</Tag> <Tag>duel/DuelBar.tsx</Tag> <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }
     >
@@ -179,6 +187,18 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
             { value: 'last', label: 'Nada' },
             { value: 'notice', label: 'Aviso' },
             { value: 'chain', label: 'Cadena' },
+            { value: 'track', label: 'Fases' },
+          ]}
+        />
+        <Segmented
+          label="De quién es el turno"
+          variant="track"
+          value={turn}
+          onChange={setTurn}
+          options={[
+            { value: 'main1', label: 'Tuyo · M1' },
+            { value: 'battle', label: 'Tuyo · BP' },
+            { value: 'rival', label: 'Del rival' },
           ]}
         />
         <Button size="sm" variant="secondary" onClick={() => setLife((now) => ({ mine: now.mine - 1100, theirs: now.theirs - 1000 }))}>
@@ -191,8 +211,10 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
         <div data-duel-line="" className="relative h-24 overflow-hidden">
           {content}
         </div>
-        <div className="flex h-15 items-center justify-between">
-          {mine('Tu turno · 3')}
+        <div className="flex h-15 items-center justify-between gap-2">
+          {mine(mineTurn ? 'Tu turno · 3' : 'Turno de Ana · 3')}
+          {/* El duelo automático: el botón del turno al alcance del pulgar. */}
+          <TurnAction items={phaseItems} endTurn={() => {}} live={mineTurn} />
           {buttons}
         </div>
       </div>

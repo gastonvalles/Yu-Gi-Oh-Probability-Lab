@@ -629,7 +629,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} badge />
       </span>
     ) : null,
-    ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge /> } : {}),
+    ...(docked || phone ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge active={phone ? !asks.turnMine : undefined} /> } : {}),
     ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
     ...(phone ? { line: <DuelLine lane={lane} rivalName={rivalName} log={logTicker} />, dock: chatToggle } : {}),
     tools: null,

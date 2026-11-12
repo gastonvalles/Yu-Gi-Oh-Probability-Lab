@@ -117,6 +117,10 @@ export function ButtonsSection() {
             <Button variant="tertiary" color="danger">
               Descartar
             </Button>
+            {/* `outline` + `danger`: cierra algo sin borrarlo, con borde rojo («Terminar turno» del duelo automático). */}
+            <Button variant="outline" color="danger">
+              Terminar turno
+            </Button>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Tag>success</Tag>
