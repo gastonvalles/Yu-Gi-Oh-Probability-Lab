@@ -81,6 +81,18 @@
   --color-frame-token: #c0c0c0;
   --color-frame-spell: #1d9e74;
   --color-frame-trap: #b65480;
+  /* El tono profundo de cada uno (`FRAME_DEEP_HEX`): lo que lleva texto blanco encima, 4,5:1 o más. */
+  --color-frame-effect-deep: #d04400;
+  --color-frame-normal-deep: #8d7102;
+  --color-frame-ritual-deep: #52789d;
+  --color-frame-fusion-deep: #8766a4;
+  --color-frame-synchro-deep: #737373;
+  --color-frame-dark-synchro-deep: #555555;
+  --color-frame-xyz-deep: #000000;
+  --color-frame-link-deep: #00008b;
+  --color-frame-token-deep: #666666;
+  --color-frame-spell-deep: #188461;
+  --color-frame-trap-deep: #b65480;
 
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;

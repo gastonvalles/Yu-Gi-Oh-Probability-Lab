@@ -1,7 +1,7 @@
 ﻿import { useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-import { cardTypeLabel, frameClass, frameKindOf } from '../../app/card-frame'
+import { cardTypeLabel, frameKindOf, frameTextClass } from '../../app/card-frame'
 import { useMatMenus } from '../../app/mat-menus'
 import { PHASES } from '../../app/practice-mat'
 import { useDraggableOffset } from '../../app/use-draggable-offset'
@@ -505,7 +505,7 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
             {apiCard ? (
               <p className="m-0 flex min-w-0 items-center gap-1.5 text-micro text-muted">
                 {/* El tipo, en un chip del color de su marco (lámina T). */}
-                <span data-type-chip="" className={cx('relative shrink-0 px-1.5 font-semibold', frame && frameClass(frame))}>
+                <span data-type-chip="" className={cx('relative shrink-0 px-1.5 font-semibold', frame && frameTextClass(frame))}>
                   {cardTypeLabel(apiCard)}
                 </span>
                 <span className="min-w-0 truncate">{[levelText(apiCard), stats].filter(Boolean).join(' · ')}</span>

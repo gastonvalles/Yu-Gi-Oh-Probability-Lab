@@ -61,9 +61,9 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
     const stats = () => Array.from(document.querySelectorAll('dl > div')).map((element) => element.textContent)
     const view = render(<DuelCardDock peek={peek(blue)} />)
 
-    // El tipo, en un chip con el color de su marco (Normal: `bg-frame-normal`), y la raza y el atributo al lado.
+    // El tipo, en un chip con el tono profundo de su marco (Normal: `bg-frame-normal-deep`, texto blanco), y la raza y el atributo al lado.
     // El nombre del chip en español (el de los filtros del buscador), no el del juego en inglés.
-    expect(screen.getByText('Normal')).toHaveClass('bg-frame-normal')
+    expect(screen.getByText('Normal')).toHaveClass('bg-frame-normal-deep', 'text-foreground')
     expect(screen.queryByText('Normal Monster')).toBeNull()
     expect(screen.getByText('Dragon/LIGHT')).toBeInTheDocument()
     expect(stats()).toEqual(['Nivel8', 'ATK3000', 'DEF2500'])
@@ -78,6 +78,8 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
     expect(stats()).toEqual([])
     expect(screen.getByText('Mágica de Campo')).toBeInTheDocument()
     expect(screen.queryByText('Spell Card')).toBeNull()
+    // Nada repetido: el chip ya dice «de Campo», el `race` en inglés no se muestra.
+    expect(screen.queryByText('Field')).toBeNull()
   })
 
   it('se inclina en 3D hacia el mouse y vuelve al irse', async () => {

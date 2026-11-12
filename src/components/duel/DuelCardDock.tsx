@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 
 import { t } from '../../i18n'
 import type { CardTextHighlight } from '../../app/card-text'
-import { cardTypeLabel, frameClass, frameKindOf } from '../../app/card-frame'
+import { cardTypeLabel, frameKindOf, frameTextClass } from '../../app/card-frame'
 import { Presence } from '../../app/use-presence'
 import { formatInteger } from '../../app/utils'
 import type { ApiCardReference } from '../../types'
@@ -131,7 +131,8 @@ function CardPeekView({ name, card, back = false, highlight = null, now = null, 
   const range = highlight && card && highlight.ygoprodeckId === card.ygoprodeckId ? { start: highlight.start - shift, end: highlight.end - shift } : undefined
   // El tipo va solo, en un chip del color de su marco (lámina T), y los números aparte, rotulados: cada dato se dice una sola vez.
   const frame = card ? frameKindOf(card.frameType, card.cardType) : null
-  const subtype = card ? [card.race, card.attribute].filter(Boolean).join('/') : ''
+  // Mágica y Trampa: el chip ya dice su clase en español («Mágica de Campo»), el `race` en inglés («Field») la repetiría. Monstruo: tipo y atributo tal cual (el proyecto no los traduce).
+  const subtype = card && frame && frame.kind !== 'spell' && frame.kind !== 'trap' ? [card.race, card.attribute].filter(Boolean).join('/') : ''
   const stats = card ? statsOf(card, now) : []
   // La carta que se da vuelta vuelve al frente al pasar a otra (si no, la siguiente se vería de dorso).
   const flip = useCardFlip()
@@ -190,7 +191,7 @@ function CardPeekView({ name, card, back = false, highlight = null, now = null, 
         <Heading level="section">{name}</Heading>
         {card && frame ? (
           <p className="m-0 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-body text-muted">
-            <span data-type-chip="" className={cx('relative shrink-0 px-2 font-semibold', frameClass(frame))}>
+            <span data-type-chip="" className={cx('relative shrink-0 px-2 font-semibold', frameTextClass(frame))}>
               {cardTypeLabel(card)}
             </span>
             {subtype ? <span className="min-w-0 [overflow-wrap:anywhere]">{subtype}</span> : null}
