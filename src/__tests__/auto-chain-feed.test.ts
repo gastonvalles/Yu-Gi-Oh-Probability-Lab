@@ -52,15 +52,15 @@ describe('chainFeed: la cadena paso a paso', () => {
     expect(chainFeed(next, next.length)).toMatchObject({ key: ASH_CHAIN.length, resolving: true, rows: [{ number: 1, mine: false, state: 'solving' }] })
   })
 
-  it('el ritmo (decisión 9): 0,7 s por eslabón que entra y 0,9 s por cada uno en el centro, con lo que hizo; lo que queda sin efecto, 1,6 s más; una activación sola, 1,2 s', () => {
+  it('el ritmo (decisión 9): 0,7 s por eslabón que entra y 0,9 s por cada uno en el centro, con lo que hizo; lo que queda sin efecto, 1,6 s más; una activación sola, 1 s', () => {
     // El tiempo de cada uno va en su `solved` (su `solving` y la negación de otro salen con él).
     expect(ASH_CHAIN.map((_, i) => chainDwell(ASH_CHAIN, i))).toEqual([CHAIN_LINK_MS, CHAIN_LINK_MS, 0, 0, CHAIN_SOLVE_MS, 0, CHAIN_SOLVE_MS + CHAIN_READ_MS, 0])
-    expect([CHAIN_LINK_MS, CHAIN_SOLVE_MS, CHAIN_READ_MS, CHAIN_ALONE_MS]).toEqual([700, 900, 1600, 1200])
+    expect([CHAIN_LINK_MS, CHAIN_SOLVE_MS, CHAIN_READ_MS, CHAIN_ALONE_MS]).toEqual([700, 900, 1600, 1000])
     const single = [link(0, true, 5, 0), step('solving', 0, 0), step('solved', 0, 1), step('end', -1, 1)]
 
-    // Sola, aunque nadie pueda responder: entra con su «1» y se resuelve, 1,2 s en total.
+    // Sola, aunque nadie pueda responder: entra con su «1» y se resuelve, 1 s en total.
     expect(single.map((_, i) => chainDwell(single, i))).toEqual([CHAIN_LINK_MS, 0, CHAIN_ALONE_MS - CHAIN_LINK_MS, 0])
-    expect(single.reduce((sum, _, i) => sum + chainDwell(single, i), 0)).toBe(1200)
+    expect(single.reduce((sum, _, i) => sum + chainDwell(single, i), 0)).toBe(1000)
     expect(chainDwell(single, -1)).toBe(0)
   })
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
-import { CHAIN_LINGER_MS, chainDwell, chainFeed, type ChainOutcome, type ChainStep } from '../../../app/auto/chain-feed'
+import type { ChainOutcome, ChainStep } from '../../../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed } from '../../auto/ChainNotice'
 import { frameKindOf, type CardFrame } from '../../../app/card-frame'
 import { ChainStage, outcomeLabel, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { Button } from '../../ui/Button'
@@ -77,7 +78,7 @@ function ChainStageSample() {
           Como en Master Duel: cada activación entra grande y se acomoda inclinada (entre 3 y 7°), con su número enorme en el color de su dueño y el borde del color de su tipo; un eslabón la
           une con la anterior. Se resuelve del último al primero: la carta va al centro y crece; cuando empieza la siguiente, se va hacia arriba y su eslabón se corta. La que quedó sin efecto
           se tacha antes y se queda 1,6 s más en el centro. Abajo, una sola línea: armando, «Se resuelve del último al primero»; resolviendo, qué pasó. Una activación sola entra igual con su
-          «1». Ritmo (<Tag>chainDwell</Tag>): 0,7 s por eslabón que entra y 0,9 s por cada uno que se resuelve (tres, 4,8 s; sola, 1,2 s). Sólo <Tag>translate</Tag>, <Tag>rotate</Tag>,{' '}
+          «1». Ritmo (<Tag>chainDwell</Tag>): 0,7 s por eslabón que entra y 0,9 s por cada uno que se resuelve (tres, 4,8 s; sola, 1 s). Sólo <Tag>translate</Tag>, <Tag>rotate</Tag>,{' '}
           <Tag>scale</Tag> y <Tag>opacity</Tag>; con movimiento reducido (la preferencia del sistema) aparece y se va sin moverse. No ataja toques. Archivo: <Tag>auto/ChainNotice.tsx</Tag>
         </>
       }

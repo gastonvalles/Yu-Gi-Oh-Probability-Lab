@@ -1,4 +1,7 @@
 import type { ChainOutcome, ChainRowState } from '../../app/auto/chain-feed'
+
+// El catálogo corre la escena con el ritmo real: los valores del núcleo salen de acá (`auto-isolation.test.ts`).
+export { CHAIN_LINGER_MS, chainDwell, chainFeed } from '../../app/auto/chain-feed'
 import { frameClass, type CardFrame } from '../../app/card-frame'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'

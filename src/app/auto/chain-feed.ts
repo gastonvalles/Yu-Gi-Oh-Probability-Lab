@@ -156,8 +156,8 @@ export function chainFeed(steps: readonly ChainStep[], count: number): ChainFeed
 /** El ritmo de la cadena en grande (decisión 9 de la fase): cada eslabón que entra se ve `CHAIN_LINK_MS`; cada uno que se resuelve, `CHAIN_SOLVE_MS`. */
 export const CHAIN_LINK_MS = 700
 export const CHAIN_SOLVE_MS = 900
-/** Una activación sola, aunque nadie pueda responder, entra igual con su «1» y se resuelve: 1,2 s en total. */
-export const CHAIN_ALONE_MS = 1200
+/** Una activación sola, aunque nadie pueda responder, entra igual con su «1» y se resuelve: 1 s en total (con 1,2 s, un turno corto del bot pasaba de los 9 s). */
+export const CHAIN_ALONE_MS = 1000
 /** Lo negado o sin efecto se queda en el centro, tachado, este rato más para leerlo. */
 export const CHAIN_READ_MS = 1600
 
