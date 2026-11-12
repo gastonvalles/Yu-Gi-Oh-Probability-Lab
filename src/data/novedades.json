@@ -1,6 +1,53 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-3-duelo-cadena-fases-final",
+      "date": "2026-11-12",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "La cadena que no tapa, el cartel de fases y el final del duelo",
+        "novedades": [
+          "La cadena sólo se ve en grande al encadenar: la última activación va adelante, unida a las anteriores. Al resolver queda un medallón redondo con su número en el lugar donde se activó cada efecto, y se van del último al primero; el que quedó sin efecto se tacha en rojo.",
+          "Mientras un efecto te pide elegir algo, el campo se ve entero y se puede tocar.",
+          "Cada cambio de fase cruza el campo con una banda que dice la fase (violeta la tuya, lima la del rival). Dura menos de un segundo y no frena el duelo.",
+          "El último golpe se ve en cámara lenta con el daño en grande, y el resultado aparece recién cuando las vidas llegaron a 0. El cartel de resultado es una hoja abajo con el marcador y «Jugar otra vez» grande.",
+          "Los botones de los menús del duelo quedan siempre a la vista, pegados al borde de abajo, también en la ventana flotante. Se fue «Ver carta»: tocá la miniatura de la carta para verla en grande."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "El tipo de carta va con letras blancas sobre su color y ya no repite el subtipo en inglés.",
+          "La ventana flotante achicada al mínimo ya no deja botones afuera, y cerrar la carta en grande te devuelve a su menú.",
+          "Al rendirse, el cartel ya no muestra las vidas."
+        ],
+        "ojo": [
+          "En el duelo por enlace manual el cartel de resultado es el nuevo, pero no espera a que las vidas lleguen a 0.",
+          "En los carteles de elegir cartas todavía no se puede ver una carta en grande."
+        ]
+      },
+      "en": {
+        "title": "A chain that stays out of the way, the phase banner and the end of the duel",
+        "novedades": [
+          "The chain only shows big while you chain: the latest activation sits in front, linked to the previous ones. On resolution each link becomes a round medallion with its number where that effect was activated, and they go from last to first; the one that lost its effect is struck through in red.",
+          "While an effect asks you to choose something, the whole field stays visible and tappable.",
+          "Every phase change sweeps a band across the field naming the phase (violet for yours, lime for the opponent's). It lasts under a second and does not stall the duel.",
+          "The final blow plays in slow motion with the damage shown big, and the result only appears once life points reach 0. The result sheet slides up with the score and a big \"Play again\".",
+          "Duel menu buttons always stay in view, pinned to the bottom edge, including in the floating window. \"View card\" is gone: tap the card thumbnail to see it big."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "The card type is white text on its color and no longer repeats the English subtype.",
+          "The floating window shrunk to its minimum no longer leaves buttons outside, and closing the big card returns you to its menu.",
+          "When you surrender, the sheet no longer shows life points."
+        ],
+        "ojo": [
+          "In the manual link duel the result sheet is the new one, but it does not wait for life points to reach 0.",
+          "In the pick-cards prompts you still cannot view a card big."
+        ]
+      }
+    },
+    {
       "id": "2026-11-12-2-duelo-kit",
       "date": "2026-11-12",
       "tags": [
