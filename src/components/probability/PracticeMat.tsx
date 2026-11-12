@@ -3478,11 +3478,11 @@ function PracticeMatBody({
 
       <Presence>{inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}</Presence>
 
-      {/* En el automático, activar no sale acá (ni lo propio ni lo del rival): lo muestra la cadena en grande, en su capa (lámina C). */}
+      {/* En el automático, activar no sale acá (ni lo propio ni lo del rival): lo muestra la cadena en grande, en su capa (lámina C). Un combo guardado no trae cadena: ahí sí (`session.replay`). */}
       {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin los paneles de los costados (`--mat-left` / `--mat-right`, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
       <Deferred value={stage}>
         {(shown) =>
-          shown && !(isAuto && shown.kind === 'activate') ? (
+          shown && !(isAuto && shown.kind === 'activate' && !session.replay) ? (
             <Spotlight
               key={shown.key}
               kind={shown.kind}

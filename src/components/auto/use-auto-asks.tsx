@@ -855,12 +855,48 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, vanilla, codeOf, placeBack, session, zoneLabel])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
-  const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
-  // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena (repasando, nada).
-  const acting = useMemo(() => actingOf(reviewing ? null : feed), [feed, reviewing])
+  // Repasando tus jugadas (un combo guardado no trae cadena: ahí sale la carta grande de la mesa), la cadena de cada paso como en vivo (`snap.chainSteps`): un paso adelante muestra
+  // sus mensajes desde lo que ya se veía, con el mismo ritmo (`chainDwell`); saltar a otro paso la corta (`cut`), como los demás efectos. El paso `c` del repaso son `c + skip` jugadas.
+  const reviewAt = review && review.name === undefined ? review.session.cursor + opening.skip : null
+  const [reviewChain, setReviewChain] = useState<{ at: number; seen: number; cut: boolean; gone: number } | null>(null)
+
+  if (reviewAt === null ? reviewChain !== null : reviewChain?.at !== reviewAt) {
+    if (reviewAt === null) setReviewChain(null)
+    else {
+      const due = stepsUpTo(steps, reviewAt)
+      const stepped = reviewChain !== null && reviewAt === reviewChain.at + 1
+      let seen = stepped ? stepsUpTo(steps, reviewChain.at) : due
+
+      if (seen < due) seen += 1
+      while (seen < due && chainDwell(steps, seen - 1) === 0) seen += 1
+      const whole = chainFeed(steps, due)
+
+      setReviewChain({ at: reviewAt, seen, cut: !stepped, gone: stepped ? reviewChain.gone : whole?.done ? whole.key : -1 })
+    }
+  }
+  useEffect(() => {
+    if (!reviewChain || reviewChain.cut) return
+    const due = stepsUpTo(steps, reviewChain.at)
+
+    if (reviewChain.seen >= due) return
+    const timer = window.setTimeout(() => {
+      let next = reviewChain.seen + 1
+
+      while (next < due && chainDwell(steps, next - 1) === 0) next += 1
+      setReviewChain((current) => (current === reviewChain ? { ...current, seen: next } : current))
+    }, chainDwell(steps, reviewChain.seen - 1))
+
+    return () => window.clearTimeout(timer)
+  }, [reviewChain, steps])
+  const liveFeed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
+  const reviewFeed = useMemo(() => (reviewChain && !reviewChain.cut ? chainFeed(steps, reviewChain.seen) : null), [reviewChain, steps])
+  const feed = reviewing ? reviewFeed : liveFeed
+  const gone = reviewing ? (reviewChain?.gone ?? -1) : chainGone
+  // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena.
+  const acting = useMemo(() => actingOf(feed), [feed])
   // Los medallones de la cadena, donde se activó cada eslabón: los pendientes, y se van del último al primero (`linksOf`).
-  // Terminado el duelo y contada la cadena hasta el final, nada de ella (ni escena ni medallones) bajo el cartel del final.
-  const chainLive = feed && !reviewing && !(ended && settled) && !(feed.done && chainGone === feed.key) ? feed : null
+  // Terminado el duelo y contada la cadena hasta el final, nada de ella (ni escena ni medallones) bajo el cartel del final (repasando, el cartel no está).
+  const chainLive = feed && !(ended && settled && !reviewing) && !(feed.done && gone === feed.key) ? feed : null
   const links = useMemo(() => linksOf(chainLive), [chainLive])
   // Los medallones, sólo al resolver y donde se activó cada eslabón (`medalsOf`).
   const medals = useMemo(() => medalsOf(chainLive), [chainLive])
@@ -1064,10 +1100,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // última carta).
   useEffect(() => {
     if (!feed?.done) return
-    const timer = window.setTimeout(() => setChainGone(feed.key), CHAIN_LINGER_MS)
+    const timer = window.setTimeout(() => (reviewing ? setReviewChain((current) => current && { ...current, gone: feed.key }) : setChainGone(feed.key)), CHAIN_LINGER_MS)
 
     return () => window.clearTimeout(timer)
-  }, [feed])
+  }, [feed, reviewing])
   // La cadena que se puede pasar, en la banda de responder: a qué eslabón y con qué cartas (con su lugar). Con una sola de un solo efecto, ya viene elegida; una con varios efectos
   // abre su lista (como su menú en la mesa).
   const offer = shown && lane === null ? respondOffer(shown, chain) : null
@@ -1093,7 +1129,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     else setSub({ label: t('practice.menu.activateEffect'), children: candidate.items.flatMap((item) => item.children ?? [item]) })
   }
 
-  const chainShown = feed !== null && !reviewing && !(ended && settled) && !(feed.done && chainGone === feed.key)
+  const chainShown = chainLive !== null
   // Nada grande tapa el campo cuando hay que jugar (Gastón: «si ya estoy resolviendo el efecto de esa carta la misma no debería seguir en el medio de la pantalla»): resolviendo, la
   // escena no está (quedan los medallones, `links`); armando, mientras el núcleo te pregunta algo que no es responder (elegir casilla o cartas, sí o no…), se corre y vuelve después.
   const chainAway = shown !== null && shown.type !== 'select_chain'
