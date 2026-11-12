@@ -66,7 +66,7 @@ function fakeAnimate() {
   }
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
   const style = Object.assign(document.createElement('style'), {
-    textContent: ['dialog-enter', 'nav-scrim', 'side-drawer', 'drawer-enter', 'pop'].map((name) => `.animate-${name} { animation-name: ${name} }`).join(' ') + ' .motion-safe\\:animate-dialog-enter { animation-name: dialog-enter } .motion-safe\\:animate-sheet-up { animation-name: sheet-up }',
+    textContent: ['dialog-enter', 'nav-scrim', 'side-drawer', 'drawer-enter', 'pop'].map((name) => `.animate-${name} { animation-name: ${name} }`).join(' ') + ' .animate-veil-in { animation-name: nav-scrim } .motion-safe\\:animate-dialog-enter { animation-name: dialog-enter } .motion-safe\\:animate-sheet-up { animation-name: sheet-up }',
   })
   style.dataset.test = ''
   document.head.append(style)
