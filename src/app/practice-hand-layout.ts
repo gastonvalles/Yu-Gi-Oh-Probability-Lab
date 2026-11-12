@@ -41,6 +41,24 @@ export function growHand({ base, below, cell, width, slots }: { base: number; be
   return { cardWidth, extra: (cardWidth - from) * CARD_ASPECT }
 }
 
+type Span = { left: number; right: number }
+
+/**
+ * Cuánto se aparta tu mano de cada costado de su caja (`box`) para quedar entre tus dos pilas de abajo (el Extra Deck y el Deck) tal como se ven (en 3D la fila de abajo se abre), más `gap`:
+ * crecida, con muchas cartas o con una levantada, no las tapa. Sin las dos pilas, 0.
+ */
+export function handInset(box: Span, piles: ReadonlyArray<Span | null | undefined>, gap: number): number {
+  const spans = piles.filter((pile): pile is Span => Boolean(pile)).sort((a, b) => a.left - b.left)
+  const [first, last] = [spans[0], spans[spans.length - 1]]
+
+  return spans.length >= 2 && first && last ? Math.max(0, Math.ceil(Math.max(first.right - box.left, box.right - last.left) + gap)) : 0
+}
+
+/** Hasta dónde puede bajar tu mano (`floor`): no más que `gap` arriba de lo que tiene debajo a lo ancho de ella (`span`: tu chapa, los botones). Lo de los costados no cuenta. */
+export function handFloor(floor: number, span: Span, below: ReadonlyArray<Span & { top: number }>, gap: number): number {
+  return below.reduce((min, rect) => (rect.right > span.left && rect.left < span.right ? Math.min(min, rect.top - gap) : min), floor)
+}
+
 export function slotLeft(layout: HandLayout, index: number): number {
   return layout.startX + index * layout.step
 }

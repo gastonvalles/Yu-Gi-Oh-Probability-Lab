@@ -46,7 +46,7 @@ import {
   type MatTarget,
   type Placed,
 } from '../../app/practice-mat'
-import { growHand, mergeHandOrder } from '../../app/practice-hand-layout'
+import { growHand, handFloor, handInset, mergeHandOrder } from '../../app/practice-hand-layout'
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { comboBranches, comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, stepBranchesOf, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
@@ -1117,10 +1117,11 @@ function PracticeMatBody({
   }, [fieldNode, view, isDesktop, isDuel, rails, hasRivalStrip])
 
   // Escritorio automático: tu mano crece con el alto libre debajo del grupo del campo y la mano (hasta el borde de la columna o, sin laterales, hasta la fila de abajo), hasta una casilla
-  // (`growHand`). Sale del tamaño de la ventana y de los paneles, nunca de lo que pasa en el duelo; el alto que suma lo descuenta su margen negativo: el campo no se mueve.
+  // (`growHand`). Sale del tamaño de la ventana y de los paneles, nunca de lo que pasa en el duelo; el alto que suma lo descuenta su margen negativo: el campo no se mueve. A lo ancho va entre tu Extra Deck y
+  // tu Deck como se ven (`handInset`), y crece sólo hasta arriba de tu chapa y los botones que le quedan debajo (`handFloor`): crecida, con muchas cartas o con una levantada, no tapa nada.
   const groupRef = useRef<HTMLDivElement | null>(null)
   const handSlots = Math.max(session.initial.hand.length, 1)
-  const [deskHand, setDeskHand] = useState({ cardWidth: DESKTOP_AUTO_HAND, extra: 0 })
+  const [deskHand, setDeskHand] = useState({ cardWidth: DESKTOP_AUTO_HAND, extra: 0, inset: 0 })
 
   useLayoutEffect(() => {
     const group = groupRef.current
@@ -1128,22 +1129,33 @@ function PracticeMatBody({
     const field = fieldNode
 
     if (!deskLine || !group || !column || !field) {
-      setDeskHand((now) => (now.extra === 0 && now.cardWidth === DESKTOP_AUTO_HAND ? now : { cardWidth: DESKTOP_AUTO_HAND, extra: 0 }))
+      setDeskHand((now) => (now.extra === 0 && now.inset === 0 && now.cardWidth === DESKTOP_AUTO_HAND ? now : { cardWidth: DESKTOP_AUTO_HAND, extra: 0, inset: 0 }))
       return
     }
 
     const measure = () => {
       const next = rails ? null : group.nextElementSibling
-      const floor = Math.min(column.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(column).paddingBottom) || 0), next ? next.getBoundingClientRect().top - MAT_GAP : Number.POSITIVE_INFINITY)
+      const box = group.getBoundingClientRect()
+      const inset = handInset(box, ['extra', 'deck'].map((pile) => field.querySelector(`[data-drop="${pile}"]`)?.getBoundingClientRect()), MAT_GAP)
+      const floor = handFloor(
+        Math.min(column.getBoundingClientRect().bottom - (parseFloat(getComputedStyle(column).paddingBottom) || 0), next ? next.getBoundingClientRect().top - MAT_GAP : Number.POSITIVE_INFINITY),
+        { left: box.left + inset, right: box.right - inset },
+        // Lo de la columna que queda más abajo que el arriba de tu mano y fuera de ella y del campo: tu chapa y los botones de abajo.
+        Array.from(column.querySelectorAll('button, [data-life-badge]'))
+          .filter((node) => !group.contains(node))
+          .map((node) => node.getBoundingClientRect())
+          .filter((rect) => rect.top > box.top),
+        MAT_GAP,
+      )
       const grown = growHand({
         base: DESKTOP_AUTO_HAND,
-        below: floor - group.getBoundingClientRect().bottom,
+        below: floor - box.bottom,
         cell: parseFloat(getComputedStyle(field).gridTemplateColumns.split(' ')[1] ?? '') || 0,
-        width: group.clientWidth,
+        width: group.clientWidth - 2 * inset,
         slots: handSlots,
       })
 
-      setDeskHand((now) => (now.cardWidth === grown.cardWidth ? now : grown))
+      setDeskHand((now) => (now.cardWidth === grown.cardWidth && now.inset === inset ? now : { ...grown, inset }))
     }
 
     measure()
@@ -3216,7 +3228,7 @@ function PracticeMatBody({
         {/* Repasando un combo en un duelo de escritorio, tu mano se achica como `REVIEW_HAND`: la barra del replay va debajo, a lo largo de la mesa, y le tapaba la franja de abajo. Con poco
             alto (46 rem o menos, la mesa angosta: 1101 × 700), al 66 % y sin bajar: al 72 % le asomaban 9 px debajo de la barra. En el celular, con una hoja abierta (la ficha, una pregunta, un
             visor), tu mano se atenúa: la hoja es lo que se lee (pieza P-03). */}
-        <div className={cx('relative', duel && 'pointer-events-none z-10', phone && 'transition-opacity duration-150 motion-reduce:transition-none', phone && ((menu !== null && menu.kind !== 'phases') || pileSheet || asking) && 'opacity-35', duel && isDesktop && replayBar && 'origin-top translate-y-1 scale-72 [@media(max-height:46rem)]:translate-y-0 [@media(max-height:46rem)]:scale-66')} style={phone ? { height: phone.handHeight, flexShrink: 0, ...(splitReplay ? REVIEW_HAND : null) } : duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(deskLine && deskHand.extra > 0 ? { marginBottom: -deskHand.extra } : null), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
+        <div className={cx('relative', duel && 'pointer-events-none z-10', phone && 'transition-opacity duration-150 motion-reduce:transition-none', phone && ((menu !== null && menu.kind !== 'phases') || pileSheet || asking) && 'opacity-35', duel && isDesktop && replayBar && 'origin-top translate-y-1 scale-72 [@media(max-height:46rem)]:translate-y-0 [@media(max-height:46rem)]:scale-66')} style={phone ? { height: phone.handHeight, flexShrink: 0, ...(splitReplay ? REVIEW_HAND : null) } : duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(deskLine && deskHand.extra > 0 ? { marginBottom: -deskHand.extra } : null), ...(deskLine && deskHand.inset > 0 ? { marginInline: deskHand.inset } : null), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"

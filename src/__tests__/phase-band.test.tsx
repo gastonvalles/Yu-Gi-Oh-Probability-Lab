@@ -4,7 +4,7 @@ import { act, fireEvent, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PHASE_BAND_HOLD_MS, PHASE_BAND_MS, PhaseBand, TURN_BAND_HOLD_MS, TURN_BAND_MS, type PhaseCue } from '../components/duel/PhaseBand'
+import { PHASE_BAND_HOLD_MS, PHASE_BAND_MS, PHASE_BAND_SETTLE_MS, PhaseBand, TURN_BAND_HOLD_MS, TURN_BAND_MS, type PhaseCue } from '../components/duel/PhaseBand'
 
 const bands = () => document.querySelectorAll('[data-fx="banner"]')
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms))
@@ -27,7 +27,7 @@ describe('PhaseBand', () => {
     expect(band).toHaveClass('pointer-events-none')
     expect(band.firstElementChild!.className).toContain('var(--color-primary)')
 
-    view.rerender(<PhaseBand cue={{ key: 2, phase: 'end', side: 'theirs' }} />)
+    view.rerender(<PhaseBand cue={{ key: 2, phase: 'main2', side: 'theirs' }} />)
     expect(bands()).toHaveLength(1)
     expect(bands()[0]).toHaveAttribute('data-side', 'theirs')
     expect(bands()[0]!.firstElementChild!.className).toContain('var(--color-info)')
@@ -117,5 +117,56 @@ describe('PhaseBand', () => {
     expect(bands()[0]).toHaveTextContent(/^Standby Phase$/)
     leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
     expect(bands()).toHaveLength(0)
+  })
+  it('sin parpadeo al pasar el turno: la End Phase que sigue el pase no entra, y la fase del turno nuevo que dura poco tampoco (entra la siguiente)', () => {
+    const view = render(<PhaseBand cue={{ key: 1, phase: 'end', side: 'mine' }} />)
+    const texts: string[] = []
+    const seen = () => texts.push(bands()[0]?.textContent ?? '')
+
+    // El pase llega ~250 ms después de la End Phase: sale sólo «Cambio de turno».
+    advance(250)
+    seen()
+    view.rerender(<PhaseBand cue={{ key: 2, phase: 'draw', side: 'theirs', turn: true }} />)
+    expect(bands()[0]).toHaveAttribute('data-turn')
+    leave(TURN_BAND_HOLD_MS, TURN_BAND_MS)
+    seen()
+    // La Draw Phase del turno nuevo espera su rato; la Standby llega a los 130 ms y la Main Phase 1 a los 350: entra sólo ella, a los 400.
+    advance(130)
+    seen()
+    view.rerender(<PhaseBand cue={{ key: 3, phase: 'standby', side: 'theirs' }} />)
+    advance(220)
+    seen()
+    view.rerender(<PhaseBand cue={{ key: 4, phase: 'main1', side: 'theirs' }} />)
+    advance(PHASE_BAND_SETTLE_MS - 350 - 1)
+    seen()
+    advance(1)
+    expect(bands()[0]).toHaveTextContent(/^Main Phase 1$/)
+    expect(texts).toEqual(['', '', '', '', ''])
+  })
+
+  it('una End Phase que se queda entra después de su espera', () => {
+    render(<PhaseBand cue={{ key: 1, phase: 'end', side: 'mine' }} />)
+
+    advance(PHASE_BAND_SETTLE_MS - 1)
+    expect(bands()).toHaveLength(0)
+    advance(1)
+    expect(bands()[0]).toHaveTextContent(/^End Phase$/)
+  })
+
+  it('«Cambio de turno» no corta la banda que se ve: la deja salir y entra después', () => {
+    const view = render(<PhaseBand cue={{ key: 1, phase: 'battle', side: 'mine' }} />)
+
+    advance(300)
+    view.rerender(<PhaseBand cue={{ key: 2, phase: 'draw', side: 'theirs', turn: true }} />)
+    expect(bands()[0]).not.toHaveAttribute('data-turn')
+    expect(bands()[0]!.firstElementChild).toHaveClass('opacity-0')
+    const end = new Event('transitionend', { bubbles: true })
+
+    Object.assign(end, { propertyName: 'opacity' })
+    fireEvent(bands()[0]!.firstElementChild!, end)
+    expect(bands()[0]).toHaveAttribute('data-turn')
+    // Su reloj cuenta desde que entra.
+    leave(TURN_BAND_HOLD_MS - 1, TURN_BAND_MS - 1)
+    expect(bands()[0]).toHaveAttribute('data-turn')
   })
 })

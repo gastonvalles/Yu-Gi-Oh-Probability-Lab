@@ -11,6 +11,7 @@ import { settleLowered } from '../app/use-sheet-drag'
 import { CardPicker, type PickCard } from '../components/auto/CardPicker'
 import { SortSheet } from '../components/auto/SortSheet'
 import { PileViewer } from '../components/probability/MatDialogs'
+import { BottomSheet, SheetHost } from '../components/ui/BottomSheet'
 
 // Las hojas de abajo del celular se bajan con su asa sin cerrarse (para ver la mano) y se suben igual. Sin `matchMedia` (jsdom) el visor de una pila es la hoja del celular;
 // las hojas del duelo automático (`Modal lowerable`) llevan el asa sólo donde salen de abajo (`width < 40rem`), así que esas pruebas lo simulan.
@@ -245,5 +246,29 @@ describe('las hojas del duelo automático se minimizan sin contestar la pregunta
     render(<CardPicker title="Elegí" cards={CARDS} min={1} max={2} onPick={() => {}} />)
 
     expect(screen.queryByRole('button', { name: 'Bajar la hoja' })).not.toBeInTheDocument()
+  })
+})
+
+describe('BottomSheet cediendo el lugar', () => {
+  it('como tira, el pie y el título siguen en su lugar (transparente e inerte) y la hoja baja lo que mide el pie: el asa no salta', () => {
+    const sheet = (yieldTo: 'grip' | null) => (
+      <SheetHost yieldTo={yieldTo} phone>
+        <BottomSheet label="GY" yields head={<p>Título</p>} footer={<button type="button">Listo</button>}>
+          <p>Cartas</p>
+        </BottomSheet>
+      </SheetHost>
+    )
+    const view = renderBare(sheet(null))
+    const footer = () => screen.getByRole('button', { name: 'Listo', hidden: true }).parentElement!
+    const root = () => footer().parentElement!
+
+    expect(footer()).toHaveClass('pointer-events-auto')
+    view.rerender(sheet('grip'))
+    expect(footer()).not.toHaveAttribute('hidden')
+    expect(footer()).toHaveAttribute('inert')
+    expect(footer()).toHaveClass('opacity-0', 'pointer-events-none', 'transition-opacity', 'motion-reduce:transition-none')
+    expect(screen.getByText('Título', { selector: 'p' }).parentElement).not.toHaveAttribute('hidden')
+    expect(root().className).toContain('translate-y-[calc(var(--sheet-foot,0px)-3.25rem-env(safe-area-inset-bottom,0px))]')
+    expect(screen.getByRole('button', { name: 'Subir la hoja: GY' })).toHaveAttribute('aria-expanded', 'false')
   })
 })
