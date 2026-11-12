@@ -342,6 +342,22 @@ export function PhaseBanner({ phase, turn, who, label, className }: { phase: Mat
   )
 }
 
+/**
+ * Lo que reemplaza al cartel de la fase en un duelo (Gastón, 2026-11-12: «las fases se repiten y no deberían», «no necesito saber el turno de quién es»): la fase vive sólo en su botón y el turno lo
+ * dice la chapa. Para que el cambio no pase de largo, el botón hace un pulso corto (un aro que sale de su caja y se apaga; `pulse` es la clave del cambio, `null` si no hay) y, para el lector de pantalla,
+ * `text` va en un `role="status"` oculto a la vista. Va dentro de la casilla del botón (`relative`). Con menos movimiento no hay aro.
+ */
+export function PhasePulse({ pulse, text }: { pulse: number | null; text: string }) {
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {text}
+      </span>
+      {pulse !== null ? <span key={pulse} aria-hidden="true" data-fx="phase-pulse" className="pointer-events-none absolute inset-0 z-1 animate-phase-pulse border-2 border-info motion-reduce:hidden" /> : null}
+    </>
+  )
+}
+
 interface SpotlightCard {
   id: string
   name: string

@@ -112,7 +112,10 @@ describe('auto-screen · elegir', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(PLACE))
-    expect(status()).toHaveTextContent('Elegí 1 casilla')
+    expect(status()).toHaveTextContent('Elegí una casilla')
+    // La tira (M-06): sin el nombre de la carta (ya está levantada en tu mano), un renglón, y en el celular de 56 px.
+    expect(status().textContent).toBe('Elegí una casilla')
+    expect(status()).toHaveClass('max-[1101px]:h-14')
     expect(screen.queryByRole('button', { name: 'Zona de monstruo 1: elegir' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
     expect(fake.answers).toEqual([{ type: 'select_place', places: [{ player: 0, location: L.MZONE, sequence: 2 }] }])
@@ -154,7 +157,7 @@ describe('auto-screen · elegir', () => {
     expect(fake.answers).toEqual([{ type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 2 }] }])
     // Con una casilla propia entre las libres, el texto de siempre.
     core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 0) | (1 << 16)) >>> 0 }))
-    expect(status()).toHaveTextContent('Elegí 1 casilla')
+    expect(status()).toHaveTextContent('Elegí una casilla')
     expect(status()).not.toHaveTextContent('del rival')
   })
 

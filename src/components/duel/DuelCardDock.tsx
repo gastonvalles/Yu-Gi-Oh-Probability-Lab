@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 
 import { t } from '../../i18n'
 import type { CardTextHighlight } from '../../app/card-text'
-import { frameClass, frameKindOf } from '../../app/card-frame'
+import { cardTypeLabel, frameClass, frameKindOf } from '../../app/card-frame'
 import { Presence } from '../../app/use-presence'
 import { formatInteger } from '../../app/utils'
 import type { ApiCardReference } from '../../types'
@@ -191,7 +191,7 @@ function CardPeekView({ name, card, back = false, highlight = null, now = null, 
         {card && frame ? (
           <p className="m-0 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-body text-muted">
             <span data-type-chip="" className={cx('relative shrink-0 px-2 font-semibold', frameClass(frame))}>
-              {card.cardType}
+              {cardTypeLabel(card)}
             </span>
             {subtype ? <span className="min-w-0 [overflow-wrap:anywhere]">{subtype}</span> : null}
           </p>

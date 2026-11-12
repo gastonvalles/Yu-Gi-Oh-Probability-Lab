@@ -1264,10 +1264,7 @@ function useTurnDraw(duel: Duel, snapshot: DuelSnapshot, turn: 'mine' | 'theirs'
     if (number > drawnAt.current) {
       drawnAt.current = number
 
-      if (turn === 'mine') {
-        duel.play({ type: 'draw', count: 1 })
-        showToastMessage(t('duel.turn.drew'), 'info')
-      }
+      if (turn === 'mine') duel.play({ type: 'draw', count: 1 })
     }
   }, [number, turn, duel])
 }

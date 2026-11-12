@@ -208,9 +208,7 @@ export const auto = {
   'auto.counter.done': 'Sacar contadores',
 
   // Lo que se elige en la mesa (la línea de estado de abajo): casillas y cartas.
-  'auto.pick.zone': { one: 'Elegí {count} casilla', other: 'Elegí {count} casillas' },
-  // La carta que va a la casilla: el núcleo la manda como título de `select_place`.
-  'auto.pick.zoneFor': 'Elegí una casilla para «{name}»',
+  'auto.pick.zone': { one: 'Elegí una casilla', other: 'Elegí {count} casillas' },
   'auto.pick.zoneRival': { one: 'Elegí una casilla del rival', other: 'Elegí {count} casillas del rival' },
   'auto.pick.disfield': { one: 'Elegí {count} casilla que no se va a poder usar', other: 'Elegí {count} casillas que no se van a poder usar' },
   'auto.pick.cards': { one: 'Elegí {count} carta', other: 'Elegí {count} cartas' },
@@ -222,7 +220,6 @@ export const auto = {
   'auto.pick.sumAtLeast': 'Elegí cartas que sumen al menos {total} Niveles · {chosen} de {total}',
   'auto.pick.counter': 'Contadores: {chosen} de {total}',
   'auto.pick.attackTarget': 'Elegí a qué monstruo atacar',
-  'auto.pick.attackTargetOf': 'Elegí a qué monstruo ataca «{name}»',
   // Declarar una carta (Prohibition, Crossout Designator): «Declarar» es la palabra de las cartas.
   'auto.pick.announce': 'Declará el nombre de una carta',
   // Para qué se eligen (el pedido del núcleo, `pickTitle`): «Elegí 2 cartas para desterrar · 1 de 2». La cuenta es de lo elegido contra lo pedido.
@@ -337,6 +334,8 @@ export const auto = {
   'auto.respond.now': '¿Activás una carta o efecto?',
   // Qué pasó y qué se te pide (Master Duel): el eslabón al que respondés, con su carta y su número.
   'auto.respond.activated': 'Se activó «{name}». ¿Respondés?',
+  // La tira minimizada: la pregunta corta, en un renglón (si no entra, se corta el nombre).
+  'auto.respond.strip': '¿Respondés a «{name}»?',
   'auto.respond.cards': 'Podés responder con',
   'auto.respond.start': 'Activar',
   'auto.respond.mode': 'Preguntarme',

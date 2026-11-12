@@ -7,7 +7,7 @@ import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { setAutoPref } from '../app/auto-prefs'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
-import { act, fakeSession, loc, pos, SPOTS, stringId } from './support/auto-session-fake'
+import { act, CARDS, fakeSession, loc, pos, SPOTS, stringId } from './support/auto-session-fake'
 import { core, dispatches, hand, handCard, inHand, lane, phaseButton, renderAuto, status } from './support/auto-screen-harness'
 import { openOptions } from './support/mat-menu'
 import { pointer, tap, zone } from './support/practice-mat-harness'
@@ -183,6 +183,27 @@ describe('auto-screen · las jugadas', () => {
     spy.mockRestore()
   })
 
+  it('con una sola opción (aunque sean copias juntas, «×2») la banda abre con ella elegida y la principal prendida', () => {
+    const copy = { name: 'Ash Blossom', apiCard: CARDS.get('card-100-1')!.apiCard }
+    const spots = [...SPOTS, { side: 'mine' as const, id: 'card-100-2', code: 100, location: L.HAND, sequence: 2 }]
+
+    ;(CARDS as Map<string, typeof copy>).set('card-100-2', copy)
+    try {
+      const fake = renderAuto(fakeSession(spots))
+
+      core(() => fake.ask({ ...CHAIN, spe_count: 2, selects: [{ ...pos(100, L.HAND, 0, 10), description: '0', client_mode: 0 }, { ...pos(100, L.HAND, 2, 10), description: '0', client_mode: 0 }] }))
+      const band = within(screen.getByRole('group', { name: '¿Activás una carta o efecto?' }))
+
+      expect(band.getAllByRole('option')).toHaveLength(1)
+      expect(band.getByRole('option', { name: 'Ash Blossom, 2 copias, en tu mano' })).toHaveAttribute('aria-selected', 'true')
+      expect(band.getByRole('button', { name: 'Activar' })).toBeEnabled()
+      fireEvent.click(band.getByRole('button', { name: 'Activar' }))
+      expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
+    } finally {
+      ;(CARDS as Map<string, typeof copy>).delete('card-100-2')
+    }
+  })
+
   it('minimizada (M-07), la banda de responder es la tira con la pregunta y sus botones: tocar la tira la sube; la carta que brilla sigue respondiendo y la pregunta siguiente vuelve a abrirse entera', () => {
     const fake = renderAuto()
     const lowered = () => document.querySelector<HTMLElement>('[data-prompt][data-minimized]')
@@ -203,6 +224,26 @@ describe('auto-screen · las jugadas', () => {
     core(() => fake.ask(CHAIN))
     expect(lowered()).toBeNull()
     expect(screen.getByRole('option', { name: 'Called by the Grave, en tu mano' })).toBeInTheDocument()
+  })
+
+  it('minimizada con una cadena a la vista, la tira dice la pregunta corta en un renglón («¿Respondés a «Maxx C»?»): si no entra, se corta el nombre y no la pregunta', () => {
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, top: 0, left: 0, bottom: 800, right: 400, width: 400, height: 800, toJSON: () => ({}) })
+    const fake = renderAuto()
+    const overlay = fake.getSnapshot().overlay
+    const mine = { side: 'mine' as const, id: 'card-200-1' }
+
+    core(() => fake.set({ overlay: { ...overlay, chain: [{ card: mine, code: 200, description: '0', state: 'chained' }] }, chainSteps: [{ kind: 'chain', at: 0, index: 0, link: { card: mine, code: 200, mine: true } }] }))
+    core(() => vi.advanceTimersByTime(0))
+    core(() => fake.ask(CHAIN))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Se activó «Maxx C». ¿Respondés?' })).getByRole('button', { name: 'Minimizar' }))
+    const strip = document.querySelector<HTMLElement>('[data-prompt][data-minimized] [data-panel-show]')!
+
+    expect(strip.textContent).toBe('¿Respondés a «Maxx C»?')
+    // El nombre es lo que se corta (truncate), nunca la pregunta (sus dos mitades no se achican).
+    expect(within(strip).getByText('Maxx C')).toHaveClass('truncate')
+    expect(within(strip).getByText('¿Respondés a «')).toHaveClass('shrink-0')
+    expect(within(strip).getByText('»?')).toHaveClass('shrink-0')
+    spy.mockRestore()
   })
 
   it('cadena con dos candidatas: ninguna elegida y la principal apagada; tocar una la elige y la principal la activa; una con dos efectos abre su lista', () => {

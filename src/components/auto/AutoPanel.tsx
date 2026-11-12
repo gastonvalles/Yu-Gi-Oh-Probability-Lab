@@ -53,6 +53,8 @@ interface AutoPanelProps {
   kind: string
   /** La pregunta, en texto: el título, la tira minimizada y su nombre accesible. */
   label: string
+  /** La tira minimizada, en un renglón, en lugar de `label` cuando éste es largo: la forma corta de la pregunta (si no entra, se corta lo que ella lleva, nunca la pregunta: `StripText`). `label` sigue siendo su nombre accesible. */
+  strip?: ReactNode
   /** En lugar del título (la ficha de una carta): quien lo pasa nombra el cartel con `labelledBy`. */
   head?: ReactNode
   /** Arriba de la pregunta, chico: de qué carta es (`AskWhy`) o qué pasó. */
@@ -94,7 +96,7 @@ interface AutoPanelProps {
  * la esquina; con `side`, la bandeja a la izquierda del texto. Lugar y tamaño se recuerdan por tipo (`autoWindowKey`). Con la hoja de la cadena abierta en el celular (`SheetHost`), va en su pie:
  * una sola hoja. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AutoPanel({ kind, label, head, top, aside, children, side = false, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, crumb, variant, tall = false, className }: AutoPanelProps) {
+export function AutoPanel({ kind, label, strip, head, top, aside, children, side = false, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, crumb, variant, tall = false, className }: AutoPanelProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const titleId = useId()
   const leaving = useLeaving()
@@ -214,7 +216,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
       </span>
       {minimized ? (
         <button type="button" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left font-semibold focus-visible:outline-none focus-visible:shadow-focus" onClick={() => setMinimized(false)}>
-          <span className="min-w-0 truncate">{label}</span>
+          {strip ?? <span className="min-w-0 truncate">{label}</span>}
         </button>
       ) : (
         <span className="flex-1" />
@@ -318,7 +320,7 @@ export function AutoPanel({ kind, label, head, top, aside, children, side = fals
     <div ref={ref} {...attrs} className={cx(surface, place, 'flex min-w-0 cursor-pointer items-center gap-2 px-2 py-1', className)} onClick={raiseFrom}>
       <Swipe dir="up" onFold={() => setMinimized(false)} className="flex min-w-0 flex-1 touch-none">
         <button type="button" data-panel-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1 text-left font-semibold focus-visible:outline-none focus-visible:shadow-focus" onClick={() => setMinimized(false)}>
-          <span className="min-w-0 truncate">{label}</span>
+          {strip ?? <span className="min-w-0 truncate">{label}</span>}
           <Icon name="chevron-up" size={16} strokeWidth={2} className="ml-auto shrink-0 text-muted" />
         </button>
       </Swipe>

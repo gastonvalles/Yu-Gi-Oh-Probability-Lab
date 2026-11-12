@@ -705,6 +705,7 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
                 <div className={PROMPT_BOX}>
                   <RespondBand
                     title={t('auto.respond.title')}
+                    about={ASH.name}
                     link={2}
                     cards={cards}
                     chosen={chosen}

@@ -669,7 +669,7 @@ describe('auto-screen-online · deshacer', () => {
 })
 
 describe('auto-screen-online · la fase del rival', () => {
-  it('en su turno el botón dice la fase que él ve (con el cartel de cada una) y «Beto está eligiendo…» va sólo si contesta algo; vos le decís la tuya', () => {
+  it('en su turno el botón dice la fase que él ve (que pulsa con cada una) y «Beto está eligiendo…» va sólo si contesta algo; vos le decís la tuya', () => {
     vi.useFakeTimers()
     const { start, link } = setup()
     const session = start()
@@ -686,10 +686,11 @@ describe('auto-screen-online · la fase del rival', () => {
     core(() => session.set({ status: 'waiting', ask: null, overlay: { ...session.getSnapshot().overlay, turn: 2, turnPlayer: 1 } }))
     phaseIs('Draw Phase')
     expect(lane()).toBeNull()
-    // Pasa a su Standby Phase: se ve en el botón y en el cartel, todavía sin «está eligiendo».
+    // Pasa a su Standby Phase: se ve en el botón (que pulsa; sin cartel) y el lector la oye, todavía sin «está eligiendo».
     core(() => link.set({ rivalPhase: { turn: 2, phase: 'standby', busy: false } }))
     phaseIs('Standby Phase')
-    expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent(/Beto.*Standby Phase/)
+    expect(phaseButton().parentElement!.querySelector('[role="status"]')).toHaveTextContent(/Beto.*Standby Phase/)
+    expect(document.querySelector('[data-fx="banner"]')).toBeNull()
     expect(lane()).toBeNull()
     // Contesta algo del núcleo: ahora sí.
     core(() => link.set({ rivalPhase: { turn: 2, phase: 'main1', busy: true } }))

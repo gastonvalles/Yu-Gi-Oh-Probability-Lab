@@ -13,6 +13,7 @@ import { TurnDial } from '../components/duel/TurnDial'
 import { Icon } from '../components/ui/Icon'
 import { IconButton } from '../components/ui/IconButton'
 import { CardMenu, PileViewer, PlayTag, SaveComboDialog } from '../components/probability/MatDialogs'
+import { ConfirmDialog } from '../components/probability/ConfirmDialog'
 import { PhaseRow } from '../components/probability/PhaseRow'
 import { RulesPill } from '../components/probability/RulesPill'
 import { BottomSheet } from '../components/ui/BottomSheet'
@@ -194,6 +195,24 @@ describe('la mesa del duelo y sus hojas van con esquinas rectas', () => {
     expect(row.querySelectorAll('[role="menuitem"]')).toHaveLength(2)
     expect([...roundCorners(row), ...roundCorners(save)]).toEqual([])
     expect(roundCorners(screen.getByRole('dialog', { name: 'Exportar' }))).not.toEqual([])
+  })
+
+  it('la confirmación del duelo («¿Terminar tu turno?», `anchor="mat"`) es recta, con sus botones y su X; la del resto de la app (sin `anchor`) sigue redondeada', () => {
+    render(
+      <>
+        <ConfirmDialog veil={false} anchor="mat" isOpen title="¿Terminar tu turno?" description="El turno pasa a Beto." confirmLabel="Terminar turno" cancelLabel="Seguir jugando" onCancel={() => {}} onConfirm={() => {}} />
+        <ConfirmDialog isOpen title="Borrar combo" description="No se puede deshacer." confirmLabel="Borrar" onCancel={() => {}} onConfirm={() => {}} />
+      </>,
+    )
+    const duel = screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })
+    const app = screen.getByRole('alertdialog', { name: 'Borrar combo' })
+
+    expect(duel.closest('.mat-square')).not.toBeNull()
+    expect(within(duel).getByRole('button', { name: 'Seguir jugando' })).toBeInTheDocument()
+    expect(within(duel).getByRole('button', { name: 'Terminar turno' })).toBeInTheDocument()
+    expect(roundCorners(duel.closest('.mat-square')!)).toEqual([])
+    expect(app.closest('.mat-square')).toBeNull()
+    expect(roundCorners(app)).not.toEqual([])
   })
 
   it('la hoja de abajo (`BottomSheet`), el menú de escritorio (`CardMenu`, con su submenú) y la etiqueta de una jugada (`PlayTag`) son rectos', () => {

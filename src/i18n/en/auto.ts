@@ -198,8 +198,7 @@ export const auto: Translated<typeof es> = {
   'auto.counter.done': 'Remove counters',
 
   // What is chosen on the mat (the status line below): zones and cards.
-  'auto.pick.zone': { one: 'Choose {count} zone', other: 'Choose {count} zones' },
-  'auto.pick.zoneFor': 'Choose a zone for "{name}"',
+  'auto.pick.zone': { one: 'Choose a zone', other: 'Choose {count} zones' },
   'auto.pick.zoneRival': { one: "Choose one of your opponent's zones", other: "Choose {count} of your opponent's zones" },
   'auto.pick.disfield': { one: "Choose {count} zone that can't be used", other: "Choose {count} zones that can't be used" },
   'auto.pick.cards': { one: 'Choose {count} card', other: 'Choose {count} cards' },
@@ -210,7 +209,6 @@ export const auto: Translated<typeof es> = {
   'auto.pick.sumAtLeast': 'Choose cards whose Levels add up to at least {total} · {chosen} of {total}',
   'auto.pick.counter': 'Counters: {chosen} of {total}',
   'auto.pick.attackTarget': 'Choose which monster to attack',
-  'auto.pick.attackTargetOf': 'Choose which monster "{name}" attacks',
   'auto.pick.announce': 'Declare a card name',
   'auto.pick.for': '{what} {why}',
   'auto.pick.count': '{chosen} of {max}',
@@ -318,6 +316,7 @@ export const auto: Translated<typeof es> = {
   'auto.respond.title': 'Respond to the chain',
   'auto.respond.now': 'Activate a card or effect?',
   'auto.respond.activated': '"{name}" was activated. Respond?',
+  'auto.respond.strip': 'Respond to "{name}"?',
   'auto.respond.cards': 'You can respond with',
   'auto.respond.start': 'Activate',
   'auto.respond.mode': 'Ask me',

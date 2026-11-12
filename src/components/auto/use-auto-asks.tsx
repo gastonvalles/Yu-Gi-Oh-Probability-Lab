@@ -47,7 +47,7 @@ import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { AutoCardSheet, AutoPhases } from './AutoPanel'
-import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard, type PickFrom } from './CardPicker'
+import { BAND_MAX, CardPicker, PickBand, copyGroups, pickPlace, type PickCard, type PickFrom } from './CardPicker'
 import { ChainStage, outcomeLabel } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
@@ -722,10 +722,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── Lo que la mesa recibe de la pregunta (`duel.auto`). ──
   const pick = shown?.cardPick ?? null
   // Cuántas, para qué (el código de pista del núcleo, si está comprobado) y cuántas van: el mismo título en la mesa, en la banda y en la hoja.
-  const pickLabel = pick ? pickTitle(pick, shown?.title, attacker ? nameOf({ side: 'mine', id: attacker }) : undefined) : ''
+  const pickLabel = pick ? pickTitle(pick, shown?.title) : ''
   // La carta que una pregunta nombra por su código (la que va a la casilla, la de la posición), sólo si se la conoce: si no, el título genérico.
   const knownName = (code: number | undefined) => (code ? (byCode.get(code)?.name ?? snap.names[code] ?? cards?.get(code)?.name ?? null) : null)
-  const zoneLabel = shown?.zonePick ? zoneTitle(shown, knownName(Number(shown.title))) : ''
+  const zoneLabel = shown?.zonePick ? zoneTitle(shown) : ''
   // Una lista aparte (de varios lugares, por código, lo del rival): hasta `BAND_MAX` cartas, una banda en el medio de la mesa (`PickBand`); con más, la hoja (`CardPicker`).
   const list = pick && decision.listed ? pick : null
   // De qué carta es lo que se pregunta y si es su costo, su activación o su efecto (`ask-why.ts`: sólo lo que se sabe), para la línea `AskWhy` de cada cartel. Por valor: la mesa no se vuelve a dibujar por él.
@@ -1056,7 +1056,17 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const offer = shown && lane === null ? respondOffer(shown, chain) : null
   // La elegida es de esta pregunta (`askState`, no su número: al reiniciar el duelo los números vuelven a empezar).
   const [offerPick, setOfferPick] = useState<{ of: AskState; key: string } | null>(null)
-  const only = offer?.candidates.length === 1 && offer.candidates[0]!.answer ? offer.candidates[0]! : null
+  // Las candidatas de la banda de responder (`RespondBand`). En el celular la banda va en la hoja de abajo y, con la cadena abierta, en el pie de su hoja (`SheetHost`): una sola hoja.
+  const respondCards =
+    offer?.candidates.map(({ ref, key, at }): PickCard => {
+      // El lugar con su ícono (la mano, el Cementerio, el campo…): en las columnas angostas del celular, sólo el ícono, y el nombre accesible lo dice entero.
+      const from: PickFrom | null = at === null ? null : at === 'mz' || at === 'emz' || at === 'st' ? 'field' : at
+
+      return { key, name: nameOf(ref), art: artOf(ref), ...(from ? pickPlace(from, ref.side === 'theirs') : {}) }
+    }) ?? []
+  // Una sola opción (una carta, o un solo grupo de copias «×4») viene elegida de entrada: la primera copia que se puede activar.
+  const respondGroups = copyGroups(respondCards)
+  const only = respondGroups.length === 1 ? (offer?.candidates.find((candidate) => candidate.answer && respondGroups[0]!.some((card) => card.key === candidate.key)) ?? null) : null
   const offered = offer?.candidates.find((candidate) => offerPick !== null && offerPick.of === askState && candidate.key === offerPick.key) ?? only
   const pickOffer = (key: string) => {
     const candidate = offer?.candidates.find((item) => item.key === key)
@@ -1067,14 +1077,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }
 
   const chainShown = feed !== null && !reviewing && !(feed.done && chainGone === feed.key)
-  // Las candidatas de la banda de responder (`RespondBand`). En el celular la banda va en la hoja de abajo y, con la cadena abierta, en el pie de su hoja (`SheetHost`): una sola hoja.
-  const respondCards =
-    offer?.candidates.map(({ ref, key, at }): PickCard => {
-      // El lugar con su ícono (la mano, el Cementerio, el campo…): en las columnas angostas del celular, sólo el ícono, y el nombre accesible lo dice entero.
-      const from: PickFrom | null = at === null ? null : at === 'mz' || at === 'emz' || at === 'st' ? 'field' : at
-
-      return { key, name: nameOf(ref), art: artOf(ref), ...(from ? pickPlace(from, ref.side === 'theirs') : {}) }
-    }) ?? []
   /** Los datos de tu carta (o de una igual a las tuyas) por eslabón: el marco y el texto. */
   const linkApi = useCallback((row: ChainRow) => (row.card?.side === 'mine' ? cardsById.get(row.card.id)?.apiCard : undefined) ?? byCode.get(row.code)?.apiCard ?? null, [cardsById, byCode])
   // El marco de las cartas de la cadena que no son tuyas (sólo se sabe su código): el tipo del `.cdb` si llegó (`cards`, el duelo por enlace) o, si no, se pide a YGOPRODeck una vez.
@@ -1228,6 +1230,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         key={askId ?? 0}
         // A qué eslabón respondés (su número, su dueño, su carta y su estado) ya lo dice la pila de la cadena, arriba y desplegada: la banda dice sólo qué se decide.
         title={respondTitle(offer, offer.to ? nameOf(offer.to.link.card, offer.to.link.code) : '')}
+        {...(offer.to ? { about: nameOf(offer.to.link.card, offer.to.link.code) } : {})}
         link={offer.link}
         cards={respondCards}
         chosen={offered?.key ?? null}

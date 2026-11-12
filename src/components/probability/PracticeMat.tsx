@@ -104,7 +104,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, PhasePulse, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -479,6 +479,8 @@ const ACTIVATE_MS = 950
 /** Cuánto se queda el destello de una invocación (con lo que espera a que la carta aterrice) y el cartel de una fase. */
 const LANDING_MS = 1300
 const BANNER_MS = 1100
+/** Lo que el lector de pantalla oye de un cambio de fase o de turno en un duelo (PhasePulse): quién, si no es tuya, y la fase (o «Turno de Ana»). */
+const phaseSaid = (notice: { phase: MatPhase; who?: string; label?: string } | null) => (notice ? [notice.who, notice.label ?? PHASES.find((entry) => entry.id === notice.phase)?.name ?? notice.phase].filter(Boolean).join(' · ') : '')
 /** Cuánto se queda el marco de la mano cuando recibe una carta. */
 const HAND_FLASH_MS = 900
 
@@ -2630,6 +2632,20 @@ function PracticeMatBody({
   const promptRef = useRef<HTMLDivElement | null>(null)
   const hasPrompt = Boolean(duel?.prompt)
 
+  // El campo no se mueve nunca, tampoco en `x`: en escritorio el campo se sale un poco de la columna (se recorta, `overflow-x-hidden`) y el navegador, al enfocar o abrir algo que queda a medio ver
+  // (el Cementerio), la desplaza para mostrarlo entero y el campo, la chapa «Vos» y el botón de fases se corren y no vuelven. Esa columna sólo se desplaza hacia abajo.
+  useEffect(() => {
+    const column = columnRef.current
+
+    if (!column) return
+    const pin = () => {
+      if (column.scrollLeft) column.scrollLeft = 0
+    }
+
+    column.addEventListener('scroll', pin, { passive: true })
+    return () => column.removeEventListener('scroll', pin)
+  }, [])
+
   useLayoutEffect(() => {
     const section = sectionRef.current
     const column = columnRef.current
@@ -2806,7 +2822,8 @@ function PracticeMatBody({
       className={cx(
         'flex min-w-0 items-center gap-2 px-1 text-micro text-muted',
         choosing ? (duel ? 'pointer-events-auto absolute inset-0 z-10' : 'pointer-events-auto absolute inset-x-0 bottom-0 z-10 h-10 border-t border-primary-hover/30 bg-background/80') : 'sr-only',
-        choosing && duel && 'max-[1101px]:bg-background min-[1101px]:inset-auto min-[1101px]:left-1/2 min-[1101px]:top-1/2 min-[1101px]:w-max min-[1101px]:max-w-full min-[1101px]:-translate-x-1/2 min-[1101px]:-translate-y-1/2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card',
+        // En el celular, la tira de «elegir en la mesa» (M-06) es de un renglón y de 56 px, pegada abajo del espacio de 60 px que le deja el campo.
+        choosing && duel && 'max-[1101px]:top-auto max-[1101px]:h-14 max-[1101px]:bg-background min-[1101px]:inset-auto min-[1101px]:left-1/2 min-[1101px]:top-1/2 min-[1101px]:w-max min-[1101px]:max-w-full min-[1101px]:-translate-x-1/2 min-[1101px]:-translate-y-1/2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card',
         // Con el visor de una pila del celular abierto, la hoja lo tapa y, bajada, su tira (44 px) también: no queda cortado ni asomando por encima de ella.
         choosing && pileSheet && 'invisible',
       )}
@@ -3030,6 +3047,7 @@ function PracticeMatBody({
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
               </IconButton>
+              {duel && !session.replay ? <PhasePulse pulse={duel.notice?.key ?? banner?.key ?? null} text={phaseSaid(duel.notice ?? (banner ? { phase: banner.phase, ...(banner.turn !== null && duel.rivalTurnLabel ? { label: duel.rivalTurnLabel } : {}) } : null))} /> : null}
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
               {isDesktop && !isAuto && myTurn && phaseNow === 'end' ? (
                 <Button
@@ -3090,21 +3108,12 @@ function PracticeMatBody({
           {pileCell('gy', 'gy')}
           {pileCell('banished', 'ban')}
 
-          {/* Cambio de fase: el cartel se asoma en el medio del campo y se va agrandándose. */}
-          <Deferred value={banner}>
-            {(shown) =>
-              shown ? (
-                <PhaseBanner
-                  key={shown.key}
-                  phase={shown.phase}
-                  turn={duel && !session.replay ? null : shown.turn}
-                  // En un duelo, pasar de la End Phase a la Draw Phase es pasar el turno: el cartel dice que ahora juega el rival. Repasando un combo, el turno es tuyo: dice su número, como en la práctica.
-                  label={duel && !session.replay && shown.turn !== null ? duel.rivalTurnLabel : undefined}
-                  className="absolute inset-0 z-30"
-                />
-              ) : null
-            }
-          </Deferred>
+          {/* Cambio de fase: en la práctica y repasando un combo, el cartel se asoma en el medio del campo y se va agrandándose. En un duelo no hay cartel (la fase vive en su botón, que pulsa). */}
+          {duel && !session.replay ? null : (
+            <Deferred value={banner}>
+              {(shown) => (shown ? <PhaseBanner key={shown.key} phase={shown.phase} turn={shown.turn} className="absolute inset-0 z-30" /> : null)}
+            </Deferred>
+          )}
           {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
           {announcement ? (
             <span
@@ -3116,7 +3125,6 @@ function PracticeMatBody({
               {announcement.caption}
             </span>
           ) : null}
-          {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
         </div>
         </div>
 
