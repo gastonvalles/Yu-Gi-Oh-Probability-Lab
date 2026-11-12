@@ -683,6 +683,25 @@ describe('auto-screen-online · deshacer', () => {
 })
 
 describe('auto-screen-online · la fase del rival', () => {
+  it('el primer turno del duelo no es un cambio de turno (ni «Tu turno» ni su banda); al pasar el turno, sí', () => {
+    vi.useFakeTimers()
+    const { start } = setup()
+    const session = start()
+    const turnBand = () => document.querySelector('[data-fx="banner"][data-turn]')
+
+    // Mientras el núcleo arranca, el turno todavía no es tuyo; arranca el duelo y el turno 1 es tuyo: la mesa no lo anuncia como un pase.
+    core(() => session.set({ status: 'waiting', ask: null, overlay: { ...session.getSnapshot().overlay, turn: 0, turnPlayer: 1 } }))
+    core(() => session.set({ status: 'waiting', ask: null, overlay: { ...session.getSnapshot().overlay, turn: 1, turnPlayer: 0 } }))
+    core(() => session.ask(IDLE))
+    expect(turnBand()).toBeNull()
+    expect(phaseButton().parentElement!.querySelector('[role="status"]')).not.toHaveTextContent('Tu turno')
+    // El turno 2 es del rival y el 3 vuelve a vos: ése sí es un cambio de turno.
+    core(() => session.set({ status: 'waiting', ask: null, overlay: { ...session.getSnapshot().overlay, turn: 2, turnPlayer: 1 } }))
+    act(() => vi.advanceTimersByTime(3000))
+    core(() => session.set({ status: 'waiting', ask: null, overlay: { ...session.getSnapshot().overlay, turn: 3, turnPlayer: 0 } }))
+    expect(turnBand()).toHaveAttribute('data-side', 'mine')
+  })
+
   it('en su turno el botón dice la fase que él ve (y en la banda de su color) y «Beto está eligiendo…» va sólo si contesta algo; vos le decís la tuya', () => {
     vi.useFakeTimers()
     const { start, link } = setup()

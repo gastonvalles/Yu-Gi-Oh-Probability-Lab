@@ -454,7 +454,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   }, [toldKey, tellPhase])
   const clock = useAutoTurnClock({ duel, snapshot, snap, seat, online })
   // Cada fase que pasa el rival en su turno, con el cartel del duelo manual.
-  const notice = useRivalNotice(asks.turnMine ? undefined : asks.mat.phase, asks.turnMine ? 'mine' : 'theirs', rivalName)
+  const notice = useRivalNotice(asks.turnMine ? undefined : asks.mat.phase, asks.turnMine ? 'mine' : 'theirs', rivalName, snap.overlay.turn)
   const paused = !snapshot.peerPresent && result === null
   usePassToManual({ snapshot, snap, online, rivalName, onManual })
   // Al terminar, la tarjeta del resultado tapa la mesa hasta que se la cierra para mirarla.

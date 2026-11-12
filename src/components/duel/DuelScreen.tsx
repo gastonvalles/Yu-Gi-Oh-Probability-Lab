@@ -1834,7 +1834,7 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
   // La señal del rival junto a sus vidas; sus emojis, en escritorio, grandes en el medio (`RivalEmoji`).
   const rivalSignal = signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs
   useMarkNotice(snapshot)
-  const notice = useRivalNotice(snapshot.theirs?.state.phase, turn, snapshot.peerName ?? t('duel.bar.rival'))
+  const notice = useRivalNotice(snapshot.theirs?.state.phase, turn, snapshot.peerName ?? t('duel.bar.rival'), duelTurnNumber(mine, theirs!.state))
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const undoResult = useUndoResult(snapshot)
   // «Guardar replay» (al terminar y en «Más opciones»), si este duelo se pudo grabar.
