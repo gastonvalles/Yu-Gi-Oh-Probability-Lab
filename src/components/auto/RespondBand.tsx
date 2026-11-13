@@ -35,16 +35,6 @@ export function RespondBand({ title, about, cards, chosen, onToggle, onChain, on
   const titleId = useId()
   // El nombre va aparte (se corta él, no la pregunta): se parte la frase donde iría.
   const [lead, tail] = t('auto.respond.strip', { name: NAME_AT }).split(NAME_AT)
-  // La barra de la ventana de escritorio dice la frase entera («Se activó «X». ¿Respondés?») en un renglón: si no entra, se corta el nombre.
-  const at = about ? title.indexOf(about) : -1
-  const line =
-    about && at >= 0 ? (
-      <span className="flex min-w-0">
-        <span className="shrink-0">{title.slice(0, at)}</span>
-        <span className="truncate">{about}</span>
-        <span className="shrink-0">{title.slice(at + about.length)}</span>
-      </span>
-    ) : null
 
   return (
     <AutoPanel
@@ -64,9 +54,7 @@ export function RespondBand({ title, about, cards, chosen, onToggle, onChain, on
           }
         : {})}
       titleId={titleId}
-      {...(line ? { line } : {})}
       focus='[role="option"][tabindex="0"]'
-      side
       actions={
         <>
           <Button variant="tertiary" onClick={onPass}>

@@ -232,11 +232,11 @@ describe('Sin fase ni turno en los carteles (cada dato, una vez)', () => {
       expect(screen.queryByRole('button', { name: 'Minimizar' })).toBeNull()
     })
 
-    it('lo único que se desplaza es la bandeja: los botones quedan siempre a la vista, fuera de ella (apaisada: la bandeja a la izquierda)', () => {
+    it('lo único que se desplaza es la bandeja, centrada a lo alto: los botones quedan siempre a la vista, debajo, fuera de ella', () => {
       render(respond)
       const body = document.querySelector('[data-panel-body]')!
 
-      expect(body).toHaveClass('overflow-auto')
+      expect(body).toHaveClass('overflow-y-auto', 'justify-center-safe')
       expect(body).not.toContainElement(screen.getByRole('button', { name: 'Pasar' }))
       expect(body.compareDocumentPosition(screen.getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
@@ -445,9 +445,10 @@ describe('RespondBand', () => {
     const title = within(group).getByText('Responder a la cadena')
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
     expect(within(group).getByRole('button', { name: 'Minimizar' })).toHaveAttribute('data-window-minimize')
-    // Texto, bandeja y botones, en ese orden en el código (en la ventana, la bandeja se dibuja a la izquierda); las cartas, de 4,5 rem en la ventana.
+    // Texto, bandeja y botones, en ese orden; en la ventana, las cartas crecen con ella y se reparten el ancho (`--n`: 2).
     const listbox = within(group).getByRole('listbox')
-    expect(listbox).toHaveClass('grid-flow-col', 'justify-center-safe', 'group-data-[auto-panel=floating]/panel:auto-cols-[4.5rem]')
+    expect(listbox).toHaveClass('grid-flow-col', 'justify-center-safe', '[--n:2]')
+    expect(listbox.className).toContain('group-data-[window]/panel:auto-cols-[clamp(4rem,min(calc((100cqw_-_1.5rem_-_(var(--n,1)_-_1)*0.5rem)/var(--n,1)),var(--fit-h)),var(--card-cap))]!')
     expect(title.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // El nombre, en un renglón (entero al pasar el mouse): cada píxel de alto es de la carta.
@@ -465,23 +466,25 @@ describe('RespondBand', () => {
 describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
   onDesktop()
 
-  it('entre grupos, 8 px (la escala de la guía: 4 · 8 · 16 · 24); la ventana sale centrada en la columna de la mesa, apaisada de 30 rem y apoyada abajo, con la bandeja a la izquierda del texto (M-08)', () => {
+  it('entre grupos, 8 px (la escala de la guía: 4 · 8 · 16 · 24); la ventana sale centrada en la columna de la mesa y apoyada abajo, con una sola disposición: la pregunta en la barra, las cartas al medio y los botones al pie', () => {
     render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
     expect(group).toHaveClass('fixed', 'bottom-0', 'left-[var(--mat-x,50%)]', 'w-[min(var(--window-w,30rem),var(--mat-w,100vw))]')
     expect(group).toHaveAttribute('data-window')
-    // La pregunta en la barra; abajo, las cartas al medio de la ventana, centradas a lo ancho y a lo alto (del tamaño de las de tu mano, `--desk-card`, con su pestaña sobre el arte y sin nombre), y los botones a su derecha, al pie.
     expect(within(group.querySelector<HTMLElement>('[data-window-bar]')!).getByRole('heading', { name: 'Responder a la cadena' })).toBeInTheDocument()
+    // Las cartas al medio (a lo ancho y a lo alto, con su pestaña sobre el arte y sin nombre) y los botones debajo, al pie.
     const body = group.querySelector('[data-panel-body]')!
-    expect(body.parentElement).toHaveClass('grid-cols-[minmax(0,1fr)_minmax(0,max-content)_minmax(min-content,1fr)]')
-    expect(body).toHaveClass('col-start-2', 'self-center')
+    expect(body).toHaveClass('flex-1', 'justify-center-safe')
+    expect(body.parentElement).toHaveClass('flex-col')
     expect(body.parentElement!.lastElementChild!.contains(screen.getByRole('button', { name: 'Pasar' }))).toBe(true)
-    expect(within(group).getByRole('listbox')).toHaveClass('group-data-[window]/panel:auto-cols-(--desk-card)!')
     expect(group.querySelector('[data-pick-name]')).toHaveClass('group-data-[window]/panel:hidden')
-    expect(group.className).toContain('[--desk-card:min(var(--hand-card,5.5rem),')
-    // Los botones a su ancho y a la derecha (B-04).
-    expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:justify-end')
+    // El contenido escala con la ventana: la ventana es `@container` y la carta sale de su alto (`--win-h`) y su ancho (`cqw`), con tope.
+    expect(group).toHaveClass('@container')
+    expect(group.className).toContain('[--desk-card:clamp(4rem,min(calc(100cqw_-_1.5rem),var(--fit-h)),var(--card-cap))]')
+    expect(group.className).toContain('[--fit-h:calc((var(--win-h,')
+    // Los botones a su ancho y a la derecha (B-04); si no entran, bajan de renglón (nunca se cortan por el borde).
+    expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:justify-end', 'group-data-[auto-panel=floating]/panel:flex-wrap')
     expect(group.querySelector('.gap-3')).toBeNull()
   })
 
@@ -514,14 +517,14 @@ describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
       mesa.remove()
     })
 
-    it('de fábrica, el ancho de tu mano sin pisar tu chapa ni la botonera (parejo a los dos lados), las cartas como las de tu mano y el techo en el borde del campo', () => {
+    it('de fábrica, el ancho de tu mano sin pisar tu chapa ni la botonera (parejo a los dos lados), las cartas como las de tu mano y el techo en el borde de arriba de la mesa (sube lo que necesite)', () => {
       render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
       const style = screen.getByRole('group', { name: 'Responder a la cadena' }).style
 
       // Centro 400: la chapa deja 400 − 150 − 8 = 242 de cada lado; la botonera, 282.
       expect(style.getPropertyValue('--window-w')).toBe('484px')
       expect(style.getPropertyValue('--hand-card')).toBe('80px')
-      expect(style.getPropertyValue('--panel-ceiling')).toBe('600px')
+      expect(style.getPropertyValue('--panel-ceiling')).toBe('96px')
     })
 
     it('Opciones usa todo el alto de la columna de la mesa (su borde de arriba), no la mitad de la pantalla', () => {
@@ -1044,5 +1047,27 @@ describe('la carta del menú se toca (sin «Ver carta» visible)', () => {
     render(<AskPrompt text="¿Activás el efecto?" card={{ name: 'Ash Blossom', art: null }} onInspect={onInspect} yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Ver carta' }))
     expect(onInspect).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('la carta de la que se habla, siempre al medio (TI-248)', () => {
+  it('un sí o no a secas («Do it / Don\'t do it») muestra la carta del efecto (`why`) al medio, sin «Ver carta» propio', () => {
+    render(<AskPrompt text="¿Invocás 1 monstruo de Sincronía?" why={{ text: 'Efecto de Angelechy Seneschal', name: 'Angelechy Seneschal', art: null }} yes={{ label: 'Hacerlo', onSelect: () => {} }} no={{ label: 'No hacerlo', onSelect: () => {} }} />)
+    const card = document.querySelector('[data-ask-card] [data-panel-card]')!
+
+    expect(card).not.toBeNull()
+    expect(card.querySelector('img, [aria-label], span')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ver carta' })).toBeNull()
+  })
+
+  it('la posición: la carta que se coloca al medio, entre «En ataque» y «En defensa», en el cuerpo (no al fondo, en la fila de botones); tocar una contesta', () => {
+    const onPick = vi.fn()
+    render(<AskOptions title="Elegí la posición de «Angelechy Enlisted»" options={[{ id: '1', label: 'En ataque' }, { id: '4', label: 'En defensa' }]} mode="one" of="position" card={{ name: 'Angelechy Enlisted', art: null }} onPick={onPick} />)
+    const menu = document.querySelector('[data-positions]')!
+
+    expect(menu.closest('[data-panel-body]')).not.toBeNull()
+    expect([...menu.children].map((child) => child.getAttribute('role') ?? (child.hasAttribute('data-panel-card') ? 'card' : ''))).toEqual(['menuitem', 'card', 'menuitem'])
+    fireEvent.click(screen.getByRole('menuitem', { name: /En defensa/ }))
+    expect(onPick).toHaveBeenCalledWith(['4'])
   })
 })
