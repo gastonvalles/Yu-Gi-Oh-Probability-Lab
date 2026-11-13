@@ -24,7 +24,7 @@ export function shakeOf(event: { landing: LandingTone } | { attack: 'direct' | '
 }
 
 /** Los cuadros de la sacudida, en px desde su lugar: cortos, amortiguados y de vuelta exacta al 0 (la geometría vuelve a su píxel). */
-const SHAKES: Record<Exclude<Shake, 'none'>, { path: ReadonlyArray<readonly [number, number]>; ms: number }> = {
+export const SHAKES: Record<Exclude<Shake, 'none'>, { path: ReadonlyArray<readonly [number, number]>; ms: number }> = {
   light: { path: [[0, 0], [3, -2], [-3, 1.5], [2, 1], [-1, -0.5], [0, 0]], ms: 180 },
   strong: { path: [[0, 0], [5, -3], [-5, 2], [4, 2], [-2, -1.5], [1, 0.5], [0, 0]], ms: 240 },
 }
@@ -66,8 +66,8 @@ export function settleShake(root: HTMLElement | null): void {
 
 const RING = 'pointer-events-none absolute -ml-10 -mt-10 size-20 rounded-full border-2 border-fx-energia opacity-0'
 const FLASH = 'pointer-events-none absolute -ml-14 -mt-14 size-28 rounded-full bg-radial from-fx-destello/90 to-transparent to-70% opacity-0 mix-blend-plus-lighter'
-const RING_MS = 340
-const FLASH_MS = 260
+export const RING_MS = 340
+export const FLASH_MS = 260
 
 /**
  * El anillo de impacto en un punto de la pantalla (`x`, `y`), a los `delay` ms: el aro cian que se abre y se apaga y, con «Efectos completos», el destello dorado aditivo. Una capa fija

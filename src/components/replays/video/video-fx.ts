@@ -1,5 +1,6 @@
+import { shakeOf, type Shake } from '../../../app/field-impact'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
-import { EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
+import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
@@ -19,7 +20,7 @@ export { STAGE_TONE }
 /**
  * Los tiempos de la mesa, copiados para no cargar la mesa (React) con el video: `FLIGHT_MS`, `FLIGHT_STAGGER_MS` y `LANDING_AT` de `use-card-flights.ts`, `SPOTLIGHT_TRAVEL_MS`
  * de `MatFx.tsx`, `DECK_SHUFFLE_MS` y `HAND_SHUFFLE_MS` de `shuffle-fx.ts`, `FIRST_DEAL_MS`, `NEXT_DEAL_MS` y `DEAL_LAND_AT` de `deal-flight.ts`, `IMPACT_MS` de `AttackFx.tsx`,
- * `DELTA_MS` de `life-effects.ts`, `PHASE_BAND_MS` y `TURN_BAND_MS` de `PhaseBand.tsx` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
+ * `DELTA_MS` de `life-effects.ts`, `PHASE_BAND_MS` y `TURN_BAND_MS` de `PhaseBand.tsx`, `RING_MS` y `FLASH_MS` de `field-impact.ts`, `HITSTOP_MS` de `card-weight.ts` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
  * `PracticeHand.tsx` y `STRIKE_MS` de `AttackFx.tsx`.
  */
 export const MESA = {
@@ -41,6 +42,23 @@ export const MESA = {
   impact: 300,
   strike: 1050,
   delta: 1600,
+  ring: 340,
+  flash: 260,
+  hitstop: 50,
+} as const
+
+/**
+ * El impacto de la mesa (`field-impact.ts`), en px del celular: el aro cian (`size-20`, `border-2`) que se abre de 0,5 a 1,8 y se apaga, el destello dorado aditivo (`size-28`,
+ * `from-fx-destello/90` a transparente al 70 %) que crece de 0,6 a 1,5 con su pico al 25 %, los dos con `EASE_OUT`; y la sacudida del campo (`SHAKES`: los cuadros repartidos parejo,
+ * cada vaivén con `EASE_IN_OUT`). El test vigila que sigan iguales.
+ */
+export const IMPACT = {
+  ring: { size: 80, border: 2, from: 0.5, to: 1.8, alpha: 0.95 },
+  flash: { size: 112, from: 0.6, to: 1.5, peak: 0.25, alpha: 0.9, stop: 0.7 },
+  shakes: {
+    light: { path: [[0, 0], [3, -2], [-3, 1.5], [2, 1], [-1, -0.5], [0, 0]], ms: 180 },
+    strong: { path: [[0, 0], [5, -3], [-5, 2], [4, 2], [-2, -1.5], [1, 0.5], [0, 0]], ms: 240 },
+  },
 } as const
 
 /** Lo que dura un vuelo de `distance` (en px del lienzo de referencia de 720): como `flightMs` de la mesa. */
@@ -100,10 +118,12 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
+  /** La sacudida de un impacto: cuánto se corre el campo dibujado (px del lienzo) en `p`. Lo de encima (el texto, las chapas, los efectos, lo que vuela) no se mueve. */
+  shift?: (p: number) => readonly [number, number]
   /** Las cartas que este efecto anima en su lugar (`lado:id`, o `lado:pile:deck`): mientras dura, la mesa de abajo no las pinta. */
   hides?: readonly string[]
   /** La banda de fase: de quién es (0 = tuya) y cómo sigue, sin volver a entrar, si llega otra fase mientras se ve (`carry`). */
@@ -186,7 +206,12 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const id = 'id' in action ? action.id : null
     const pose = id ? placeIn(now, id, sides)?.pose : null
     const rect = pose ? { x: pose.x - after.layout.cell / 2, y: pose.y - after.layout.cell / 2, w: after.layout.cell, h: after.layout.cell } : after.focus[0]
-    if (rect) out.push(landingOverlay(rect, FX_RGB[LANDING_TONE(effects.landing.tone)], s, start + (effects.landing.flies && id ? landingOf(id) : 0), speed))
+    const hit = start + (effects.landing.flies && id ? landingOf(id) : 0)
+    if (rect) {
+      out.push(landingOverlay(rect, FX_RGB[LANDING_TONE(effects.landing.tone)], s, hit, speed))
+      // El impacto de la mesa (`field-impact.ts`), cuando toca: el aro y el destello desde la casilla y la sacudida del campo, del grado de la mesa.
+      out.push(...impactOverlays(rect.x + rect.w / 2, rect.y + rect.h / 2, shakeOf({ landing: effects.landing.tone }), after.layout.unit, theme, hit, hit, speed))
+    }
   }
 
   // La banda de la fase: el nombre sobre el color de quien juega (violeta lo tuyo, lima lo del rival), como `PhaseBand` de la mesa. Un pase de turno, antes «Cambio de turno», y las dos del color de quien empieza.
@@ -219,7 +244,8 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const target = action.target ? placeIn(now, action.target, [1 - actor])?.pose : null
     const score = after.layout.score
     const to = target ?? { x: actor === 0 ? score.x + score.w - 60 * s : score.x + 60 * s, y: actor === 0 ? score.y + 50 * s : field.y + field.h }
-    if (from) out.push(attackOverlay(from, to, after.layout.cell, s, at(0), speed))
+    // Al conectar, el impacto de la mesa (`AttackFx`): el aro y el destello donde pega y, pasada la pausa del golpe, la sacudida (fuerte si es directo, leve contra una carta).
+    if (from) out.push(attackOverlay(from, to, after.layout.cell, s, at(0), speed), ...impactOverlays(to.x, to.y, shakeOf({ attack: target ? 'card' : 'direct' }), after.layout.unit, theme, at(MESA.impact), at(MESA.impact + MESA.hitstop), speed))
   }
 
   // Lo que cambiaron las vidas, abajo del número («−1000», rojo; lo que sube, verde): las vidas cuentan aparte (`lifeOf`).
@@ -640,6 +666,69 @@ function attackOverlay(from: Pose, to: { x: number; y: number }, cell: number, s
       }
     },
   }
+}
+
+const swing = bezierEase(EASE_IN_OUT)
+
+/**
+ * El impacto de la mesa en el lienzo (`ringAt` y `shakeField` de `field-impact.ts`, con `IMPACT`): en `(x, y)` a los `ringAt` ms, el aro cian y el destello dorado aditivo; a los
+ * `shakeAt`, la sacudida del campo. `k`: px del lienzo por px del celular. En el video no hay «Livianos»: va completo.
+ */
+export function impactOverlays(x: number, y: number, shake: Shake, k: number, theme: VideoAssets['theme'], ringAt: number, shakeAt: number, speed: VideoSpeed): Overlay[] {
+  const { ring, flash } = IMPACT
+  const total = Math.max(MESA.ring, MESA.flash)
+  // `from-fx-destello` a `to-transparent`: el mismo color, sin alfa (un degradé a `transparent` se oscurece en el lienzo).
+  const clear = /^#[0-9a-f]{6}$/i.test(theme.fx.destello) ? `${theme.fx.destello}00` : 'transparent'
+  const out: Overlay[] = [
+    {
+      kind: 'impact',
+      start: ringAt,
+      duration: total / speed,
+      draw: (ctx, p) => {
+        const ms = p * total
+        const r = clamp(ms / MESA.ring)
+        if (r < 1) {
+          const e = easeOut(r)
+          const scale = mix(ring.from, ring.to, e)
+          ctx.globalAlpha = mix(ring.alpha, 0, e)
+          ctx.strokeStyle = theme.fx.energia
+          ctx.lineWidth = ring.border * k * scale
+          ctx.beginPath()
+          ctx.arc(x, y, ((ring.size - ring.border) / 2) * k * scale, 0, Math.PI * 2)
+          ctx.stroke()
+        }
+        const f = clamp(ms / MESA.flash)
+        if (f < 1) {
+          const e = easeOut(f)
+          // `bg-radial` llega a la esquina de su caja (la mitad de la diagonal); el círculo lo recorta a su radio.
+          const radius = (flash.size / 2) * k * mix(flash.from, flash.to, e)
+          const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * Math.SQRT2)
+          glow.addColorStop(0, theme.fx.destello)
+          glow.addColorStop(flash.stop, clear)
+          ctx.globalAlpha = flash.alpha * keyed(e, [[0, 0], [flash.peak, 1], [1, 0]], (v) => v)
+          ctx.globalCompositeOperation = 'lighter'
+          ctx.fillStyle = glow
+          ctx.beginPath()
+          ctx.arc(x, y, radius, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.globalCompositeOperation = 'source-over'
+        }
+        ctx.globalAlpha = 1
+      },
+    },
+  ]
+  if (shake === 'none') return out
+  const { path, ms } = IMPACT.shakes[shake]
+  const axis = (index: 0 | 1) => path.map((point, at) => [at / (path.length - 1), point[index] * k] as const)
+  const [xs, ys] = [axis(0), axis(1)]
+  out.push({ kind: 'shake', start: shakeAt, duration: ms / speed, draw: () => {}, shift: (p) => [keyed(p, xs, swing), keyed(p, ys, swing)] })
+  return out
+}
+
+/** Cuánto se corre el campo en `now` (ms de video): la sacudida viva, o nada. */
+export function shiftAt(alive: readonly Overlay[], now: number): readonly [number, number] {
+  const shake = alive.find((overlay) => overlay.shift)
+  return shake?.shift ? shake.shift(clamp((now - shake.start) / shake.duration)) : [0, 0]
 }
 
 function deltaOverlay(side: 0 | 1, delta: number, scene: Scene, theme: VideoAssets['theme'], start: number, speed: VideoSpeed): Overlay {

@@ -5,7 +5,7 @@ import type { WireAct } from '../app/mat-public'
 import { easeInOut } from '../app/motion'
 import { createMatState, type MatAction } from '../app/practice-mat'
 import { muxMp4 } from '../components/replays/video/mp4-mux'
-import { lifeMs, lifeOf, overlaysOf } from '../components/replays/video/video-fx'
+import { flightsOf, IMPACT, lifeMs, lifeOf, MESA, overlaysOf, shiftAt, type Overlay } from '../components/replays/video/video-fx'
 import { placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, phoneDuelLayout } from '../components/probability/compact-field'
 import { drawBanner } from '../components/replays/video/video-draw'
@@ -242,7 +242,7 @@ describe('las transiciones', () => {
 
   it('el ataque cruza del atacante a su objetivo; el rival que roba no se muestra grande (en un duelo sólo activar, mostrar y declarar); las vidas cuentan', () => {
     const fx = (index: number) => overlaysOf(scenes[index - 1]!, scenes[index]!, [], fakeAssets, 1, 0, 'duel').map((overlay) => overlay.kind)
-    expect(fx(replay.steps.length)).toEqual(['attack'])
+    expect(fx(replay.steps.length)).toEqual(['attack', 'impact', 'shake'])
     expect(fx(6)).toEqual([])
     expect(fx(4)).toEqual(['stage'])
     // 8000 → 7000 de mi lado: cuenta como en la mesa (`lifeMs`), con «−1000» abajo.
@@ -253,6 +253,35 @@ describe('las transiciones', () => {
     expect(life(lifeMs(-1000))).toBeNull()
     expect(lifeOf(last, last, 1)).toBeNull()
     expect(overlaysOf(scenes.at(-2)!, hit, [], fakeAssets, 1, 0, 'duel').map((overlay) => overlay.kind)).toContain('delta')
+  })
+
+  it('el impacto de la mesa, al ritmo del video: al invocar, cuando la carta toca, el aro y la sacudida leve; al atacar, el aro donde pega y, pasada la pausa del golpe, la sacudida (fuerte si es directo); el campo vuelve a su lugar', () => {
+    const speed = VIDEO_PACE
+    const flights = flightsOf(transitionOf(scenes[1]!, scenes[2]!), scenes[2]!.layout.scale, speed, 5000)
+    const summon = overlaysOf(scenes[1]!, scenes[2]!, flights, fakeAssets, speed, 1000, 'duel')
+    const of = (list: Overlay[], kind: Overlay['kind']) => list.find((overlay) => overlay.kind === kind)!
+    const [landing, ring, shake] = (['landing', 'impact', 'shake'] as const).map((kind) => of(summon, kind))
+    expect(landing!.start).toBeGreaterThan(1000)
+    expect([ring!.start, shake!.start]).toEqual([landing!.start, landing!.start])
+    expect(ring!.duration).toBeCloseTo(Math.max(MESA.ring, MESA.flash) / speed)
+    expect(shake!.duration).toBeCloseTo(IMPACT.shakes.light.ms / speed)
+    // Hasta 3 px del celular (`layout.unit` del lienzo por cada uno), y de vuelta exacta a su lugar.
+    const k = scenes[2]!.layout.unit
+    const steps = Array.from({ length: 101 }, (_, index) => shake!.shift!(index / 100))
+    expect(Math.max(...steps.map(([x]) => Math.abs(x)))).toBeCloseTo(3 * k, 5)
+    expect([steps[0], steps.at(-1)]).toEqual([[0, 0], [0, 0]])
+    expect(shiftAt([landing!, ring!, shake!], shake!.start + shake!.duration / 5)).not.toEqual([0, 0])
+    expect(shiftAt([landing!, ring!], shake!.start)).toEqual([0, 0])
+    const ctx = fakeCtx()
+    ring!.draw(ctx, 0.2)
+    expect(ctx.calls).toBeGreaterThan(0)
+
+    const attack = overlaysOf(scenes.at(-2)!, last, [], fakeAssets, speed, 0, 'duel')
+    expect(of(attack, 'impact').start).toBeCloseTo(MESA.impact / speed)
+    expect(of(attack, 'shake').start).toBeCloseTo((MESA.impact + MESA.hitstop) / speed)
+    expect(of(attack, 'shake').duration).toBeCloseTo(IMPACT.shakes.light.ms / speed)
+    const direct = overlaysOf(scenes.at(-2)!, { ...last, action: { type: 'attack', id: 'c6' } }, [], fakeAssets, speed, 0, 'duel')
+    expect(of(direct, 'shake').duration).toBeCloseTo(IMPACT.shakes.strong.ms / speed)
   })
 })
 
