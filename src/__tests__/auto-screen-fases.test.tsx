@@ -90,6 +90,50 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(fake.answers).toEqual([])
   })
 
+  it('con «Cambio de turno» o el cartel de una fase a la vista, tocar una carta de tu mano no abre su menú ni juega (ni se guarda el toque); cuando se va, sí (TI-275)', () => {
+    const fake = renderAuto()
+
+    core(() => fake.events([to('end'), to('draw', true), { type: 'draw', count: 1, ids: ['card-101-1'] }, ...START]))
+    core(() => fake.ask(IDLE))
+    step()
+    step()
+    // Tu pase: «Cambio de turno» cruza el campo.
+    expect(band()).toHaveAttribute('data-turn')
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    step()
+    step()
+    step()
+    phaseIs('Main Phase 1')
+    expect(band()).not.toBeNull()
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    expect(phaseButton()).toBeDisabled()
+    bandOver()
+    expect(band()).toBeNull()
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    expect(fake.answers).toEqual([])
+    tap(handCard('Ash Blossom'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 0, index: 0 }])
+    expect(dispatches).toBe(0)
+  })
+
+  it('una pregunta que llega con el cartel de la fase a la vista se abre cuando el cartel termina (TI-275)', () => {
+    const fake = renderAuto(drawPhaseSession())
+
+    rearm(fake, [], null)
+    core(() => fake.events([to('standby')]))
+    core(() => fake.ask(windowAt(0x2)))
+    step()
+    phaseIs('Standby Phase')
+    expect(band()).not.toBeNull()
+    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'can')
+    bandOver()
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
+    expect(fake.answers).toEqual([])
+  })
+
   it('tocar la mesa salta hasta la Main Phase 1; rearmar (deshacer, reiniciar, recargar) también va al final', () => {
     const fake = renderAuto()
 
