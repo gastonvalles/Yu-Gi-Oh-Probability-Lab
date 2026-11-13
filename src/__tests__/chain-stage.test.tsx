@@ -146,6 +146,10 @@ describe('la cadena en grande', () => {
     expect(energy()[0]!.style.rotate).toMatch(/deg$/)
     // La cadena de metal asienta después de la línea (250 + 150 ms).
     expect(document.querySelector('[data-chain-bond="2"]')).toHaveClass('delay-400')
+    // Donde toca, la chispa (el flipbook): sola, sin «Livianos» ni movimiento reducido.
+    const spark = document.querySelectorAll('[data-chain-stage] [data-flipbook]')
+    expect(spark).toHaveLength(1)
+    expect(spark[0]).toHaveClass('fx-lite:hidden', 'motion-reduce:hidden', 'pointer-events-none')
     // Cada eslabón nuevo trae su propia línea (se monta de nuevo y su animación vuelve a correr).
     const first = energy()[0]
     view.rerender(
@@ -260,6 +264,10 @@ describe('la cadena en grande', () => {
     expect(at(1)).toHaveClass('starting:opacity-0', 'starting:scale-75', 'motion-reduce:transition-opacity')
     expect(at(1)!.style.translate).toBe('-12px 0')
     expect(at(2)!.style.translate).toBe('12px 0')
+    expect(document.querySelector('[data-flipbook]')).toBeNull()
+    // Negado: lo cruza el corte (un flipbook), sin «Livianos» ni movimiento reducido.
+    view.rerender(<ChainBadge medals={[{ ...medal(1), voided: true }, medal(2)]} />)
+    expect(at(1)!.querySelector('[data-flipbook]')).toHaveClass('fx-lite:hidden', 'motion-reduce:hidden')
     view.rerender(<ChainBadge medals={[medal(1)]} />)
     expect(at(1)!.style.translate).toBe('0px 0')
     const leaving = document.querySelector('[data-chain-medal-leaving="2"]')

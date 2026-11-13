@@ -4,6 +4,7 @@ import type { PickStat } from '../../app/auto/ask-ui'
 import type { TallyView } from '../../app/auto/tally'
 import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
 import { printedBadge, statShift } from '../../app/field-stats'
+import { CUT } from '../../app/flipbooks'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
@@ -13,6 +14,7 @@ import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
+import { Flipbook } from '../ui/Flipbook'
 import { Icon } from '../ui/Icon'
 import { CARD_BACK, FX_RGB, type FxTone } from './practice-styles'
 
@@ -190,7 +192,7 @@ const medalOffsets = (medals: readonly ChainMedal[]) => new Map(medals.map((meda
 /**
  * Los medallones de la cadena (Master Duel, al resolver): uno por eslabón, centrados en el lugar donde se activó (la casilla, aunque quede vacía; la pila; la mano: quien lo usa pone
  * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, blanco con luz celeste
- * y el aro del metal de la escena (la misma familia que `ChainStage`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo. No ataja toques; sólo se mira
+ * y el aro del metal de la escena (la misma familia que `ChainStage`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo (al quedar así, lo cruza el corte: `CUT`, un flipbook). No ataja toques; sólo se mira
  * (`aria-hidden`): el eslabón va en el nombre de la carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
  * - **Suave** (Gastón: «la animación de las cadenas debe ser smooth»): cada uno entra creciendo con opacidad y, al resolverse, se rompe (crece y se apaga, `MEDAL_OUT_MS`) en vez
  *   de desaparecer; los que quedan en el mismo lugar se reacomodan con `translate` (cada uno, en su lugar por número), sin saltar. El último de un lugar sale igual si quien lo usa
@@ -251,6 +253,8 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
             </svg>
             <span className="relative text-lead font-extrabold leading-none tabular-nums text-white text-shadow-md text-shadow-chain-glow">{number}</span>
           </span>
+          {/* Al quedar negado, el corte (un flipbook) pasa por donde queda la tacha. */}
+          {voided && !out ? <Flipbook book={CUT} className="absolute -inset-2" /> : null}
         </span>
       ))}
     </span>

@@ -5,10 +5,12 @@ import { CHAIN_LEAVE_MS, chainDwell, chainFeed, nextShown, stepsUpTo, type Chain
 // El catálogo y el replay corren la escena con el ritmo real: los valores del núcleo salen de acá (`auto-isolation.test.ts`).
 export { CHAIN_LEAVE_MS, CHAIN_LINGER_MS, chainDwell, chainFeed, nextShown, stepsUpTo } from '../../app/auto/chain-feed'
 import { frameClass, type CardFrame } from '../../app/card-frame'
+import { SPARK } from '../../app/flipbooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
+import { Flipbook } from '../ui/Flipbook'
 
 /** Un eslabón como lo muestra la cadena: su número, de quién es y la carta. */
 export interface ChainNoticeRow {
@@ -262,6 +264,9 @@ function Bond({ number, from, to, fromAt, toAt, broken = false, fading = false }
  * 250 a 650 ms de los 700 del eslabón: no alarga `chainDwell`). Un solo elemento HTML que estira `scale` desde su punta y apunta con `rotate` (compositor; en SVG repintaría). Con «Efectos:
  * Livianos» queda (dice qué se encadena con qué); con movimiento reducido no está.
  */
+/** Cuándo la línea de energía llega a la carta nueva (lo que espera `animate-chain-energy` más su trazo): ahí salta la chispa (`SPARK`). */
+export const ENERGY_REACH_MS = 400
+
 function EnergyLine({ from, to }: { from: Point; to: Point }) {
   const [dx, dy] = [to[0] - from[0], to[1] - from[1]]
 
@@ -469,6 +474,8 @@ export function ChainStage({
         </svg>
         {/* Una por eslabón (su `key`): la animación corre al montarse. */}
         {energy ? <EnergyLine key={`energy-${rows.length}`} from={energy[0]} to={energy[1]} /> : null}
+        {/* La chispa donde la línea toca la carta nueva, cuando llega. */}
+        {energy ? <Flipbook key={`spark-${rows.length}`} book={SPARK} delay={ENERGY_REACH_MS} center className="absolute z-6 aspect-square w-1/4" style={{ left: `${(energy[1][0] / 300) * 100}%`, top: `${(energy[1][1] / 400) * 100}%` }} /> : null}
         {rows.map((link, index) => {
           const at = pose(index)
           // La que acaba de entrar: adelante y más grande, con su destello alrededor y en su número.
