@@ -2916,7 +2916,11 @@ function PracticeMatBody({
           {pickWhy ? (
             // Pegado abajo: la hoja de la cadena del celular se apoya sobre el borde de arriba del estado.
             <span className="grid min-w-0 flex-1 self-end pb-1">
-              <span className="truncate font-semibold leading-tight text-accent">{pickingText}</span>
+              {/* Si no entra, se corta la frase, nunca la cuenta («· 4 de 4»), que es lo que dice cuánto falta. */}
+              <span className="flex min-w-0 font-semibold leading-tight text-accent">
+                <span className="truncate">{pickingText.includes(' · ') ? pickingText.slice(0, pickingText.lastIndexOf(' · ')) : pickingText}</span>
+                {pickingText.includes(' · ') ? <span className="shrink-0 whitespace-pre tabular-nums">{pickingText.slice(pickingText.lastIndexOf(' · '))}</span> : null}
+              </span>
               <AskWhy why={pickWhy} />
             </span>
           ) : (
@@ -2927,7 +2931,8 @@ function PracticeMatBody({
             {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
           </Button>
           )}
-          {autoPick?.done ? <Button variant="primary" size="sm" className="px-3" onClick={autoPick.done.onSelect}>{autoPick.done.label}</Button> : picking?.kind === 'materials' ? (
+          {/* La principal de los menús del duelo, en lima como en sus carteles (`PANEL_LIME` de `auto/AutoPanel`, sin importarlo: la mesa manual no carga el automático). */}
+          {autoPick?.done ? <Button variant="primary" size="sm" className="bg-info! px-3 text-info-foreground! hover:bg-info-soft! active:bg-info!" onClick={autoPick.done.onSelect}>{autoPick.done.label}</Button> : picking?.kind === 'materials' ? (
             <Button variant="primary" size="sm" className="px-3" onClick={confirmMaterials}>
               {t('practice.mat.confirm')}
             </Button>

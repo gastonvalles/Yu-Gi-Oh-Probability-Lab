@@ -245,6 +245,8 @@ describe('«Menús flotantes» (Opciones) en el celular', () => {
     ask()
 
     expect(win()).toHaveAttribute('data-window')
+    // Apoyada sobre tu chapa y la botonera (nunca las tapa) y con techo en el borde de arriba de la mesa: sube lo que necesita.
+    expect(win()).toHaveClass('bottom-[var(--panel-floor,0px)]', 'max-h-[calc(100dvh-var(--panel-ceiling,50dvh)-var(--panel-floor,0px))]')
     expect(within(bar()).getByRole('heading', { name: '¿Activás el efecto?' })).toHaveClass('line-clamp-2')
     expect(screen.getAllByRole('heading')).toHaveLength(1)
     expect(sizeOf(win())).toEqual({ width: 369, height: 300 })

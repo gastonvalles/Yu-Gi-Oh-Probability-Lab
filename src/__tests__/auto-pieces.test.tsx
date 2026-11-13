@@ -248,6 +248,8 @@ describe('Sin fase ni turno en los carteles (cada dato, una vez)', () => {
     expect(turnLine()).toBeNull()
     expect(document.querySelector('[data-panel-fold]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Minimizar' })).toHaveAttribute('data-panel-grip')
+    // El asa se ve fina, pero se toca en 44 px de alto.
+    expect(screen.getByRole('button', { name: 'Minimizar' })).toHaveClass('h-11', 'w-16')
   })
 })
 

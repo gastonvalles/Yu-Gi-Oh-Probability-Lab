@@ -182,9 +182,16 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
     }
     const place = () => {
       const line = document.querySelector('[data-duel-line]')
-      const edge = tall ? (desk ? line?.parentElement?.getBoundingClientRect().top : undefined) : line?.getBoundingClientRect().bottom
+      // La ventana del celular puede subir sobre el campo lo que necesite (con 226 px bajo la línea, las cartas quedaban de 45 px y la ficha cortada): su techo es el borde de arriba de la mesa.
+      const edge = phoneWindow || (tall && desk) ? line?.parentElement?.getBoundingClientRect().top : tall ? undefined : line?.getBoundingClientRect().bottom
 
       set('--panel-ceiling', edge === undefined ? '50dvh' : `${Math.max(0, Math.round(edge))}px`)
+      // Y su piso, 8 px arriba de tu chapa y de la botonera (↶ ≡ ⚙): nunca las tapa.
+      if (phoneWindow) {
+        const tops = [...document.querySelectorAll('[data-life-badge], [data-mat-tools]')].map((node) => node.getBoundingClientRect()).filter((box) => box.width && box.top > window.innerHeight / 2).map((box) => box.top)
+
+        set('--panel-floor', tops.length ? `${Math.max(0, Math.round(window.innerHeight - Math.min(...tops) + 8))}px` : '0px')
+      }
       const hand = desk && !tall ? document.querySelector('[data-drop="hand"]') : null
       const cards = hand ? [...hand.querySelectorAll('[data-card-id]')].map((card) => card.getBoundingClientRect().width).filter(Boolean) : []
 
@@ -207,7 +214,7 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
     place()
     window.addEventListener('resize', place)
     return () => window.removeEventListener('resize', place)
-  }, [slot, inline, minimized, tall, desk])
+  }, [slot, inline, minimized, tall, desk, phoneWindow])
 
   const attrs = {
     role,
@@ -236,13 +243,16 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
   // La ventana del escritorio: apoyada sobre tu mano y centrada en la columna de la mesa como el cartel de siempre (no empuja ni tapa el campo al abrirse); corrida, flota encima de lo que haya.
   const windowPlace = inline
     ? 'relative w-[min(30rem,100%)] border border-primary'
-    : cx('fixed bottom-0 left-[var(--mat-x,50%)] z-[130] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] translate-x-[calc(var(--drag-x,0px)-50%)] translate-y-[var(--drag-y,0px)] border border-primary shadow-overlay', phoneWindow ? 'w-[min(19rem,calc(100vw-1rem))]' : 'w-[min(var(--window-w,30rem),var(--mat-w,100vw))]')
+    : cx(
+      'fixed left-[var(--mat-x,50%)] z-[130] translate-x-[calc(var(--drag-x,0px)-50%)] translate-y-[var(--drag-y,0px)] border border-primary shadow-overlay',
+      // En el celular, sobre tu chapa y la botonera (`--panel-floor`), casi del ancho de la pantalla: la ficha con dos jugadas en un renglón y cuatro cartas a la vista.
+      phoneWindow ? 'bottom-[var(--panel-floor,0px)] max-h-[calc(100dvh-var(--panel-ceiling,50dvh)-var(--panel-floor,0px))] w-[min(24rem,calc(100vw-1rem))]' : 'bottom-0 max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] w-[min(var(--window-w,30rem),var(--mat-w,100vw))]',
+    )
   // El ancho de una carta en la ventana de escritorio: el de las de tu mano, sin pasar lo que entra bajo el campo (el alto que queda menos la barra, 44 px, el borde, el aire de arriba y de abajo y el
   // de la bandeja: 66 px; con el dedo, 20 más abajo). Lo leen la bandeja (`TRAY`) y la carta de un sí o no.
   const deskCard = '[--desk-card:min(var(--hand-card,5.5rem),calc((100dvh-var(--panel-ceiling,50dvh)-4.125rem)*421/614))] pointer-coarse:[--desk-card:min(var(--hand-card,5.5rem),calc((100dvh-var(--panel-ceiling,50dvh)-5.375rem)*421/614))]'
-  // En la del celular (en columna), de 4,5 rem (a 19 rem de ancho entran tres y asoma la cuarta: se nota que la fila se desliza), sin pasar lo que deja el alto: la barra, la línea de qué carta es,
-  // los botones, el aire y los bordes (10 rem).
-  const phoneCard = '[--desk-card:min(4.5rem,calc((100dvh-var(--panel-ceiling,50dvh)-10rem)*421/614))]'
+  // En la del celular (en columna), de 4,5 rem: entran cuatro y asoma la quinta (se nota que la fila se desliza). La ventana sube lo que haga falta, así que el alto no la achica.
+  const phoneCard = '[--desk-card:4.5rem]'
   const windowSurface = cx('group/panel mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-dialog-enter', desk ? deskCard : phoneCard)
   /** Con la barra enfocada: las flechas la mueven 16 px (Mayús: 64), Alt + flechas la estiran y Enter la vuelve a su lugar y su tamaño. */
   const onBarKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -409,7 +419,8 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
           data-panel-grip=""
           aria-label={t('duel.prompt.minimize')}
           title={t('duel.prompt.minimize')}
-          className="absolute left-1/2 top-0 grid h-3 w-16 -translate-x-1/2 place-items-center focus-visible:outline-none focus-visible:shadow-focus"
+          // El dibujo, fino arriba; el toque, de 44 px de alto (sobre el centro del título, que no se toca).
+          className="absolute left-1/2 top-0 grid h-11 w-16 -translate-x-1/2 content-start justify-items-center pt-1 focus-visible:outline-none focus-visible:shadow-focus"
           onClick={() => minimize()}
         >
           <span aria-hidden="true" className="h-1 w-10 bg-muted/50" />
@@ -524,7 +535,8 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
               variant={main ? 'primary' : 'secondary'}
               aria-disabled={item.disabled || undefined}
               title={item.hint ?? item.label}
-              className={cx('min-w-0 whitespace-nowrap px-3! group-data-[auto-panel=floating]/panel:min-w-32', main && PANEL_LIME, ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
+              // En la ventana de escritorio, todas de 8 rem; en la del celular, a su ancho (dos jugadas entran en un renglón a 360 px).
+              className={cx('min-w-0 whitespace-nowrap px-3! min-[1101px]:group-data-[auto-panel=floating]/panel:min-w-32', main && PANEL_LIME, ordered.length % 2 === 1 && index === 0 && ordered.length > 1 && 'col-span-2', ordered.length === 1 && 'col-span-2', item.disabled && 'cursor-default opacity-40')}
               onClick={item.disabled ? undefined : item.onSelect}
             >
               <span className="min-w-0 truncate">{item.label}</span>
