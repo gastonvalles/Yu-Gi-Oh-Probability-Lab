@@ -86,6 +86,7 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     cardRgb: v('--card-background-rgb'),
     foregroundRgb: v('--foreground-rgb'),
     fieldLineRgb: v('--field-line-rgb'),
+    // i18n-ignore: nombres de variables CSS (`metal-lo`), no texto.
     chain: { glow: v('--color-chain-glow'), flash: v('--color-chain-flash'), burst: v('--color-chain-burst'), veil: v('--color-chain-veil'), metal: v('--color-chain-metal'), metalHi: v('--color-chain-metal-hi'), metalLo: v('--color-chain-metal-lo') },
   }
 }
