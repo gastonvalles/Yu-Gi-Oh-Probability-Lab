@@ -81,6 +81,22 @@ describe('la pantalla del replay de un duelo', () => {
     expect(container.querySelectorAll('[data-drop="hand"]')).toHaveLength(1)
   })
 
+  it('en escritorio el campo es el de la mesa del duelo en escritorio (casillas cuadradas, sin `data-phone`) y llena el alto: a 1440×900, una casilla de más de 70 px', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    const size = { innerWidth: window.innerWidth, innerHeight: window.innerHeight }
+    Object.assign(window, { innerWidth: 1440, innerHeight: 900 })
+    try {
+      render(<DuelReplayScreen replay={replayOf('public')} onClose={() => {}} actions={[]} />)
+      const table = screen.getByRole('group', { name: 'Mesa del duelo' })
+      expect(table).not.toHaveAttribute('data-phone')
+      const cell = Number.parseFloat((table.closest('[style*="--cell"]') as HTMLElement).style.getPropertyValue('--cell'))
+      // Sin medir (jsdom), la ventana menos 200 px: 700 de alto.
+      expect(cell).toBeGreaterThan(70)
+    } finally {
+      Object.assign(window, size)
+    }
+  })
+
   it('cada cambio de fase sale con la banda de la mesa, del color de quien la pasa (Ana, violeta; Beto, lima), al reproducir o con «Siguiente»; saltar con la línea de tiempo no lo repite', () => {
     vi.useFakeTimers()
     const replay = buildDuelReplay({

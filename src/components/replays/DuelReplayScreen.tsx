@@ -266,7 +266,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   const badge = (side: ReplaySide, place: 'top' | 'bottom') => (
     <LifeBadge name={names[side]} label={names[side]} life={frame.lp[side]} mine={place === 'bottom'} color={side === 0 ? 'mine' : 'theirs'} active={frame.turn === side} compact={!desktop} />
   )
-  const field = stage ? fieldLayout(stage.width, stage.height, phone) : null
+  const field = stage ? fieldLayout(stage.width, stage.height, phone, desktop) : null
 
   return (
     <div className="mat-square relative isolate flex h-full min-h-0 flex-col overflow-hidden bg-background **:rounded-none!" role="region" aria-label={t('meta.duels.viewer', { title })}>
@@ -398,12 +398,30 @@ const CARD_RATIO = 1.4612
 /** Fuera del celular, el campo más ancho que se prueba (de ahí se angosta de a 8 px hasta que sus filas tengan el alto de una carta) y el más angosto. */
 const WIDEST = 1000
 const NARROWEST = 360
+/** En escritorio: el hueco entre casillas de la mesa (`min-[1101px]:gap-2`) y tu carta de la mano, en casillas. */
+const DESK_GAP = 8
+const DESK_HAND = 0.9
 
 /**
- * El campo y las manos que entran en el lugar de la mesa (`width` × `height`, medido), con la geometría del duelo del celular en todos los anchos (`phoneDuelLayout`, la misma de la mesa): casillas con
+ * El campo y las manos que entran en el lugar de la mesa (`width` × `height`, medido), con la geometría del duelo del celular hasta 1100 px (`phoneDuelLayout`, la misma de la mesa): casillas con
  * forma de carta y un solo contorno (`data-phone`), la mano de arriba a 0,8 de la de abajo. En el celular, a todo el ancho; desde 640 px, el ancho más grande cuyas filas entran con el alto de una carta.
+ * En escritorio, la de la mesa del duelo en escritorio (casillas cuadradas): con las de carta, el alto que dejan la barra y los controles daba un campo angosto, más chico que el del duelo.
  */
-function fieldLayout(width: number, height: number, phone: boolean) {
+function fieldLayout(width: number, height: number, phone: boolean, desktop: boolean) {
+  if (desktop) {
+    // Desde 1101 px, como la mesa del duelo en escritorio: casillas cuadradas (`--cell`, sin `data-phone`) con huecos de 8 px, tu mano de 0,9 casillas y la de arriba a 0,8 de ella;
+    // la casilla, la más grande que entra a lo ancho y a lo alto (5 filas, las dos manos con su abanico y los dos huecos).
+    const cell = Math.min((width - 8 - 6 * DESK_GAP) / 6.3714, (height - 4 * DESK_GAP - 2 * DESK_GAP - FAN_ROOM - 8) / (5 + (DESK_HAND + DESK_HAND * 0.8) * CARD_RATIO))
+    const fieldWidth = cell * 6.3714 + 6 * DESK_GAP
+    const hand = cell * DESK_HAND
+    return {
+      gap: DESK_GAP,
+      top: { cardWidth: hand * 0.8, maxWidth: fieldWidth * 0.8, room: hand * 0.8 * CARD_RATIO + 8 },
+      bottom: { cardWidth: hand, maxWidth: fieldWidth, room: hand * CARD_RATIO + FAN_ROOM },
+      box: { width: fieldWidth, '--cell': `${cell}px` } as CSSProperties,
+      phone: undefined,
+    }
+  }
   const at = (w: number) => phoneDuelLayout(w, height, { tilted: false, bar: 0, bottom: 0 })
   let w = phone ? width : Math.min(width, WIDEST)
   let layout = at(w)
