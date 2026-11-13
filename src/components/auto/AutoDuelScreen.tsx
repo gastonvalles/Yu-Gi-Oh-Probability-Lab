@@ -18,6 +18,7 @@ import type { AutoClock, Duel, DuelRole, DuelSnapshot } from '../../app/duel-ses
 import { isEmojiSignal } from '../../app/duel-signals'
 import type { SocketStatus } from '../../app/duel-socket'
 import { LifeHold } from '../../app/life-effects'
+import type { MatPhase } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { showToastMessage } from '../../app/use-toast-message'
 import { getLocale, t } from '../../i18n'
@@ -39,7 +40,7 @@ import { AskPrompt } from './AskPrompt'
 import { ActionRow, ChainRow, OptionsGear, PlaceRow } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckOf } from './deck-list'
-import { sentinel, useAutoAsks } from './use-auto-asks'
+import { sentinel, TURN_NOTICE_MS, useAutoAsks } from './use-auto-asks'
 
 /**
  * El duelo automático por enlace (diseño: `docs/duelo-automatico-enlace.md`): la sala de siempre (`createDuel`: listos, tirada, chat, señales, vidas, rendirse, revancha) y
@@ -453,7 +454,12 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   }, [toldKey, tellPhase])
   const clock = useAutoTurnClock({ duel, snapshot, snap, seat, online })
   // Cada fase que pasa el rival en su turno, con el cartel del duelo manual.
-  const notice = useRivalNotice(asks.turnMine ? undefined : asks.mat.phase, asks.turnMine ? 'mine' : 'theirs', rivalName, snap.overlay.turn)
+  // «Tu turno» se queda hasta que tu mesa cambia de fase (tu primera fase, detrás de tu banda y tu robo: `quietWait`), como en Solo.
+  const said = useRivalNotice(asks.turnMine ? undefined : asks.mat.phase, asks.turnMine ? 'mine' : 'theirs', rivalName, snap.overlay.turn, TURN_NOTICE_MS)
+  const [turnAt, setTurnAt] = useState<{ key: number; phase: MatPhase } | null>(null)
+
+  if (said?.label && turnAt?.key !== said.key) setTurnAt({ key: said.key, phase: asks.state.phase })
+  const notice = said?.label && turnAt?.key === said.key && asks.state.phase !== turnAt.phase ? undefined : said
   const paused = !snapshot.peerPresent && result === null
   usePassToManual({ snapshot, snap, online, rivalName, onManual })
   // Al terminar, la tarjeta del resultado tapa la mesa hasta que se la cierra para mirarla.
