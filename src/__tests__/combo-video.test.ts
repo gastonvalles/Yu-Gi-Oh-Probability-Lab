@@ -5,7 +5,7 @@ import { createSavedCombo } from '../app/saved-combos'
 import { comboLook, comboScenes, resolveComboNames } from '../components/replays/video/video-combo'
 import { flightsOf, MESA, overlaysOf, replaceOverlays, type Overlay } from '../components/replays/video/video-fx'
 import { transitionOf, type Motion } from '../components/replays/video/video-motion'
-import type { Scene, SceneCard } from '../components/replays/video/video-scene'
+import { videoLayout, type Scene, type SceneCard } from '../components/replays/video/video-scene'
 import { bitrateFor } from '../components/replays/video/video-support'
 import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, videoFileName } from '../components/replays/video/video-timeline'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
@@ -35,27 +35,28 @@ const at = (scene: Scene, row: number, col: number) => {
 const faceUp = (scene: Scene) => scene.sides.flatMap((side) => [...side.slots, ...side.hand]).flatMap((slot) => (slot.card && !slot.card.faceDown ? [slot.card] : []))
 
 describe('la escena de un combo', () => {
-  it('una por jugada y la mesa inicial; arriba el nombre del combo y el deck, sin vidas ni turno; sólo tu campo (3 filas)', () => {
+  it('una por jugada y la mesa inicial; arriba el nombre del combo y el deck, sin vidas ni turno; la mesa entera del video de un duelo (5 filas)', () => {
     expect(scenes).toHaveLength(actions.length + 1)
     expect(last.heading).toEqual({ title: 'Línea básica', subtitle: 'Snake-Eye' })
     expect(last.turnText).toBe('')
-    // 3 filas de 7: la del medio (las dos Zonas Extra y tu Banish), tus monstruos y tus Mágicas y Trampas, con las pilas a los costados.
-    expect(last.cells).toHaveLength(17)
+    // Las 5 filas del duelo (`videoLayout`): el rival arriba, la del medio y tu campo abajo, con las pilas a los costados.
+    expect(last.cells).toHaveLength(32)
+    expect(last.layout.cellAt(4, 1)).toEqual(videoLayout(720).cellAt(4, 1))
     expect(last.stepLabel).toBe('Jugada 6 de 6')
     expect(scenes[2]!.stepText).toBe('Invocación Normal de Carta 10000000')
   })
 
   it('cada carta en su casilla: la invocada boca arriba con su nombre y su arte, la colocada de dorso, el deck de dorso con su cuenta, la mano boca arriba', () => {
-    const summoned = at(scenes[2]!, 1, 1)?.card
+    const summoned = at(scenes[2]!, 3, 1)?.card
     expect(summoned).toMatchObject({ id: h0, faceDown: false, name: 'Carta 10000000', upsideDown: false })
     expect(summoned?.art).toBe('/api/card-image/cards_small/10000000.jpg?w=128')
-    expect(at(scenes[3]!, 2, 2)?.card).toMatchObject({ id: h1, faceDown: true, name: '', art: null })
-    const deckSlot = at(last, 2, 6)!
+    expect(at(scenes[3]!, 4, 2)?.card).toMatchObject({ id: h1, faceDown: true, name: '', art: null })
+    const deckSlot = at(last, 4, 6)!
     expect(deckSlot.count).toBe(states.at(-1)!.deck.length)
     expect(deckSlot.card?.faceDown).toBe(true)
     expect(last.sides[0].hand.every((slot) => !slot.card?.faceDown)).toBe(true)
     // La ficha, en defensa (acostada).
-    expect(at(last, 1, 3)?.card).toMatchObject({ sideways: true, faceDown: false })
+    expect(at(last, 3, 3)?.card).toMatchObject({ sideways: true, faceDown: false })
   })
 
   it('la mano del rival del simulador va arriba, boca arriba; la que usó queda atenuada y se resalta', () => {
@@ -68,11 +69,22 @@ describe('la escena de un combo', () => {
     expect(scenes[4]!.stepText).toContain('Ash Blossom')
   })
 
-  it('sin la mano del rival no hay rótulo, y el campo sube', () => {
+  it('sin la mano del rival no hay rótulo ni su franja cambia; con ella, el rótulo va entre el título y su franja (más baja), sin pisar nada', () => {
     const plain = createSavedCombo({ name: 'Sin rival', deckName: '', initial: table, actions: actions.slice(0, 2), nameOf }, [])
     const [first] = comboScenes(plain, plain.names, 720)
     expect(first!.caption).toBeUndefined()
-    expect(first!.layout.cellAt(0, 1).y).toBeLessThan(scenes[0]!.layout.cellAt(0, 1).y)
+    expect(first!.layout.theirHand).toEqual(videoLayout(720).theirHand)
+    const { caption, layout } = scenes[0]!
+    expect(caption!.rect.y).toBeGreaterThanOrEqual(layout.score.y + layout.score.h)
+    expect(caption!.rect.y + caption!.rect.h).toBeLessThanOrEqual(layout.theirHand.y)
+    expect(layout.theirHand.y + layout.theirHand.h).toBeLessThanOrEqual(layout.cellAt(0, 1).y)
+  })
+
+  it('sin hueco abajo: tu mano y la franja de la jugada llegan hasta la marca, como en el video de un duelo', () => {
+    const { layout } = last
+    expect(layout.text.y + layout.text.h).toBeGreaterThanOrEqual(layout.footer.y - 8)
+    expect(layout.myHand.y).toBeGreaterThan(layout.cellAt(4, 1).y + layout.cellAt(4, 1).h)
+    expect(layout.text.y).toBeGreaterThan(layout.myHand.y + layout.myHand.h)
   })
 
   it('no muestra nada que la mesa tape: lo del deck y lo colocado, de dorso en todos los cuadros y en las transiciones', () => {

@@ -5,40 +5,22 @@ import { describeMatAction, isForeignId, isToken, matReducer, type MatState } fr
 import { comboCardIds, comboTheirReal, comboTheirsAt, type SavedCombo } from '../../../app/saved-combos'
 import { t } from '../../../i18n'
 import { passcodeOfDrawId } from '../../duel/duel-art'
-import { artOfId, cellsOf, duelRows, explainOf, fieldArtUrl, fieldGrid, focusOf, halfOf, handSlots, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, videoLayout, type Look, type Rect, type Scene, type SceneSide, type VideoLayout } from './video-scene'
+import { artOfId, cellsOf, duelRows, explainOf, fieldArtUrl, focusOf, halfOf, handSlots, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, videoLayout, type Look, type Scene, type SceneSide, type VideoLayout } from './video-scene'
 
 /**
- * El video de un combo de la práctica: va **tu campo** (las Zonas Extra arriba, tus monstruos y tus Mágicas y Trampas, con las pilas a los costados: la mitad de abajo de la mesa
- * del celular) y tu mano abajo, boca arriba (el combo es tuyo y la mesa te la muestra). Arriba, el nombre del combo y el del deck en vez de vidas y turno (un combo no los tiene).
- * Si se grabó con el simulador de handtraps, su «Mano del rival» va arriba del campo, boca arriba como en la mesa, y las que ya usó, atenuadas. Si se grabó en «Jugar solo
- * automático» y el rival tuvo algo en su campo (`theirs`: una carta que le diste), va la mesa entera como en el video de un duelo, con su campo arriba. Lo demás (las transiciones,
- * el aro ámbar, la jugada en texto, la marca) es lo del video del duelo. Puro.
+ * El video de un combo de la práctica: la mesa del video de un duelo (`videoLayout`, todo el lienzo: sin aire abajo), con tu campo abajo y tu mano boca arriba (el combo es tuyo
+ * y la mesa te la muestra). Arriba, el nombre del combo y el del deck en vez de vidas y turno (un combo no los tiene). El lado del rival: si se grabó en «Jugar solo automático» y
+ * su campo tuvo algo (`theirs`: una carta que le diste), su campo y su mano de dorso; si se grabó con el simulador de handtraps, su «Mano del rival» boca arriba como en la mesa
+ * (las que ya usó, atenuadas); si no, sus casillas vacías. Lo demás (las transiciones, el aro ámbar, la jugada en texto, la marca) es lo del video del duelo. Puro.
  */
 
-const BASE_W = 720
 type Combo = SavedCombo | SharedCombo
 
-/** El lienzo del combo: con la mano del rival del simulador, el campo baja para dejarle su franja. */
+/** El lienzo del combo: el del duelo; con la «Mano del rival» del simulador, su franja más baja y más chica, para que su rótulo entre debajo del título. */
 export function comboLayout(width: number, rival: boolean): VideoLayout {
-  const s = width / BASE_W
-  // El campo sube hasta abajo del título (o de la mano del rival): lo que queda abajo de tu mano es la franja que explica la jugada.
-  const top = rival ? 266 : 150
-  const box = (x: number, y: number, w: number, h: number): Rect => ({ x: x * s, y: y * s, w: w * s, h: h * s })
-  // La fila 0 es la del medio de la mesa (las Zonas Extra y tu Banish); después, tus monstruos y tus Mágicas y Trampas, con las pilas a los costados.
-  const grid = fieldGrid(width, top * s)
-  const last = grid.cellAt(2, 1)
-  const handTop = (last.y + last.h) / s + 34
-  const textTop = handTop + 180 + 34
-  return {
-    scale: s,
-    score: box(24, 24, 672, 84),
-    theirHand: box(64, 142, 592, 100),
-    myHand: box(40, handTop, 640, 180),
-    text: box(24, textTop, 672, 1236 - textTop),
-    footer: box(24, 1244, 672, 28),
-    ...grid,
-    middle: 0,
-  }
+  const layout = videoLayout(width)
+  const s = layout.scale
+  return rival ? { ...layout, theirHand: { x: 64 * s, y: 130 * s, w: 592 * s, h: 62 * s } } : layout
 }
 
 /**
@@ -81,19 +63,15 @@ export async function resolveComboNames(combo: Combo, fetchNames: (codes: number
 
 const emptySide = (hand: SceneSide['hand'] = []): SceneSide => ({ name: '', lp: 0, slots: [], hand })
 
-/** Con la mesa entera (el campo del rival arriba, como el video de un duelo) o sólo tu mitad. */
-const fullTable = (combo: Combo) => combo.theirs !== undefined
-
 /** La escena del combo después de `cursor` jugadas; `before` es la mesa de antes de esa jugada (para el texto y lo que se resalta). */
 export function comboSceneAt(combo: Combo, state: MatState, cursor: number, before: MatState | null, names: Readonly<Record<string, string>>, width: number): Scene {
   const rival = state.rival
-  const full = fullTable(combo)
-  const layout = full ? videoLayout(width) : comboLayout(width, (combo.initial.rival?.hand.length ?? 0) > 0)
+  const layout = comboLayout(width, (combo.initial.rival?.hand.length ?? 0) > 0)
   const opponent = comboTheirsAt(combo.theirs, cursor)
   const look = comboLook(names, opponent?.known)
   const action = cursor > 0 ? combo.actions[cursor - 1] : undefined
   const shown = action?.type === 'reveal' ? action.id : null
-  const rows = full ? duelRows(0) : { mz: 1, st: 2 }
+  const rows = duelRows(0)
   const mine: SceneSide = {
     ...emptySide(handSlots(state.hand, layout.myHand, look, () => true)),
     slots: sideSlots(state, layout, rows, false, look, shown),
@@ -133,9 +111,9 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
     explain: action && before && effects ? explainOf(before, action, effects, nameOf) : null,
     focus,
     footer: VIDEO_FOOTER(),
-    cells: full ? cellsOf(layout, 5) : cellsOf(layout, 3, false),
+    cells: cellsOf(layout, 5),
     heading: { title: combo.name, subtitle: combo.deckName },
-    ...(rival && rival.hand.length > 0 ? { caption: { text: t('handtraps.strip.label'), rect: { x: layout.theirHand.x, y: layout.theirHand.y - 26 * layout.scale, w: layout.theirHand.w, h: 20 * layout.scale } } } : {}),
+    ...(rival && rival.hand.length > 0 ? { caption: { text: t('handtraps.strip.label'), rect: { x: layout.theirHand.x, y: layout.theirHand.y - 22 * layout.scale, w: layout.theirHand.w, h: 18 * layout.scale } } } : {}),
     layout,
   }
 }
