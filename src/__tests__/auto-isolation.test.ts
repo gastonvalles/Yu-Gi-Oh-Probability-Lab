@@ -70,7 +70,8 @@ describe('el núcleo de reglas queda aislado', () => {
     const names = production.filter((file) => /components\/auto\//.test(values(file)) || /(?:from\s+|import\(\s*)['"]\.{1,2}\/auto\//.test(values(file)))
 
     // El replay de un duelo toma, como el catálogo, sólo la escena de la cadena (`ChainNotice`), que no llega al núcleo: de `src/app/auto/` trae `chain-feed` y éste, `protocol`.
-    expect(names).toEqual(['src/components/deck-mode/DeckModeScreen.tsx', 'src/components/replays/DuelReplayScreen.tsx'])
+    // El campo del rival y la cadena de un combo en la mesa manual (`combo-scene.tsx`), igual: sólo `ChainNotice`.
+    expect(names).toEqual(['src/components/deck-mode/DeckModeScreen.tsx', 'src/components/probability/combo-scene.tsx', 'src/components/replays/DuelReplayScreen.tsx'])
     const autoLines = (file: string) => readFileSync(join(ROOT, file), 'utf8').split('\n').filter((line) => /['"]\.{1,2}\/auto\//.test(line))
     const lines = autoLines('src/components/deck-mode/DeckModeScreen.tsx')
 
@@ -78,6 +79,7 @@ describe('el núcleo de reglas queda aislado', () => {
     expect(lines[0]).toMatch(/lazy\(\(\) => import\(['"]\.\.\/auto\/AutoSoloScreen['"]\)/)
     expect(lines[1]).toMatch(/lazy\(\(\) => import\(['"]\.\.\/auto\/AutoDuelScreen['"]\)/)
     expect(autoLines('src/components/replays/DuelReplayScreen.tsx')).toEqual([expect.stringMatching(/^import \{[^}]*\} from '\.\.\/auto\/ChainNotice'$/)])
+    expect(autoLines('src/components/probability/combo-scene.tsx')).toEqual([expect.stringMatching(/^import \{[^}]*\} from '\.\.\/auto\/ChainNotice'$/)])
     const autoTargets = (file: string) => [...readFileSync(join(ROOT, file), 'utf8').matchAll(VALUE_IMPORT)].map((match) => posix.join(posix.dirname(file), match[1]!)).filter((target) => target.startsWith('src/app/auto/'))
     expect(new Set(autoTargets('src/components/auto/ChainNotice.tsx'))).toEqual(new Set(['src/app/auto/chain-feed']))
     expect(autoTargets('src/app/auto/chain-feed.ts')).toEqual(['src/app/auto/protocol'])
