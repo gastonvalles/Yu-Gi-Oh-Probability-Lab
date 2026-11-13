@@ -82,13 +82,6 @@ interface ModalProps {
   above?: boolean
   role?: 'dialog' | 'alertdialog'
   ariaLabel?: string
-  /** Lo que describe el diálogo además del título (el `id` de la línea de por qué se pregunta, `AskWhy`). */
-  ariaDescribedBy?: string
-  /** Botón de cerrar flotante (sin encabezado): `flat` es el blanco y grande de la práctica. */
-  closeTone?: 'close' | 'flat'
-  closeSize?: 'sm' | 'md'
-  /** Posición de la X flotante; reemplaza a la estándar. */
-  closeClassName?: string
   /**
    * Con encabezado: se minimiza (la flecha de arriba, como la pregunta del medio) a un asa de una línea (`PromptHandle`) en el lugar fijo de la pregunta, apoyada sobre la fila de las Zonas Extra
    * (`--mat-extra`), para ver el campo antes de elegir (las hojas del duelo automático). Minimizada, los toques llegan a lo de atrás; lo de adentro queda como estaba (escondido e inerte) y el
@@ -136,10 +129,6 @@ export function Modal({
   above = false,
   role = 'dialog',
   ariaLabel,
-  ariaDescribedBy,
-  closeTone = 'close',
-  closeSize = 'md',
-  closeClassName,
   lowerable = false,
   anchor,
   movable,
@@ -309,7 +298,6 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
-        aria-describedby={ariaDescribedBy}
         data-minimized={lowered ? '' : undefined}
         {...move.root}
         className={cx(
@@ -333,13 +321,9 @@ export function Modal({
           </div>
         ) : dismissible && !hideCloseButton ? (
           <CloseButton
-            size={closeSize}
-            tone={closeTone}
+            size="md"
             aria-label={t('common.close')}
-            className={cx(
-              'absolute z-10',
-              closeClassName ?? 'right-3 top-3 min-[1101px]:right-4 min-[1101px]:top-4',
-            )}
+            className="absolute right-3 top-3 z-10 min-[1101px]:right-4 min-[1101px]:top-4"
             onClick={onClose}
           />
         ) : null}
