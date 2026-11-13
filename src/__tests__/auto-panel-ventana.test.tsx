@@ -164,6 +164,10 @@ describe('la ventana del escritorio', () => {
       expect(readSize('k')).toBeNull()
     }
     expect(clampSize({ width: 5000, height: 10 }, { width: 360, height: 160 }, { left: 0, top: 0, right: 1280, bottom: 800 })).toEqual({ width: 1280, height: 160 })
+    // Los tamaños de antes (`:size`, agrandados a mano para ver lo que se escondía) se reiniciaron una vez: la clave es `:size:v2`.
+    expect(sizeKey('k')).toBe('k:size:v2')
+    localStorage.setItem('k:size', '{"width":900,"height":700}')
+    expect(readSize('k')).toBeNull()
 
     localStorage.setItem(sizeKey(autoWindowKey('ask')), '{"width":5000,"height":5000}')
     ask()
@@ -237,7 +241,7 @@ describe('«Menús flotantes» (Opciones) en el celular', () => {
     expect(win()).toHaveAttribute('data-auto-panel', 'docked')
   })
 
-  it('lleva la pregunta en la barra (hasta dos renglones), el lugar sobre el arte (`data-window`) y, si lo guardado deja el contenido cortado, al abrir crece hasta su contenido (sin guardarlo)', () => {
+  it('lleva la pregunta en la barra (hasta tres renglones: angosta, no puede ensancharse), el lugar sobre el arte (`data-window`) y, si lo guardado deja el contenido cortado, al abrir crece hasta su contenido (sin guardarlo)', () => {
     desktop = false
     setMatMenus('floating')
     // Lo que mide su contenido sin alto propio: 300 px (jsdom no mide).
@@ -248,7 +252,7 @@ describe('«Menús flotantes» (Opciones) en el celular', () => {
     expect(win()).toHaveAttribute('data-window')
     // Apoyada sobre tu chapa y la botonera (nunca las tapa) y con techo en el borde de arriba de la mesa: sube lo que necesita.
     expect(win()).toHaveClass('bottom-[var(--panel-floor,0px)]', 'max-h-[calc(100dvh-var(--panel-ceiling,50dvh)-var(--panel-floor,0px))]')
-    expect(within(bar()).getByRole('heading', { name: '¿Activás el efecto?' })).toHaveClass('line-clamp-2')
+    expect(within(bar()).getByRole('heading', { name: '¿Activás el efecto?' })).toHaveClass('line-clamp-3')
     expect(screen.getAllByRole('heading')).toHaveLength(1)
     expect(sizeOf(win())).toEqual({ width: 369, height: 300 })
     expect(saved(sizeKey(phoneKey(autoWindowKey('ask'))))).toEqual({ width: 369, height: 260 })

@@ -186,17 +186,20 @@ describe('AutoPanel en el celular: apoyado abajo, sobre la mano, con techo en la
     expect(screen.getByRole('dialog')).toHaveTextContent('Tras la Invocación Especial')
   })
 
-  it('el techo es el borde de abajo de la línea (`data-duel-line`): el cartel nunca tapa el campo ni la cadena', () => {
+  // Cambiado a propósito (TI-254): antes el techo era el borde de abajo de la línea y, a 360×740, la carta de «¿Respondés?» se recortaba 21 px. La hoja mide su contenido: sólo sube lo que le falta.
+  it('el techo es el borde de arriba de la mesa (la que contiene a `data-duel-line`): la hoja sube sobre el campo lo necesario para mostrar su contenido entero', () => {
+    const mesa = document.createElement('div')
     const line = document.createElement('div')
 
     line.setAttribute('data-duel-line', '')
-    line.getBoundingClientRect = () => ({ bottom: 512 }) as DOMRect
-    document.body.append(line)
+    mesa.getBoundingClientRect = () => ({ top: 96 }) as DOMRect
+    mesa.append(line)
+    document.body.append(mesa)
     try {
       render(<AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
-      expect(screen.getByRole('dialog').style.getPropertyValue('--panel-ceiling')).toBe('512px')
+      expect(screen.getByRole('dialog').style.getPropertyValue('--panel-ceiling')).toBe('96px')
     } finally {
-      line.remove()
+      mesa.remove()
     }
   })
 
@@ -483,7 +486,7 @@ describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
     expect(group).toHaveClass('@container')
     expect(group.className).toContain('[--desk-card:clamp(4rem,min(calc(100cqw_-_1.5rem),var(--fit-h)),var(--card-cap))]')
     expect(group.className).toContain('[--fit-h:calc((var(--win-h,')
-    // Los botones a su ancho y a la derecha (B-04); si no entran, bajan de renglón (nunca se cortan por el borde).
+    // Los botones a su ancho y a la derecha (B-04); si no entran, bajan de renglón y la principal (la última) queda abajo a la derecha (nunca se cortan por el borde).
     expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:justify-end', 'group-data-[auto-panel=floating]/panel:flex-wrap')
     expect(group.querySelector('.gap-3')).toBeNull()
   })
@@ -1050,6 +1053,21 @@ describe('la carta del menú se toca (sin «Ver carta» visible)', () => {
   })
 })
 
+describe('verla en grande sin elegirla (TI-254)', () => {
+  it('toque largo, clic derecho o la tecla de menú (`contextmenu`) sobre una carta de «¿Respondés?» la abre en grande y no la elige; un toque normal sigue eligiendo', () => {
+    const onToggle = vi.fn()
+    const onInspect = vi.fn()
+    render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={onToggle} onInspect={onInspect} onChain={() => {}} onPass={() => {}} />)
+    const option = screen.getAllByRole('option')[0]!
+
+    fireEvent.contextMenu(option)
+    expect(onInspect).toHaveBeenCalledWith(CARDS[0]!.key)
+    expect(onToggle).not.toHaveBeenCalled()
+    fireEvent.click(option)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('la carta de la que se habla, siempre al medio (TI-248)', () => {
   it('un sí o no a secas («Do it / Don\'t do it») muestra la carta del efecto (`why`) al medio, sin «Ver carta» propio', () => {
     render(<AskPrompt text="¿Invocás 1 monstruo de Sincronía?" why={{ text: 'Efecto de Angelechy Seneschal', name: 'Angelechy Seneschal', art: null }} yes={{ label: 'Hacerlo', onSelect: () => {} }} no={{ label: 'No hacerlo', onSelect: () => {} }} />)
@@ -1060,14 +1078,23 @@ describe('la carta de la que se habla, siempre al medio (TI-248)', () => {
     expect(screen.queryByRole('button', { name: 'Ver carta' })).toBeNull()
   })
 
-  it('la posición: la carta que se coloca al medio, entre «En ataque» y «En defensa», en el cuerpo (no al fondo, en la fila de botones); tocar una contesta', () => {
+  it('la posición: cada opción ES la carta (parada en ataque, acostada en defensa, con el dorso boca abajo), lado a lado en el cuerpo, en cajas cuadradas del mismo tamaño; tocar cada una contesta la suya', () => {
     const onPick = vi.fn()
-    render(<AskOptions title="Elegí la posición de «Angelechy Enlisted»" options={[{ id: '1', label: 'En ataque' }, { id: '4', label: 'En defensa' }]} mode="one" of="position" card={{ name: 'Angelechy Enlisted', art: null }} onPick={onPick} />)
+    render(<AskOptions title="Elegí la posición de «Angelechy Enlisted»" options={[{ id: '1', label: 'En ataque' }, { id: '4', label: 'En defensa' }, { id: '8', label: 'Boca abajo en defensa' }]} mode="one" of="position" card={{ name: 'Angelechy Enlisted', art: null }} onPick={onPick} />)
     const menu = document.querySelector('[data-positions]')!
 
     expect(menu.closest('[data-panel-body]')).not.toBeNull()
-    expect([...menu.children].map((child) => child.getAttribute('role') ?? (child.hasAttribute('data-panel-card') ? 'card' : ''))).toEqual(['menuitem', 'card', 'menuitem'])
-    fireEvent.click(screen.getByRole('menuitem', { name: /En defensa/ }))
-    expect(onPick).toHaveBeenCalledWith(['4'])
+    // Sin una tercera carta suelta: sólo las opciones.
+    expect([...menu.children].map((child) => child.getAttribute('role'))).toEqual(['menuitem', 'menuitem', 'menuitem'])
+    const [attack, defense, down] = screen.getAllByRole('menuitem')
+    expect(attack).toHaveAccessibleName('En ataque · Angelechy Enlisted')
+    // La de ataque, parada y con la carta; la de defensa, la misma carta girada; boca abajo, el dorso girado.
+    expect(attack!.querySelector('[data-position-drawing="attack"][data-face="up"] > span')).not.toHaveClass('rotate-90')
+    expect(defense!.querySelector('[data-position-drawing="defense"][data-face="up"] > span')).toHaveClass('rotate-90')
+    expect(down!.querySelector('[data-position-drawing="defense"][data-face="down"] > span')).toHaveClass('rotate-90')
+    expect(attack!.querySelector('[data-position-drawing]')).toHaveClass('size-[calc(var(--pos-w)*614/421)]')
+    fireEvent.click(attack!)
+    fireEvent.click(down!)
+    expect(onPick.mock.calls).toEqual([[['1']], [['8']]])
   })
 })

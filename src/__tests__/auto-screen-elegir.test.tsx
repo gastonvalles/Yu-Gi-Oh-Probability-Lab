@@ -205,7 +205,8 @@ describe('auto-screen · elegir', () => {
     const sheet = screen.getByRole('dialog', { name: 'Elegí la posición de «Ash Blossom»' })
 
     expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
-    fireEvent.click(within(sheet).getByRole('menuitem', { name: 'En defensa' }))
+    // Cada opción es la carta (su nombre accesible dice la posición y la carta).
+    fireEvent.click(within(sheet).getByRole('menuitem', { name: 'En defensa · Ash Blossom' }))
     expect(fake.answers).toEqual([{ type: 'select_position', position: 4 }])
   })
 

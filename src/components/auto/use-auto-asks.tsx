@@ -1239,11 +1239,31 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const from = band && list && lead?.ref && sourceOf(lead) && list.cards.every((card) => card.ref?.side === lead.ref!.side && sourceOf(card) === sourceOf(lead)) ? sourceOf(lead)! : null
   const bandPlace = from ? pickPlace(from, lead!.ref!.side === 'theirs').place : null
   const bandCards = bandPlace ? listCards.map(({ place: _place, from: _from, theirs: _theirs, ...card }) => card) : listCards
+  const positionFrame = (code: number) => {
+    const api = byCode.get(code)?.apiCard
+
+    return api ? frameKindOf(api.frameType, api.cardType) : frameOfType(cards?.get(code)?.type ?? 0)
+  }
+  // Toque largo o clic derecho sobre una carta para elegir o para responder: la abre en grande (el visor de la carta), sin elegirla.
+  const zoom = (code: number) => {
+    if (code) setRivalCard({ drawId: drawIdOf(code), rect: new DOMRect(window.innerWidth / 2, window.innerHeight / 2, 0, 0) })
+  }
+  const inspectListed = (key: string) => {
+    const card = list?.cards[listKeys.indexOf(key)]
+
+    if (card) zoom(card.ref ? codeOf(card.ref) || card.code : card.code)
+  }
+  const inspectOffered = (key: string) => {
+    const candidate = offer?.candidates.find((item) => item.key === key)
+
+    if (candidate) zoom(codeOf(candidate.ref))
+  }
   const listProps = list
     ? {
         chosen: list.chosen.map((i) => listKeys[i]!),
         eligible: new Set(list.eligible.map((i) => listKeys[i]!)),
         done: list.done,
+        onInspect: inspectListed,
         onToggle: (key: string) => gesture({ kind: 'pick', index: listKeys.indexOf(key) }),
         ...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {}),
       }
@@ -1311,6 +1331,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         cards={respondCards}
         chosen={offered?.key ?? null}
         onToggle={pickOffer}
+        onInspect={inspectOffered}
         onChain={() => {
           if (offered?.answer) gesture({ kind: 'item', answer: offered.answer })
         }}
@@ -1382,8 +1403,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             options={options.options.map((option): AskOption => ({ id: String(option.value), label: optionLabel(option) }))}
             mode={options.count > 1 || options.of === 'race' || options.of === 'attribute' ? { count: options.count } : 'one'}
             of={options.of}
-            // La posición, con la carta que se coloca al medio.
-            {...(options.of === 'position' && options.card ? { card: { name: nameOf(null, options.card), art: artOfCode(options.card) } } : {})}
+            // La posición: cada opción es la carta que se coloca (parada, acostada o con el dorso); sin arte, el color de su tipo.
+            {...(options.of === 'position' && options.card ? { card: { name: nameOf(null, options.card), art: artOfCode(options.card), frame: positionFrame(options.card) } } : {})}
             onPick={(ids) => gesture(...ids.map((id) => ({ kind: 'option' as const, value: Number(id) })))}
           />
         ) : null}

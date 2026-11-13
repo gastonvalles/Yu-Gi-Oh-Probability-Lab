@@ -23,6 +23,8 @@ interface RespondBandProps {
   onPass: () => void
   /** Sólo el catálogo lo fuerza (la ventana de escritorio en su marco); en la mesa, según el ancho. */
   variant?: 'floating'
+  /** Verla en grande sin elegirla: toque largo o clic derecho (`PickGrid`). */
+  onInspect?: (key: string) => void
 }
 
 /**
@@ -31,7 +33,7 @@ interface RespondBandProps {
  * izquierda del texto). El modo de respuesta («Siempre · Nunca») no va acá: vive en Opciones («Respuestas»). Tocar la carta que brilla en la mesa sigue valiendo. Al aparecer, el foco va a las
  * cartas. Escape es «Pasar» (lo da la mesa), así que no lo minimiza.
  */
-export function RespondBand({ title, about, cards, chosen, onToggle, onChain, onPass, variant }: RespondBandProps) {
+export function RespondBand({ title, about, cards, chosen, onToggle, onChain, onPass, variant, onInspect }: RespondBandProps) {
   const titleId = useId()
   // El nombre va aparte (se corta él, no la pregunta): se parte la frase donde iría.
   const [lead, tail] = t('auto.respond.strip', { name: NAME_AT }).split(NAME_AT)
@@ -66,7 +68,7 @@ export function RespondBand({ title, about, cards, chosen, onToggle, onChain, on
         </>
       }
     >
-      <PickGrid label={t('auto.respond.cards')} cards={cards} chosen={chosen === null ? [] : [chosen]} onToggle={onToggle} multi={false} tabs className={TRAY} />
+      <PickGrid label={t('auto.respond.cards')} cards={cards} chosen={chosen === null ? [] : [chosen]} onToggle={onToggle} multi={false} tabs className={TRAY} {...(onInspect ? { onInspect } : {})} />
     </AutoPanel>
   )
 }

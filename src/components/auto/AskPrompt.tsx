@@ -64,8 +64,9 @@ export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manua
       actions={
         <>
           {/* El atajo a la mesa manual: sólo en escritorio (en el celular está en «Más opciones»). */}
+          {/* En una ventana angosta (menos de 36 rem: los tres botones no entran en un renglón), sube a su propio renglón, a la izquierda: «No activar» y la principal quedan abajo. */}
           {manual ? (
-            <Button variant="tertiary" className="mr-auto max-[1101px]:hidden" onClick={manual.onSelect}>
+            <Button variant="tertiary" className="mr-auto max-[1101px]:hidden group-data-[window]/panel:@max-[36rem]:basis-full group-data-[window]/panel:@max-[36rem]:justify-start" onClick={manual.onSelect}>
               {manual.label}
             </Button>
           ) : null}
