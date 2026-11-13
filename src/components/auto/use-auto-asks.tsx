@@ -432,12 +432,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     }
     if (paced.cursor >= Math.min(limit, chainNext)) return
     // El arranque de tu turno detrás de «Tu turno» (en Solo y por enlace: el pase del rival está en `order`): tu robo cuando ya entró el cartel de tu Draw Phase y cada fase con el suyo
-    // leído (`quietWait`). Por enlace, así lo ve también el rival: tu mesa le avisa cada fase cuando se muestra (`told`).
+    // leído (`quietWait`). Por enlace, así lo ve también el rival: tu mesa le avisa cada fase cuando se muestra (`told`); como su «Cambio de turno» sale cuando su mesa muestra su End
+    // Phase y su pase (`STEP_MS` cada una) y tu turno llega sin ese ritmo, tu robo espera esos dos pasos más (si no, en su pantalla tu Draw Phase sólo destella).
     const next = paced.actions[paced.cursor]!
     const theirs = theirsBefore[paced.cursor] ?? 0
     const from = theirs > 0 ? theirsAt[theirs - 1]! : 0
     const opening = theirs > 0 && isPass(snap.theirsActs[theirs - 1]?.action) && opensTurn(paced.actions.slice(from, paced.cursor + 1))
-    const wait = opening ? quietWait(next, paced.cursor > from ? paced.actions[paced.cursor - 1] : snap.theirsActs[theirs - 1]!.action) : Math.max(STEP_MS, impactAt - Date.now())
+    const before = paced.cursor > from ? paced.actions[paced.cursor - 1] : snap.theirsActs[theirs - 1]?.action
+    const wait = opening ? quietWait(next, before) + (!rivalPhases && isPass(before) ? 2 * STEP_MS : 0) : Math.max(STEP_MS, impactAt - Date.now())
     const timer = window.setTimeout(() => {
       setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current))
       // Tu primera fase después de «Tu turno» lo reemplaza (en la banda, la más nueva ya gana; acá, en lo que se dice).

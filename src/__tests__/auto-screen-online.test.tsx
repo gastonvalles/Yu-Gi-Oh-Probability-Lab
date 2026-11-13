@@ -10,11 +10,13 @@ import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import type { SocketStatus } from '../app/duel-socket'
 import type { ManualGame } from '../app/auto/manual-handover'
-import { createMatState, PHASES, replayMat } from '../app/practice-mat'
+import { createMatState, PHASES, replayMat, type MatAction, type MatPhase } from '../app/practice-mat'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { showToastMessage } from '../app/use-toast-message'
 import { AutoDuelScreen } from '../components/auto/AutoDuelScreen'
+import { STEP_MS } from '../components/auto/use-auto-asks'
 import { THINKING_CANCEL_MS } from '../components/duel/DuelBar'
+import { TURN_BAND_MS } from '../components/duel/PhaseBand'
 import { fakeOnlineLink } from './support/auto-online-fake'
 import { core, dispatches, handCard, lane, phaseButton } from './support/auto-screen-harness'
 import { CARDS, fakeSession, loc } from './support/auto-session-fake'
@@ -750,5 +752,74 @@ describe('auto-screen-online · la fase del rival', () => {
     expect(document.querySelector('[data-fx="banner"]')).toHaveAttribute('data-turn')
     expect(document.querySelector('[data-fx="banner"]')).toHaveAttribute('data-side', 'mine')
     expect(phaseButton().parentElement!.querySelector('[role="status"]')).toHaveTextContent('Tu turno')
+  })
+
+  it('Beto pasa sin jugar: «Cambio de turno», sus fases (las que avisa su mesa), «Cambio de turno» y tus fases, cada una su rato; tu robo, recién con tu Draw Phase a la vista', () => {
+    vi.useFakeTimers()
+    const { start, link } = setup()
+    const session = start()
+    const to = (phase: MatPhase, skipDraw = false): MatAction => ({ type: 'phase', phase, ...(skipDraw ? { skipDraw: true } : {}) })
+    const hand = () => within(screen.getByRole('list', { name: 'Mano' })).queryAllByRole('listitem').length
+    const line: { ms: number; band: string; hand: number }[] = []
+    let ms = 0
+    const run = (until: number) => {
+      for (; ms < until; ms += 50) {
+        const strip = document.querySelector<HTMLElement>('[data-fx="banner"]')
+        const band = strip ? `${strip.hasAttribute('data-turn') ? 'Cambio de turno' : strip.textContent}/${strip.dataset.side}` : ''
+
+        if (band !== line.at(-1)?.band || hand() !== line.at(-1)?.hand) line.push({ ms, band, hand: hand() })
+        act(() => vi.advanceTimersByTime(50))
+      }
+    }
+
+    core(() => session.ask(IDLE))
+    const before = hand()
+    // Terminás tu turno: tu End Phase y el pase; el turno 2 es de Beto, que arranca en su Draw Phase y avisa cada fase cuando su mesa la muestra, con el ritmo de esta misma mesa (su
+    // turno le llega sin esperar a que la tuya muestre tu pase: su Standby, a los 1250 + 250 + 250 + 2 pasos).
+    core(() => session.set({ status: 'waiting', ask: null, mineActions: [to('end'), to('draw', true)], order: ['mine', 'mine'], overlay: { ...session.getSnapshot().overlay, turn: 2, turnPlayer: 1 } }))
+    core(() => link.set({ rivalPhase: { turn: 2, phase: 'draw', busy: false } }))
+    run(TURN_BAND_MS + 500 + 2 * STEP_MS + 50)
+    core(() => link.set({ rivalPhase: { turn: 2, phase: 'standby', busy: false } }))
+    run(ms + 500)
+    core(() => link.set({ rivalPhase: { turn: 2, phase: 'main1', busy: false } }))
+    run(ms + 1250)
+    core(() => link.set({ rivalPhase: { turn: 2, phase: 'end', busy: false } }))
+    run(ms + 600)
+    // Pasa: su turno entero llega del núcleo y, detrás, tu robo, tu Standby y tu Main Phase 1.
+    const theirs = [{ type: 'draw', count: 1 } as MatAction, to('standby'), to('main1'), to('end'), to('draw', true)].map((action) => ({ action, reveal: {} }))
+
+    core(() =>
+      session.set({
+        mineActions: [to('end'), to('draw', true), { type: 'draw', count: 1 }, to('standby'), to('main1')],
+        theirsActs: theirs,
+        order: ['mine', 'mine', 'theirs', 'theirs', 'theirs', 'theirs', 'theirs', 'mine', 'mine', 'mine'],
+        overlay: { ...session.getSnapshot().overlay, turn: 3, turnPlayer: 0 },
+      }),
+    )
+    core(() => session.ask(IDLE))
+    run(ms + 3600)
+    const bands = line.filter((item, i) => item.band !== '' && item.band !== line[i - 1]?.band)
+
+    expect(bands.map((item) => item.band)).toEqual([
+      'Cambio de turno/theirs',
+      'Draw Phase/theirs',
+      'Standby Phase/theirs',
+      'Main Phase 1/theirs',
+      'End Phase/theirs',
+      'Cambio de turno/mine',
+      'Draw Phase/mine',
+      'Standby Phase/mine',
+      'Main Phase 1/mine',
+    ])
+    const at = (band: string) => bands.find((item) => item.band === band)!.ms
+    const drawn = line.find((item) => item.hand > before)!.ms
+
+    expect(drawn).toBeGreaterThan(at('Draw Phase/mine'))
+    expect(drawn).toBeLessThan(at('Standby Phase/mine'))
+    // Cada fase, lo justo para leerla (también su Draw Phase, detrás de tu «Cambio de turno»).
+    const shown = bands.slice(0, -1).map((item, i) => [item.band, bands[i + 1]!.ms - item.ms] as const)
+
+    expect(shown.filter(([band, gap]) => !band.startsWith('Cambio') && gap < 450)).toEqual([])
+    vi.useRealTimers()
   })
 })
