@@ -335,6 +335,8 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
           <>
             <RespondBand variant={variant} title={t('auto.respond.activated', { name: ASH.name })} about={ASH.name} link={2} cards={[{ key: 'veiler', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', false) }]} chosen="veiler" onToggle={() => {}} onChain={reply(t('auto.respond.start'))} onPass={reply(t('auto.lane.pass'))} />
             <AskPrompt variant={variant} text={t('auto.ask.effect')} card={PONIX} place={t('practice.mat.field')} kicker={t('auto.ask.afterEvent', { event: t('auto.ask.event.special') })} yes={{ label: t('practice.menu.activateEffect'), onSelect: reply(t('practice.menu.activateEffect')) }} no={{ label: t('auto.ask.skipEffect'), onSelect: reply(t('auto.ask.skipEffect')) }} />
+            {/* Un sí o no a secas («Hacerlo / No hacerlo»): la carta del efecto (la de `why`) al medio igual. */}
+            <AskPrompt variant={variant} text={t('auto.ask.effect')} why={{ text: ASH.name, name: ASH.name, art: ASH.art, mine: true }} yes={{ label: t('auto.ask.yes'), onSelect: reply(t('auto.ask.yes')) }} no={{ label: t('auto.ask.no'), onSelect: reply(t('auto.ask.no')) }} />
             <PickBand variant={variant} title={t('auto.pick.cards', { count: 1 })} place={t('auto.band.from', { place: t('practice.place.gy'), count: GRAVE.length })} cards={GRAVE} chosen={[]} eligible={new Set(GRAVE.map((grave) => grave.key))} multi={false} done={false} onToggle={(key) => onAnswer(key)} onPick={() => {}} onCancel={reply(t('common.cancel'))} />
           </>
         ) : null}
@@ -457,7 +459,7 @@ function OptionsSample({ sample, onAnswer }: { sample: (typeof OPTION_SAMPLES)[n
             why={sample.why ?? null}
             options={sample.options()}
             mode={sample.mode}
-            {...(sample.id === 'position' ? { of: 'position' } : {})}
+            {...(sample.id === 'position' ? { of: 'position', card: { name: ASH.name, art: ASH.art } } : {})}
             onPick={(ids) => {
               setOpen(false)
               onAnswer(ids.join(', '))

@@ -1382,6 +1382,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             options={options.options.map((option): AskOption => ({ id: String(option.value), label: optionLabel(option) }))}
             mode={options.count > 1 || options.of === 'race' || options.of === 'attribute' ? { count: options.count } : 'one'}
             of={options.of}
+            // La posición, con la carta que se coloca al medio.
+            {...(options.of === 'position' && options.card ? { card: { name: nameOf(null, options.card), art: artOfCode(options.card) } } : {})}
             onPick={(ids) => gesture(...ids.map((id) => ({ kind: 'option' as const, value: Number(id) })))}
           />
         ) : null}

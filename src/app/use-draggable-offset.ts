@@ -201,6 +201,9 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
     element.style.width = size ? `${size.width}px` : ''
     element.style.height = size ? `${size.height}px` : ''
     element.style.maxHeight = size ? 'none' : ''
+    // El alto puesto, para que el contenido crezca y se achique con él (`AutoPanel`: `--win-h`).
+    if (size) element.style.setProperty('--win-h', `${size.height}px`)
+    else element.style.removeProperty('--win-h')
   }
   /** Estira a `size` dejando quieta la esquina de arriba a la izquierda (`at`): el corrimiento compensa lo que el lugar de siempre se corre con el tamaño (centrado, apoyado abajo). */
   const stretchTo = (element: HTMLElement, size: Size, at: FabPosition, area: Area) => {
@@ -243,7 +246,9 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
 
     if (minSize && fitting.current && sized.current) {
       fitting.current = false
+      // Lo que mide su contenido con el ancho guardado (los botones que bajan de renglón también cuentan).
       paint(element, null)
+      element.style.width = `${sized.current.width}px`
       sized.current = { ...sized.current, height: Math.max(sized.current.height, element.offsetHeight) }
     }
     if (minSize) paint(element, sized.current ? clampSize(sized.current, minSize, visibleArea(element)) : null)

@@ -91,8 +91,9 @@ describe('la ventana del escritorio', () => {
     expect(bar()).toHaveClass('bg-primary', 'text-white', 'cursor-grab', 'focus-visible:shadow-focus')
     expect(bar()).toHaveAttribute('tabindex', '0')
     expect(within(bar()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Minimizar'])
-    // La pregunta va en la barra, en un renglón (entera en su `title`): es el título que nombra el diálogo, y no se repite abajo.
-    expect(within(bar()).getByRole('heading', { name: '¿Activás el efecto?' })).toHaveClass('truncate', 'text-body')
+    // La pregunta va en la barra, en hasta dos renglones y sin «…» (entera en su `title`): es el título que nombra el diálogo, y no se repite abajo.
+    expect(within(bar()).getByRole('heading', { name: '¿Activás el efecto?' })).toHaveClass('line-clamp-2', 'text-body')
+    expect(within(bar()).getByRole('heading')).not.toHaveClass('truncate')
     expect(within(bar()).getByRole('heading')).toHaveAttribute('title', '¿Activás el efecto?')
     expect(screen.getAllByRole('heading')).toHaveLength(1)
     expect(dialog.querySelector('[data-panel-fold], [data-prompt-turn]')).toBeNull()
@@ -267,7 +268,8 @@ describe('el mínimo de la ventana', () => {
     const view = ask()
 
     expect(Number.parseFloat(win().style.width)).toBe(420)
-    expect(Number.parseFloat(win().style.height)).toBe(186)
+    // El mínimo es 186, pero al abrir crece hasta lo que mide su contenido (jsdom: 200): un tamaño guardado nunca esconde nada.
+    expect(Number.parseFloat(win().style.height)).toBe(200)
     view.unmount()
     desktop = false
     act(() => setMatMenus('floating'))

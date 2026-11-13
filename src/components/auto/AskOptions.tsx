@@ -11,7 +11,7 @@ import { CARD_BACK } from '../probability/practice-styles'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { choiceChip } from '../ui/surfaces'
-import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY, PanelCard } from './AutoPanel'
 import { PickCount } from './CardPicker'
 
 /** Una opción del núcleo: un texto, una posición, un número, un Tipo o un Atributo. */
@@ -42,6 +42,10 @@ interface AskOptionsProps {
   stacked?: boolean
   /** Qué se pregunta (`ask-ui`: `position`, `number`…): la posición va con dos dibujos (M-05). */
   of?: string
+  /** La carta de la que se habla (la posición: la que se coloca), al medio, entre las opciones. */
+  card?: { name: string; art: string | null }
+  /** Sólo el catálogo lo fuerza (la ventana en su marco); en la mesa, según el ancho. */
+  variant?: 'floating'
 }
 
 /** El dibujo de una posición (`select_position`: el valor de `POSITION`): la carta parada (ataque) o acostada (defensa), boca arriba o con el dorso. */
@@ -64,7 +68,7 @@ const LONG_LABEL = 22
  * de una carta (`Options`: de a dos por fila, `menuitem`) y un toque contesta. Con `{ count }`, pastillas que se prenden en lima (`aria-pressed`) y bajan de renglón (los 25 Tipos a la vez): con
  * `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan, y el contador va sólo con un total mayor que 1. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel, stacked, of }: AskOptionsProps) {
+export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel, stacked, of, card, variant }: AskOptionsProps) {
   const leaving = useLeaving()
   const whyId = useId()
   const [chosen, setChosen] = useState<string[]>([])
@@ -76,32 +80,34 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
 
   const toggle = (id: string) => setChosen((current) => (current.includes(id) ? current.filter((key) => key !== id) : count === 1 ? [id] : current.length < count ? [...current, id] : current))
 
-  // M-05: la posición son dos dibujos; tocar uno contesta, sin confirmar. Son los botones del cartel (no una lista): van en su fila de abajo.
-  const pinned = mode === 'one' && of === 'position' && !onCancel
+  // M-05: la posición son dos dibujos; tocar uno contesta, sin confirmar. Van al medio del cuerpo, a los costados de la carta que se coloca (Gastón, 2026-11-12: «la carta y las 2 opciones en el medio»).
+  const position = mode === 'one' && of === 'position'
+  const button = (option: AskOption) => (
+    <Button key={option.id} role="menuitem" variant="secondary" aria-disabled={option.disabled || undefined} className={cx('min-h-28 min-w-24 flex-col gap-2 px-3!', option.disabled && 'cursor-default opacity-40')} onClick={option.disabled ? undefined : () => onPick([option.id])}>
+      <PositionDrawing value={Number(option.id)} />
+      <span className="whitespace-nowrap">{option.label}</span>
+    </Button>
+  )
+  const half = Math.ceil(options.length / 2)
   const positions = (
-    <div role="menu" aria-label={title} data-positions="" className="flex w-full min-w-0 justify-center gap-4">
-      {options.map((option) => (
-        <Button key={option.id} role="menuitem" variant="secondary" aria-disabled={option.disabled || undefined} className={cx('min-h-28 min-w-24 flex-col gap-2 px-3!', option.disabled && 'cursor-default opacity-40')} onClick={option.disabled ? undefined : () => onPick([option.id])}>
-          <PositionDrawing value={Number(option.id)} />
-          <span className="whitespace-nowrap">{option.label}</span>
-        </Button>
-      ))}
+    <div role="menu" aria-label={title} data-positions="" className="flex w-full min-w-0 flex-wrap items-center justify-center gap-3">
+      {options.slice(0, half).map(button)}
+      {card ? <PanelCard name={card.name} art={card.art} /> : null}
+      {options.slice(half).map(button)}
     </div>
   )
 
   return (
     <AutoPanel
       kind="options"
+      variant={variant}
       label={title}
       {...(why ? { describedBy: whyId } : {})}
       focus={mode === 'one' ? '[role="menuitem"]' : '[aria-pressed]'}
       top={why ? <AskWhy id={whyId} why={why} /> : kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
       actions={
         mode === 'one' ? (
-          pinned ? (
-            // M-05: los dos dibujos son los botones: la fila de abajo, que no se desplaza.
-            positions
-          ) : onCancel ? (
+          onCancel ? (
             <Button variant="tertiary" onClick={onCancel}>
               {t('common.cancel')}
             </Button>
@@ -114,7 +120,7 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
       }
       {...(mode === 'one' ? {} : { aside: <PickCount chosen={chosen.length} max={count} /> })}
     >
-      {pinned ? null : mode === 'one' && of === 'position' ? (
+      {position ? (
         positions
       ) : mode === 'one' ? (
         <div role="menu" aria-label={title}>

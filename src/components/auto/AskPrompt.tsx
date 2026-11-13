@@ -1,13 +1,9 @@
 import { useId } from 'react'
 
 import type { AskWhyView } from '../../app/auto/ask-why'
-import { t } from '../../i18n'
-import { CardArt } from '../CardArt'
 import { AskWhy } from '../duel/AskWhy'
-import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import { cx } from '../ui/cx'
-import { AutoPanel, ON_ART_TAG, PANEL_PRIMARY } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY, PanelCard } from './AutoPanel'
 
 /** Un botón de una pregunta del núcleo: lo que dice (verbo y objeto) y qué contesta. */
 export interface AskChoice {
@@ -46,6 +42,7 @@ interface AskPromptProps {
 export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manual, why, variant }: AskPromptProps) {
   const textId = useId()
   const whyId = useId()
+  const shown = card ?? (why ? { name: why.name, art: why.art } : undefined)
 
   return (
     <AutoPanel
@@ -56,7 +53,6 @@ export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manua
       labelledBy={why ? `${textId} ${whyId}` : textId}
       focus="[data-ask-primary]"
       escape
-      side
       top={
         kicker || why ? (
           <>
@@ -82,20 +78,10 @@ export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manua
         </>
       }
     >
-      {card ? (
+      {/* La carta del efecto, siempre al medio: la que pregunta o, en un sí o no a secas, la de `why` (de qué carta es). */}
+      {shown ? (
         <div data-ask-card="" className="flex justify-center">
-          {/* En la ventana de escritorio, del tamaño de las cartas de tu mano y con la pestaña sobre el arte, abajo. */}
-          <span className="relative grid w-14 justify-items-center gap-1 group-data-[auto-panel=floating]/panel:w-18 group-data-[window]/panel:w-(--desk-card)!">
-            {place ? (
-              <Badge size="sm" shape="tag" className={cx('max-w-full justify-self-start', ON_ART_TAG)}>
-                {place}
-              </Badge>
-            ) : null}
-            <span className="relative block aspect-[421/614] w-full overflow-hidden bg-input">
-              <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
-              {onInspect ? <button type="button" aria-label={t('practice.dialog.viewCard')} title={t('practice.dialog.viewCard')} className="absolute inset-0 focus-visible:outline-none focus-visible:shadow-focus" onClick={onInspect} /> : null}
-            </span>
-          </span>
+          <PanelCard name={shown.name} art={shown.art} {...(card && place ? { place } : {})} {...(card && onInspect ? { onInspect } : {})} />
         </div>
       ) : null}
     </AutoPanel>
