@@ -40,6 +40,7 @@ import { artOfDrawId } from '../duel/duel-art'
 import type { LaneNotice } from '../duel/DuelBar'
 import { DuelCardDock, type CardPeek } from '../duel/DuelCardDock'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
+import { TURN_BAND_MS } from '../duel/PhaseBand'
 import { RivalCardDetail, useRivalCard } from '../duel/RivalCardDetail'
 import { useDockPeek } from '../duel/use-dock-peek'
 import { PILE_TITLES, PileViewer } from '../probability/MatDialogs'
@@ -194,7 +195,34 @@ function placesIn(order: readonly Side[]): { at: number[]; before: number[] } {
 }
 
 /** El pase del turno (`phase` con `skipDraw`): el de tu mesa abre el turno del rival; el del rival te lo devuelve («Tu turno»). */
-const passes = (actions: readonly MatAction[]) => actions.reduce((count, action) => count + (action.type === 'phase' && action.skipDraw ? 1 : 0), 0)
+const isPass = (action: MatAction | undefined) => action?.type === 'phase' && Boolean(action.skipDraw)
+const passes = (actions: readonly MatAction[]) => actions.reduce((count, action) => count + (isPass(action) ? 1 : 0), 0)
+
+/**
+ * Un turno que pasa solo (Gastón, 2026-11-13: «se ve como si robara una carta porque sí»): cada fase, lo justo para leer su cartel (`PhaseBand`), y el robo cuando ya entró el de la Draw
+ * Phase, que sale detrás de «Cambio de turno» (`TURN_BAND_MS`). Va en el turno del rival sin jugadas (`quietTurn`) y en el arranque del tuyo (tu robo, tu Standby y tu Main Phase 1).
+ */
+// Menos que lo que la banda se queda quieta (`PHASE_BAND_HOLD_MS`, 600 ms): la fase siguiente le cambia el texto antes de que empiece a salir (si no, se va y vuelve).
+const PHASE_READ_MS = 500
+const DRAW_IN_MS = 250
+/** Lo que espera una jugada de un turno que pasa solo, desde la anterior (`before`; detrás de un pase, también «Cambio de turno»). */
+const quietWait = (action: MatAction, before: MatAction | undefined) =>
+  (isPass(before) ? TURN_BAND_MS : 0) + (action.type === 'draw' ? DRAW_IN_MS : before?.type === 'draw' ? PHASE_READ_MS - DRAW_IN_MS : PHASE_READ_MS)
+/**
+ * El turno del rival en el que va `index`, hasta donde llegó, no tiene jugadas antes de su End Phase: sólo sus fases y su robo (lo de su End Phase, como descartar por tener más de 6
+ * cartas, no cuenta: el pasivo, desde su tercer turno, descarta en cada uno). Cada tanda nueva del núcleo lo vuelve a mirar: si llega una jugada, el turno se cuenta como siempre.
+ */
+function quietTurn(acts: AutoSnapshot['theirsActs'], index: number) {
+  const start = acts.findLastIndex((wire, at) => at < index && isPass(wire.action)) + 1
+  const end = acts.findIndex((wire, at) => at >= index && isPass(wire.action))
+  const turn = acts.slice(start, end < 0 ? acts.length : end).map(({ action }) => action)
+  const ends = turn.findIndex((action) => action.type === 'phase' && action.phase === 'end')
+
+  return turn.slice(0, ends < 0 ? turn.length : ends).every((action) => action.type === 'phase' || action.type === 'draw')
+}
+/** Lo que pasa solo al empezar tu turno, hasta tu Main Phase 1 (donde el núcleo frena): tu robo y tus fases. */
+const opensTurn = (actions: readonly MatAction[]) =>
+  actions.every((action, at) => action.type === 'draw' || (action.type === 'phase' && !action.skipDraw && (action.phase === 'standby' || (action.phase === 'main1' && at === actions.length - 1))))
 
 /** La mesa intentó jugar sola: en automático es un bug (cada gesto se contesta, nunca se despacha). Se anota y no se hace nada. */
 export const sentinel = (action: MatAction) => console.error('[auto] la mesa intentó despachar una jugada en modo automático', action)
@@ -357,17 +385,17 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const { impactAt } = rivalStrike
   // El turno del rival (`rivalPhases`; Gastón, 2026-10-29: «no veo en pantalla el cartel del oponente pasando de fases»): el núcleo lo juega de una y la mesa lo cuenta jugada por
   // jugada en su lugar de `order`, con un solo cursor: cada fase con su cartel (`RIVAL_PHASE_MS`, la que te devuelve el turno dice «Tu turno»; su robo va con «Turno de Rival» y una
-  // Main Phase 2 vacía, sin cartel ni espera), cada jugada con su vuelo (`FLIGHT_MS`; la primera de una fase, a mitad de su cartel) y lo que sigue a un ataque, después del golpe. Tu turno
-  // (tu robo, tus fases, lo que podés hacer) empieza después de «Tu turno». Lo que ya había al empezar o al rearmarse el núcleo, y lo que se salta tocando la mesa, se da por visto.
+  // Main Phase 2 vacía, sin cartel ni espera), cada jugada con su vuelo (`FLIGHT_MS`; la primera de una fase, a mitad de su cartel) y lo que sigue a un ataque, después del golpe; su robo,
+  // con su Draw Phase a la vista, y un turno sin jugadas, más ligero (`quietWait`). Tu turno (tu robo, tus fases, lo que podés hacer) empieza después de «Tu turno», con el mismo ritmo
+  // hasta tu Main Phase 1. Lo que ya había al empezar o al rearmarse el núcleo, y lo que se salta tocando la mesa, se da por visto.
   const [notice, setNotice] = useState<DuelMatLink['notice']>(undefined)
   const theirsNext = rivalPhases && theirsShown < snap.theirsActs.length && theirsShown < theirsUpTo(paced.cursor, paced.actions)
-  // Tus fases que pasan solas (la SP, la M1) no salen encima de «Tu turno»: esperan a que se vaya (tu robo, no). Un booleano y no `notice`: que un cartel se vaya no reinicia el ritmo.
-  const phaseUnderNotice = notice !== undefined && paced.actions[paced.cursor]?.type === 'phase'
 
-  // Se va solo (con menos movimiento queda quieto ese rato); sólo el que se ve: el siguiente pudo salir en el mismo instante.
+  // Se va solo (con menos movimiento queda quieto ese rato); sólo el que se ve: el siguiente pudo salir en el mismo instante. «Tu turno» se queda hasta tu primera fase (la saca el ritmo de
+  // abajo; esto es la red): si se fuera antes, el lector de pantalla volvería a decir la fase vieja de tu mesa.
   useEffect(() => {
     if (!notice) return
-    const timer = window.setTimeout(() => setNotice((current) => (current === notice ? undefined : current)), RIVAL_PHASE_MS)
+    const timer = window.setTimeout(() => setNotice((current) => (current === notice ? undefined : current)), notice.label ? TURN_BAND_MS + 3 * PHASE_READ_MS : RIVAL_PHASE_MS)
 
     return () => window.clearTimeout(timer)
   }, [notice])
@@ -381,7 +409,18 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       const at = theirsAt[index]! + index
       const before = at === 0 ? undefined : snap.order[at - 1] === 'theirs' ? snap.theirsActs[index - 1]?.action : paced.actions[theirsAt[index]! - 1]
       const banner = action.type === 'phase' && !(action.phase === 'main2' && snap.theirsActs[index + 1]?.action.type === 'phase')
-      const wait = action.type === 'phase' ? (banner ? RIVAL_PHASE_MS : 0) : before?.type === 'phase' ? (action.type === 'draw' ? 0 : RIVAL_PHASE_MS / 2) : Math.max(FLIGHT_MS, impactAt - Date.now())
+      const wait =
+        action.type === 'phase' && !banner
+          ? 0
+          : quietTurn(snap.theirsActs, index)
+            ? quietWait(action, before)
+            : action.type === 'phase'
+              ? RIVAL_PHASE_MS
+              : before?.type === 'phase'
+                ? action.type === 'draw'
+                  ? 0
+                  : RIVAL_PHASE_MS / 2
+                : Math.max(FLIGHT_MS, impactAt - Date.now())
       const timer = window.setTimeout(() => {
         setPaced((current) => (current.theirs === index ? { ...current, theirs: index + 1 } : current))
         if (banner) setNotice({ key: Date.now(), phase: action.phase, ...(action.skipDraw ? { label: t('duel.bar.yourTurn') } : { who: rivalName }) })
@@ -390,11 +429,20 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       return () => window.clearTimeout(timer)
     }
     if (paced.cursor >= Math.min(limit, chainNext)) return
-    if (phaseUnderNotice) return
-    const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), Math.max(STEP_MS, impactAt - Date.now()))
+    // El arranque de tu turno detrás de «Tu turno» (`rivalPhases`): tu robo cuando ya entró el cartel de tu Draw Phase y cada fase con el suyo leído (`quietWait`).
+    const next = paced.actions[paced.cursor]!
+    const theirs = rivalPhases ? (theirsBefore[paced.cursor] ?? 0) : 0
+    const from = theirs > 0 ? theirsAt[theirs - 1]! : 0
+    const opening = theirs > 0 && isPass(snap.theirsActs[theirs - 1]?.action) && opensTurn(paced.actions.slice(from, paced.cursor + 1))
+    const wait = opening ? quietWait(next, paced.cursor > from ? paced.actions[paced.cursor - 1] : snap.theirsActs[theirs - 1]!.action) : Math.max(STEP_MS, impactAt - Date.now())
+    const timer = window.setTimeout(() => {
+      setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current))
+      // Tu primera fase después de «Tu turno» lo reemplaza (en la banda, la más nueva ya gana; acá, en lo que se dice).
+      if (opening && next.type === 'phase') setNotice(undefined)
+    }, wait)
 
     return () => window.clearTimeout(timer)
-  }, [paced, limit, reviewing, chainNext, chainDue, impactAt, theirsNext, theirsShown, theirsAt, snap.theirsActs, snap.order, snap.replaying, rivalName, phaseUnderNotice])
+  }, [paced, limit, reviewing, chainNext, chainDue, impactAt, theirsNext, theirsShown, theirsAt, theirsBefore, rivalPhases, snap.theirsActs, snap.order, snap.replaying, rivalName])
   // El próximo mensaje de la cadena, cuando la mesa llegó hasta él y el anterior se vio su rato (contado desde que se mostró: una tanda nueva no lo reinicia).
   useEffect(() => {
     if (reviewing || snap.replaying || !chainDue) return

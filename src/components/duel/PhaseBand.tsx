@@ -24,8 +24,8 @@ export const PHASE_BAND_MS = 850
 export const TURN_BAND_HOLD_MS = 1000
 export const TURN_BAND_MS = 1250
 /**
- * Lo que espera, quieta, una fase que puede pasar sola antes de leerse: tu End Phase en un duelo (el pase llega ~250 ms después) y, tras tu «Cambio de turno», tus fases (en el automático tu Draw y tu
- * Standby pasan cada ~250 ms): entra la que dura este rato sin que llegue otra. Las del rival no esperan (el núcleo las cuenta de a una, más largas que su banda) y nadie espera a la banda.
+ * Lo que espera, quieta, tu End Phase en un duelo antes de entrar (el pase llega ~250 ms después): entra si dura este rato sin que llegue otra. Las demás no esperan: quien las manda les da su
+ * tiempo (el automático cuenta un turno que pasa solo con cada cartel leído, `quietWait` de `use-auto-asks.tsx`) y nadie espera a la banda.
  */
 export const PHASE_BAND_SETTLE_MS = 400
 
@@ -89,17 +89,16 @@ const fromSide = (fromLeft: boolean, leaving: boolean) =>
  * El cartel de una fase nueva, como en Master Duel pero con los colores de la casa: una banda que cruza el campo de borde a borde sobre la fila del medio (la del botón de fase), entra desde el costado
  * de quien juega (la tuya desde la izquierda, la del rival desde la derecha), el nombre llega un instante después, se queda y sale por el otro lado: 850 ms en total. Si llega otra fase mientras se ve, la
  * misma banda cambia de texto y vuelve a contar (no se apilan ni vuelve a entrar); si cambia de dueño, entra la del otro. Un turno nuevo (`turn`) entra antes con «Cambio de turno», más alta y del color
- * de quien empieza (1250 ms), y después, una detrás de la otra, la banda de la fase más nueva (la Draw Phase, o la que ya llegó mientras tanto); en tu turno, la primera en la que te quedás
- * (`PHASE_BAND_SETTLE_MS`: tu Draw y tu Standby, que pasan solas, no entran para irse). Tu End Phase en un duelo (`settle`) espera ese rato: si pasa el turno, no sale. Se ubica sola en la fila `p2` de la grilla del campo (va
- * adentro de él, debajo de la cadena y de las preguntas, que son otra capa), no ataja toques y nadie la espera: lleva su propio reloj, así que quien la monta puede sacar `cue` cuando quiera. Con
- * movimiento reducido, sólo aparece y se va. Sólo `translate` y `opacity`.
+ * de quien empieza (1250 ms), y después, una detrás de la otra, la banda de la fase más nueva (la Draw Phase, o la que ya llegó mientras tanto). Tu End Phase en un duelo (`settle`) espera
+ * `PHASE_BAND_SETTLE_MS`: si pasa el turno, no sale. Se ubica sola en la fila `p2` de la grilla del campo (va adentro de él, debajo de la cadena y de las preguntas, que son otra capa), no ataja
+ * toques y nadie la espera: lleva su propio reloj, así que quien la monta puede sacar `cue` cuando quiera. Con movimiento reducido, sólo aparece y se va. Sólo `translate` y `opacity`.
  */
 export function PhaseBand({ cue, hold = false }: { cue: PhaseCue | null; hold?: boolean }) {
   const [shown, setShown] = useState<PhaseCue | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [turn, setTurn] = useState<PhaseCue | null>(null)
   const [turnLeaving, setTurnLeaving] = useState(false)
-  // La fase que espera quieta (`PHASE_BAND_SETTLE_MS`): tu End Phase en un duelo (`settle`) o la de tu turno nuevo (detrás de tu «Cambio de turno», y la más nueva hasta que se asienta).
+  // La fase que espera quieta (`PHASE_BAND_SETTLE_MS`): tu End Phase en un duelo (`settle`).
   const [pending, setPending] = useState<PhaseCue | null>(null)
   const [last, setLast] = useState<string | null>(null)
   const id = idOf(cue)
@@ -110,11 +109,11 @@ export function PhaseBand({ cue, hold = false }: { cue: PhaseCue | null; hold?: 
     if (cue?.turn) {
       setTurn(cue)
       setTurnLeaving(false)
-      // Tu turno: tus fases esperan a asentarse. El del rival, como siempre: detrás de «Cambio de turno», la más nueva (y la End Phase que esperaba no sale: no llegaba a leerse).
-      setShown(cue.side === 'mine' ? null : cue)
+      // Detrás de «Cambio de turno», la fase más nueva (la Draw Phase si no llegó otra); la End Phase que esperaba no sale: no llegaba a leerse.
+      setShown(cue)
       setLeaving(false)
-      setPending(cue.side === 'mine' ? cue : null)
-    } else if (cue && (cue.settle || (pending && !pending.settle))) {
+      setPending(null)
+    } else if (cue?.settle) {
       setPending(cue)
     } else if (cue) {
       setShown(cue)
@@ -123,7 +122,7 @@ export function PhaseBand({ cue, hold = false }: { cue: PhaseCue | null; hold?: 
     }
   }
 
-  // La que espera entra cuando pasa su rato sin que llegue otra (cada una vuelve a contar) y sin «Cambio de turno» delante: si hay una banda tuya a la vista, cambia de texto.
+  // La que espera entra cuando pasa su rato sin que llegue otra y sin «Cambio de turno» delante: si hay una banda tuya a la vista, cambia de texto.
   useEffect(() => {
     if (!pending || turn) return
     const settle = window.setTimeout(() => {

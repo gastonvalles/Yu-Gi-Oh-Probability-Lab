@@ -119,21 +119,21 @@ describe('PhaseBand', () => {
     expect(bands()).toHaveLength(0)
   })
 
-  it('en tu turno, tras «Cambio de turno» entra sólo la fase en la que te quedás: tu Draw y tu Standby, que pasan solas, no entran para irse', () => {
+  it('en tu turno, tras «Cambio de turno» entra enseguida tu Draw Phase (el robo no llega sin su cartel) y tus fases siguen en la misma banda', () => {
     const view = render(<PhaseBand cue={{ key: 1, phase: 'draw', side: 'mine', turn: true }} />)
 
     leave(TURN_BAND_HOLD_MS, TURN_BAND_MS)
-    // «Cambio de turno» se fue y la Draw Phase espera quieta: llegan la Standby y la Main Phase 1, cada ~250 ms.
-    expect(bands()).toHaveLength(0)
-    advance(150)
-    view.rerender(<PhaseBand cue={{ key: 2, phase: 'standby', side: 'mine' }} />)
-    advance(280)
-    view.rerender(<PhaseBand cue={{ key: 3, phase: 'main1', side: 'mine' }} />)
-    advance(PHASE_BAND_SETTLE_MS - 1)
-    expect(bands()).toHaveLength(0)
-    advance(1)
+    // «Cambio de turno» se fue y, sin demora, la Draw Phase, violeta; la Standby cambia el texto de la misma banda.
     expect(bands()).toHaveLength(1)
-    expect(bands()[0]).toHaveTextContent(/^Main Phase 1$/)
+    expect(bands()[0]).not.toHaveAttribute('data-turn')
+    expect(bands()[0]).toHaveAttribute('data-side', 'mine')
+    expect(bands()[0]).toHaveTextContent(/^Draw Phase$/)
+    const band = bands()[0]!.firstElementChild
+
+    advance(500)
+    view.rerender(<PhaseBand cue={{ key: 2, phase: 'standby', side: 'mine' }} />)
+    expect(bands()[0]).toHaveTextContent(/^Standby Phase$/)
+    expect(bands()[0]!.firstElementChild).toBe(band)
     leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
     expect(bands()).toHaveLength(0)
   })

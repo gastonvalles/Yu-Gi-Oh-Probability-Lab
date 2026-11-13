@@ -23,15 +23,18 @@ const TICK = 50
 
 /**
  * Lo que se ve en un momento: el cartel del rival (sus fases y «Tu turno») o, si no hay, el de tu mesa (el último que salió: el elemento queda, transparente, al terminar), las cartas
- * del campo del rival, tu Kuriboh, tus vidas, el marcador, el aviso del ataque y su mano boca arriba.
+ * del campo del rival, tu Kuriboh, tus vidas, el marcador, el aviso del ataque, su mano boca arriba, la banda que cruza el campo (`PhaseBand`) y cuántas cartas tenés en la mano.
  */
 function frame() {
   // Sin cartel: lo que el lector de pantalla oye de la fase (un `role="status"` oculto junto al botón, que es el que pulsa); se apaga solo cuando termina el aviso.
   const banners = [...document.querySelectorAll('[aria-haspopup="menu"][aria-label^="Fases:"]')].map((button) => button.parentElement?.querySelector('[role="status"]')?.textContent ?? '').filter(Boolean)
   const rivalHand = screen.queryByLabelText(/^Mano del rival/)
   const rival = [...document.querySelectorAll<HTMLElement>('[data-rival-card-id]')].filter((element) => !rivalHand?.contains(element)).map((element) => element.dataset.rivalCardId!)
+  const strip = document.querySelector<HTMLElement>('[data-fx="banner"]')
 
   return {
+    band: strip ? `${strip.hasAttribute('data-turn') ? 'Cambio de turno' : strip.textContent}/${strip.dataset.side}` : '',
+    mine: within(hand()).queryAllByRole('listitem').length,
     banner: banners.at(-1) ?? '',
     rival: [...new Set(rival)].sort().join(','),
     kuriboh: document.querySelector(`[data-card-id="${KURIBOH}"]`) ? 'campo' : '',
@@ -152,6 +155,35 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     expect(new Set(line.filter((item) => item.ms >= rivalTurn && item.ms < back).map((item) => item.turn))).toEqual(new Set(['theirs']))
     expect(cards(back).turn).toBe('mine')
     expect(back - rivalTurn).toBeLessThanOrEqual(5_000)
+  })
+
+  it('el rival pasivo, en la banda del campo: «Cambio de turno», sus cuatro fases, «Cambio de turno» y tus fases, cada una su rato; tu robo, recién con tu Draw Phase a la vista', () => {
+    const line = play(PASSIVE, 'pasivo-banda', 8_000)
+    const bands = line.filter((item, i) => item.band !== '' && item.band !== line[i - 1]?.band)
+
+    expect(bands.map((item) => item.band)).toEqual([
+      'Cambio de turno/theirs',
+      'Draw Phase/theirs',
+      'Standby Phase/theirs',
+      'Main Phase 1/theirs',
+      'End Phase/theirs',
+      'Cambio de turno/mine',
+      'Draw Phase/mine',
+      'Standby Phase/mine',
+      'Main Phase 1/mine',
+    ])
+    // Cada fase se ve lo justo para leerla (la última, hasta que se va).
+    const at = (band: string) => bands.find((item) => item.band === band)!.ms
+    const shown = bands.slice(0, -1).map((item, i) => [item.band, bands[i + 1]!.ms - item.ms] as const)
+
+    expect(shown.filter(([band, ms]) => !band.startsWith('Cambio') && ms < 450)).toEqual([])
+    // Tu robo: con tu Draw Phase en la banda, nunca antes.
+    const drawn = when(line, (now) => now.mine > line[0]!.mine)
+
+    expect(drawn).toBeGreaterThan(at('Draw Phase/mine'))
+    expect(drawn).toBeLessThan(at('Standby Phase/mine'))
+    // Su turno entero, rápido: de su «Cambio de turno» al tuyo, menos de 4 s.
+    expect(at('Cambio de turno/mine') - at('Cambio de turno/theirs')).toBeLessThanOrEqual(4_000)
   })
 
   it('tocar la mesa mientras cuenta su turno lo salta entero (sin carteles en ráfaga): su mesa, tus vidas y el marcador quedan como al final', () => {
