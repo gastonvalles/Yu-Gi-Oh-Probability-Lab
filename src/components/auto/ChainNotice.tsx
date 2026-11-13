@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 
 import { CHAIN_LEAVE_MS, type ChainOutcome, type ChainRowState } from '../../app/auto/chain-feed'
 
-// El catálogo corre la escena con el ritmo real: los valores del núcleo salen de acá (`auto-isolation.test.ts`).
-export { CHAIN_LEAVE_MS, CHAIN_LINGER_MS, chainDwell, chainFeed } from '../../app/auto/chain-feed'
+// El catálogo y el replay corren la escena con el ritmo real: los valores del núcleo salen de acá (`auto-isolation.test.ts`).
+export { CHAIN_LEAVE_MS, CHAIN_LINGER_MS, chainDwell, chainFeed, stepsUpTo } from '../../app/auto/chain-feed'
 import { frameClass, type CardFrame } from '../../app/card-frame'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'

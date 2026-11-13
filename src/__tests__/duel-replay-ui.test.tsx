@@ -76,8 +76,9 @@ describe('la pantalla del replay de un duelo', () => {
     const badges = [...container.querySelectorAll('[data-life-score]')]
     expect(badges).toHaveLength(2)
     expect(screen.queryByTestId('replay-score')).toBeNull()
-    // Las dos manos en abanico: la de arriba y la de abajo.
-    expect(container.querySelectorAll('[data-rival-drop="hand"]')).toHaveLength(2)
+    // Las dos manos en abanico: la de arriba y la de abajo (con la marca de la mano propia: de ahí salen sus vuelos).
+    expect(container.querySelectorAll('[data-rival-drop="hand"]')).toHaveLength(1)
+    expect(container.querySelectorAll('[data-drop="hand"]')).toHaveLength(1)
   })
 
   it('cada cambio de fase sale con la banda de la mesa, del color de quien la pasa (Ana, violeta; Beto, lima), al reproducir o con «Siguiente»; saltar con la línea de tiempo no lo repite', () => {
@@ -164,6 +165,94 @@ describe('la pantalla del replay de un duelo', () => {
       expect(spotlight()).toBeNull()
     } finally {
       vi.useRealTimers()
+    }
+  })
+
+  it('con la cadena guardada (duelo automático): la escena de la cadena en vez de la carta grande, eslabón por eslabón al ritmo de la mesa, y al resolver los medallones donde se activó cada uno; saltar no la muestra', () => {
+    vi.useFakeTimers()
+    const replay = buildDuelReplay({
+      mode: 'solo-auto',
+      view: 'public',
+      players: ['Ana', 'Beto'],
+      starter: 0,
+      mine: { initial: mine, actions: [{ type: 'activate', id: h0 }] },
+      theirs: { initial: createMatState(Array.from({ length: 20 }, (_, i) => `c${i + 1}`), [], 5), acts: [{ action: { type: 'phase', phase: 'standby' }, reveal: {} }] },
+      order: ['mine', 'theirs'],
+      life: [{ at: 0, lp: [8000, 8000] }],
+      nameOf: (code) => (code === 55144522 ? 'Pot of Greed' : 'Ash Blossom'),
+      chain: [
+        { at: 1, kind: 'chain', index: 0, link: { code: 14558127, side: 0, place: [0, 8, 0] } },
+        { at: 1, kind: 'chain', index: 1, link: { code: 55144522, side: 1, place: [1, 4, 2] } },
+        { at: 1, kind: 'solving', index: 1 },
+        { at: 1, kind: 'solved', index: 1 },
+        { at: 1, kind: 'solving', index: 0 },
+        { at: 1, kind: 'solved', index: 0 },
+        { at: 1, kind: 'end', index: -1 },
+      ],
+    })
+    const card = (n: number) => document.querySelector(`[data-chain-card="${n}"]`)
+
+    try {
+      render(<DuelReplayScreen replay={replay} onClose={() => {}} actions={[]} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      // El CL1 entra solo; la carta grande de la mesa no sale.
+      expect(screen.getByTestId('replay-chain')).toBeInTheDocument()
+      expect(card(1)).toHaveAccessibleName(/Ash Blossom/)
+      expect(card(2)).toBeNull()
+      expect(document.querySelector('[data-kind="activate"][data-activation]')).toBeNull()
+      act(() => vi.advanceTimersByTime(700))
+      expect(card(2)).toHaveAccessibleName(/Pot of Greed/)
+      // Se resuelve el CL2: los medallones, el del CL1 en la Zona de Mágicas de abajo y el del CL2 en la Zona de Monstruos de arriba.
+      act(() => vi.advanceTimersByTime(700))
+      expect(document.querySelector('[data-chain-medal="1"]')).not.toBeNull()
+      expect(document.querySelector('[data-chain-medal="2"]')).not.toBeNull()
+      act(() => vi.advanceTimersByTime(900))
+      expect(document.querySelector('[data-chain-medal="2"]')).toBeNull()
+      // Saltar: ni escena ni medallones.
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      fireEvent.keyDown(screen.getByRole('slider', { name: 'Línea de tiempo del replay' }), { key: 'ArrowRight' })
+      expect(screen.queryByTestId('replay-chain')).toBeNull()
+      expect(document.querySelector('[data-chain-medal]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('al avanzar un paso las cartas vuelan como en la mesa (de la mano al campo); saltar no hace volar nada', () => {
+    const original = { animate: Element.prototype.animate, rect: HTMLElement.prototype.getBoundingClientRect, matchMedia: window.matchMedia }
+    const flown: string[] = []
+    // Con movimiento (el `beforeEach` lo reduce) y una mesa con medidas: la mano abajo, lo demás arriba.
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const top = this.dataset.drop === 'hand' ? 600 : 0
+      return { left: 0, top, width: 80, height: 116, right: 80, bottom: top + 116, x: 0, y: top, toJSON: () => ({}) } as DOMRect
+    }
+    Element.prototype.animate = function (this: Element) {
+      if (this instanceof HTMLElement && this.dataset.cardId) flown.push(this.dataset.cardId)
+      return { cancel: () => {}, addEventListener: () => {} } as unknown as Animation
+    }
+
+    try {
+      render(<DuelReplayScreen replay={replayOf('public')} onClose={() => {}} actions={[]} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      flown.length = 0
+      // Ana invoca a Ash Blossom: la carta sale de su mano y vuela a la zona.
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      expect(flown.length).toBeGreaterThan(0)
+      flown.length = 0
+      // Saltar con la línea de tiempo: la mesa cambia, nada vuela.
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      const timeline = screen.getByRole('slider', { name: 'Línea de tiempo del replay' })
+      fireEvent.keyDown(timeline, { key: 'ArrowRight' })
+      fireEvent.keyDown(timeline, { key: 'ArrowRight' })
+      expect(timeline).toHaveAttribute('aria-valuenow', '2')
+      expect(flown).toEqual([])
+    } finally {
+      Element.prototype.animate = original.animate
+      HTMLElement.prototype.getBoundingClientRect = original.rect
+      window.matchMedia = original.matchMedia
     }
   })
 
