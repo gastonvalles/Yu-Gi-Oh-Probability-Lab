@@ -72,7 +72,7 @@ describe('el bloque Índigo de index.css', () => {
   it('va después del de Carbón y no lo reemplaza: Carbón sigue de fábrica (lo que leen los demás tests)', () => {
     expect(CSS.indexOf(":root[data-palette='indigo']")).toBeGreaterThan(CSS.indexOf('--background: #18181c;'))
     expect(CARBON.get('--background')).toBe('#18181c')
-    expect(CARBON.get('--info')).toBe('#b9f500')
+    expect(CARBON.get('--info')).toBe('#67cb3a')
   })
 
   it('cada token (menos la lavanda del @theme) ya existe en Carbón: son los mismos nombres', () => {

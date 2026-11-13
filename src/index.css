@@ -1627,13 +1627,14 @@
     --border: #3a3747;
     --input: #292733;
     --input-hover: #33303f;
-    --primary: #723bfa;
-    --primary-rgb: 114 59 250;
-    --primary-hover: #7f4dfb;
-    --primary-hover-rgb: 127 77 251;
+    /* Carbón con los colores del EVA-01 (las tres muestras de pintura de Gastón: violeta, verde y naranja), sobre el mismo gris oscuro. */
+    --primary: #6e52c0;
+    --primary-rgb: 110 82 192;
+    --primary-hover: #7a5fc8;
+    --primary-hover-rgb: 122 95 200;
     --primary-foreground: #fdffff;
-    --accent: #b69dff;
-    --accent-rgb: 182 157 255;
+    --accent: #bcaaf5;
+    --accent-rgb: 188 170 245;
     --accent-foreground: #18181c;
     --destructive: #d42a35;
     --destructive-rgb: 212 42 53;
@@ -1642,22 +1643,22 @@
     --surface-raised: #292733;
     --surface-hover: #33303f;
     --border-subtle: #2a2833;
-    /* Violeta legible como texto sobre fondo oscuro (el de marca, 3,14:1 sobre el carbón, queda para rellenos y arcos grandes). */
-    --primary-soft: #b69dff;
-    --primary-soft-rgb: 182 157 255;
+    /* Violeta legible como texto sobre fondo oscuro (el de marca, 2,82:1 sobre el carbón, queda para rellenos). */
+    --primary-soft: #bcaaf5;
+    --primary-soft-rgb: 188 170 245;
     /* Lavanda oscura: el fondo de chips, botones secundarios y barras de navegación (la lavanda del diseño, sobre oscuro). */
     --lavender: #292733;
     /* Lavanda al pasar el mouse: más clara que la base (el hover siempre aclara). */
     --lavender-hover: #33303f;
-    --info: #b9f500;
-    --info-rgb: 185 245 0;
+    --info: #67cb3a;
+    --info-rgb: 103 203 58;
     /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
     --success-soft: #7cefb9;
-    --warning-soft: #ffbe66;
+    --warning-soft: #ffc56b;
     --danger-soft: #ff6b6e;
     /* El rojo de un arco (un anillo de un problema, la cola de «sin salida»): el `danger` de la paleta no llega a 3:1 contra la pista. */
     --danger-soft-rgb: 255 107 110;
-    --info-soft: #d2ff5c;
+    --info-soft: #a6e486;
     /* El blanco de las líneas que delimitan las casillas de la mesa (todas iguales, sin zonas de otro color). */
     --field-line: #ffffff;
     --field-line-rgb: 255 255 255;
@@ -1665,23 +1666,23 @@
     /* El Extra Deck y los monstruos Sincro y Enlace: el azul de siempre (las zonas del deck son categorías y se distinguen por color). */
     --handtrap: #3b82f6;
     --handtrap-rgb: 59 130 246;
-    /* Bien / listo: un verde frío (~153°) que se separa de la lima (75°); siempre con ícono o texto. */
+    /* Bien / listo: un verde frío (~153°) que se separa del verde del EVA-01 (101°); siempre con ícono o texto. */
     --success: #2ee08f;
     --success-rgb: 46 224 143;
     /* El verde de un botón lleno con texto blanco (5,33:1; el blanco sobre el verde claro no se lee). */
     --success-solid: #167a4c;
-    /* Ojo / a medio hacer: naranja propio (~35°), lejos de la lima y del violeta (el violeta es de lo tuyo). */
-    --warning: #ff9f1c;
-    --warning-rgb: 255 159 28;
+    /* Ojo / a medio hacer: el naranja del EVA-01 (~37°), lejos del verde y del violeta (el violeta es de lo tuyo). */
+    --warning: #f5a524;
+    --warning-rgb: 245 165 36;
     /* Lo que podés hacer ahora con una carta de la mesa (`can` de `app/card-glow.ts`): un celeste casi blanco, con el peso de los otros brillos; el ámbar queda para lo que se activa o se resuelve. */
     --playable-rgb: 168 236 255;
     --danger: #d42a35;
     --danger-rgb: 212 42 53;
 
-    /* Navegación y tarjeta `hero`: el carbón cargado de violeta (~255°), lo único de la marca en una superficie, con el destino activo en lima (la lima es de la navegación, del rival, de la build B, de los hipervínculos y del foco). */
+    /* Navegación y tarjeta `hero`: el carbón cargado de violeta (~255°), lo único de la marca en una superficie, con el destino activo en verde (el verde es de la navegación, del rival, de la build B, de los hipervínculos y del foco). */
     --nav: #221a3a;
     --nav-raised: #352a55;
-    --nav-active: #b9f500;
+    --nav-active: #67cb3a;
 
     --text-main: var(--foreground);
     --text-muted: #b6b3c6;

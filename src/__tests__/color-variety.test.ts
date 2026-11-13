@@ -42,10 +42,10 @@ describe('los colores no se pierden en el violeta', () => {
     expect(bad).toEqual([])
   })
 
-  it('«ojo» (warning) es naranja, ni violeta ni lima: el violeta es de lo tuyo y la lima es el acento', () => {
+  it('«ojo» (warning) es el naranja del EVA-01, ni violeta ni verde: el violeta es de lo tuyo y el verde es el acento', () => {
     const css = readFileSync(path.join(process.cwd(), 'src', 'index.css'), 'utf8')
 
-    expect(css).toMatch(/--warning: #ff9f1c;/)
-    expect(css).toMatch(/--warning-soft: #ffbe66;/)
+    expect(css).toMatch(/--warning: #f5a524;/)
+    expect(css).toMatch(/--warning-soft: #ffc56b;/)
   })
 })
