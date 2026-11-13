@@ -3,11 +3,14 @@ import { flushSync } from 'react-dom'
 
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, cancelWhenDone } from '../../../app/motion'
 import { setEffects, useEffects } from '../../../app/effects'
+import { BURST, CUT, SPARK } from '../../../app/flipbooks'
 import { useMediaQuery } from '../../../app/use-media-query'
 import { PANEL_LIME } from '../../auto/AutoPanel'
+import { ChainStage, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { CardArt } from '../../CardArt'
 import { Button } from '../../ui/Button'
 import { Callout } from '../../ui/Callout'
+import { Flipbook, FlipbookFrames } from '../../ui/Flipbook'
 import { Heading } from '../../ui/Heading'
 import { Segmented } from '../../ui/Segmented'
 import { ShineFrame } from '../../ui/ShineFrame'
@@ -529,52 +532,17 @@ function Impact({ onDone }: { onDone: () => void }) {
 
 // ——— 4. La conexión de cadena ———
 
-/** Dónde está cada carta (en % de la caja) y en qué orden se encadenan: la tuya, la del rival, la tuya otra vez y la del rival. */
-const CHAIN_SPOTS = [
-  { id: '14558127', left: 28, top: 74 },
-  { id: '23434538', left: 30, top: 26 },
-  { id: '57554544', left: 72, top: 74 },
-  { id: '89631139', left: 70, top: 26 },
+/** Las cartas que se encadenan, en orden: la tuya, la del rival, la tuya otra vez y la del rival. */
+const CHAIN_CARDS = [
+  { id: '46986414', name: 'Dark Magician' },
+  { id: '14558127', name: 'Ash Blossom & Joyous Spring' },
+  { id: '89631139', name: 'Blue-Eyes White Dragon' },
+  { id: '23434538', name: 'Maxx "C"' },
 ]
 
-interface Link {
-  n: number
-  x: number
-  y: number
-  length: number
-  angle: number
-  tx: number
-  ty: number
-}
-
 function ChainSample() {
-  const feel = useFeel()
-  const box = useRef<HTMLDivElement | null>(null)
-  const cards = useRef<Array<HTMLDivElement | null>>([])
-  const [links, setLinks] = useState<Link[]>([])
-
-  const chain = () => {
-    const n = links.length + 1
-    const frame = box.current?.getBoundingClientRect()
-    const center = (index: number) => {
-      const rect = cards.current[index]?.getBoundingClientRect()
-
-      return rect && frame ? { x: rect.left + rect.width / 2 - frame.left, y: rect.top + rect.height / 2 - frame.top } : { x: 0, y: 0 }
-    }
-    if (n > CHAIN_SPOTS.length) {
-      setLinks([])
-      return
-    }
-    const to = center(n - 1)
-    const from = n === 1 ? to : center(n - 2)
-    setLinks((current) => [...current, { n, x: from.x, y: from.y, length: Math.hypot(to.x - from.x, to.y - from.y), angle: (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI, tx: to.x, ty: to.y }])
-  }
-
-  const draw = (element: HTMLDivElement | null) => {
-    if (!element || element.dataset.drawn || feel.reduced) return
-    element.dataset.drawn = 'true'
-    animate(element, [{ scale: '0 1' }, { scale: '1 1' }], { duration: 150, easing: EASE_OUT })
-  }
+  const [count, setCount] = useState(0)
+  const rows: ChainNoticeRow[] = CHAIN_CARDS.slice(0, count).map((card, index) => ({ number: index + 1, mine: index % 2 === 0, name: card.name, art: small(card.id), state: 'chained' }))
 
   return (
     <Specimen
@@ -582,52 +550,19 @@ function ChainSample() {
       layout="column"
       note={
         <>
-          «Encadenar» une la carta anterior con la nueva: una línea que crece desde la de origen en 150 ms (un solo elemento que estira <Tag>scale</Tag> desde un extremo y apunta con{' '}
-          <Tag>rotate</Tag>, el «9-slice»), y el número golpea al llegar (<Tag>animate-feel-hit</Tag>, con pasada). Con «completos», una chispa (el flipbook) en la de destino. La escena grande
-          de la cadena del duelo es otra pieza.
+          La pieza real (<Tag>ChainStage</Tag>, la escena de la cadena del duelo): al encadenar, una línea de energía (<Tag>fx-energia</Tag>, núcleo blanco) une la carta anterior con la nueva de
+          un trazo en 150 ms (<Tag>animate-chain-energy</Tag>: un solo elemento que estira <Tag>scale</Tag> desde su punta y apunta con <Tag>rotate</Tag>), salta la chispa donde toca (el
+          flipbook) y recién después asienta la cadena de metal; todo dentro de los 0,7 s del eslabón. Con «livianos», la línea queda y la chispa no; con movimiento reducido, ninguna.
         </>
       }
     >
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="primary" icon="link" onClick={chain}>
-          {links.length >= CHAIN_SPOTS.length ? 'Volver a empezar' : `Encadenar (${links.length + 1})`}
+        <Button size="sm" variant="primary" icon="link" onClick={() => setCount(count >= CHAIN_CARDS.length ? 0 : count + 1)}>
+          {count >= CHAIN_CARDS.length ? 'Volver a empezar' : `Encadenar (${count + 1})`}
         </Button>
       </div>
-      <div ref={box} className="relative h-64 overflow-hidden bg-chain-veil">
-        {CHAIN_SPOTS.map((spot, index) => (
-          <div
-            key={spot.id}
-            ref={(element) => void (cards.current[index] = element)}
-            style={{ left: `${spot.left}%`, top: `${spot.top}%` }}
-            className={cx('absolute aspect-[421/614] w-14 -translate-1/2 overflow-hidden bg-input', links.length > index && 'shadow-chain-halo')}
-          >
-            <CardArt instant remoteUrl={small(spot.id)} name={spot.id} className="block h-full w-full object-cover" />
-          </div>
-        ))}
-        {links.map((link) => (
-          <div key={link.n}>
-            {link.n > 1 ? (
-              <div
-                ref={draw}
-                aria-hidden
-                style={{ left: link.x, top: link.y - 2, width: link.length, rotate: `${link.angle}deg` }}
-                className="pointer-events-none absolute h-1 origin-left bg-white shadow-[0_0_12px_2px_var(--color-chain-glow)]"
-              />
-            ) : null}
-            {feel.full && !feel.reduced ? (
-              <div aria-hidden className="pointer-events-none absolute size-16 -translate-1/2" style={{ left: link.tx, top: link.ty }}>
-                <Flipbook frames={SPARK_FRAMES} draw={drawSpark} fps={30} autoplay delay={link.n > 1 ? 120 : 0} />
-              </div>
-            ) : null}
-            <span
-              aria-hidden
-              style={{ left: link.tx, top: link.ty, animationDelay: link.n > 1 ? '120ms' : undefined }}
-              className="pointer-events-none absolute -translate-1/2 text-hit font-bold tabular-nums text-white drop-shadow-[0_0_10px_var(--color-chain-glow)] animate-feel-hit motion-reduce:animate-none"
-            >
-              {link.n}
-            </span>
-          </div>
-        ))}
+      <div className="relative flex h-96 items-center justify-center overflow-hidden bg-card-background p-4">
+        {rows.length ? <ChainStage rows={rows} current={-1} /> : <p className="m-0 text-micro text-muted">Sin cadena: tocá «Encadenar».</p>}
       </div>
     </Specimen>
   )
@@ -635,155 +570,14 @@ function ChainSample() {
 
 // ——— 5. Flipbooks ———
 
-type Draw = (index: number, frames: number) => ReactNode
-
-const SPARK_FRAMES = 10
-const SLASH_FRAMES = 10
-const BURST_FRAMES = 12
-
-/** Chispa: un núcleo blanco y ocho rayos dorados que se abren y se apagan. */
-const drawSpark: Draw = (index, frames) => {
-  const p = index / (frames - 1)
-  const grow = Math.min(1, (index + 1) / 3)
-
-  return (
-    <>
-      {Array.from({ length: 8 }, (_, ray) => {
-        const angle = (ray * Math.PI) / 4 + (ray % 2 ? Math.PI / 8 : 0)
-        const inner = 3 + 24 * p
-        const outer = inner + ((ray % 2 ? 8 : 14) * (1 - p) + 2) * grow
-        return (
-          <line
-            key={ray}
-            x1={32 + Math.cos(angle) * inner}
-            y1={32 + Math.sin(angle) * inner}
-            x2={32 + Math.cos(angle) * outer}
-            y2={32 + Math.sin(angle) * outer}
-            strokeWidth={3.5 * (1 - p) + 0.5}
-            strokeLinecap="round"
-            opacity={1 - p * p}
-            className="stroke-fx-destello"
-          />
-        )
-      })}
-      <circle cx={32} cy={32} r={9 * (1 - p) ** 2 * grow + 0.5} className="fill-white" />
-    </>
-  )
-}
-
-/** Corte de energía: una línea diagonal que se dibuja, brilla y se parte en dos. */
-const drawSlash: Draw = (index, frames) => {
-  const [ax, ay, bx, by] = [8, 56, 56, 8]
-  const segment = (x1: number, y1: number, x2: number, y2: number, width: number, opacity = 1, key = 'a') => (
-    <g key={key} opacity={opacity}>
-      <line x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={width * 2.6} strokeLinecap="round" opacity={0.35} className="stroke-fx-energia" />
-      <line x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={width} strokeLinecap="round" className="stroke-white" />
-    </g>
-  )
-
-  if (index < 4) {
-    const t = (index + 1) / 4
-    return segment(ax, ay, ax + (bx - ax) * t, ay + (by - ay) * t, 2 + index * 0.8)
-  }
-  if (index < 7) return segment(ax, ay, bx, by, 5 - (index - 4) * 1.2)
-  const q = (index - 6) / (frames - 6)
-  const gap = 7 * q
-  const [mx, my] = [(ax + bx) / 2, (ay + by) / 2]
-  return (
-    <>
-      {segment(ax - gap, ay - gap, mx - gap, my - gap, 2 * (1 - q) + 0.5, 1 - q, 'a')}
-      {segment(mx + gap, my + gap, bx + gap, by + gap, 2 * (1 - q) + 0.5, 1 - q, 'b')}
-    </>
-  )
-}
-
-/** Carta que estalla: late, destella en blanco y se parte en seis trozos que salen girando, con un anillo rojo de impacto. */
-const drawBurst: Draw = (index, frames) => {
-  const [x, y, w, h] = [20, 15, 24, 34]
-  if (index < 2) {
-    const s = index === 0 ? 1 : 1.08
-    return <rect x={32 - (w * s) / 2} y={32 - (h * s) / 2} width={w * s} height={h * s} strokeWidth={1.5} className="fill-primary stroke-white" />
-  }
-  if (index === 2) {
-    return (
-      <>
-        <circle cx={32} cy={32} r={20} strokeWidth={2} fill="none" opacity={0.8} className="stroke-white" />
-        <rect x={x} y={y} width={w} height={h} className="fill-white" />
-      </>
-    )
-  }
-  const q = (index - 2) / (frames - 3)
-  return (
-    <>
-      {q < 1 ? <circle cx={32} cy={32} r={18 + 16 * q} strokeWidth={2 * (1 - q) + 0.5} fill="none" opacity={(1 - q) * 0.7} className="stroke-fx-impacto" /> : null}
-      {Array.from({ length: 6 }, (_, shard) => {
-        const col = shard % 2
-        const row = Math.floor(shard / 2)
-        const cx0 = x + w / 4 + (col * w) / 2
-        const cy0 = y + h / 6 + (row * h) / 3
-        const length = Math.hypot(cx0 - 32, cy0 - 32) || 1
-        const dx = ((cx0 - 32) / length) * 24 * q
-        const dy = ((cy0 - 32) / length) * 24 * q
-        return (
-          <rect
-            key={shard}
-            x={cx0 - w / 4}
-            y={cy0 - h / 6}
-            width={w / 2}
-            height={h / 3}
-            strokeWidth={1}
-            opacity={1 - q * q}
-            transform={`translate(${dx} ${dy}) rotate(${(shard % 2 ? 1 : -1) * 100 * q} ${cx0} ${cy0})`}
-            className="fill-primary stroke-fx-impacto"
-          />
-        )
-      })}
-    </>
-  )
-}
-
-/** Una tira de cuadros (64 × 64 cada uno, más uno vacío al final: el reposo) que avanza con `steps()` sobre el `translate` de la tira, dentro de una ventana recortada. */
-function Flipbook({ frames, draw, fps, autoplay = false, delay = 0, play = 0 }: { frames: number; draw: Draw; fps: number; autoplay?: boolean; delay?: number; play?: number }) {
-  const strip = useRef<HTMLDivElement | null>(null)
-  const { reduced } = useFeel()
-
-  useEffect(() => {
-    if ((!autoplay && play === 0) || reduced || !strip.current) return
-    const last = `${(-100 * frames) / (frames + 1)}% 0`
-    const running = animate(strip.current, [{ translate: '0 0' }, { translate: last }], { duration: (frames * 1000) / fps, delay, easing: `steps(${frames})`, fill: 'backwards' })
-
-    return () => running.cancel()
-  }, [autoplay, play, reduced, frames, fps, delay])
-
-  return (
-    <div className="relative size-full overflow-hidden">
-      <div ref={strip} className="h-full" style={{ width: `${(frames + 1) * 100}%`, translate: `${(-100 * frames) / (frames + 1)}% 0` }}>
-        <FrameStrip frames={frames} draw={draw} />
-      </div>
-    </div>
-  )
-}
-
-function FrameStrip({ frames, draw, className = 'block h-full w-full' }: { frames: number; draw: Draw; className?: string }) {
-  return (
-    <svg viewBox={`0 0 ${(frames + 1) * 64} 64`} className={className} aria-hidden>
-      {Array.from({ length: frames }, (_, index) => (
-        <g key={index} transform={`translate(${index * 64} 0)`}>
-          {draw(index, frames)}
-        </g>
-      ))}
-    </svg>
-  )
-}
-
+/** Los tres de la app (`app/flipbooks.ts`), con dónde va cada uno. */
 const FLIPBOOKS = [
-  { name: 'Chispa', frames: SPARK_FRAMES, draw: drawSpark },
-  { name: 'Corte de energía', frames: SLASH_FRAMES, draw: drawSlash },
-  { name: 'Carta que estalla', frames: BURST_FRAMES, draw: drawBurst },
+  { name: 'Chispa', book: SPARK, where: 'Donde la línea de energía toca la carta que se encadena (activar).' },
+  { name: 'Corte', book: CUT, where: 'Sobre el medallón del eslabón que queda negado o sin efecto (negar).' },
+  { name: 'Estallido', book: BURST, where: 'Donde estaba el monstruo que se va del campo al Cementerio (destruir o mandar).' },
 ]
 
 function FlipbookSample() {
-  const [fps, setFps] = useState<'24' | '30'>('30')
   const [plays, setPlays] = useState([0, 0, 0])
   const replay = (which: number | null) => setPlays((current) => current.map((count, index) => (which === null || which === index ? count + 1 : count)))
 
@@ -793,34 +587,30 @@ function FlipbookSample() {
       layout="column"
       note={
         <>
-          Tres tiras dibujadas por nosotros (SVG, 64 px por cuadro): la tira entera se corre con <Tag>steps()</Tag> sobre su <Tag>translate</Tag> dentro de una ventana recortada (compositor;
-          no <Tag>background-position</Tag>). Tocá cada una para repetirla; debajo, la tira completa (el «atlas»).
+          Las piezas reales (<Tag>ui/Flipbook</Tag>, dibujos en <Tag>app/flipbooks.ts</Tag>): tiras dibujadas por nosotros (SVG, 64 px por cuadro, 30 por segundo) que se corren con{' '}
+          <Tag>steps()</Tag> sobre su <Tag>translate</Tag> dentro de una ventana recortada (compositor). Pocos y con sentido: el color dice qué pasa (dorado, activar; rojo, se rompe). Con
+          «Efectos: Livianos» o movimiento reducido no corren. Tocá cada una para repetirla; debajo, la tira completa (el «atlas»).
         </>
       }
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" variant="secondary" icon="play" onClick={() => replay(null)}>
-          Reproducir las tres
-        </Button>
-        <Knob label="Cuadros por segundo">
-          <Segmented label="Cuadros por segundo" size="sm" value={fps} onChange={setFps} options={[{ value: '24', label: '24' }, { value: '30', label: '30' }]} />
-        </Knob>
-      </div>
+      <Button size="sm" variant="secondary" icon="play" className="justify-self-start" onClick={() => replay(null)}>
+        Reproducir los tres
+      </Button>
       <div className="grid grid-cols-3 gap-3">
-        {FLIPBOOKS.map((book, index) => (
-          <div key={book.name} className="grid justify-items-center gap-2">
-            <button type="button" aria-label={`Reproducir ${book.name}`} onClick={() => replay(index)} className="size-24 rounded-none bg-background focus-visible:outline-none focus-visible:shadow-focus">
-              <Flipbook frames={book.frames} draw={book.draw} fps={Number(fps)} play={plays[index]} />
+        {FLIPBOOKS.map(({ name, book, where }, index) => (
+          <div key={name} className="grid content-start justify-items-center gap-2">
+            <button type="button" aria-label={`Reproducir ${name}`} onClick={() => replay(index)} className="size-24 rounded-none bg-background focus-visible:outline-none focus-visible:shadow-focus">
+              <Flipbook book={book} play={plays[index]} className="size-full" />
             </button>
             <span className="text-center text-micro text-soft">
-              {book.name} · {book.frames} cuadros
+              {name} · {book.frames} cuadros. {where}
             </span>
           </div>
         ))}
       </div>
       <div className="grid gap-1 border-t border-border-subtle pt-3">
-        {FLIPBOOKS.map((book) => (
-          <FrameStrip key={book.name} frames={book.frames} draw={book.draw} className="block h-auto w-full bg-background" />
+        {FLIPBOOKS.map(({ name, book }) => (
+          <FlipbookFrames key={name} book={book} className="block h-auto w-full bg-background" />
         ))}
       </div>
     </Specimen>

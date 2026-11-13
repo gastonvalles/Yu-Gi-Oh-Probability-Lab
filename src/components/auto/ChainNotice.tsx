@@ -5,10 +5,12 @@ import { CHAIN_LEAVE_MS, chainDwell, chainFeed, nextShown, stepsUpTo, type Chain
 // El catálogo y el replay corren la escena con el ritmo real: los valores del núcleo salen de acá (`auto-isolation.test.ts`).
 export { CHAIN_LEAVE_MS, CHAIN_LINGER_MS, chainDwell, chainFeed, nextShown, stepsUpTo } from '../../app/auto/chain-feed'
 import { frameClass, type CardFrame } from '../../app/card-frame'
+import { SPARK } from '../../app/flipbooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
+import { Flipbook } from '../ui/Flipbook'
 
 /** Un eslabón como lo muestra la cadena: su número, de quién es y la carta. */
 export interface ChainNoticeRow {
@@ -219,16 +221,24 @@ function Links({ links, size = 1, offset = 0 }: { links: ReadonlyArray<{ x: numb
   ))
 }
 
-/**
- * La cadena entre dos cartas, colgando y por encima de ellas. Se dibuja entre los lugares a los que van las cartas, así que entra recién cuando llegaron (`delay-300`, con opacidad) y
- * la que quedó entre los lugares viejos se apaga mientras viajan (`fading`), nunca de golpe. Al empezar a resolverse (`broken`) se corta en el medio: las dos mitades se separan y se
- * apagan (sólo `translate`/`opacity`, en lo que dura la salida de la escena; con movimiento reducido, sólo se apagan).
- */
-function Bond({ number, from, to, fromAt, toAt, broken = false, fading = false }: { number: number; from: Point; to: Point; fromAt: number; toAt: number; broken?: boolean; fading?: boolean }) {
+/** El tramo de `from` a `to` que va de borde a borde de las cartas (cada punta se mete `BOND_TRIM` desde el centro de su lugar). */
+export function trimmed(from: Point, to: Point, fromAt: number, toAt: number): [Point, Point] {
   const length = Math.hypot(to[0] - from[0], to[1] - from[1]) || 1
   const [ux, uy] = [(to[0] - from[0]) / length, (to[1] - from[1]) / length]
-  const start: Point = [from[0] + ux * BOND_TRIM[fromAt]!, from[1] + uy * BOND_TRIM[fromAt]!]
-  const end: Point = [to[0] - ux * BOND_TRIM[toAt]!, to[1] - uy * BOND_TRIM[toAt]!]
+
+  return [
+    [from[0] + ux * BOND_TRIM[fromAt]!, from[1] + uy * BOND_TRIM[fromAt]!],
+    [to[0] - ux * BOND_TRIM[toAt]!, to[1] - uy * BOND_TRIM[toAt]!],
+  ]
+}
+
+/**
+ * La cadena entre dos cartas, colgando y por encima de ellas. Se dibuja entre los lugares a los que van las cartas, así que entra recién cuando llegaron y la línea de energía ya las
+ * unió (`delay-400`, con opacidad) y la que quedó entre los lugares viejos se apaga mientras viajan (`fading`), nunca de golpe. Al empezar a resolverse (`broken`) se corta en el
+ * medio: las dos mitades se separan y se apagan (sólo `translate`/`opacity`, en lo que dura la salida de la escena; con movimiento reducido, sólo se apagan).
+ */
+function Bond({ number, from, to, fromAt, toAt, broken = false, fading = false }: { number: number; from: Point; to: Point; fromAt: number; toAt: number; broken?: boolean; fading?: boolean }) {
+  const [start, end] = trimmed(from, to, fromAt, toAt)
   const links = hangingLinks(start, end, SAG)
   const half = Math.ceil(links.length / 2)
 
@@ -237,7 +247,7 @@ function Bond({ number, from, to, fromAt, toAt, broken = false, fading = false }
       data-chain-bond={number}
       {...(broken ? { 'data-broken': '' } : {})}
       {...(fading ? { 'data-fading': '' } : {})}
-      className={cx('transition-opacity duration-200 ease-out motion-reduce:transition-opacity', fading ? 'opacity-0' : 'opacity-100 delay-300 starting:opacity-0')}
+      className={cx('transition-opacity duration-200 ease-out motion-reduce:transition-opacity', fading ? 'opacity-0' : 'opacity-100 delay-400 starting:opacity-0')}
     >
       {[links.slice(0, half), links.slice(half)].map((piece, i) => (
         <g key={i} className={cx('transition-[translate,opacity] duration-200 ease-out motion-reduce:transition-opacity', broken && (i === 0 ? '-translate-x-3 translate-y-2 opacity-0' : 'translate-x-3 translate-y-2 opacity-0'))}>
@@ -245,6 +255,31 @@ function Bond({ number, from, to, fromAt, toAt, broken = false, fading = false }
         </g>
       ))}
     </g>
+  )
+}
+
+/**
+ * La conexión («Impacto Ligero», módulo C): al encadenarse un eslabón, una línea de energía (`fx-energia`, con su núcleo blanco) une la carta anterior con la nueva de un trazo, de borde
+ * a borde de sus lugares: crece desde la anterior en 150 ms cuando las cartas ya casi llegaron, se queda un instante y se apaga mientras asienta la cadena de metal (`animate-chain-energy`,
+ * 250 a 650 ms de los 700 del eslabón: no alarga `chainDwell`). Un solo elemento HTML que estira `scale` desde su punta y apunta con `rotate` (compositor; en SVG repintaría). Con «Efectos:
+ * Livianos» queda (dice qué se encadena con qué); con movimiento reducido no está.
+ */
+/** Cuándo la línea de energía llega a la carta nueva (lo que espera `animate-chain-energy` más su trazo): ahí salta la chispa (`SPARK`). */
+export const ENERGY_REACH_MS = 400
+
+function EnergyLine({ from, to }: { from: Point; to: Point }) {
+  const [dx, dy] = [to[0] - from[0], to[1] - from[1]]
+
+  return (
+    <span
+      aria-hidden="true"
+      data-chain-energy=""
+      style={{ left: `${(from[0] / 300) * 100}%`, top: `${(from[1] / 400) * 100}%`, width: `${(Math.hypot(dx, dy) / 300) * 100}%`, rotate: `${(Math.atan2(dy, dx) * 180) / Math.PI}deg` }}
+      className="pointer-events-none absolute z-6 -mt-2 h-4 origin-left animate-chain-energy motion-reduce:hidden"
+    >
+      <span className="absolute inset-0 bg-linear-to-b from-transparent via-fx-energia/80 to-transparent" />
+      <span className="absolute inset-x-0 top-1/2 -mt-0.5 h-1 bg-white" />
+    </span>
   )
 }
 
@@ -392,6 +427,8 @@ export function ChainStage({
       ? []
       : [{ key: `${link.number}:${BOND[depth(index - 1)]!.join()}:${BOND[depth(index)]!.join()}`, number: link.number, from: BOND[depth(index - 1)]!, to: BOND[depth(index)]!, fromAt: depth(index - 1), toAt: depth(index) }],
   )
+  // La línea de energía: de la anterior a la que acaba de entrar, mientras las dos están a la vista.
+  const energy = !hidden && rows.length > 1 ? trimmed(BOND[1]!, BOND[0]!, 1, 0) : null
   const [drawn, setDrawn] = useState(bonds)
   const [fading, setFading] = useState<typeof bonds>([])
   const isNow = (key: string) => bonds.some((bond) => bond.key === key)
@@ -435,6 +472,10 @@ export function ChainStage({
             <Bond key={key} {...bond} broken={over} fading={gone} />
           ))}
         </svg>
+        {/* Una por eslabón (su `key`): la animación corre al montarse. */}
+        {energy ? <EnergyLine key={`energy-${rows.length}`} from={energy[0]} to={energy[1]} /> : null}
+        {/* La chispa donde la línea toca la carta nueva, cuando llega: la misma para toda la cadena (cada eslabón la corre de nuevo, `play`), sin montar otra imagen. */}
+        {energy ? <Flipbook play={rows.length} book={SPARK} delay={ENERGY_REACH_MS} center className="absolute z-6 aspect-square w-1/4" style={{ left: `${(energy[1][0] / 300) * 100}%`, top: `${(energy[1][1] / 400) * 100}%` }} /> : null}
         {rows.map((link, index) => {
           const at = pose(index)
           // La que acaba de entrar: adelante y más grande, con su destello alrededor y en su número.

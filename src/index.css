@@ -2140,3 +2140,30 @@
     }
   }
 }
+
+/*
+ * «Impacto Ligero», la cadena (módulo C): la línea de energía que une la carta anterior con la nueva (`ChainNotice.tsx`, `EnergyLine`). Crece desde su punta en 150 ms (a los 250 ms,
+ * cuando las cartas ya casi llegaron), se queda y se apaga mientras asienta la cadena de metal: termina a los 650 ms, dentro de los 700 del eslabón. Sólo `scale` y `opacity`.
+ */
+@theme {
+  --animate-chain-energy: chain-energy 400ms var(--ease-out) 250ms both;
+
+  @keyframes chain-energy {
+    0% {
+      scale: 0 1;
+      opacity: 1;
+    }
+    37.5% {
+      scale: 1 1;
+      opacity: 1;
+    }
+    50% {
+      scale: 1 1;
+      opacity: 1;
+    }
+    100% {
+      scale: 1 1;
+      opacity: 0;
+    }
+  }
+}

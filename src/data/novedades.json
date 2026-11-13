@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-7-cadena-con-energia-e-impactos-en-replays",
+      "date": "2026-11-13",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "La cadena con su línea de energía, y los impactos en replays y videos",
+        "novedades": [
+          "Al encadenar, una línea de energía une la carta nueva con la anterior y deja una chispa donde toca; recién después se asienta la cadena de metal.",
+          "Cuando un eslabón queda negado, su medallón se corta. Cuando un monstruo se va del campo al Cementerio, estalla donde estaba.",
+          "El replay de un duelo y el video que descargás llevan ahora los mismos impactos que la mesa: la pausa del golpe, el anillo y la sacudida del campo."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Con «Efectos: Livianos» la línea de la cadena queda, pero no hay chispa, corte ni estallido.",
+          "En el replay, saltar en la línea de tiempo no dispara impactos; sólo al avanzar de a un paso o reproducir.",
+          "La línea de energía todavía no sale en el replay ni en el video."
+        ]
+      },
+      "en": {
+        "title": "The chain with its energy line, and impacts in replays and videos",
+        "novedades": [
+          "When you chain, an energy line joins the new card to the previous one and leaves a spark where it lands; only then does the metal chain settle.",
+          "When a link is negated, its medallion gets cut. When a monster leaves the field for the Graveyard, it bursts where it stood.",
+          "A duel replay and the video you download now carry the same impacts as the table: the hit pause, the ring and the shake of the field."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "With «Effects: Light» the chain line stays, but there is no spark, cut or burst.",
+          "In the replay, jumping on the timeline doesn't trigger impacts; only stepping or playing does.",
+          "The energy line doesn't show yet in the replay or in the video."
+        ]
+      }
+    },
+    {
       "id": "2026-11-13-6-cartas-con-peso-e-impactos",
       "date": "2026-11-13",
       "tags": [

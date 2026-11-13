@@ -16,9 +16,9 @@ import { chainTimeline, type VideoSpeed } from './video-timeline'
  * (`fieldRect`); los colores, de `--color-chain-*`; el ritmo, de `chainTimeline`. Sólo se dibuja en el lienzo; sin cadena guardada no hay nada (el video sigue con la carta grande).
  */
 
-/** Los tiempos de `ChainStage` (sus clases): la carta viaja 350 ms (`duration-350`) y la nueva espera 100 (`delay-100`); la cadena entre cartas entra 300 ms después (`delay-300`) en 200; el
+/** Los tiempos de `ChainStage` (sus clases): la carta viaja 350 ms (`duration-350`) y la nueva espera 100 (`delay-100`); la cadena entre cartas entra 400 ms después (`delay-400`, pasada la línea de energía) en 200; el
  * velo, la salida y lo que se apaga, 200 (`duration-200`); «CADENA», 300 después de 100; el estallido y los destellos, `animate-fx-flash` (560); el campo baja de más `animate-chain-veil` (700). */
-export const STAGE_MS = { move: 350, newest: 100, bondDelay: 300, fade: 200, wordDelay: 100, word: 300, flash: 560, dim: 700 } as const
+export const STAGE_MS = { move: 350, newest: 100, bondDelay: 400, fade: 200, wordDelay: 100, word: 300, flash: 560, dim: 700 } as const
 
 /** Dónde queda una carta de la escena respecto de su lugar sin correr: cuánto se corre (en fracciones de su ancho y de su alto), cuánto gira (radianes), su escala y su opacidad. */
 export interface StagePose {

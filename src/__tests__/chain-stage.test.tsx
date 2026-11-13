@@ -135,6 +135,54 @@ describe('la cadena en grande', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/^Called by the Grave: Destierra 1 carta$/)
   })
 
+  it('la conexión: una línea de energía une la carta anterior con la nueva, de un trazo y antes de la cadena de metal; sola, corrida o resolviendo, no está', () => {
+    const view = stage([ENGAGE, ASH])
+    const energy = () => [...document.querySelectorAll<HTMLElement>('[data-chain-energy]')]
+
+    expect(energy()).toHaveLength(1)
+    // Crece desde la anterior (su punta) con `scale` y apunta con `rotate`; con movimiento reducido no está. El color, el de energía del documento.
+    expect(energy()[0]).toHaveClass('origin-left', 'animate-chain-energy', 'motion-reduce:hidden', 'pointer-events-none')
+    expect(energy()[0]!.innerHTML).toContain('via-fx-energia')
+    expect(energy()[0]!.style.rotate).toMatch(/deg$/)
+    // La cadena de metal asienta después de la línea (250 + 150 ms).
+    expect(document.querySelector('[data-chain-bond="2"]')).toHaveClass('delay-400')
+    // Donde toca, la chispa (el flipbook): sola, sin «Livianos» ni movimiento reducido.
+    const spark = document.querySelectorAll('[data-chain-stage] [data-flipbook]')
+    expect(spark).toHaveLength(1)
+    expect(spark[0]).toHaveClass('fx-lite:hidden', 'motion-reduce:hidden', 'pointer-events-none')
+    // Cada eslabón nuevo trae su propia línea (se monta de nuevo y su animación vuelve a correr).
+    const first = energy()[0]
+    view.rerender(
+      <Provider store={store}>
+        <ChainStage rows={[ENGAGE, ASH, CALLED]} current={-1} />
+      </Provider>,
+    )
+    expect(energy()).toHaveLength(1)
+    expect(energy()[0]).not.toBe(first)
+    view.rerender(
+      <Provider store={store}>
+        <ChainStage rows={[ENGAGE, ASH]} current={-1} away />
+      </Provider>,
+    )
+    expect(energy()).toHaveLength(0)
+    view.rerender(
+      <Provider store={store}>
+        <ChainStage rows={[ENGAGE, { ...ASH, state: 'solving' }]} current={1} />
+      </Provider>,
+    )
+    expect(energy()).toHaveLength(0)
+    view.unmount()
+    stage([ENGAGE])
+    expect(energy()).toHaveLength(0)
+    const css = readFileSync(path.join(__dirname, '../index.css'), 'utf8')
+    const frames = css.slice(css.indexOf('@keyframes chain-energy'), css.indexOf('}\n  }\n}', css.indexOf('@keyframes chain-energy')))
+    expect(frames.match(/^\s*([a-z-]+):/gm)?.map((line) => line.trim().replace(':', ''))).toEqual(['scale', 'opacity', 'scale', 'opacity', 'scale', 'opacity', 'scale', 'opacity'])
+    // De un trazo en menos de 0,2 s, y terminada dentro de los 700 ms del eslabón.
+    const [, ms, delay] = /--animate-chain-energy: chain-energy (\d+)ms var\(--ease-out\) (\d+)ms both;/.exec(css)!.map(Number)
+    expect(ms! * 0.375).toBeLessThan(200)
+    expect(delay! + ms!).toBeLessThanOrEqual(700)
+  })
+
   it('una activación sola, aunque nadie pueda responder, entra igual con su «1» (sin «CADENA») y se va apenas empieza a resolverse', () => {
     vi.useFakeTimers()
     const view = stage([ENGAGE])
@@ -202,7 +250,7 @@ describe('la cadena en grande', () => {
     const fading = [...document.querySelectorAll('[data-chain-bond][data-fading]')]
     expect(fading.map((bond) => bond.getAttribute('data-chain-bond'))).toEqual(['2'])
     expect(fading[0]).toHaveClass('opacity-0')
-    for (const bond of document.querySelectorAll('[data-chain-bond]:not([data-fading])')) expect(bond).toHaveClass('delay-300', 'starting:opacity-0')
+    for (const bond of document.querySelectorAll('[data-chain-bond]:not([data-fading])')) expect(bond).toHaveClass('delay-400', 'starting:opacity-0')
     act(() => vi.advanceTimersByTime(300))
     expect(document.querySelectorAll('[data-chain-bond][data-fading]')).toHaveLength(0)
   })
@@ -216,6 +264,10 @@ describe('la cadena en grande', () => {
     expect(at(1)).toHaveClass('starting:opacity-0', 'starting:scale-75', 'motion-reduce:transition-opacity')
     expect(at(1)!.style.translate).toBe('-12px 0')
     expect(at(2)!.style.translate).toBe('12px 0')
+    expect(document.querySelector('[data-flipbook]')).toBeNull()
+    // Negado: lo cruza el corte (un flipbook), sin «Livianos» ni movimiento reducido.
+    view.rerender(<ChainBadge medals={[{ ...medal(1), voided: true }, medal(2)]} />)
+    expect(at(1)!.querySelector('[data-flipbook]')).toHaveClass('fx-lite:hidden', 'motion-reduce:hidden')
     view.rerender(<ChainBadge medals={[medal(1)]} />)
     expect(at(1)!.style.translate).toBe('0px 0')
     const leaving = document.querySelector('[data-chain-medal-leaving="2"]')
