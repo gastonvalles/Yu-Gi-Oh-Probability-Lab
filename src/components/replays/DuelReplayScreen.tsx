@@ -9,7 +9,7 @@ import { shuffleDeck } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
-import { ChainStage, chainDwell, chainFeed, outcomeLabel, stepsUpTo } from '../auto/ChainNotice'
+import { ChainStage, chainDwell, chainFeed, nextShown, outcomeLabel, stepsUpTo } from '../auto/ChainNotice'
 import { artOfDrawId } from '../duel/duel-art'
 import { DuelTable, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { LifeBadge } from '../duel/LifeScore'
@@ -88,14 +88,6 @@ interface ChainShown {
   at: number
   from: number
   seen: number
-}
-
-/** Hasta dónde se muestra la cadena después de `seen` mensajes: el siguiente y los que no se dejan ver solos (`chainDwell` 0: un resuelto, el final), como en vivo. */
-function nextShown(steps: readonly ChainStep[], seen: number, due: number): number {
-  let next = Math.min(seen + 1, due)
-
-  while (next < due && chainDwell(steps, next - 1) === 0) next += 1
-  return next
 }
 
 /**

@@ -187,6 +187,17 @@ export function chainDwell(steps: readonly ChainStep[], i: number): number {
   return ((feed?.rows.length ?? 1) > 1 ? CHAIN_SOLVE_MS : CHAIN_ALONE_MS - CHAIN_LINK_MS) + (voided ? CHAIN_READ_MS : 0)
 }
 
+/**
+ * El ritmo de la cadena, en un solo lugar: tras ver `seen` mensajes de los `due` que ya pasaron, hasta dónde se muestra después: el siguiente y los que no se dejan ver solos
+ * (`chainDwell` 0: un resuelto, el final), que salen junto con él. Lo usan la mesa en vivo, el repaso, el replay, el video, la mesa manual de un combo y el catálogo.
+ */
+export function nextShown(steps: readonly ChainStep[], seen: number, due: number): number {
+  let next = Math.min(seen + 1, due)
+
+  while (next < due && chainDwell(steps, next - 1) === 0) next += 1
+  return next
+}
+
 /** Cuántos pasos llegaron hasta la jugada `cursor` de tu mesa (los que se dan por vistos al saltar o al rearmarse). */
 export const stepsUpTo = (steps: readonly ChainStep[], cursor: number) => {
   let count = 0

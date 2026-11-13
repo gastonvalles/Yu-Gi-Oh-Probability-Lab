@@ -3,7 +3,7 @@ import { replayChainSteps, type DuelReplay } from '../../../app/duel-replay'
 import { safeFileName, type SharedCombo } from '../../../app/combo-share'
 import type { MatAction } from '../../../app/practice-mat'
 import { comboChainSteps, type SavedCombo } from '../../../app/saved-combos'
-import { chainDwell, stepsUpTo } from '../../auto/ChainNotice'
+import { chainDwell, nextShown, stepsUpTo } from '../../auto/ChainNotice'
 import { titleOf } from '../duel-replay-text'
 
 /**
@@ -46,13 +46,6 @@ export const stepMs = (action: MatAction, speed: VideoSpeed = VIDEO_PACE, kind: 
 
 /** La cadena, vista desde quien grabó (abajo en el video): la del replay de un duelo o la de un combo grabado en «Jugar solo automático» (sin ella, vacía). */
 export const subjectChain = (subject: VideoSubject): ChainStep[] => (subject.kind === 'duel' ? replayChainSteps(subject.replay, 0) : comboChainSteps(subject.combo))
-
-/** Hasta dónde se muestra la cadena después de `seen` mensajes: el siguiente y los que no se dejan ver solos (`chainDwell` 0), como `nextShown` del reproductor (`DuelReplayScreen`). */
-function nextShown(steps: readonly ChainStep[], seen: number, due: number): number {
-  let next = Math.min(seen + 1, due)
-  while (next < due && chainDwell(steps, next - 1) === 0) next += 1
-  return next
-}
 
 /** Un momento de la cadena dentro de una jugada: `at` ms después de que empezó (a 1×), se ven los primeros `seen` mensajes; `from`, los que ya se veían antes de ella. */
 export interface ChainBeat {

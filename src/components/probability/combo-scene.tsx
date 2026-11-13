@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { actingOf, linksOf, medalsOf } from '../../app/card-glow'
 import { createMatState, isToken } from '../../app/practice-mat'
 import { comboChainSteps, comboTheirReal, comboTheirsAt, type SavedCombo } from '../../app/saved-combos'
-import { ChainStage, chainDwell, chainFeed, outcomeLabel, stepsUpTo } from '../auto/ChainNotice'
+import { ChainStage, chainDwell, chainFeed, nextShown, outcomeLabel, stepsUpTo } from '../auto/ChainNotice'
 import { artOfDrawId } from '../duel/duel-art'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import type { DuelMatLink } from './PracticeMat'
@@ -27,10 +27,7 @@ export function useComboScene(combo: Pick<SavedCombo, 'theirs' | 'chain'> | null
     else {
       const due = stepsUpTo(steps, cursor)
       const stepped = paced !== null && paced.steps === steps && cursor === paced.at + 1
-      let seen = stepped ? stepsUpTo(steps, paced.at) : due
-
-      if (seen < due) seen += 1
-      while (seen < due && chainDwell(steps, seen - 1) === 0) seen += 1
+      const seen = nextShown(steps, stepped ? stepsUpTo(steps, paced.at) : due, due)
       const whole = chainFeed(steps, due)
 
       setPaced({ steps, at: cursor, seen, cut: !stepped, gone: stepped ? paced.gone : whole?.done ? whole.key : -1 })
@@ -42,12 +39,7 @@ export function useComboScene(combo: Pick<SavedCombo, 'theirs' | 'chain'> | null
     const due = stepsUpTo(list, paced.at)
 
     if (paced.seen >= due) return
-    const timer = window.setTimeout(() => {
-      let next = paced.seen + 1
-
-      while (next < due && chainDwell(list, next - 1) === 0) next += 1
-      setPaced((current) => (current === paced ? { ...current, seen: next } : current))
-    }, chainDwell(list, paced.seen - 1))
+    const timer = window.setTimeout(() => setPaced((current) => (current === paced ? { ...current, seen: nextShown(list, paced.seen, due) } : current)), chainDwell(list, paced.seen - 1))
 
     return () => window.clearTimeout(timer)
   }, [paced])

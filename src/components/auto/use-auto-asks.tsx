@@ -6,7 +6,7 @@ import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
 import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { comboExtrasFromAuto } from '../../app/auto/auto-replay'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
-import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainRow, type ChainStep } from '../../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, nextShown, stepsUpTo, type ChainRow, type ChainStep } from '../../app/auto/chain-feed'
 import { frameKindOf, frameOfType, type CardFrame } from '../../app/card-frame'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { rivalAttackInCourse } from '../../app/attack-trail'
@@ -465,13 +465,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     if (reviewing || snap.replaying || !chainDue) return
     const wait = Math.max(0, chainDwell(steps, chainSeen - 1) - (Date.now() - chainShownAt.current))
     const timer = window.setTimeout(() => {
-      // Los que no se dejan ver solos (uno resuelto, el final) se muestran junto con el siguiente.
-      const due = stepsDue(paced.cursor, theirsShown)
-      let next = chainSeen + 1
-
-      while (next < due && chainDwell(steps, next - 1) === 0) next += 1
+      // Los que no se dejan ver solos (uno resuelto, el final) se muestran junto con el siguiente (`chainDue`: el siguiente ya pasó, `chainSeen` < lo debido).
       chainShownAt.current = Date.now()
-      setChainSeen(next)
+      setChainSeen(nextShown(steps, chainSeen, stepsDue(paced.cursor, theirsShown)))
     }, wait)
 
     return () => window.clearTimeout(timer)
@@ -943,10 +939,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     else {
       const due = stepsUpTo(reviewSteps, reviewAt)
       const stepped = reviewChain !== null && reviewAt === reviewChain.at + 1
-      let seen = stepped ? stepsUpTo(reviewSteps, reviewChain.at) : due
-
-      if (seen < due) seen += 1
-      while (seen < due && chainDwell(reviewSteps, seen - 1) === 0) seen += 1
+      const seen = nextShown(reviewSteps, stepped ? stepsUpTo(reviewSteps, reviewChain.at) : due, due)
       const whole = chainFeed(reviewSteps, due)
 
       setReviewChain({ at: reviewAt, seen, cut: !stepped, gone: stepped ? reviewChain.gone : whole?.done ? whole.key : -1 })
@@ -957,12 +950,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     const due = stepsUpTo(reviewSteps, reviewChain.at)
 
     if (reviewChain.seen >= due) return
-    const timer = window.setTimeout(() => {
-      let next = reviewChain.seen + 1
-
-      while (next < due && chainDwell(reviewSteps, next - 1) === 0) next += 1
-      setReviewChain((current) => (current === reviewChain ? { ...current, seen: next } : current))
-    }, chainDwell(reviewSteps, reviewChain.seen - 1))
+    const timer = window.setTimeout(() => setReviewChain((current) => (current === reviewChain ? { ...current, seen: nextShown(reviewSteps, reviewChain.seen, due) } : current)), chainDwell(reviewSteps, reviewChain.seen - 1))
 
     return () => window.clearTimeout(timer)
   }, [reviewChain, reviewSteps])

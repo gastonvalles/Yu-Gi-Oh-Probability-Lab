@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { ChainOutcome, ChainStep } from '../../../app/auto/chain-feed'
-import { CHAIN_LINGER_MS, chainDwell, chainFeed } from '../../auto/ChainNotice'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed, nextShown } from '../../auto/ChainNotice'
 import { frameKindOf, type CardFrame } from '../../../app/card-frame'
 import { ChainStage, outcomeLabel, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { Button } from '../../ui/Button'
@@ -34,14 +34,6 @@ const RUNS = {
 } satisfies Record<string, ChainStep[]>
 const RUN_LABELS: Record<keyof typeof RUNS, string> = { alone: 'Una activación sin respuesta', two: 'Cadena de dos', three: 'Cadena de tres', four: 'Cadena de cuatro', five: 'Cadena de cinco' }
 
-/** Hasta dónde se muestra de una vez (como `use-auto-asks.tsx`): lo que no se deja ver solo sale junto con el siguiente. */
-const nextCount = (steps: readonly ChainStep[], count: number) => {
-  let next = count + 1
-
-  while (next < steps.length && chainDwell(steps, next - 1) === 0) next += 1
-  return next
-}
-
 function ChainStageSample() {
   const [run, setRun] = useState<{ steps: readonly ChainStep[]; count: number; started: number } | null>(null)
   const [took, setTook] = useState<number | null>(null)
@@ -57,7 +49,7 @@ function ChainStageSample() {
         if (end) {
           setTook(Date.now() - run.started)
           setRun(null)
-        } else setRun({ ...run, count: nextCount(run.steps, run.count) })
+        } else setRun({ ...run, count: nextShown(run.steps, run.count, run.steps.length) })
       },
       end ? CHAIN_LINGER_MS : run.count === 0 ? 0 : chainDwell(run.steps, run.count - 1),
     )
