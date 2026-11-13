@@ -14,7 +14,7 @@ export interface AnnounceEntry {
   name: string
   /** El nombre sin mayúsculas ni tildes (`fold`). */
   folded: string
-  data: OcgCardData
+  card: ApiCardSearchResult
 }
 
 /** Los `OPCODE_*` de arquetipo (`constant.lua`): sin `setcode` en el catálogo, el filtro no se puede evaluar acá. */
@@ -24,9 +24,9 @@ export const ANNOUNCE_MAX = 30
 
 export const fold = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase()
 
-/** Las cartas del catálogo que se pueden declarar: sin fichas ni Habilidades (no tienen nombre declarable). */
+/** Las cartas del catálogo que se pueden declarar: sin fichas ni Habilidades (no tienen nombre declarable). Sus datos para el filtro se arman recién al buscar (son ~13 000). */
 export function announceEntries(catalog: readonly ApiCardSearchResult[]): AnnounceEntry[] {
-  return catalog.flatMap((card) => (/Token|Skill/.test(card.cardType) ? [] : [{ code: card.ygoprodeckId, name: card.name, folded: fold(card.name), data: cardData(rowOfApiCard(card.ygoprodeckId, card.name, card)) }]))
+  return catalog.flatMap((card) => (/Token|Skill/.test(card.cardType) ? [] : [{ code: card.ygoprodeckId, name: card.name, folded: fold(card.name), card }]))
 }
 
 /**
@@ -38,7 +38,7 @@ export function announceMatches(entries: readonly AnnounceEntry[], query: string
   const filter = opcodes.map(BigInt)
 
   if (!needle || filter.some((op) => SETCODE_OPS.has(op))) return []
-  const found = entries.filter((entry) => entry.folded.includes(needle) && !skip.has(entry.code) && (filter.length === 0 || matches(entry.data, filter)))
+  const found = entries.filter((entry) => entry.folded.includes(needle) && !skip.has(entry.code) && (filter.length === 0 || matches(cardData(rowOfApiCard(entry.code, entry.name, entry.card)), filter)))
 
   return [...found.filter((entry) => entry.folded.startsWith(needle)), ...found.filter((entry) => !entry.folded.startsWith(needle))].slice(0, ANNOUNCE_MAX)
 }
