@@ -419,7 +419,8 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
           data-panel-grip=""
           aria-label={t('duel.prompt.minimize')}
           title={t('duel.prompt.minimize')}
-          className="absolute left-1/2 top-0 grid h-3 w-16 -translate-x-1/2 place-items-center focus-visible:outline-none focus-visible:shadow-focus"
+          // El dibujo, fino arriba; el toque, de 44 px de alto (sobre el centro del título, que no se toca).
+          className="absolute left-1/2 top-0 grid h-11 w-16 -translate-x-1/2 content-start justify-items-center pt-1 focus-visible:outline-none focus-visible:shadow-focus"
           onClick={() => minimize()}
         >
           <span aria-hidden="true" className="h-1 w-10 bg-muted/50" />
