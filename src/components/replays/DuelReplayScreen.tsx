@@ -4,7 +4,9 @@ import type { ChainStep } from '../../app/auto/chain-feed'
 import { medalsOf } from '../../app/card-glow'
 import { lineCell, railsCell, railsField } from '../../app/duel-rails'
 import { duelReplayAt, replayChainSteps, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
-import { matEffects } from '../../app/mat-effects'
+import { impactOn, shakeOf } from '../../app/field-impact'
+import { matEffects, type MatEffects } from '../../app/mat-effects'
+import { prefersReducedMotion } from '../../app/motion'
 import { isToken } from '../../app/practice-mat'
 import { growHand } from '../../app/practice-hand-layout'
 import { shuffleDeck } from '../../app/shuffle-fx'
@@ -19,7 +21,8 @@ import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { THEIR_HAND, TheirHandSize } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, HAND_ROOM, HAND_TOP_ROOM, PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, matDuelLayout, phoneFieldStyle } from '../probability/compact-field'
 import { MatScene } from '../probability/MatArena'
-import { Spotlight } from '../probability/MatFx'
+import { AttackFx, measureStrike, type Strike } from '../probability/AttackFx'
+import { Spotlight, landingDelay } from '../probability/MatFx'
 import { DESKTOP_AUTO_HAND, DESKTOP_HAND_GAP, MAT_GAP } from '../probability/PracticeMat'
 import { ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from '../probability/ReplayBar'
 import { stepTone } from '../probability/step-tone'
@@ -87,7 +90,27 @@ function activationAt(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>
   return step && spotlight?.kind === 'activate' ? { key: to, side: step[0], id: spotlight.id } : null
 }
 
-/** Los mensajes de la cadena que se muestran: los de la jugada `at` (desde `from`, los que ya se veían antes de ella), de a uno hasta `seen`. */
+/**
+ * El impacto de un paso (`field-impact.ts`), con la misma regla que la mesa: una carta que cae en una zona de monstruo (`matEffects`: la Invocación, con el tono que da la escala de la
+ * sacudida) o un ataque (la espada de la mesa, `AttackFx`, que trae su pausa, su anillo y su sacudida). `mine`: lo hizo el lado de abajo (sus cartas llevan `data-card-id`; las de arriba,
+ * `data-rival-card-id`). Sólo al avanzar de a un paso: saltar no lo trae.
+ */
+type Impact = { key: number; mine: boolean } & ({ landing: NonNullable<MatEffects['landing']>; id: string } | { attack: { id: string; target?: string } })
+
+function impactAt(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>[2], from: number, to: number, bottom: ReplaySide): Impact | null {
+  const step = to === from + 1 ? replay.steps[to - 1] : undefined
+  if (!step) return null
+  const [side, action] = step
+  const mine = side === bottom
+  if (action.type === 'attack') return { key: to, mine, attack: action }
+  const landing = matEffects(duelReplayAt(replay, from, shots).states[side], action).landing
+  if (!landing || landing.spot === 'field') return null
+  const id = duelReplayAt(replay, to, shots).states[side][landing.spot][landing.index]?.id
+
+  return id ? { key: to, mine, landing, id } : null
+}
+
+/** Los mensajes de la cadena que se muestran:los de la jugada `at` (desde `from`, los que ya se veían antes de ella), de a uno hasta `seen`. */
 interface ChainShown {
   at: number
   from: number
@@ -138,6 +161,11 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   // Los vuelos se montan de nuevo al saltar (`ReplayFlights`): nada vuela, sólo se mide. El barajado, el del lado que barajó en este paso.
   const [flights, setFlights] = useState(0)
   const [shuffled, setShuffled] = useState<{ key: number; drop: 'data-drop' | 'data-rival-drop' } | null>(null)
+  const [impact, setImpact] = useState<Impact | null>(null)
+  const [strike, setStrike] = useState<Strike | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  // Lo que sacude un impacto: el campo (como en la mesa, `data-field`); las chapas, las manos y los controles, no.
+  const fieldRef = useRef<HTMLDivElement | null>(null)
   const bottom: ReplaySide = flipped ? 1 : 0
   const top: ReplaySide = flipped ? 0 : 1
   const chainSteps = useMemo(() => replayChainSteps(replay, bottom), [replay, bottom])
@@ -192,12 +220,26 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       setChain(chainAt(chainSteps, from, to))
       const side = shuffleAt(replay, from, to)
       setShuffled(side === null ? null : { key: to, drop: side === bottom ? 'data-drop' : 'data-rival-drop' })
+      setImpact(impactAt(replay, shots, from, to, bottom))
     },
     [replay, shots, chainSteps, bottom],
   )
   useEffect(() => {
     if (shuffled) shuffleDeck(stageRef.current?.querySelectorAll(`[${shuffled.drop}="deck"] [data-layer]`) ?? [])
   }, [shuffled])
+  // El impacto, ya dibujado el paso (se mide en pantalla): la Invocación, desde su casilla cuando la carta la toca (`landingDelay`, el del vuelo de la mesa); el ataque, la espada de la mesa.
+  // Con movimiento reducido, nada (`impactOn` tampoco dibuja).
+  useEffect(() => {
+    if (!impact) return
+    const card = (mine: boolean, id: string) => `[${mine ? 'data-card-id' : 'data-rival-card-id'}="${id}"]`
+    if ('attack' in impact) {
+      const { id, target } = impact.attack
+      if (!prefersReducedMotion()) setStrike(measureStrike({ from: card(impact.mine, id), ...(target === undefined ? {} : { to: card(!impact.mine, target) }), direct: impact.mine ? 'theirs' : 'mine', bounds: rootRef.current }))
+      return
+    }
+    const landed = stageRef.current?.querySelector(card(impact.mine, impact.id))
+    impactOn(landed?.parentElement ?? null, fieldRef.current, shakeOf({ landing: impact.landing.tone }), landingDelay(impact.landing.flies, false))
+  }, [impact])
   useEffect(() => {
     if (!activation) return
     const timer = window.setTimeout(() => setActivation(null), ACTIVATION_MS)
@@ -231,6 +273,8 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     setActivation(null)
     setChain(null)
     setShuffled(null)
+    setImpact(null)
+    setStrike(null)
     setFlights((current) => current + 1)
     setCursor(at)
   }
@@ -347,25 +391,28 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
           {place(geometry.rivalTop, <TheirHandSize value={geometry.rival}><TheirHand count={topView.handCount ?? 0} medals={topView.medals.get('hand') ?? null} label={t('meta.duels.hand', { name: names[top], count: topView.handCount ?? 0 })} /></TheirHandSize>)}
           {place(
             geometry.fieldTop,
-            <div style={geometry.box}>
-              <DuelTable mine={bottomView} theirs={{ ...topView, handCount: undefined }} turn={frame.turn === bottom ? 'mine' : 'theirs'} centerPhase phoneStyle={geometry.style}>
-                {/* La banda espera a que se vaya la carta grande (no se lee partida detrás), y la carta va sin cartel: el texto del paso está en los controles. */}
-                <PhaseBand cue={banner} hold={activation !== null} />
-                {activation ? (
-                  <Spotlight
-                    key={activation.key}
-                    kind="activate"
-                    cards={[{ id: activation.id, name: cardName(replay, frame, activation.side)(activation.id), art: view(activation.side).artOf(activation.id), back: realOf(replay, frame, activation.side, activation.id) === undefined }]}
-                    className="absolute inset-0 z-[120]"
-                  />
-                ) : null}
-                {/* La cadena en grande, sobre el campo como en el duelo (`ChainStage`: su velo tapa la pantalla). */}
-                {chainStage ? (
-                  <div data-testid="replay-chain" className="pointer-events-none absolute inset-0 z-[125] flex items-center justify-center">
-                    <ChainStage key={chainStage.key} rows={chainRows} current={chainStage.current} done={chainStage.done} />
-                  </div>
-                ) : null}
-              </DuelTable>
+            // La carta grande y la cadena, encima del campo y fuera de lo que sacude un impacto (como en la mesa); la banda de la fase va en su fila del campo y se sacude con él.
+            <div className="relative isolate" style={geometry.box}>
+              <div ref={fieldRef} data-field="">
+                <DuelTable mine={bottomView} theirs={{ ...topView, handCount: undefined }} turn={frame.turn === bottom ? 'mine' : 'theirs'} centerPhase phoneStyle={geometry.style}>
+                  {/* La banda espera a que se vaya la carta grande (no se lee partida detrás), y la carta va sin cartel: el texto del paso está en los controles. */}
+                  <PhaseBand cue={banner} hold={activation !== null} />
+                </DuelTable>
+              </div>
+              {activation ? (
+                <Spotlight
+                  key={activation.key}
+                  kind="activate"
+                  cards={[{ id: activation.id, name: cardName(replay, frame, activation.side)(activation.id), art: view(activation.side).artOf(activation.id), back: realOf(replay, frame, activation.side, activation.id) === undefined }]}
+                  className="absolute inset-0 z-[120]"
+                />
+              ) : null}
+              {/* La cadena en grande, sobre el campo como en el duelo (`ChainStage`: su velo tapa la pantalla). */}
+              {chainStage ? (
+                <div data-testid="replay-chain" className="pointer-events-none absolute inset-0 z-[125] flex items-center justify-center">
+                  <ChainStage key={chainStage.key} rows={chainRows} current={chainStage.current} done={chainStage.done} />
+                </div>
+              ) : null}
             </div>,
             true,
           )}
@@ -382,7 +429,8 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   )
 
   return (
-    <div className="mat-square relative isolate h-full min-h-0 overflow-hidden bg-background **:rounded-none!" role="region" aria-label={t('meta.duels.viewer', { title })}>
+    <div ref={rootRef} className="mat-square relative isolate h-full min-h-0 overflow-hidden bg-background **:rounded-none!" role="region" aria-label={t('meta.duels.viewer', { title })}>
+      {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
       {/* El fondo de la mesa (el remolino), como en el duelo y en el repaso de un combo. */}
       <MatScene className="absolute inset-0 -z-10" />
       {desktop ? (

@@ -271,7 +271,9 @@ describe('la pantalla del replay de un duelo', () => {
   })
 
   it('al avanzar un paso las cartas vuelan como en la mesa (de la mano al campo); saltar no hace volar nada', () => {
-    const original = { animate: Element.prototype.animate, rect: HTMLElement.prototype.getBoundingClientRect, matchMedia: window.matchMedia }
+    const original = { animate: Element.prototype.animate, animations: Element.prototype.getAnimations, rect: HTMLElement.prototype.getBoundingClientRect, matchMedia: window.matchMedia }
+    // La sacudida del impacto (`field-impact.ts`) busca la que ya corra.
+    Element.prototype.getAnimations = () => []
     const flown: string[] = []
     // Con movimiento (el `beforeEach` lo reduce) y una mesa con medidas: la mano abajo, lo demás arriba.
     window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
@@ -302,6 +304,7 @@ describe('la pantalla del replay de un duelo', () => {
       expect(flown).toEqual([])
     } finally {
       Element.prototype.animate = original.animate
+      Element.prototype.getAnimations = original.animations
       HTMLElement.prototype.getBoundingClientRect = original.rect
       window.matchMedia = original.matchMedia
     }
