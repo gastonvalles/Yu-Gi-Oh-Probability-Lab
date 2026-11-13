@@ -1,11 +1,12 @@
+import { passcodeOf, type ReplayChainStep } from './duel-replay'
 import { PHASES, type MatAction, type MatPhase, type MatState, type Placed } from './practice-mat'
-import { isNoteKey, MAX_NOTE, normalizeNote, uniqueComboName, type SavedCombo } from './saved-combos'
+import { isNoteKey, MAX_NOTE, normalizeNote, uniqueComboName, type ComboTheirs, type ComboTheirStep, type SavedCombo } from './saved-combos'
 import { createId, isRecord } from './utils'
 
 /**
  * Un combo que viaja dentro de un enlace (`#combo=<datos>`, sin servidor ni cuenta), con un sobre versionado
- * (`{ app, kind: 'combo', v: 1, combo }`, sin el id local; el enlace se escribe en `v: 2`, la forma compacta de más abajo, o en `v: 3` si lleva notas); lo que se escribió con
- * `v: 1`, `v: 2` o `v: 3` se lee para siempre, y `kind` deja lugar para otras cosas (un duelo entero).
+ * (`{ app, kind: 'combo', v: 1, combo }`, sin el id local; el enlace se escribe en `v: 2`, la forma compacta de más abajo, en `v: 3` si lleva notas o en `v: 4` si lleva el
+ * rival o la cadena); lo que se escribió con cualquiera se lee para siempre, y `kind` deja lugar para otras cosas (un duelo entero).
  *
  * Lo que llega es de otra persona: **entrada no confiable**. Antes de decodificar se topa el largo, la descompresión se corta a `MAX_JSON_BYTES` (una bomba de
  * deflate no pasa) y del JSON se copian sólo los campos conocidos, con sus tipos, rangos y largos, y los ids de carta con su patrón (ni `__proto__` ni un host: el arte
@@ -27,8 +28,8 @@ export type ShareError = 'notCombo' | 'newer' | 'broken' | 'tooBig' | 'duel'
 export type ShareResult = { ok: true; combo: SharedCombo } | { ok: false; error: ShareError }
 
 /** El sobre, listo para JSON. */
-export function comboEnvelope({ name, deckName, savedAt, initial, names, actions, auto }: SavedCombo | SharedCombo) {
-  return { app: APP, kind: 'combo', v: COMBO_SHARE_VERSION, combo: { name, deckName, savedAt, initial, names, actions, ...(auto ? { auto } : {}) } }
+export function comboEnvelope({ name, deckName, savedAt, initial, names, actions, auto, theirs, chain }: SavedCombo | SharedCombo) {
+  return { app: APP, kind: 'combo', v: COMBO_SHARE_VERSION, combo: { name, deckName, savedAt, initial, names, actions, ...(auto ? { auto } : {}), ...(theirs ? { theirs } : {}), ...(chain ? { chain } : {}) } }
 }
 
 // ── Enlace ──
@@ -152,9 +153,9 @@ export function parseComboText(text: string): ShareResult {
   }
   if (isRecord(value) && value.app === APP && value.kind === 'duel') return { ok: false, error: 'duel' }
   if (!isRecord(value) || value.app !== APP || value.kind !== 'combo' || typeof value.v !== 'number') return { ok: false, error: 'notCombo' }
-  if (value.v > NOTES_VERSION) return { ok: false, error: 'newer' }
-  if (value.v !== COMBO_SHARE_VERSION && value.v !== COMPACT_VERSION && value.v !== NOTES_VERSION) return { ok: false, error: 'broken' }
-  const combo = value.v === COMBO_SHARE_VERSION ? readCombo(value.combo) : readCompact(value.c, value.v === NOTES_VERSION)
+  if (value.v > DUEL_VERSION) return { ok: false, error: 'newer' }
+  if (value.v !== COMBO_SHARE_VERSION && value.v !== COMPACT_VERSION && value.v !== NOTES_VERSION && value.v !== DUEL_VERSION) return { ok: false, error: 'broken' }
+  const combo = value.v === COMBO_SHARE_VERSION ? readCombo(value.combo) : readCompact(value.c, value.v)
   return combo ? { ok: true, combo } : { ok: false, error: 'broken' }
 }
 
@@ -299,13 +300,102 @@ function notes(value: unknown, actions: number): Record<string, string> | undefi
   return read.length > 0 ? Object.fromEntries(read) : undefined
 }
 
+// ── El rival y la cadena (los usan el combo de «Jugar solo automático» y el replay de un duelo) ──
+
+const REAL = /^card-\d{1,12}-\d{1,4}$/
+const real = (value: unknown): string => (typeof value === 'string' && REAL.test(value) ? value : fail())
+const MAX_REVEAL = 400
+/** id opaco → id real; las claves pasan su patrón (nunca `__proto__`) y van a un objeto nuevo. */
+const reveal = (value: unknown, max = MAX_REVEAL, key: (id: unknown) => string = id): Record<string, string> => {
+  const all = Object.entries(rec(value))
+  return all.length <= max ? Object.fromEntries(all.map(([opaque, realId]) => [key(opaque), real(realId)])) : fail()
+}
+
+export const CHAIN_KINDS = ['chain', 'solving', 'solved', 'negated', 'disabled', 'end'] as const
+export const OUTCOME_KINDS = ['add', 'draw', 'summon', 'grave', 'banish'] as const
+const side = (value: unknown): 0 | 1 => (value === 0 || value === 1 ? value : fail())
+const spot = (value: unknown) => int(value, 0, 0xffff)
+
+function chainStep(value: unknown, steps: number): ReplayChainStep {
+  const v = rec(value)
+  const link = v.link === undefined ? undefined : rec(v.link)
+  const place = link?.place === undefined ? undefined : list(link.place, 3)
+  const outcome = v.outcome === undefined ? undefined : rec(v.outcome)
+  if (place && place.length !== 3) fail()
+
+  return clean({
+    at: int(v.at, 0, steps),
+    kind: oneOf(v.kind, CHAIN_KINDS),
+    index: int(v.index, -1, 63),
+    link: link && clean({ code: int(link.code, 0, 999_999_999_999), side: side(link.side), place: place && ([side(place[0]), spot(place[1]), spot(place[2])] as [0 | 1, number, number]) }),
+    by: v.by === undefined ? undefined : int(v.by, 1, 64),
+    outcome: outcome && { kind: oneOf(outcome.kind, OUTCOME_KINDS), count: int(outcome.count, 1, 99) },
+  })
+}
+
+/** La cadena, en el orden en que llegó (`at` de 0 a `steps`); vacía, no hay. */
+function chain(value: unknown, steps: number, max: number): ReplayChainStep[] | undefined {
+  const items = list(value, max).map((item) => chainStep(item, steps))
+  if (items.some((item, i) => i > 0 && item.at < items[i - 1]!.at)) fail()
+  return items.length > 0 ? items : undefined
+}
+
+/**
+ * Un mensaje de la cadena compacto: `[at, tipo, eslabón, ...]` (el tipo, su lugar en `CHAIN_KINDS`), y detrás, al encadenarse, `carta, lado[, lado del lugar, LOCATION, secuencia]`
+ * (la carta, su lugar en la tabla, o `null` si no se supo); negado o sin efecto, `por`; resuelto, `qué, cuántas` (`OUTCOME_KINDS`).
+ */
+export function chainTuple({ at, kind, index, link, by, outcome }: ReplayChainStep, ref: (id: string) => number): unknown[] {
+  const head = [at, CHAIN_KINDS.indexOf(kind), index]
+  if (link) return [...head, link.code ? ref(`card-${link.code}-1`) : null, link.side, ...(link.place ?? [])]
+  if (by) return [...head, by]
+  return outcome ? [...head, OUTCOME_KINDS.indexOf(outcome.kind), outcome.count] : head
+}
+
+/** La forma larga de un mensaje compacto (`chainTuple`); `chainStep` lo valida. */
+export function chainOfTuple(value: unknown, ref: (n: unknown) => string): unknown {
+  const [at, kind, index, ...more] = list(value, 8)
+  const head = { at, kind: CHAIN_KINDS[int(kind, 0, CHAIN_KINDS.length - 1)], index }
+  if (head.kind === 'chain') {
+    const [card, who, ...place] = more
+    return { ...head, link: { code: card === null ? 0 : (passcodeOf(ref(card)) ?? fail()), side: who, ...(place.length > 0 ? { place } : {}) } }
+  }
+  if (head.kind === 'negated' || head.kind === 'disabled') return more.length > 0 ? { ...head, by: more[0] } : head
+  if (head.kind === 'solved' && more.length > 0) return { ...head, outcome: { kind: OUTCOME_KINDS[int(more[0], 0, OUTCOME_KINDS.length - 1)], count: more[1] } }
+  return more.length > 0 ? fail() : head
+}
+
+const MAX_COMBO_CHAIN = 3000
+
+/** El rival de un combo: su mesa al empezar, lo que se veía y sus jugadas (`[at, jugada, revela?]`, `at` de 0 a `steps` y en orden). */
+function theirs(value: unknown, steps: number): ComboTheirs {
+  const v = rec(value)
+  const items = list(v.steps, MAX_ACTIONS).map((item): ComboTheirStep => {
+    const [at, play, shown, ...rest] = list(item, 3)
+    if (rest.length > 0) fail()
+    return shown === undefined ? [int(at, 0, steps), action(play)] : [int(at, 0, steps), action(play), reveal(shown, 60)]
+  })
+  if (items.some((item, i) => i > 0 && item[0] < items[i - 1]![0])) fail()
+  return { initial: state(v.initial), reveal: reveal(v.reveal), steps: items }
+}
+
 function readCombo(value: unknown): SharedCombo | null {
   try {
     const v = rec(value)
     const savedAt = str(v.savedAt, 40)
     if (Number.isNaN(Date.parse(savedAt))) fail()
     const actions = Array.isArray(v.actions) && v.actions.length <= MAX_ACTIONS ? v.actions.map((entry) => action(entry)) : fail()
-    return clean({ name: str(v.name).trim(), deckName: str(v.deckName), savedAt, initial: state(v.initial), names: names(v.names), actions, auto: opt(v.auto, yes), notes: opt(v.notes, (n) => notes(n, actions.length)) })
+    return clean({
+      name: str(v.name).trim(),
+      deckName: str(v.deckName),
+      savedAt,
+      initial: state(v.initial),
+      names: names(v.names),
+      actions,
+      auto: opt(v.auto, yes),
+      notes: opt(v.notes, (n) => notes(n, actions.length)),
+      theirs: opt(v.theirs, (raw) => theirs(raw, actions.length)),
+      chain: opt(v.chain, (raw) => chain(raw, actions.length, MAX_COMBO_CHAIN)),
+    })
   } catch {
     return null
   }
@@ -322,9 +412,12 @@ function readCombo(value: unknown): SharedCombo | null {
  *
  * v3 es v2 con las notas de los pasos al final: `c: [..., jugadas, auto | null, notas]` (`{ "<jugada>": "texto" }`). Se escribe **sólo si hay alguna nota**: un combo sin notas
  * sigue en v2, byte a byte, y lo lee cualquier versión de la app; una que no conoce v3 dice `newer`.
+ *
+ * v4 suma lo de «Jugar solo automático»: `c: [..., auto | null, notas | null, rival | null, cadena | null]`. Se escribe **sólo si hay rival o cadena** (`expandCompact`).
  */
 const COMPACT_VERSION = 2
 const NOTES_VERSION = 3
+const DUEL_VERSION = 4
 const MAX_TABLE = 1000
 const MAX_COPIES = 99
 const ENUMS = ['atk', 'def', 'set', 'mz', 'emz', 'st', 'field', 'deck', 'extra', 'hand', 'gy', 'banished', 'deck-bottom', 'normal', 'special', 'pendulum', 'scale', 'fusion', 'synchro', 'xyz', 'link', 'discard', 'banish', ...PHASE_IDS] as const
@@ -413,11 +506,19 @@ export function compactTime(savedAt: string): number | string {
 }
 export const readCompactTime = (value: unknown): unknown => (typeof value === 'number' ? new Date(int(value, 0, 8.64e15)).toISOString() : value)
 
-/** El sobre v2, listo para JSON. */
-export function compactEnvelope({ name, deckName, savedAt, initial, actions, auto, notes }: SavedCombo | SharedCombo) {
-  const pack = compactWriter([initial, actions])
+/** El sobre v2 (v3 con notas; v4 con el rival o la cadena), listo para JSON. */
+export function compactEnvelope({ name, deckName, savedAt, initial, actions, auto, notes, theirs, chain }: SavedCombo | SharedCombo) {
+  const pairs = (map: Record<string, string> | undefined) => Object.entries(map ?? {})
+  // La tabla lleva también lo del rival (sus ids y lo que se vio: `pairs`, las claves también) y las cartas de la cadena.
+  const pack = compactWriter([initial, actions, theirs ? [theirs.initial, pairs(theirs.reveal), theirs.steps.map(([, play, shown]) => [play, pairs(shown)])] : [], (chain ?? []).flatMap((item) => (item.link?.code ? [`card-${item.link.code}-1`] : []))])
   const c = [name, deckName, compactTime(savedAt), pack.table, pack.mat(initial), actions.map(pack.action)]
-  if (notes && Object.keys(notes).length > 0) return { app: APP, kind: 'combo', v: NOTES_VERSION, c: [...c, auto ? true : null, notes] }
+  const withNotes = notes && Object.keys(notes).length > 0
+  if (theirs || chain?.length) {
+    const flat = (map: Record<string, string> | undefined) => pairs(map).flatMap(([opaque, realId]) => [pack.ref(opaque), pack.ref(realId)])
+    const rival = theirs ? [pack.mat(theirs.initial), flat(theirs.reveal), theirs.steps.map(([at, play]) => [at, ...pack.action(play)]), theirs.steps.flatMap(([, , shown], n) => (shown ? [[n, ...flat(shown)]] : []))] : null
+    return { app: APP, kind: 'combo', v: DUEL_VERSION, c: [...c, auto ? true : null, withNotes ? notes : null, rival, chain?.length ? chain.map((item) => chainTuple(item, pack.ref)) : null] }
+  }
+  if (withNotes) return { app: APP, kind: 'combo', v: NOTES_VERSION, c: [...c, auto ? true : null, notes] }
   return { app: APP, kind: 'combo', v: COMPACT_VERSION, c: [...c, ...(auto ? [true] : [])] }
 }
 
@@ -491,24 +592,56 @@ export function compactReader(rawTable: unknown) {
   return { codes, ref, refs, mat, action: (raw: unknown) => unpack(raw) }
 }
 
-/** La forma v1 de un combo v2 o v3 (lanza si no se puede armar); `readCombo` la valida entera. v3 trae las notas (y `auto`, `true` o `null`); v2, a lo sumo `auto`. */
-function expandCompact(value: unknown, withNotes: boolean): unknown {
-  const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto, notes] = list(value, withNotes ? 8 : 7)
-  if (withNotes && notes === undefined) fail()
+/**
+ * La forma v1 de un combo v2, v3 o v4 (lanza si no se puede armar); `readCombo` la valida entera. v3 trae las notas (y `auto`, `true` o `null`); v2, a lo sumo `auto`; v4, además,
+ * el rival (`[mesa, reveladas, jugadas como [at, ...la del combo], reveladas por jugada]`, como el replay de un duelo) y la cadena (`chainTuple`), cada uno o `null`.
+ */
+function expandCompact(value: unknown, v: number): unknown {
+  const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto, notes, rawTheirs, rawChain, ...rest] = list(value, v === DUEL_VERSION ? 10 : v === NOTES_VERSION ? 8 : 7)
+  if ((v >= NOTES_VERSION && notes === undefined) || (v === DUEL_VERSION && rawChain === undefined) || rest.length > 0) fail()
   const read = compactReader(rawTable)
-  return { name, deckName, savedAt: readCompactTime(savedAt), initial: read.mat(rawMat), names: {}, actions: list(rawActions, MAX_ACTIONS).map(read.action), auto: withNotes && auto === null ? undefined : auto, notes }
+  const pairs = (flat: unknown, max: number) => {
+    const items = list(flat, max * 2).map(read.ref)
+    return items.length % 2 === 0 ? Object.fromEntries(items.flatMap((item, n) => (n % 2 === 0 ? [[item, items[n + 1]!]] : []))) : fail()
+  }
+  let theirs: unknown
+  if (rawTheirs !== null && rawTheirs !== undefined) {
+    const [mat, shown, plays, reveals, ...more] = list(rawTheirs, 4)
+    if (more.length > 0) fail()
+    const steps: unknown[][] = list(plays, MAX_ACTIONS).map((item) => {
+      const [at, ...play] = list(item, 10)
+      return [at, read.action(play)]
+    })
+    for (const item of list(reveals, MAX_ACTIONS)) {
+      const [n, ...flat] = list(item, 121)
+      steps[int(n, 0, steps.length - 1)]!.push(pairs(flat, 60))
+    }
+    theirs = { initial: read.mat(mat), reveal: pairs(shown, MAX_REVEAL), steps }
+  }
+  return {
+    name,
+    deckName,
+    savedAt: readCompactTime(savedAt),
+    initial: read.mat(rawMat),
+    names: {},
+    actions: list(rawActions, MAX_ACTIONS).map(read.action),
+    auto: v >= NOTES_VERSION && auto === null ? undefined : auto,
+    notes: v === DUEL_VERSION && notes === null ? undefined : notes,
+    theirs,
+    chain: rawChain === null || rawChain === undefined ? undefined : list(rawChain, MAX_COMBO_CHAIN).map((item) => chainOfTuple(item, read.ref)),
+  }
 }
 
-function readCompact(value: unknown, withNotes: boolean): SharedCombo | null {
+function readCompact(value: unknown, v: number): SharedCombo | null {
   try {
-    return readCombo(expandCompact(value, withNotes))
+    return readCombo(expandCompact(value, v))
   } catch {
     return null
   }
 }
 
 /** Lo mismo para otro sobre (el replay de un duelo): una mesa y una jugada se validan igual. Cada lector lanza (`TypeError`) y quien llama lo ataja. */
-export { action as readMatAction, clean as withoutUndefined, fail as invalid, id as readId, int as readInt, oneOf as readOneOf, rec as readRecord, state as readMatState, str as readText }
+export { action as readMatAction, chain as readChain, clean as withoutUndefined, fail as invalid, id as readId, int as readInt, oneOf as readOneOf, rec as readRecord, reveal as readReveal, state as readMatState, str as readText }
 export const SHARE_APP = APP
 
 // ── En el navegador: compartir y bajar ──

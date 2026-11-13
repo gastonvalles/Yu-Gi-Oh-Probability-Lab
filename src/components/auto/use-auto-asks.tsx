@@ -4,6 +4,7 @@ import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../a
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
 import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
 import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { comboExtrasFromAuto } from '../../app/auto/auto-replay'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainRow, type ChainStep } from '../../app/auto/chain-feed'
 import { frameKindOf, frameOfType, type CardFrame } from '../../app/card-frame'
@@ -1283,10 +1284,15 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const aim = shown?.cardPick && shown.title === ATTACK_TARGET_HINT ? attacker : null
   const rivalAim = useMemo(() => (shown ? rivalAttackInCourse(attacks, snap.order, snap.mineActions, snap.theirsActs, snap.lifeSteps) : null), [shown, attacks, snap.order, snap.mineActions, snap.theirsActs, snap.lifeSteps])
 
+  // Guardar un combo: lo del duelo que suma (el campo del rival, la cadena), contado desde la mano de apertura plegada.
+  const { initial: snapInitial, theirsActs, order, chainSteps, names: snapNames } = snap
+  const openingSkip = opening.skip
+  const comboExtras = useCallback((count: number) => comboExtrasFromAuto({ initial: snapInitial, theirsActs, order, chainSteps, names: snapNames }, openingSkip, count), [snapInitial, theirsActs, order, chainSteps, snapNames, openingSkip])
   const dockHighlight = highlight ?? linkHighlight
   const detail = useMemo(() => (desktop ? <DuelCardDock peek={peeked} highlight={dockHighlight} stats={reviewing ? null : dockStats} /> : undefined), [desktop, peeked, dockHighlight, reviewing, dockStats])
   const limits = useMemo(() => (reviewing ? null : <LimitsChip texts={limitTexts} />), [reviewing, limitTexts])
   const mat: AutoAsks['mat'] = {
+    comboExtras,
     undoPlay,
     ...(announcement ? { announcement } : {}),
     areas: DUEL_AREAS,

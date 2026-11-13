@@ -1,5 +1,7 @@
-import { buildDuelReplay, type DuelReplay, type ReplayChainStep, type ReplayMode, type ReplayResult, type ReplaySide, type ReplayView } from '../duel-replay'
+import { buildDuelReplay, passcodeOf, type DuelReplay, type ReplayChainStep, type ReplayMode, type ReplayResult, type ReplaySide, type ReplayView } from '../duel-replay'
 import { publicIds } from '../mat-public'
+import { matReducer, replayMat, type MatAction, type MatState } from '../practice-mat'
+import { comboExtraIds, type ComboExtras, type ComboTheirStep } from '../saved-combos'
 import type { AutoSnapshot } from './auto-session'
 import type { ChainStep } from './chain-feed'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from './end-reasons'
@@ -61,6 +63,67 @@ export function replayFromAuto(snap: Pick<AutoSnapshot, 'initial' | 'mineActions
     ...(result ? { result } : {}),
     chain: replayChain(snap.chainSteps),
   })
+}
+
+/**
+ * Lo que un combo grabado en «Jugar solo automático» guarda del duelo (`ComboExtras`): las jugadas del combo son las tuyas desde la `skip` (la mano de apertura plegada) y son
+ * `count`. El rival, sólo si su campo tuvo algo: su mesa al empezar (con lo de antes del combo aplicado) y sus jugadas hasta que empieza su turno (en el tuyo no cambia de fase),
+ * cada una con cuántas tuyas van antes. La cadena, los mensajes del mismo tramo con `at` en jugadas del combo. Los nombres, los de sus cartas que se vieron. Sólo lo que el
+ * snapshot ya trae: lo que nunca se mostró queda con su id opaco.
+ */
+/** Una carta del rival que nadie vio ni nombró (el adaptador numera las suyas desde `c1`). */
+const HIDDEN = 'c0'
+
+export function comboExtrasFromAuto(snap: Pick<AutoSnapshot, 'initial' | 'theirsActs' | 'order' | 'chainSteps' | 'names'>, skip: number, count: number): ComboExtras {
+  const before: MatAction[] = []
+  const reveal: Record<string, string> = {}
+  const steps: ComboTheirStep[] = []
+  let mine = 0
+  let theirs = 0
+  let end = snap.order.length
+
+  for (let at = 0; at < snap.order.length; at += 1) {
+    if (snap.order[at] === 'mine') {
+      mine += 1
+      if (mine - skip > count) {
+        end = at
+        break
+      }
+      continue
+    }
+    const wire = snap.theirsActs[theirs++]
+    if (!wire) break
+    const step = mine - skip
+    if (step < 1) {
+      before.push(wire.action)
+      Object.assign(reveal, wire.reveal)
+    } else if (wire.action.type === 'phase') {
+      end = at
+      break
+    } else steps.push(Object.keys(wire.reveal).length > 0 ? [step, wire.action, { ...wire.reveal }] : [step, wire.action])
+  }
+
+  const start = replayMat(snap.initial.theirs, before)
+  // ponytail: lo boca abajo de su Deck, su mano y su Extra que ninguna jugada del combo nombra va como `HIDDEN` repetido: se ve cuántas tiene, no cuál es (un id opaco no dice nada) y el
+  // enlace no carga ~60 ids sueltos. Si un día el combo deja tocar su mano o su Deck, que lo nombrado siga con su id (ya lo hace).
+  const named = new Set([...Object.keys(reveal), ...(JSON.stringify(steps).match(/"c\d+"/g) ?? []).map((text) => text.slice(1, -1))])
+  const hide = (ids: readonly string[]) => ids.map((id) => (named.has(id) ? id : HIDDEN))
+  const initial = { ...start, deck: hide(start.deck), hand: hide(start.hand), extra: hide(start.extra) }
+  const onField = (state: MatState) => [...state.mz, ...state.emz, ...state.st, state.field].some(Boolean)
+  let state = initial
+  let touched = onField(state)
+  for (const [, action] of steps) {
+    state = matReducer(state, action)
+    touched ||= onField(state)
+  }
+  const chain = replayChain(snap.chainSteps.flatMap((item) => (item.seq !== undefined && item.seq <= end && item.at - skip >= 1 ? [{ ...item, seq: item.at - skip }] : [])))
+  const comboTheirs = touched ? { initial, reveal, steps } : undefined
+  const names = Object.fromEntries(comboExtraIds({ ...(comboTheirs ? { theirs: comboTheirs } : {}), chain }).flatMap((id) => {
+    const name = snap.names[passcodeOf(id) ?? -1]
+    return name ? [[id, name] as const] : []
+  }))
+
+  return { ...(comboTheirs ? { theirs: comboTheirs } : {}), ...(chain.length > 0 ? { chain } : {}), names }
 }
 
 /** La cadena del replay: cada mensaje en su lugar de `order` (`seq`; el adaptador siempre lo anota) y los lados contados desde quien graba (0). */

@@ -83,7 +83,7 @@ describe('compartir combos', () => {
       ['[]', 'notCombo'],
       [JSON.stringify({ app: 'otra', kind: 'combo', v: 1, combo: shared }), 'notCombo'],
       [JSON.stringify(envelope(shared, { kind: 'duel' })), 'duel'],
-      [JSON.stringify(envelope(shared, { v: 4 })), 'newer'],
+      [JSON.stringify(envelope(shared, { v: 5 })), 'newer'],
       [JSON.stringify(envelope(shared, { v: '1' })), 'notCombo'],
       [JSON.stringify(envelope({ ...shared, actions: [{ type: 'place', id: 'card-1-1', zone: 'mz', index: 99, pos: 'atk' }] })), 'broken'],
       [JSON.stringify(envelope({ ...shared, actions: [{ type: 'nuke' }] })), 'broken'],

@@ -1,4 +1,6 @@
 import {
+  chainOfTuple,
+  chainTuple,
   compactReader,
   compactTime,
   compactWriter,
@@ -6,14 +8,15 @@ import {
   MAX_PAYLOAD_CHARS,
   packPayload,
   parseComboText,
+  readChain,
   readComboLink,
-  readId,
   readInt,
   readMatAction,
   readMatState,
   readOneOf,
   readCompactTime,
   readRecord,
+  readReveal,
   readText,
   SHARE_APP,
   shareLink,
@@ -23,7 +26,7 @@ import {
   type ShareOutcome,
 } from './combo-share'
 import { cleanName } from './duel-protocol'
-import { passcodeOf, type DuelReplay, type ReplayChainStep, type ReplayResult, type ReplayStep } from './duel-replay'
+import type { DuelReplay, ReplayResult, ReplayStep } from './duel-replay'
 import { createId, isRecord } from './utils'
 
 /**
@@ -91,21 +94,6 @@ export function compactReplayEnvelope(replay: DuelReplay, { names: withNames = t
       ...(replay.chain ? [replay.chain.map((item) => chainTuple(item, pack.ref))] : []),
     ],
   }
-}
-
-/** v3: lo que se agregó al final de `d` (la cadena, en `d[14]`; un replay sin cadena se sigue escribiendo v2, que abre cualquier versión). */
-const CHAIN_KINDS = ['chain', 'solving', 'solved', 'negated', 'disabled', 'end'] as const
-const OUTCOME_KINDS = ['add', 'draw', 'summon', 'grave', 'banish'] as const
-
-/**
- * Un mensaje de la cadena en `d[14]`: `[at, tipo, eslabón, ...]` (el tipo, su lugar en `CHAIN_KINDS`), y detrás, al encadenarse, `carta, lado[, lado del lugar, LOCATION, secuencia]`
- * (la carta, su lugar en la tabla, o `null` si no se supo); negado o sin efecto, `por`; resuelto, `qué, cuántas` (`OUTCOME_KINDS`).
- */
-function chainTuple({ at, kind, index, link, by, outcome }: ReplayChainStep, ref: (id: string) => number): unknown[] {
-  const head = [at, CHAIN_KINDS.indexOf(kind), index]
-  if (link) return [...head, link.code ? ref(`card-${link.code}-1`) : null, link.side, ...(link.place ?? [])]
-  if (by) return [...head, by]
-  return outcome ? [...head, OUTCOME_KINDS.indexOf(outcome.kind), outcome.count] : head
 }
 
 /** De dónde salen los ids de la tabla: las mesas, las jugadas, lo revelado y lo propio oculto (los ids reales están sólo ahí). */
@@ -207,16 +195,13 @@ export async function readShared(text: string, nested = false): Promise<SharedRe
 
 // ── Validación: se copian sólo los campos conocidos ──
 
-const REAL = /^card-\d{1,12}-\d{1,4}$/
 const OPAQUE = /^c\d{1,6}$/
-const real = (value: unknown): string => (typeof value === 'string' && REAL.test(value) ? value : invalid())
 const list = <T>(value: unknown, max: number, read: (item: unknown) => T): T[] => (Array.isArray(value) && value.length <= max ? value.map(read) : invalid())
 const entries = (value: unknown, max: number) => {
   const all = Object.entries(readRecord(value))
   return all.length <= max ? all : invalid()
 }
-/** id opaco → id real; las claves pasan su patrón (nunca `__proto__`) y van a un objeto nuevo. */
-const reveal = (value: unknown, max = MAX_REVEAL, key: (id: unknown) => string = readId) => Object.fromEntries(entries(value, max).map(([opaque, id]) => [key(opaque), real(id)]))
+const reveal = (value: unknown, max = MAX_REVEAL, key?: (id: unknown) => string) => readReveal(value, max, key)
 const side = (value: unknown): 0 | 1 => (value === 0 || value === 1 ? value : invalid())
 /** Vacío vale: «Jugar solo» no tiene nombres (la pantalla pone «Duelista» y «Rival» al dibujar). */
 const name = (value: unknown) => cleanName(readText(value, 60))
@@ -228,24 +213,6 @@ function step(value: unknown): ReplayStep {
 }
 
 const MAX_CHAIN = 6000
-const spot = (value: unknown) => readInt(value, 0, 0xffff)
-
-function chainStep(value: unknown, steps: number): ReplayChainStep {
-  const v = readRecord(value)
-  const link = v.link === undefined ? undefined : readRecord(v.link)
-  const place = link?.place === undefined ? undefined : list(link.place, 3, (item) => item)
-  const outcome = v.outcome === undefined ? undefined : readRecord(v.outcome)
-  if (place && place.length !== 3) invalid()
-
-  return withoutUndefined({
-    at: readInt(v.at, 0, steps),
-    kind: readOneOf(v.kind, CHAIN_KINDS),
-    index: readInt(v.index, -1, 63),
-    link: link && withoutUndefined({ code: readInt(link.code, 0, 999_999_999_999), side: side(link.side), place: place && ([side(place[0]), spot(place[1]), spot(place[2])] as [0 | 1, number, number]) }),
-    by: v.by === undefined ? undefined : readInt(v.by, 1, 64),
-    outcome: outcome && { kind: readOneOf(outcome.kind, OUTCOME_KINDS), count: readInt(outcome.count, 1, 99) },
-  })
-}
 
 function result(value: unknown): ReplayResult {
   const v = readRecord(value)
@@ -272,9 +239,7 @@ function readReplay(value: unknown): DuelReplay | null {
     if (life[0]?.[0] !== 0 || life.some((entry, i) => i > 0 && entry[0] < life[i - 1]![0])) invalid()
     const cards = Object.fromEntries(entries(v.cards, MAX_CARDS).map(([code, text]) => [/^\d{1,12}$/.test(code) ? code : invalid(), readText(text)]))
     const view = readOneOf(v.view, ['public', 'mine'] as const)
-    // La cadena, en el orden en que llegó.
-    const chain = v.chain === undefined ? undefined : list(v.chain, MAX_CHAIN, (item) => chainStep(item, steps.length))
-    if (chain?.some((item, i) => i > 0 && item.at < chain[i - 1]!.at)) invalid()
+    const chain = v.chain === undefined ? undefined : readChain(v.chain, steps.length, MAX_CHAIN)
 
     return withoutUndefined({
       savedAt,
@@ -289,7 +254,7 @@ function readReplay(value: unknown): DuelReplay | null {
       // Lo propio que estaba oculto, sólo si se eligió mostrarlo.
       hidden: view === 'mine' && v.hidden !== undefined ? reveal(v.hidden, MAX_HIDDEN, (id) => (typeof id === 'string' && OPAQUE.test(id) ? id : invalid())) : undefined,
       result: v.result === undefined ? undefined : result(v.result),
-      chain: chain && chain.length > 0 ? chain : undefined,
+      chain,
     })
   } catch {
     return null
@@ -337,19 +302,6 @@ function expandCompactReplay(value: unknown): unknown {
     result: rawResult === null ? undefined : { winner, reason },
     chain: rawChain === undefined ? undefined : list(rawChain, MAX_CHAIN, (item) => chainOfTuple(item, read.ref)),
   }
-}
-
-/** La forma v1 de un mensaje de la cadena de `d[14]` (`chainTuple`); `chainStep` lo valida. */
-function chainOfTuple(value: unknown, ref: (n: unknown) => string): unknown {
-  const [at, kind, index, ...more] = list(value, 8, (item) => item)
-  const head = { at, kind: CHAIN_KINDS[readInt(kind, 0, CHAIN_KINDS.length - 1)], index }
-  if (head.kind === 'chain') {
-    const [card, who, ...place] = more
-    return { ...head, link: { code: card === null ? 0 : passcodeOf(ref(card)) ?? invalid(), side: who, ...(place.length > 0 ? { place } : {}) } }
-  }
-  if (head.kind === 'negated' || head.kind === 'disabled') return more.length > 0 ? { ...head, by: more[0] } : head
-  if (head.kind === 'solved' && more.length > 0) return { ...head, outcome: { kind: OUTCOME_KINDS[readInt(more[0], 0, OUTCOME_KINDS.length - 1)], count: more[1] } }
-  return more.length > 0 ? invalid() : head
 }
 
 function readCompactReplay(value: unknown): DuelReplay | null {

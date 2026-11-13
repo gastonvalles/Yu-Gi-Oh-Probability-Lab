@@ -1,7 +1,9 @@
 import { t } from '../i18n'
+import type { ChainStep } from './auto/chain-feed'
+import { replayChainSteps, type ReplayChainStep } from './duel-replay'
 import { isRecord } from './utils'
 import { createId } from './utils'
-import type { MatAction, MatState, RivalHand } from './practice-mat'
+import { FOREIGN_PREFIX, matReducer, type MatAction, type MatState, type RivalHand } from './practice-mat'
 
 const SAVED_COMBOS_KEY = 'ygo-lab:practice-combos'
 
@@ -22,7 +24,41 @@ export interface SavedCombo {
   auto?: true
   /** «Por qué este paso»: una línea por jugada, con el índice de la jugada como clave (el paso N de la lista es la jugada N − 1). Sin notas, no está. */
   notes?: Record<string, string>
+  /** Sólo grabado en «Jugar solo automático» y si el campo del rival tuvo algo durante el combo (una carta que le diste, un Kaiju): su lado. Sin eso, no está. */
+  theirs?: ComboTheirs
+  /** Sólo grabado en «Jugar solo automático» con una cadena: sus mensajes como en el replay de un duelo, con `at` contado en jugadas del combo (se ve en el paso `at`). */
+  chain?: ReplayChainStep[]
 }
+
+/**
+ * El rival de un combo, como lo vio quien grabó: su mesa al empezar el combo, enmascarada como un lado del replay de un duelo (ids opacos `cN`, las cartas tuyas que controla
+ * `f.<tu id>`, `reveal`: lo que ya se veía), y sus jugadas durante el combo: `[at, jugada, lo que mostró]` con `at` jugadas tuyas hechas.
+ */
+export interface ComboTheirs {
+  initial: MatState
+  reveal: Record<string, string>
+  steps: ComboTheirStep[]
+}
+export type ComboTheirStep = [at: number, action: MatAction, reveal?: Record<string, string>]
+
+/** La mesa del rival de un combo en el paso `cursor` (null si el combo no lo trae) y lo que se sabe de sus cartas (id opaco → id real). */
+export function comboTheirsAt(theirs: ComboTheirs | undefined, cursor: number): { state: MatState; known: Record<string, string> } | null {
+  if (!theirs) return null
+  const known = { ...theirs.reveal }
+  let state = theirs.initial
+  for (const [at, action, reveal] of theirs.steps) {
+    if (at > cursor) break
+    state = matReducer(state, action)
+    for (const [opaque, real] of Object.entries(reveal ?? {})) if (!Object.hasOwn(known, opaque)) known[opaque] = real
+  }
+  return { state, known }
+}
+
+/** El id real de una carta del rival de un combo: una tuya que controla (`f.<id>`), la tuya; una suya, lo que se sabe de ella (o null). */
+export const comboTheirReal = (id: string, known: Readonly<Record<string, string>>): string | null => (id.startsWith(FOREIGN_PREFIX) ? id.slice(FOREIGN_PREFIX.length) : (known[id] ?? null))
+
+/** La cadena de un combo como la leen la escena y los medallones (`chainFeed`, `medalsOf`): vos abajo. */
+export const comboChainSteps = (combo: Pick<SavedCombo, 'chain'>): ChainStep[] => replayChainSteps(combo, 0)
 
 /** El largo de una nota (como un tuit corto: una línea que se lee de un vistazo). */
 export const MAX_NOTE = 140
@@ -65,14 +101,16 @@ export function readSavedCombos(): SavedCombo[] {
  * y una nota que no se entiende, también (las demás se quedan).
  */
 export function migrateSavedCombo(combo: SavedCombo): SavedCombo {
-  const { notes: rawNotes, ...rest } = combo
+  const { notes: rawNotes, theirs, chain, ...rest } = combo
   const { rival, ...table } = combo.initial
   const initial: MatState = { ...table, phase: table.phase ?? 'draw', turn: table.turn ?? 1, facedown: table.facedown ?? [], extraUp: table.extraUp ?? [], targeted: table.targeted ?? [], ...(isRivalHand(rival) ? { rival } : {}) }
   const notes = storedNotes(rawNotes, combo.actions.length)
-  return { ...rest, initial, ...(notes ? { notes } : {}) }
+  // El rival y la cadena (sólo los de «Jugar solo automático»): si no se entienden, el combo se abre como uno de antes.
+  return { ...rest, initial, ...(notes ? { notes } : {}), ...(isTheirs(theirs) ? { theirs } : {}), ...(Array.isArray(chain) && chain.length > 0 && chain.every(isRecord) ? { chain } : {}) }
 }
 
 const isRivalHand = (value: unknown): value is RivalHand => isRecord(value) && isStringList(value.hand) && isStringList(value.used)
+const isTheirs = (value: unknown): value is ComboTheirs => isRecord(value) && isRecord(value.initial) && isRecord(value.reveal) && Array.isArray(value.steps) && value.steps.every(Array.isArray)
 
 export function writeSavedCombos(combos: readonly SavedCombo[]): void {
   try {
@@ -233,13 +271,31 @@ interface NewCombo {
   actions: readonly MatAction[]
   nameOf: (id: string) => string
   auto?: boolean
+  /** Lo del duelo automático (`comboExtrasFromAuto`): el rival, la cadena y los nombres de lo suyo que se vio. */
+  extras?: ComboExtras
 }
 
-/** Las cartas de un combo que llevan nombre en `names`: las del deck, el Extra, la mano y la mano del rival. */
-export const comboCardIds = (initial: MatState) => [...initial.deck, ...initial.extra, ...initial.hand, ...(initial.rival?.hand ?? [])]
+/** Lo que un combo de «Jugar solo automático» suma a lo de siempre, sólo si hace falta; `names`, los de las cartas del rival que se vieron (id real → nombre). */
+export interface ComboExtras {
+  theirs?: ComboTheirs
+  chain?: ReplayChainStep[]
+  names?: Record<string, string>
+}
 
-export function createSavedCombo({ name, deckName, initial, actions, nameOf, auto = false }: NewCombo, combos: readonly SavedCombo[], now = new Date()): SavedCombo {
-  const ids = comboCardIds(initial)
+/**
+ * Las cartas de un combo que llevan nombre en `names`: las del deck, el Extra, la mano y la mano del rival; con su campo o su cadena (`extra`), también lo del rival que se
+ * vio y cada carta de la cadena (por su primera copia).
+ */
+export const comboCardIds = (initial: MatState, extra: Pick<SavedCombo, 'theirs' | 'chain'> = {}) => [...initial.deck, ...initial.extra, ...initial.hand, ...(initial.rival?.hand ?? []), ...comboExtraIds(extra)]
+
+/** Lo del rival que se vio y las cartas de la cadena, sin repetir. */
+export const comboExtraIds = ({ theirs, chain }: Pick<SavedCombo, 'theirs' | 'chain'>) => [
+  ...new Set([...Object.values(theirs?.reveal ?? {}), ...(theirs?.steps ?? []).flatMap(([, , reveal]) => Object.values(reveal ?? {})), ...(chain ?? []).flatMap((item) => (item.link?.code ? [`card-${item.link.code}-1`] : []))]),
+]
+
+export function createSavedCombo({ name, deckName, initial, actions, nameOf, auto = false, extras = {} }: NewCombo, combos: readonly SavedCombo[], now = new Date()): SavedCombo {
+  const { theirs, chain, names = {} } = extras
+  const ids = comboCardIds(initial, extras)
 
   return {
     id: createId('combo'),
@@ -247,8 +303,10 @@ export function createSavedCombo({ name, deckName, initial, actions, nameOf, aut
     deckName,
     savedAt: now.toISOString(),
     initial: structuredClone(initial),
-    names: Object.fromEntries(ids.map((id) => [id, nameOf(id)])),
+    names: Object.fromEntries(ids.map((id) => [id, names[id] ?? nameOf(id)])),
     actions: structuredClone([...actions]),
     ...(auto ? { auto: true as const } : {}),
+    ...(theirs ? { theirs: structuredClone(theirs) } : {}),
+    ...(chain?.length ? { chain: structuredClone(chain) } : {}),
   }
 }
