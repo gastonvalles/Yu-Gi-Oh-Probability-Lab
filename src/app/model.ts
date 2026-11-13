@@ -11,6 +11,9 @@ import type {
 
 export type DeckZone = 'main' | 'extra' | 'side'
 
+/** Las tres zonas del deck, en el orden en que se muestran y se recorren. */
+export const DECK_ZONES: readonly DeckZone[] = ['main', 'extra', 'side']
+
 export interface DeckCardInstance {
   instanceId: string
   name: string
