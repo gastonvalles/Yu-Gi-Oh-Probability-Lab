@@ -1,6 +1,55 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-6-colores-menus-replay",
+      "date": "2026-11-12",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Colores nuevos, menús que se adaptan y el replay como la mesa",
+        "novedades": [
+          "El tema Carbón estrena colores: un violeta más profundo, un verde vivo y naranja para los avisos.",
+          "El fondo del duelo sigue la paleta que elegiste: con Índigo, el remolino se ve índigo, violeta y ámbar.",
+          "En el celular, los menús flotantes llevan la pregunta en la barra, muestran las cartas enteras y la ventana sube lo que necesita sin tapar la chapa ni los botones.",
+          "El contenido de la ventana crece y se achica con ella, sin nada escondido; el menú de ataque o defensa y las preguntas de sí o no muestran la carta al medio.",
+          "El replay de un duelo se ve como la mesa: fondo, casillas con forma de carta, las dos manos, chapas y botón de fase. En el video, el remolino de fondo y la fase al medio.",
+          "Si un efecto te muestra la mano del rival (como Mind Haxorz o Ceremonial Bell), ahora la ves.",
+          "Al encadenar se oscurece toda la pantalla, y el cartel del final va sobre una banda propia con la X arriba a la derecha."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Elegir varias cartas ya no se confirma solo: se manda cuando tocás el botón.",
+          "La jugada del replay se lee entera.",
+          "«Jugar otra vez» reparte otra mano."
+        ],
+        "ojo": [
+          "En los replays y en los videos todavía no salen la cadena ni los medallones."
+        ]
+      },
+      "en": {
+        "title": "New colors, adaptive menus and the replay like the table",
+        "novedades": [
+          "The Charcoal theme gets new colors: a deeper violet, a vivid green and orange for alerts.",
+          "The duel background follows the palette you picked: with Indigo, the swirl is indigo, violet and amber.",
+          "On mobile, floating menus put the question in the bar and show whole cards, and the window rises as much as it needs without covering the badge or the buttons.",
+          "The window content grows and shrinks with it, with nothing hidden; the attack or defense menu and the yes-or-no questions show the card in the middle.",
+          "A duel replay looks like the table: background, card-shaped slots, both hands, badges and the phase button. In the video, the swirl in the background and the phase in the middle.",
+          "If an effect shows you the opponent's hand (like Mind Haxorz or Ceremonial Bell), you now see it.",
+          "When you chain, the whole screen darkens, and the end banner sits on its own strip with the X at the top right."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Picking several cards no longer confirms on its own: it is sent when you tap the button.",
+          "The replay move now reads in full.",
+          "\"Play again\" deals a different hand."
+        ],
+        "ojo": [
+          "Replays and videos still do not show the chain or the medallions."
+        ]
+      }
+    },
+    {
       "id": "2026-11-12-5-duelo-escritorio-suavidad",
       "date": "2026-11-12",
       "tags": [
