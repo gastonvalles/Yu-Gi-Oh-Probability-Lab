@@ -15,21 +15,21 @@ const names = (player: 0 | 1) => (player === 0 ? 'Ana' : 'Beto')
 const end = (patch: Partial<SpectatorEnd> = {}): SpectatorEnd => ({ winner: 0, reason: 'life', loser: 1, match: false, wins: [0, 0], over: true, matchWinner: null, ...patch })
 
 describe('la placa', () => {
-  it('es un cuadrado plano con su aro, sin capas 3D, rayos ni grieta, y su color dice qué pasó (carbón sobre lima)', () => {
-    const { container } = render(<DuelMedal tone="win" icon="trophy" />)
-    const plate = container.querySelector<HTMLElement>('[data-medal="win"]')!
+  it('es un cuadrado plano con su aro, sin capas 3D, rayos ni grieta, y su color dice quién empieza (carbón sobre lavanda)', () => {
+    const { container } = render(<DuelMedal tone="second" numeral="2" />)
+    const plate = container.querySelector<HTMLElement>('[data-medal="second"]')!
 
-    expect(plate).toHaveClass('bg-info', 'text-info-foreground', 'outline-4')
+    expect(plate).toHaveClass('bg-accent', 'text-accent-foreground', 'outline-4')
     expect(plate.className).not.toMatch(/rounded|gradient|blur|perspective|preserve-3d/)
-    // Una sola pieza adentro: el ícono (antes, nueve discos, rayos y brillo).
+    // Una sola pieza adentro: el número (antes, nueve discos, rayos y brillo).
     expect(plate.children).toHaveLength(1)
-    expect(render(<DuelMedal tone="lose" icon="flag" />).container.querySelector('[data-medal="lose"]')).toHaveClass('bg-danger')
+    expect(render(<DuelMedal tone="first" numeral="1" />).container.querySelector('[data-medal="first"]')).toHaveClass('bg-primary')
     expect(render(<DuelMedal tone="first" numeral="1" />).container.querySelector('[data-medal="first"]')).toHaveTextContent('1')
     expect(render(<DuelMedal tone="second" numeral="2" />).container.querySelector('[data-medal="second"]')).toHaveTextContent('2')
   })
 
   it('entra una vez, nada en bucle, y se apaga con prefers-reduced-motion', () => {
-    const { container } = render(<DuelMedal tone="win" icon="trophy" />)
+    const { container } = render(<DuelMedal tone="first" numeral="1" />)
 
     for (const animated of container.querySelectorAll('[class*="animate-"]')) {
       expect(animated.className).toMatch(/motion-reduce:animate-none/)

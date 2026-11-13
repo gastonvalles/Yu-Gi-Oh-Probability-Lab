@@ -1113,7 +1113,7 @@ function BannerSamples() {
         <div className="flex flex-wrap items-start justify-center gap-10">
           {MEDALS.map((medal) => (
             <div key={medal.tone} className="grid justify-items-center gap-4">
-              <DuelMedal tone={medal.tone} size="md" numeral={medal.numeral} />
+              <DuelMedal tone={medal.tone} numeral={medal.numeral} />
               <Tag>{medal.label}</Tag>
             </div>
           ))}
