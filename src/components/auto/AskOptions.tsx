@@ -44,6 +44,8 @@ interface AskOptionsProps {
   of?: string
   /** La carta de la que se habla (la posición: la que se coloca), al medio, entre las opciones. */
   card?: { name: string; art: string | null }
+  /** Sólo el catálogo lo fuerza (la ventana en su marco); en la mesa, según el ancho. */
+  variant?: 'floating'
 }
 
 /** El dibujo de una posición (`select_position`: el valor de `POSITION`): la carta parada (ataque) o acostada (defensa), boca arriba o con el dorso. */
@@ -66,7 +68,7 @@ const LONG_LABEL = 22
  * de una carta (`Options`: de a dos por fila, `menuitem`) y un toque contesta. Con `{ count }`, pastillas que se prenden en lima (`aria-pressed`) y bajan de renglón (los 25 Tipos a la vez): con
  * `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan, y el contador va sólo con un total mayor que 1. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel, stacked, of, card }: AskOptionsProps) {
+export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel, stacked, of, card, variant }: AskOptionsProps) {
   const leaving = useLeaving()
   const whyId = useId()
   const [chosen, setChosen] = useState<string[]>([])
@@ -98,6 +100,7 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
   return (
     <AutoPanel
       kind="options"
+      variant={variant}
       label={title}
       {...(why ? { describedBy: whyId } : {})}
       focus={mode === 'one' ? '[role="menuitem"]' : '[aria-pressed]'}
