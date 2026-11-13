@@ -46,11 +46,11 @@ interface Drag {
 }
 
 /**
- * El arrastre de una hoja de abajo (`panelRef`: la hoja que se corre; `strip`, lo que queda a la vista bajada y `startLowered`, si arranca bajada). Devuelve si está bajada (y cómo cambiarlo), lo que va en su franja de arriba (`handlers`, que pone `BottomSheet`), el `style` de la
+ * El arrastre de una hoja de abajo (`panelRef`: la hoja que se corre; `strip`, lo que queda a la vista bajada). Devuelve si está bajada (y cómo cambiarlo), lo que va en su franja de arriba (`handlers`, que pone `BottomSheet`), el `style` de la
  * hoja y la ref del asa: al bajarla, si el foco estaba en lo que queda tapado (que pasa a ser inerte), va al asa, que sigue a la vista (y el teclado del celular se cierra).
  */
-export function useSheetDrag(panelRef: RefObject<HTMLElement | null>, strip = STRIP_PX, startLowered = false) {
-  const [lowered, setLowered] = useState(startLowered)
+export function useSheetDrag(panelRef: RefObject<HTMLElement | null>, strip = STRIP_PX) {
+  const [lowered, setLowered] = useState(false)
   // Lo arrastrado (px) mientras dura el arrastre; `null`, quieta.
   const [offset, setOffset] = useState<number | null>(null)
   const drag = useRef<Drag | null>(null)
