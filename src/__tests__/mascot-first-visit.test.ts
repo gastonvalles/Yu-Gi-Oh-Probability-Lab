@@ -37,10 +37,10 @@ describe('las mascotas la primera vez', () => {
     expect(await load()).toEqual(['winged-kuriboh'])
   })
 
-  it('quien tenía su mascota de antes (la versión con una sola) también la conserva', async () => {
+  it('lo guardado por la versión con una sola mascota ya no cuenta: es una primera vez', async () => {
     window.matchMedia = media(false)
     localStorage.setItem('ygo-lab:mascot-id', 'cupsy')
 
-    expect(await load()).toEqual(['cupsy'])
+    expect(await load()).toEqual([])
   })
 })

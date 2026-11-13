@@ -204,6 +204,29 @@ describe('Codec: reglas apagadas', () => {
 
     expect(fromPortableConfig(viejo).patterns[0]).not.toHaveProperty('enabled')
   })
+
+  it('una regla del formato de antes de marzo se descarta sola: el deck y las reglas de hoy se conservan', () => {
+    const hoy = toPortableConfig({ ...estadoConUnaCarta(CARTA_SIN_ESCALA), patterns: [regla('de hoy')] })
+    const viejas = [
+      { name: 'requirements', category: 'bad', matchMode: 'at-least', minimumMatches: 2, allowSharedCards: true, requirements: [{ source: 'cards', cards: ['Carta'], count: 1 }] },
+      { name: 'source', kind: 'opening', conditions: [{ source: 'group', groupKey: { type: 'role', value: 'starter' }, quantity: 1 }] },
+      { name: 'card', kind: 'opening', conditions: [{ card: 'No está en el Main', quantity: 1 }] },
+    ]
+    const restored = fromPortableConfig(JSON.parse(JSON.stringify({ ...hoy, patterns: [...viejas, ...hoy.patterns] })))
+
+    expect(restored.patterns.map((pattern) => pattern.name)).toEqual(['de hoy'])
+    expect(restored.deckBuilder.main).toHaveLength(1)
+  })
+
+  it('una condición vacía (sin filtro) vuelve vacía y un filtro que ya no existe la deja para revisar', () => {
+    const vacia = regla('vacía', { conditions: [{ id: 'c', matcher: null, quantity: 1, kind: 'include', distinct: false }] })
+    expect(guardarYLeer({ ...estadoConUnaCarta(CARTA_SIN_ESCALA), patterns: [vacia] }).patterns[0]).toMatchObject({ needsReview: false, conditions: [{ matcher: null }] })
+
+    const hoy = toPortableConfig({ ...estadoConUnaCarta(CARTA_SIN_ESCALA), patterns: [regla('rol borrado')] })
+    const conRolBorrado = { ...hoy, patterns: [{ ...hoy.patterns[0]!, conditions: [{ ...hoy.patterns[0]!.conditions[0]!, matcher: { type: 'role', value: 'tech' } }] }] }
+    const restored = fromPortableConfig(JSON.parse(JSON.stringify(conRolBorrado)))
+    expect(restored.patterns[0]).toMatchObject({ needsReview: true, conditions: [{ matcher: null }] })
+  })
 })
 
 /** El estado de la app sobrevive a pasar por la configuración portable (exportar e importar). */

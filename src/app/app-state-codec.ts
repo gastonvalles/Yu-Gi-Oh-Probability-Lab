@@ -4,7 +4,6 @@ import { buildGenesysCardInfo } from './genesys-format'
 import { normalizeRuleName } from './pattern-presets'
 import { parseCardAttribute } from './card-attributes'
 import {
-  createMatcherFromGroupKey,
   createCardPoolMatcher,
   normalizeHandPatternCategory,
   normalizePatternLogic,
@@ -12,28 +11,19 @@ import {
   normalizeTurnContext,
 } from './patterns'
 import {
-  isRetiredCardRole,
   normalizeCardOriginKey,
-  resolveStoredCardOrigin,
   normalizeCardRoleKey,
-  parseStoredGroupKey,
 } from './deck-groups'
 import type {
   ApiCardReference,
-  CardOrigin,
   CardRole,
-  HandPattern,
-  HandPatternCategory,
   Matcher,
   PatternCondition,
-  RequirementSource,
 } from '../types'
 import type { AppState, PortableCondition, PortableConfig } from './model'
-import { deriveMainDeckCardsFromZone } from './calculator-state'
 import {
   createId,
   isRecord,
-  normalizeName,
   parseArray,
   parseDeckFormat,
   parseNullableDisplayString,
@@ -111,65 +101,54 @@ export function fromPortableConfig(value: unknown): AppState {
     isEditingDeck: true,
   }
 
-  const derivedMainCards = deriveMainDeckCardsFromZone(deckBuilder.main)
-  const cardIdsByName = new Map(derivedMainCards.map((card) => [normalizeName(card.name), card.id]))
   const patternsRaw = parseArray(value.patterns, 'patterns')
 
-  const patterns = patternsRaw.map((rawPattern, index) => {
+  const patterns = patternsRaw.flatMap((rawPattern, index) => {
     if (!isRecord(rawPattern)) {
       throw new Error(t('deck.codec.invalidPattern', { number: index + 1 }))
     }
 
+    // Una regla del formato de antes de marzo (`requirements`, condiciones sin `matcher`) ya no se lee: se descarta sola.
+    if (!Array.isArray(rawPattern.conditions) || rawPattern.conditions.some((raw) => isRecord(raw) && !('matcher' in raw))) {
+      return []
+    }
+
     const patternName = parseRequiredString(rawPattern.name, `patterns[${index}].name`)
-    const kind = parsePatternKind(rawPattern.kind ?? rawPattern.category)
-    const turnContext = normalizeTurnContext(rawPattern.turnContext)
-    const { logic, minimumConditionMatches } = parsePatternLogicFields(rawPattern)
-    const reusePolicy = parsePatternReusePolicy(rawPattern)
-    const conditionsRaw = parseArray(
-      rawPattern.conditions ?? rawPattern.requirements,
-      `patterns[${index}].conditions`,
-    )
     let needsReview = rawPattern.needsReview === true
 
-    const conditions = conditionsRaw.map<PatternCondition>((rawCondition, conditionIndex) => {
+    const conditions = rawPattern.conditions.map<PatternCondition>((rawCondition, conditionIndex) => {
       if (!isRecord(rawCondition)) {
         throw new Error(t('deck.codec.invalidCondition', { condition: conditionIndex + 1, pattern: index + 1 }))
       }
 
-      const { matcher, needsReview: matcherNeedsReview } = parseConditionMatcher(
-        rawCondition,
-        cardIdsByName,
-        patternName,
-      )
-      needsReview = needsReview || matcherNeedsReview
+      const matcher = parseMatcher(rawCondition.matcher)
+      // Un filtro que ya no existe (un rol borrado) deja la condición vacía y la regla para revisar.
+      needsReview = needsReview || (matcher === null && rawCondition.matcher != null)
 
       return {
         id: createId('req'),
         matcher,
-        quantity: parseRequiredInteger(
-          rawCondition.quantity ?? rawCondition.count,
-          `patterns[${index}].conditions[${conditionIndex}].quantity`,
-        ),
+        quantity: parseRequiredInteger(rawCondition.quantity, `patterns[${index}].conditions[${conditionIndex}].quantity`),
         kind: rawCondition.kind === 'exclude' ? 'exclude' : 'include',
         distinct: rawCondition.distinct === true,
       }
     })
 
-    return {
+    return [{
       id: createId('pattern'),
       name: patternName,
-      kind,
-      turnContext,
-      logic,
-      minimumConditionMatches,
-      reusePolicy,
+      kind: normalizeHandPatternCategory(rawPattern.kind),
+      turnContext: normalizeTurnContext(rawPattern.turnContext),
+      logic: normalizePatternLogic(rawPattern.logic),
+      minimumConditionMatches: parseOptionalInteger(rawPattern.minimumConditionMatches, 1),
+      reusePolicy: normalizeReusePolicy(rawPattern.reusePolicy),
       needsReview,
       ...(rawPattern.ignoresDraw === true ? { ignoresDraw: true } : {}),
       ...(rawPattern.rescuesCards === true ? { rescuesCards: true } : {}),
       ...(typeof rawPattern.systemRuleId === 'string' && rawPattern.systemRuleId ? { systemRuleId: rawPattern.systemRuleId } : {}),
       ...(rawPattern.enabled === false ? { enabled: false } : {}),
       conditions,
-    }
+    }]
   })
 
   return {
@@ -196,7 +175,7 @@ function parseDeckZone(value: unknown, fieldName: string) {
 
     const name = parseRequiredString(item.name, `${fieldName}[${index}].name`)
     const { roles, needsReview: hasRoleReviewPending } = parseCardRoles(item.roles)
-    const { origin, needsReview: hasOriginReviewPending } = parseCardOrigin(item.origin, roles)
+    const origin = normalizeCardOriginKey(item.origin)
 
     return {
       instanceId: createId('deck-card'),
@@ -204,7 +183,7 @@ function parseDeckZone(value: unknown, fieldName: string) {
       apiCard: parseApiCardReference(item.apiCard, `${fieldName}[${index}].apiCard`, name),
       origin,
       roles,
-      needsReview: item.needsReview === true || hasRoleReviewPending || hasOriginReviewPending,
+      needsReview: item.needsReview === true || hasRoleReviewPending || origin === null,
     }
   })
 }
@@ -280,15 +259,6 @@ function parseGenesysInfo(value: unknown, cardName: string): ApiCardReference['g
   }
 }
 
-function parseRequirementCardNames(value: Record<string, unknown>, fieldName: string): string[] {
-  if (typeof value.card === 'string') {
-    return [parseRequiredString(value.card, `${fieldName}.card`)]
-  }
-
-  const cards = parseArray(value.cards, `${fieldName}.cards`)
-  return cards.map((card, index) => parseRequiredString(card, `${fieldName}.cards[${index}]`))
-}
-
 function parseOptionalInteger(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) ? value : fallback
 }
@@ -305,10 +275,6 @@ function parseCardRoles(value: unknown): { roles: CardRole[]; needsReview: boole
   let needsReview = false
 
   for (const entry of value) {
-    if (isRetiredCardRole(entry)) {
-      continue
-    }
-
     const normalizedRole = normalizeCardRoleKey(entry)
 
     if (!normalizedRole) {
@@ -325,164 +291,6 @@ function parseCardRoles(value: unknown): { roles: CardRole[]; needsReview: boole
     roles,
     needsReview,
   }
-}
-
-function parseCardOrigin(value: unknown, roles: readonly CardRole[]): { origin: CardOrigin | null; needsReview: boolean } {
-  const origin = resolveStoredCardOrigin(value, roles)
-
-  return {
-    origin,
-    needsReview: origin === null,
-  }
-}
-
-function parsePatternKind(value: unknown): HandPatternCategory {
-  return normalizeHandPatternCategory(value as HandPatternCategory | 'good' | 'bad' | null | undefined)
-}
-
-function parsePatternLogicFields(
-  pattern: Record<string, unknown>,
-): Pick<HandPattern, 'logic' | 'minimumConditionMatches'> {
-  const legacyMatchMode = pattern.matchMode
-  const logic =
-    legacyMatchMode === 'all'
-      ? 'all'
-      : legacyMatchMode === 'any' || legacyMatchMode === 'at-least'
-        ? 'any'
-        : normalizePatternLogic(pattern.logic)
-
-  if (legacyMatchMode === 'all') {
-    return {
-      logic,
-      minimumConditionMatches: parseOptionalInteger(pattern.minimumConditionMatches ?? pattern.minimumMatches, 1),
-    }
-  }
-
-  if (legacyMatchMode === 'at-least') {
-    return {
-      logic: 'any',
-      minimumConditionMatches: Math.max(2, parseOptionalInteger(pattern.minimumMatches, 2)),
-    }
-  }
-
-  if (legacyMatchMode === 'any') {
-    return {
-      logic: 'any',
-      minimumConditionMatches: 1,
-    }
-  }
-
-  return {
-    logic,
-    minimumConditionMatches: parseOptionalInteger(pattern.minimumConditionMatches, 1),
-  }
-}
-
-function parsePatternReusePolicy(pattern: Record<string, unknown>): HandPattern['reusePolicy'] {
-  if (typeof pattern.reusePolicy === 'string') {
-    return normalizeReusePolicy(pattern.reusePolicy)
-  }
-
-  return pattern.allowSharedCards === true ? 'allow' : 'forbid'
-}
-
-function parseConditionMatcher(
-  rawCondition: Record<string, unknown>,
-  cardIdsByName: Map<string, string>,
-  patternName: string,
-): { matcher: Matcher | null; needsReview: boolean } {
-  const directMatcher = parseMatcher(rawCondition.matcher)
-
-  if (directMatcher) {
-    return {
-      matcher: directMatcher,
-      needsReview: false,
-    }
-  }
-
-  const source = parseRequirementSource(rawCondition.source)
-
-  if (source === 'group') {
-    const parsedGroupKey = parseStoredGroupKey(rawCondition.groupKey)
-
-    return {
-      matcher: parsedGroupKey.groupKey ? createMatcherFromGroupKey(parsedGroupKey.groupKey) : null,
-      needsReview: parsedGroupKey.groupKey === null,
-    }
-  }
-
-  if (source === 'attribute') {
-    return {
-      matcher: parseCardAttribute(rawCondition.attribute)
-        ? { type: 'attribute', value: parseCardAttribute(rawCondition.attribute)! }
-        : null,
-      needsReview: false,
-    }
-  }
-
-  if (source === 'level') {
-    const level = parseNullableInteger(rawCondition.level)
-    return {
-      matcher: level !== null ? { type: 'level', value: level } : null,
-      needsReview: false,
-    }
-  }
-
-  if (source === 'type') {
-    const monsterType = parseNullableString(rawCondition.monsterType)
-    return {
-      matcher: monsterType ? { type: 'monster_type', value: monsterType } : null,
-      needsReview: false,
-    }
-  }
-
-  if (source === 'atk') {
-    const atk = parseNullableInteger(rawCondition.atk)
-    return {
-      matcher: atk !== null ? { type: 'atk', value: atk } : null,
-      needsReview: false,
-    }
-  }
-
-  if (source === 'def') {
-    const def = parseNullableInteger(rawCondition.def)
-    return {
-      matcher: def !== null ? { type: 'def', value: def } : null,
-      needsReview: false,
-    }
-  }
-
-  const cardNames = parseRequirementCardNames(rawCondition, `${patternName}.cards`)
-  const cardIds = cardNames.map((cardName) => {
-    const cardId = cardIdsByName.get(normalizeName(cardName))
-
-    if (!cardId) {
-      throw new Error(t('deck.codec.cardNotInMain', { pattern: patternName, card: cardName }))
-    }
-
-    return cardId
-  })
-
-  return {
-    matcher: createCardPoolMatcher(cardIds),
-    needsReview: false,
-  }
-}
-
-function parseRequirementSource(value: unknown): RequirementSource {
-  return value === 'group'
-    ? 'group'
-    : value === 'attribute'
-      ? 'attribute'
-      : value === 'level'
-        ? 'level'
-        : value === 'type'
-          ? 'type'
-          : value === 'atk'
-            ? 'atk'
-            : value === 'def'
-              ? 'def'
-              : 'cards'
 }
 
 function parseMatcher(value: unknown): Matcher | null {

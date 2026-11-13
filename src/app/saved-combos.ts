@@ -96,14 +96,11 @@ export function readSavedCombos(): SavedCombo[] {
   }
 }
 
-/**
- * Combos guardados antes de que la mesa tuviera fases y destierro boca abajo: arrancan en la Draw Phase del turno 1. Una mano del rival que no se entiende se descarta (el combo queda sin rival),
- * y una nota que no se entiende, también (las demás se quedan).
- */
+/** Una mano del rival que no se entiende se descarta (el combo queda sin rival), y una nota que no se entiende, también (las demás se quedan). */
 export function migrateSavedCombo(combo: SavedCombo): SavedCombo {
   const { notes: rawNotes, theirs, chain, ...rest } = combo
   const { rival, ...table } = combo.initial
-  const initial: MatState = { ...table, phase: table.phase ?? 'draw', turn: table.turn ?? 1, facedown: table.facedown ?? [], extraUp: table.extraUp ?? [], targeted: table.targeted ?? [], ...(isRivalHand(rival) ? { rival } : {}) }
+  const initial: MatState = { ...table, ...(isRivalHand(rival) ? { rival } : {}) }
   const notes = storedNotes(rawNotes, combo.actions.length)
   // El rival y la cadena (sólo los de «Jugar solo automático»): si no se entienden, el combo se abre como uno de antes.
   return { ...rest, initial, ...(notes ? { notes } : {}), ...(isTheirs(theirs) ? { theirs } : {}), ...(Array.isArray(chain) && chain.length > 0 && chain.every(isRecord) ? { chain } : {}) }
@@ -122,7 +119,7 @@ export function writeSavedCombos(combos: readonly SavedCombo[]): void {
 
 const isStringList = (value: unknown) => Array.isArray(value) && value.every((item) => typeof item === 'string')
 
-/** Forma mínima: el reducer es total, así que una jugada rara no rompe nada. */
+/** Forma mínima: el reducer es total, así que una jugada rara no rompe nada. Un combo de antes de las fases (sin fase, turno, boca abajo, Extra boca arriba ni marcadas) ya no se lee: se descarta. */
 function isSavedCombo(value: unknown): value is SavedCombo {
   if (!isRecord(value) || !isRecord(value.initial) || !isRecord(value.names)) {
     return false
@@ -138,7 +135,10 @@ function isSavedCombo(value: unknown): value is SavedCombo {
     Array.isArray(value.actions) &&
     (['deck', 'extra', 'hand', 'gy', 'banished'] as const).every((pile) => isStringList(initial[pile])) &&
     (['mz', 'emz', 'st'] as const).every((zone) => Array.isArray(initial[zone])) &&
-    typeof initial.tokens === 'number'
+    typeof initial.tokens === 'number' &&
+    typeof initial.phase === 'string' &&
+    typeof initial.turn === 'number' &&
+    (['facedown', 'extraUp', 'targeted'] as const).every((pile) => isStringList(initial[pile]))
   )
 }
 

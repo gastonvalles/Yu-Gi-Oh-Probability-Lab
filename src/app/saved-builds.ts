@@ -1,7 +1,7 @@
 import { t } from '../i18n'
 import type { CardOrigin, CardRole } from '../types'
 import type { DeckCardInstance } from './model'
-import { normalizeStoredRoles, resolveStoredCardOrigin } from './deck-groups'
+import { normalizeCardOriginKey, normalizeStoredRoles } from './deck-groups'
 import { createId } from './utils'
 
 export const SAVED_BUILDS_KEY = 'ygo-lab:saved-builds'
@@ -53,12 +53,12 @@ export function writeSavedBuilds(builds: SavedBuild[]): void {
   }
 }
 
-/** Cartas guardadas con roles u orígenes que ya no existen (Handtrap, Hybrid…): pasan a sus equivalentes. Vale para las builds y para «Tu deck de antes». */
+/** Cartas guardadas con roles u orígenes que ya no existen: se les quitan (el origen queda sin elegir). Vale para las builds y para «Tu deck de antes». */
 export function migrateBuildCards(cards: DeckCardInstance[]): DeckCardInstance[] {
   return cards.map((card) => {
     const roles = normalizeStoredRoles(card.roles)
 
-    return { ...card, roles, origin: resolveStoredCardOrigin(card.origin, roles) }
+    return { ...card, roles, origin: normalizeCardOriginKey(card.origin) }
   })
 }
 

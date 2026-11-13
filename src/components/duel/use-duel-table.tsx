@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { rpsOutcome } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
-import { isEmojiSignal, isSignal } from '../../app/duel-signals'
+import { isEmojiSignal } from '../../app/duel-signals'
 import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
@@ -94,7 +94,7 @@ export function useSignals(snapshot: DuelSnapshot): { mine: string | null; their
   const [burst, setBurst] = useState<{ emoji: string; key: number } | null>(null)
 
   useEffect(() => {
-    const fresh = chat.filter((line) => line.id > seen.current && isSignal(line.text))
+    const fresh = chat.filter((line) => line.id > seen.current && isEmojiSignal(line.text))
     const rivalEmoji = chat.filter((line) => line.id > seen.current && line.from !== me && isEmojiSignal(line.text)).at(-1)
 
     seen.current = Math.max(seen.current, last)

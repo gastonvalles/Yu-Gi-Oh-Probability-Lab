@@ -12,7 +12,7 @@ import { Heading } from '../ui/Heading'
 import { PLAYER_COLOR } from './player-color'
 import { TypeMark } from './TypeMark'
 import { ReactionButtons } from './ReactionButtons'
-import { isEmojiSignal, isSignal } from '../../app/duel-signals'
+import { isEmojiSignal } from '../../app/duel-signals'
 import type { FeedEntry } from './use-duel-feed'
 
 /** Lo que llega al chat sube un poco y se asienta (con movimiento reducido, aparece sin más). */
@@ -157,7 +157,7 @@ export function useChatUnread(snapshot: DuelSnapshot, open: boolean): number {
 
     for (const line of chat) {
       // Las reacciones del rival (🤔 y 👍) salen como un mensaje más.
-      if (line.id > seen.current && line.from !== me && (!isSignal(line.text) || isEmojiSignal(line.text))) {
+      if (line.id > seen.current && line.from !== me) {
         showRivalToast(rival, line.text)
       }
     }
@@ -165,5 +165,5 @@ export function useChatUnread(snapshot: DuelSnapshot, open: boolean): number {
     seen.current = Math.max(seen.current, last)
   }, [chat, last, me, open, rival])
 
-  return chat.filter((line) => line.id > read && line.from !== me && !isSignal(line.text)).length
+  return chat.filter((line) => line.id > read && line.from !== me && !isEmojiSignal(line.text)).length
 }

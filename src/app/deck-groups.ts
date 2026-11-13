@@ -1,6 +1,5 @@
 import { t } from '../i18n'
 import type { CardEntry, CardOrigin, CardRole, GroupKey } from '../types'
-import { isRecord } from './utils'
 
 type DeckGroupKind = 'origin' | 'role'
 
@@ -32,11 +31,6 @@ export interface DerivedDeckGroup extends DeckGroupDefinition {
   cardIds: string[]
   cardNames: string[]
   copies: number
-}
-
-interface ParsedStoredGroupKey {
-  groupKey: GroupKey | null
-  isLegacy: boolean
 }
 
 const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
@@ -239,32 +233,15 @@ export function getQualifiedDeckGroupLabel(group: Pick<DeckGroupDefinition, 'kin
   return t(group.kind === 'origin' ? 'roles.group.qualifiedOrigin' : 'roles.group.qualifiedRole', { label: group.label })
 }
 
-/** Roles que ya no existen y el que los reemplaza (se unificaron al simplificar la categorización). */
-const LEGACY_ROLE_REPLACEMENTS: Record<string, CardRole> = {
-  board_breaker: 'boardbreaker',
-  removal: 'boardbreaker',
-  combo_piece: 'enabler',
-}
-
-/** Roles que se eliminaron sin reemplazo: se descartan sin pedir revisión. */
-const RETIRED_ROLE_KEYS: ReadonlySet<string> = new Set(['tech'])
-
-export function isRetiredCardRole(value: unknown): boolean {
-  return typeof value === 'string' && RETIRED_ROLE_KEYS.has(value)
-}
-
-/** Roles que hacen avanzar tu propio plan (el resto frena al rival o es utilidad). */
-const GAME_PLAN_ROLE_KEYS: ReadonlySet<CardRole> = new Set(['starter', 'extender', 'enabler', 'searcher', 'draw', 'payoff', 'recovery'])
-
 export function normalizeCardRoleKey(value: unknown): CardRole | null {
   if (typeof value !== 'string') {
     return null
   }
 
-  return CARD_ROLE_KEY_SET.has(value as CardRole) ? (value as CardRole) : (LEGACY_ROLE_REPLACEMENTS[value] ?? null)
+  return CARD_ROLE_KEY_SET.has(value as CardRole) ? (value as CardRole) : null
 }
 
-/** Roles guardados de una carta: los viejos se reemplazan por su equivalente y se quitan repetidos. */
+/** Roles guardados de una carta: los que ya no existen se descartan y se quitan repetidos. */
 export function normalizeStoredRoles(value: unknown): CardRole[] {
   if (!Array.isArray(value)) {
     return []
@@ -283,85 +260,12 @@ export function normalizeStoredRoles(value: unknown): CardRole[] {
   return roles
 }
 
-/**
- * Origen guardado de una carta. El antiguo "Hybrid" ya no existe: pasa a Engine si la carta tiene algún
- * rol de tu plan y a Non-engine si no.
- */
-export function resolveStoredCardOrigin(value: unknown, roles: readonly CardRole[]): CardOrigin | null {
-  if (value === 'hybrid') {
-    return roles.some((role) => GAME_PLAN_ROLE_KEYS.has(role)) ? 'engine' : 'non_engine'
-  }
-
-  return normalizeCardOriginKey(value)
-}
-
 export function normalizeCardOriginKey(value: unknown): CardOrigin | null {
-  if (value === 'non-engine') {
-    return 'non_engine'
-  }
-
   if (typeof value !== 'string') {
     return null
   }
 
   return CARD_ORIGIN_KEY_SET.has(value as CardOrigin) ? (value as CardOrigin) : null
-}
-
-export function parseStoredGroupKey(value: unknown): ParsedStoredGroupKey {
-  if (isRecord(value)) {
-    const type = value.type
-
-    if (type === 'origin') {
-      const normalizedOrigin = normalizeCardOriginKey(value.value)
-      return {
-        groupKey: normalizedOrigin ? createOriginGroupKey(normalizedOrigin) : null,
-        isLegacy: false,
-      }
-    }
-
-    if (type === 'role') {
-      const normalizedRole = normalizeCardRoleKey(value.value)
-      return {
-        groupKey: normalizedRole ? createRoleGroupKey(normalizedRole) : null,
-        isLegacy: false,
-      }
-    }
-
-    return {
-      groupKey: null,
-      isLegacy: false,
-    }
-  }
-
-  if (typeof value === 'string') {
-    const normalizedOrigin = normalizeCardOriginKey(value)
-
-    if (normalizedOrigin) {
-      return {
-        groupKey: createOriginGroupKey(normalizedOrigin),
-        isLegacy: true,
-      }
-    }
-
-    const normalizedRole = normalizeCardRoleKey(value)
-
-    if (normalizedRole) {
-      return {
-        groupKey: createRoleGroupKey(normalizedRole),
-        isLegacy: true,
-      }
-    }
-
-    return {
-      groupKey: null,
-      isLegacy: true,
-    }
-  }
-
-  return {
-    groupKey: null,
-    isLegacy: false,
-  }
 }
 
 export function isCardOriginGroupKey(groupKey: GroupKey): groupKey is Extract<GroupKey, { type: 'origin' }> {
