@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
+import { NO_TALLIES, talliesOf } from '../../app/auto/tally'
 import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
 import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { comboExtrasFromAuto } from '../../app/auto/auto-replay'
@@ -831,6 +832,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     theirs: reviewing ? NO_FIELD_STATS : fieldStatsOf(theirsState, (id) => nowStat(snap.overlay.stats.theirs[id], theirCard(id)), shownStats.theirs),
   }
   if (fieldStats.mine !== shownStats.mine || fieldStats.theirs !== shownStats.theirs) setShownStats(fieldStats)
+  // Lo que cuentan las cartas (`tally.ts`), estable por valor como el ATK/DEF: se pone al día cuando la mesa terminó de contar la tanda (nunca antes que la activación que lo sube). Repasando, nada.
+  const [shownTallies, setShownTallies] = useState(() => ({ mine: NO_TALLIES, theirs: NO_TALLIES }))
+  const tallies = reviewing
+    ? { mine: NO_TALLIES, theirs: NO_TALLIES }
+    : settled
+      ? { mine: talliesOf(snap.overlay.tally, 'mine', state, (id) => codeOf({ side: 'mine', id }), true, shownTallies.mine), theirs: talliesOf(snap.overlay.tally, 'theirs', theirsState, (id) => codeOf({ side: 'theirs', id }), false, shownTallies.theirs) }
+      : shownTallies
+  if (tallies.mine !== shownTallies.mine || tallies.theirs !== shownTallies.theirs) setShownTallies(tallies)
   const myInitial = snap.initial
   const myNormal = snap.overlay.normal[seat]
   const ended = snap.status === 'ended'
@@ -892,6 +901,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       cardPick,
       why,
       stats: fieldStats.mine,
+      tallies: tallies.mine,
       viewer:
         pick && !list && pick.surface === 'pile' && pick.pile
           ? {
@@ -923,7 +933,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           },
       manual: onManual ?? null,
     }
-  }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, vanilla, codeOf, placeBack, session, zoneLabel])
+  }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, tallies.mine, vanilla, codeOf, placeBack, session, zoneLabel])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   // Repasando tus jugadas, la cadena de cada paso como en vivo (`snap.chainSteps`): un paso adelante muestra sus mensajes desde lo que ya se veía, con el mismo ritmo (`chainDwell`);
@@ -1044,6 +1054,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       handCount: theirs.hand.length,
       ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] }, ...(rivalPicks.stats ? { pickStats: rivalPicks.stats } : {}) } : {}),
       stats: fieldStats.theirs,
+      tallies: tallies.theirs,
       ...(rivalZones ? { zones: rivalZones } : {}),
       act: acting.theirs,
       links: links.theirs,
@@ -1065,7 +1076,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         else showRival(rivalPeekOf(target.card), rect)
       },
     }),
-    [theirs, artOf, gesture, rivalPicks, rivalZones, rivalPlays, showRival, rivalPeekOf, acting, links, medals, fieldStats.theirs],
+    [theirs, artOf, gesture, rivalPicks, rivalZones, rivalPlays, showRival, rivalPeekOf, acting, links, medals, fieldStats.theirs, tallies.theirs],
   )
   // Lo del rival que la mesa debe poder nombrar: lo que está en su mesa y lo suyo que controlo yo (`f.c12` en la mía, ya fuera de la suya: el núcleo sigue sabiendo su código).
   const foreignKnown = useMemo(() => {

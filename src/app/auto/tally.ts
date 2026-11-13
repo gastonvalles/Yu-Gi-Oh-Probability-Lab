@@ -1,3 +1,4 @@
+import type { MatState } from '../practice-mat'
 import { LOCATION as L, type Seat, type WireEvent } from './protocol'
 
 /**
@@ -127,4 +128,25 @@ export function tallyFor(tally: Tally, side: Side, id: string, code: number, whe
   const base = tally.since[`${side} ${id}`]
 
   return base === undefined ? null : { count: done - base, limit: rule.limit, counts: rule.counts }
+}
+
+/** Sin números: el mismo objeto siempre. */
+export const NO_TALLIES: ReadonlyMap<string, TallyView> = new Map()
+
+/**
+ * Los números de una mesa, por id: lo boca arriba de sus Mágicas y Trampas y, con `hand`, su mano (la tuya: la del rival no se ve). `codeOf`, el código de cada id (0 = no se sabe). Si queda igual a
+ * `previous` (por valor), devuelve `previous`: la mesa compara sus props por referencia.
+ */
+export function talliesOf(tally: Tally, side: Side, mat: MatState, codeOf: (id: string) => number, hand: boolean, previous: ReadonlyMap<string, TallyView>): ReadonlyMap<string, TallyView> {
+  const out = new Map<string, TallyView>()
+  const put = (id: string, where: TallyRule['where']) => {
+    const view = tallyFor(tally, side, id, codeOf(id), where)
+
+    if (view) out.set(id, view)
+  }
+
+  for (const placed of mat.st) if (placed && placed.pos !== 'set') put(placed.id, 'st')
+  if (hand) for (const id of mat.hand) put(id, 'hand')
+  if (previous.size === out.size && [...out].every(([id, view]) => previous.get(id)?.count === view.count)) return previous
+  return out.size === 0 ? NO_TALLIES : out
 }

@@ -53,6 +53,7 @@ import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
+import type { TallyView } from '../../app/auto/tally'
 import type { AutoCardSheetProps } from '../auto/AutoPanel'
 import { NO_FIELD_STATS, fieldStatsOf, printedStat } from '../../app/field-stats'
 import { whyNotResume } from '../../app/auto/resume'
@@ -105,7 +106,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, StatTag, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel, tallyLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -2516,6 +2517,7 @@ function PracticeMatBody({
             chosen={chosen ? chosenLabel : null}
             stat={fieldStats.get(shown.id) ?? null}
             pickStat={duel?.auto?.cardPick?.stats?.get(shown.id) ?? null}
+            tally={duel?.auto?.tallies?.get(shown.id) ?? null}
             targeted={targetedIds.has(shown.id)}
             link={scene?.links?.get(shown.id) ?? null}
             selected={selectedId === shown.id}
@@ -3312,6 +3314,7 @@ function PracticeMatBody({
             glowOf={glowKindOf}
             {...(scene?.links?.size ? { links: scene.links } : {})}
             {...(scene?.medals?.get('hand') ? { medals: scene.medals.get('hand')! } : {})}
+            {...(duel?.auto?.tallies?.size ? { tallies: duel.auto.tallies } : {})}
             dimUnlit={dimUnlit}
             muted={muted}
             flash={flash}
@@ -3763,6 +3766,8 @@ interface PlacedCardProps {
   stat: PickStat | null
   /** Su ATK/DEF de ahora mientras se elige en el campo (`pickStatsOf`: también boca abajo), o null: el nombre dice «elegible». */
   pickStat: PickStat | null
+  /** Lo que cuenta (duelo automático, `tally.ts`: Angelechy Shatranga), o null: el número de arriba a la derecha (`TallyChip`). */
+  tally: TallyView | null
   /** Marcada como objetivo. */
   targeted: boolean
   /** Sus eslabones en la cadena a la vista (la insignia «CL1»), o null. */
@@ -3784,7 +3789,7 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim, chosen, stat, pickStat, targeted, link, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim, chosen, stat, pickStat, tally, targeted, link, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
   // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
   const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
   // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, su ATK/DEF al elegir, etiqueta de elegida, con target): cada pedazo es su mensaje.
@@ -3792,6 +3797,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
   if (materials > 0) label = t('practice.mat.cardMaterials', { label, count: materials })
   if (pickStat) label = pickStatLabel(label, pickStat)
   else if (stat) label = statLabel(label, stat)
+  label = tallyLabel(label, tally)
   if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
   if (targeted) label = t('practice.card.targeted', { name: label })
   if (link) label = chainLinkLabel(label, link)
@@ -3858,6 +3864,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
         </span>
         {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white motion-reduce:animate-none">{placed.counters}</span> : null}
         <MaterialCount count={materials} sideways={sideways} />
+        {tally && !dragging ? <TallyChip tally={tally} /> : null}
         {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-primary py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-white">{chosen}</span> : null}
         {framed ? <FxFrame tone="cyan" /> : null}
         {frame ? <FxFrame {...frame} /> : null}
