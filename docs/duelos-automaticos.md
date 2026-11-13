@@ -19,7 +19,7 @@ Capa 4 del motor de cartas (`docs/motor-de-cartas.md`). Corre `ocgcore` con los 
 - **Barra:** «Nueva mano» es otra semilla y «Reiniciar el mismo duelo», la misma. Guardar un combo es una foto (`auto: true`).
 - **Seguir en modo manual** (`manual-handover.ts`): ante un error del núcleo, al final o cuando quieras, la partida sigue en la práctica manual con todo el historial. «Volver atrás» deshace hasta `MANUAL_BACK_MAX` jugadas tuyas y anda con el núcleo caído. Es de esa partida: no cambia el modo.
 - **Pasar de manual a automático** (`resume.ts`; en el enlace, con el acuerdo del otro): rearma el núcleo desde las mesas con la biblioteca Lua `Debug`, sólo en un punto limpio (`whyNotResume`). **Límite aceptado:** arranca en el turno 1 y olvida lo hecho en el turno en curso, los equipos y los contadores (el porqué, en el comentario de `resume.ts`). En jugar solo no se guarda.
-- **Guardar replay** (`auto-replay.ts`): con la cadena (enlace v3; uno sin cadena sigue en v2) y sin ATK/DEF del momento; pasado a manual, lo que sigue no entra.
+- **Guardar replay** (`auto-replay.ts`): con cadena, sin ATK/DEF del momento; pasado a manual, lo que sigue no entra.
 
 ## La mesa y las preguntas
 
