@@ -192,6 +192,21 @@ export function canonical(events: readonly WireEvent[]): WireEvent[] {
   return out
 }
 
+/**
+ * Corre `create` con la hora fija. El Lua del núcleo se siembra con la hora al crear el duelo (`luai_makeseed`, `time(NULL)` → `Date.now()` en el wasm), y con otra semilla
+ * el mismo duelo puede salir distinto (una pista de Solfachord Happiness que vence un turno más tarde): deshacer, el replay y la misma semilla tienen que re-simular igual.
+ */
+function atFixedTime<T>(create: () => T): T {
+  const now = Date.now
+
+  Date.now = () => 0
+  try {
+    return create()
+  } finally {
+    Date.now = now
+  }
+}
+
 /** El texto en `MAX_TEXT` como mucho (un error de Lua trae la pila entera): más largo, `parseAutoEvent` no lo lee y el `fault` se perdería. No parte un par sustituto. */
 export function clip(text: string): string {
   if (text.length <= MAX_TEXT) return text
@@ -494,19 +509,21 @@ export function createAutoHost(options: HostOptions): AutoHost {
     emit({ t: 'loading', done: 0, total: codes.length })
     const lib = await createCore({ sync: true, ...options.core })
     const team = (player: CreateCommand['players'][number]) => ({ startingLP: player.lp, startingDrawCount: player.hand, drawCountPerTurn: player.draw })
-    const handle = lib.createDuel({
-      flags: BigInt(command.flags),
-      seed: command.key === undefined ? coreSeed(command.seed) : coreSeedOf(command.key),
-      team1: team(command.players[0]!),
-      team2: team(command.players[1]!),
-      cardReader: (code) => options.cardReader(code),
-      scriptReader: (name) => {
-        if (started) hotScripts.push(name)
+    const handle = atFixedTime(() =>
+      lib.createDuel({
+        flags: BigInt(command.flags),
+        seed: command.key === undefined ? coreSeed(command.seed) : coreSeedOf(command.key),
+        team1: team(command.players[0]!),
+        team2: team(command.players[1]!),
+        cardReader: (code) => options.cardReader(code),
+        scriptReader: (name) => {
+          if (started) hotScripts.push(name)
 
-        return options.scriptReader(name) ?? vanillaScript(name)
-      },
-      errorHandler: (type, text) => fault('script', `${LOG_TYPES[type] ?? type}: ${text}`),
-    })
+          return options.scriptReader(name) ?? vanillaScript(name)
+        },
+        errorHandler: (type, text) => fault('script', `${LOG_TYPES[type] ?? type}: ${text}`),
+      }),
+    )
 
     if (!handle) {
       fault('setup', 'createDuel returned null')

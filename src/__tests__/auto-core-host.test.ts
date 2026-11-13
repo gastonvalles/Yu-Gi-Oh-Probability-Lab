@@ -73,6 +73,28 @@ describe('el anfitrión del núcleo', () => {
     expect(clip('b'.repeat(5000))).toHaveLength(2000)
   })
 
+  // El Lua del núcleo se siembra con la hora al crear el duelo: el azar y el orden de `pairs` cambiaban con ella, y deshacer (que re-simula más tarde)
+  // dejaba otra mesa (el fuzz: una pista de Solfachord Happiness que vencía un turno más tarde).
+  it('re-simula igual a cualquier hora: el Lua del núcleo no se siembra con la hora', async () => {
+    const lua = "local t={} for i=1,64 do t['k'..i]=i end local s=tostring(math.random(1000000000)) for k in pairs(t) do s=s..k end Debug.Message(s)"
+    const told: string[] = []
+    const auto = createAutoHost({
+      core: { wasmBinary: wasmBinary() },
+      cardReader: () => null,
+      scriptReader: (name) => (name === 'constant.lua' ? '' : name === 'utility.lua' ? lua : null),
+      emit: (event) => void (event.t === 'fault' && event.kind === 'script' && told.push(event.message)),
+    })
+    const empty = { main: [], extra: [], hand: [] }
+    const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+
+    await auto.handle({ t: 'create', seed: 1, flags: MR5, players: PLAYERS, decks: [empty, empty] })
+    now.mockReturnValue(1_000_000_000_000)
+    await auto.handle({ t: 'rewind', to: 0 })
+    now.mockRestore()
+    expect(told).toHaveLength(2)
+    expect(told[1]).toBe(told[0])
+  })
+
   // Nada de lo que emite se pierde del otro lado: cada evento pasa `parseAutoEvent` tal como viaja (JSON).
   describe('con un núcleo de mentira', () => {
     const wire = (events: AutoEvent[]) => events.map((event) => parseAutoEvent(JSON.parse(JSON.stringify(event))))
