@@ -4,7 +4,7 @@ import { LOCATION as L, type Seat, type WireEvent } from './protocol'
 /**
  * Lo que cuentan algunas cartas (Angelechy Shatranga, Nibiru): el script lo lleva por dentro (una bandera por cada vez) y el núcleo no lo manda, así que se cuenta acá con los
  * eventos públicos que el adaptador ya recibe (`chaining`, `summoning`/`spsummoning` y su `*summoned`, `new_turn`). Los dos asientos ven esos eventos igual (`referee.ts`: todos
- * a los dos), así que las dos mesas dan el mismo número. Deshacer re-simula con adaptadores nuevos: el número vuelve solo.
+ * a los dos), así que las dos mesas dan el mismo número. Deshacer re-simula con adaptadores nuevos: el número vuelve solo. No entra en Pasos ni en el replay; pasar a manual lo deja atrás.
  *
  * Sumar una carta: su fila en `TALLY_CARDS`, leída de su script (CardScripts del commit de `auto-data.lock.json`), si lo que cuenta es uno de los dos `counts` que ya hay.
  */

@@ -1308,6 +1308,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
     return id ? (snap.overlay.stats[side][id] ?? null) : null
   }, [peeked, state, theirs, cardsById, codeOf, snap.overlay.stats])
+  // Lo que cuenta la carta del detalle (`tally.ts`): la de ese lado con ese código que lleva número (en el campo, o en tu mano).
+  const dockTally = useMemo(() => {
+    const side: Side = peeked && 'drawId' in peeked ? 'theirs' : 'mine'
+    const code = peeked && 'card' in peeked ? peeked.card?.ygoprodeckId : peeked && 'drawId' in peeked ? parseDerivedCardId(cardIdOfDrawId(peeked.drawId)) : null
+
+    return code ? ([...(side === 'mine' ? tallies.mine : tallies.theirs)].find(([id]) => codeOf({ side, id }) === code)?.[1] ?? null) : null
+  }, [peeked, tallies.mine, tallies.theirs, codeOf])
 
   // ── Lo que se muestra fuera del campo. ──
   const prompt = shown?.prompt
@@ -1401,7 +1408,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   })
   const comboExtras = useCallback((count: number) => comboExtrasFromAuto(savedFrom.current.snap, savedFrom.current.skip, count), [])
   const dockHighlight = highlight ?? linkHighlight
-  const detail = useMemo(() => (desktop ? <DuelCardDock peek={peeked} highlight={dockHighlight} stats={reviewing ? null : dockStats} /> : undefined), [desktop, peeked, dockHighlight, reviewing, dockStats])
+  const detail = useMemo(() => (desktop ? <DuelCardDock peek={peeked} highlight={dockHighlight} stats={reviewing ? null : dockStats} tally={dockTally} /> : undefined), [desktop, peeked, dockHighlight, reviewing, dockStats, dockTally])
   const limits = useMemo(() => (reviewing ? null : <LimitsChip texts={limitTexts} />), [reviewing, limitTexts])
   const mat: AutoAsks['mat'] = {
     comboExtras,

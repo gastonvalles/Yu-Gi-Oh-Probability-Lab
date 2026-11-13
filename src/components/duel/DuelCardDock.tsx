@@ -13,6 +13,8 @@ import { CardFlip, useCardFlip } from '../card-detail/CardFlip'
 import { CardPanelBody } from '../card-detail/CardOverlay'
 import { CardZoom } from '../card-detail/CardZoom'
 import { TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../card-detail/card-tilt'
+import type { TallyView } from '../../app/auto/tally'
+import { tallyText } from '../probability/MatFx'
 import { CARD_BACK } from '../probability/practice-styles'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
@@ -42,7 +44,20 @@ export interface CardStatsNow {
   defense: number
 }
 
-export function DuelCardDock({ peek, highlight = null, stats = null }: { peek: CardPeek | null; /** Un pedazo del texto de la carta que se resalta (la frase del efecto que se está eligiendo en el menú): sólo si es el texto de la carta que se ve. */ highlight?: CardTextHighlight | null; /** Los números de ahora, si la carta está en el campo: se dicen al lado de los impresos cuando difieren. */ stats?: CardStatsNow | null }) {
+export function DuelCardDock({
+  peek,
+  highlight = null,
+  stats = null,
+  tally = null,
+}: {
+  peek: CardPeek | null
+  /** Un pedazo del texto de la carta que se resalta (la frase del efecto que se está eligiendo en el menú): sólo si es el texto de la carta que se ve. */
+  highlight?: CardTextHighlight | null
+  /** Los números de ahora, si la carta está en el campo: se dicen al lado de los impresos cuando difieren. */
+  stats?: CardStatsNow | null
+  /** Lo que cuenta la carta (el duelo automático, `tally.ts`): una línea debajo de sus números («Efectos de monstruo del rival este turno: 3 de 5»). */
+  tally?: TallyView | null
+}) {
   const [zoomed, setZoomed] = useState<Zoomed | null>(null)
   const zoom = (card: ApiCardReference, name: string) => setZoomed({ card, name })
   let view
@@ -52,9 +67,9 @@ export function DuelCardDock({ peek, highlight = null, stats = null }: { peek: C
   } else if ('faceDown' in peek) {
     view = <CardPeekView name={t('duel.dock.faceDown')} card={null} back onZoom={zoom} />
   } else if ('drawId' in peek) {
-    view = <RivalPeek key={peek.drawId} drawId={peek.drawId} highlight={highlight} now={stats} onZoom={zoom} />
+    view = <RivalPeek key={peek.drawId} drawId={peek.drawId} highlight={highlight} now={stats} tally={tally} onZoom={zoom} />
   } else {
-    view = <CardPeekView name={peek.name} card={peek.card} highlight={highlight} now={stats} onZoom={zoom} />
+    view = <CardPeekView name={peek.name} card={peek.card} highlight={highlight} now={stats} tally={tally} onZoom={zoom} />
   }
 
   return (
@@ -74,10 +89,10 @@ export function DuelCardDock({ peek, highlight = null, stats = null }: { peek: C
 }
 
 /** Una carta por su número (la del rival, un eslabón de la cadena): el resaltado vale igual, si es de esta carta (lo mira `CardPeekView`). */
-function RivalPeek({ drawId, highlight = null, now = null, onZoom }: { drawId: string; highlight?: CardTextHighlight | null; now?: CardStatsNow | null; onZoom: (card: ApiCardReference, name: string) => void }) {
+function RivalPeek({ drawId, highlight = null, now = null, tally = null, onZoom }: { drawId: string; highlight?: CardTextHighlight | null; now?: CardStatsNow | null; tally?: TallyView | null; onZoom: (card: ApiCardReference, name: string) => void }) {
   const card = useRivalCard(drawId)
 
-  return <CardPeekView name={card?.name ?? t('duel.mark.rivalCard')} card={card} highlight={highlight} now={now} onZoom={onZoom} />
+  return <CardPeekView name={card?.name ?? t('duel.mark.rivalCard')} card={card} highlight={highlight} now={now} tally={tally} onZoom={onZoom} />
 }
 
 /** Un número que pasa de texto a cifra con el separador del idioma («1800» → «1.800»); lo que no es un número («?») queda como está. */
@@ -124,7 +139,7 @@ function ArtHolder({ children }: { children: ReactNode }) {
   )
 }
 
-function CardPeekView({ name, card, back = false, highlight = null, now = null, onZoom }: { name: string; card: ApiCardReference | null; back?: boolean; highlight?: CardTextHighlight | null; now?: CardStatsNow | null; onZoom: (card: ApiCardReference, name: string) => void }) {
+function CardPeekView({ name, card, back = false, highlight = null, now = null, tally = null, onZoom }: { name: string; card: ApiCardReference | null; back?: boolean; highlight?: CardTextHighlight | null; now?: CardStatsNow | null; tally?: TallyView | null; onZoom: (card: ApiCardReference, name: string) => void }) {
   // El texto se muestra sin los espacios de los bordes: el pedazo señalado se corre lo que se sacó del principio.
   const description = card?.description ?? ''
   const shift = description.length - description.trimStart().length
@@ -211,6 +226,8 @@ function CardPeekView({ name, card, back = false, highlight = null, now = null, 
             ))}
           </dl>
         ) : null}
+        {/* Lo que cuenta (el duelo automático): en la lima de lo que está pasando; en su umbral, en ámbar, como el número de la carta. */}
+        {tally ? <p data-tally-line="" className={cx('m-0 text-body font-semibold', tally.count >= tally.limit ? 'text-warning-soft' : 'text-info')}>{tallyText(tally)}</p> : null}
       </header>
       <CardPanelBody label={t('search.detail.effect')} className="text-body">
         {back ? null : <CardEffectTraits ygoprodeckId={card?.ygoprodeckId} className="mb-2" />}
