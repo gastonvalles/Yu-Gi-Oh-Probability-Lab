@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-6-cartas-con-peso-e-impactos",
+      "date": "2026-11-13",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Cartas con peso, impactos en la mesa y barridos al abrir",
+        "novedades": [
+          "Las cartas tienen peso: al levantar una crece y sube, mientras la arrastrás se inclina según la velocidad del dedo y al soltarla cae con un aplastón corto.",
+          "Invocar y atacar se sienten: una pausa cortita al estampar, un anillo de energía y una sacudida del campo. Leve en una Invocación o un ataque a una carta; fuerte en lo que sale del Extra Deck y en el ataque directo.",
+          "Lo que se abre ya no aparece con un fundido: una hoja sube desde abajo, un menú sale de su botón, una ventana crece desde el centro y una pantalla nueva barre hacia el lado al que vas."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Lo que se cierra sale por donde entró, más rápido."
+        ],
+        "ojo": [
+          "Con «Efectos: Livianos» no hay sacudida ni destellos de más; el peso de la carta queda.",
+          "Con «reducir movimiento» activado en el dispositivo no hay sacudida, inclinación ni rebote: todo cambia con un fundido corto.",
+          "Los impactos todavía no salen en los replays ni en el video."
+        ]
+      },
+      "en": {
+        "title": "Cards with weight, impacts on the table and sweeps when opening",
+        "novedades": [
+          "Cards have weight: when you pick one up it grows and rises, while you drag it tilts with the speed of your finger, and when you drop it lands with a short squash.",
+          "Summoning and attacking have feel: a tiny pause on the stamp, an energy ring and a shake of the field. Light on a Summon or an attack on a card; strong on what comes from the Extra Deck and on a direct attack.",
+          "What opens no longer fades in: a sheet rises from the bottom, a menu comes out of its button, a window grows from the center and a new screen sweeps toward the side you're going."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "What closes leaves the way it came in, faster."
+        ],
+        "ojo": [
+          "With «Effects: Light» there is no shake and no extra flashes; the card's weight stays.",
+          "With «reduce motion» on in the device there is no shake, tilt or bounce: everything changes with a short fade.",
+          "Impacts don't show yet in replays or in the video."
+        ]
+      }
+    },
+    {
       "id": "2026-11-13-5-botones-con-rebote",
       "date": "2026-11-13",
       "tags": [
