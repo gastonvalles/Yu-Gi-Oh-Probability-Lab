@@ -129,18 +129,18 @@
   --animate-pulse: pulse 2s ease-in-out infinite;
   /* Lo que se marca (una carta pública del rival): late dos veces y queda con su borde quieto; un bucle sin fin deja una capa animada por carta. */
   --animate-pulse-twice: pulse 2s ease-in-out 2;
-  --animate-dialog-enter: dialog-enter 150ms var(--ease-out);
-  --animate-toast-in: toast-in var(--motion-duration) var(--ease-out) both;
-  --animate-toast-out: toast-out var(--motion-duration) var(--ease-out) both;
+  /* Lo que entra y sale (un modal, una hoja, un cajón, un menú, un aviso, una pantalla): su curva y sus duraciones, en «Entrar y salir», más abajo. */
+  --animate-dialog-enter: dialog-enter var(--duracion-entrada) var(--ease-entrada);
+  --animate-toast-in: toast-in var(--duracion-rapida) var(--ease-entrada) both;
+  --animate-toast-out: toast-out var(--duracion-salida) var(--ease-out) both;
   --animate-fab-pulse: fab-pulse 700ms var(--ease-out);
   --animate-mascot-drop: mascot-drop 420ms var(--ease-snap) both;
   --animate-marching-ants: marching-ants var(--motion-duration) linear infinite;
   --animate-card-armed: card-armed 160ms var(--ease-out);
   --animate-step-in: step-in 150ms var(--ease-out) both;
-  --animate-drawer-enter: drawer-enter 150ms var(--ease-out) both;
-  /* El cajón del menú en el celular: sale desde la izquierda sobre un velo que se oscurece. */
-  --animate-nav-drawer: nav-drawer 200ms var(--ease-out) both;
-  --animate-side-drawer: side-drawer 200ms var(--ease-out) both;
+  /* El cajón del menú en el celular: sale desde la izquierda sobre un velo que se oscurece. Lo que se apoya en un borde no se pasa (abriría un hueco contra el borde): `--ease-snap`. */
+  --animate-nav-drawer: nav-drawer var(--duracion-entrada) var(--ease-snap) both;
+  --animate-side-drawer: side-drawer var(--duracion-entrada) var(--ease-snap) both;
   --animate-nav-scrim: nav-scrim 200ms var(--ease-out) both;
   /* El velo del `Modal`: la misma entrada, sin quedarse en su último cuadro, así al minimizar transiciona su `opacity` (una animación que se queda la tapa). */
   --animate-veil-in: nav-scrim 200ms var(--ease-out) backwards;
@@ -160,7 +160,7 @@
   --animate-rps-reveal: rps-reveal 1.2s var(--ease-out) both;
   --animate-die-spin: die-spin 1.4s var(--ease-snap) both;
   --animate-rule-in: rule-in var(--motion-duration) var(--ease-snap) both;
-  --animate-sheet-up: sheet-up var(--motion-duration) var(--ease-out) both;
+  --animate-sheet-up: sheet-up var(--duracion-entrada) var(--ease-snap) both;
   /* Los mensajes rápidos del duelo (🤔 y 👍): el botón rebota al apretarlo y su emoji sube y se desvanece. */
   --animate-reaction-press: reaction-press 350ms var(--ease-snap);
   --animate-reaction-rise: reaction-rise 800ms var(--ease-out) forwards;
@@ -168,7 +168,7 @@
   --animate-turn-blink: turn-blink 1s ease-in-out infinite;
   /* Un mensaje que llega al chat (o una jugada en el registro): sube un poco desde su lado y se asienta. */
   --animate-message-in: message-in 240ms var(--ease-snap) both;
-  --animate-sheet-in: sheet-in var(--motion-duration) var(--ease-out) both;
+  --animate-sheet-in: sheet-in var(--duracion-entrada) var(--ease-entrada) both;
   --animate-card-glow: card-glow var(--motion-duration) var(--ease-out);
   /* Activar una carta o efecto en la mesa de práctica: la carta aparece grande en el centro de la pantalla, con brillo amarillo, y se desvanece (como en DuelingBook). */
   --animate-card-activate-center: card-activate-center 950ms var(--ease-out) both;
@@ -245,10 +245,15 @@
     }
   }
 
+  /* Crece desde el centro: del 90 % con la pasada de `--ease-entrada` (~101 %); la opacidad sólo acompaña el primer tercio. */
   @keyframes dialog-enter {
     from {
       opacity: 0;
-      transform: scale(0.96);
+      transform: scale(0.9);
+    }
+
+    30% {
+      opacity: 1;
     }
 
     to {
@@ -512,10 +517,15 @@
     }
   }
 
+  /* Sube 1,5 rem desde abajo (lo que no se apoya en el borde: el visor de una pila en escritorio, el buscador del celular, «Deshacer»); la opacidad, sólo el primer tercio. */
   @keyframes sheet-in {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(1.5rem);
+    }
+
+    30% {
+      opacity: 1;
     }
 
     to {
@@ -937,18 +947,6 @@
     }
   }
 
-  @keyframes drawer-enter {
-    from {
-      opacity: 0;
-      transform: translateX(1.35rem);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
   @keyframes nav-drawer {
     from {
       transform: translateX(-100%);
@@ -1035,17 +1033,22 @@
     }
   }
 
+  /* El aviso sube desde abajo (sale abajo de todo) y baja al irse. */
   @keyframes toast-in {
     from {
       opacity: 0;
-      transform: translateY(12px) scale(0.96);
+      transform: translateY(1.5rem);
+    }
+
+    30% {
+      opacity: 1;
     }
   }
 
   @keyframes toast-out {
     to {
       opacity: 0;
-      transform: translateY(8px) scale(0.96);
+      transform: translateY(1.5rem);
     }
   }
 
@@ -1965,6 +1968,78 @@
 @media (prefers-reduced-motion: reduce) {
   [data-attack-target='true'] {
     box-shadow: 0 0 0 2px rgb(var(--playable-rgb) / 0.9), 0 0 14px 2px rgb(var(--playable-rgb) / 0.5);
+  }
+}
+
+/*
+ * Entrar y salir (Gastón, 2026-11-13: los barridos y los rebotes reemplazan a los fundidos; nada en diagonal). Cada cosa entra desde donde viene y sale por donde vino, más rápido
+ * (`EXITS` de `app/use-presence.ts`). Una curva, `--ease-entrada` (el «Ease-Out-Back» del documento: se pasa un 10 % del recorrido y vuelve), y tres duraciones. La pasada es
+ * proporcional al recorrido: la escala la da de dónde arranca cada cosa (un menú, del 85 %: ~102 %; un modal, del 90 %: ~101 %; lo que sube 1,5 rem: ~2 px; una pantalla, 2 rem: ~3 px).
+ * Lo que se apoya en un borde (hojas y cajones) no se pasa, abriría un hueco: `--ease-snap`. Con «Efectos: Livianos», sin pasada; con movimiento reducido, un fundido corto.
+ */
+@theme static {
+  --ease-entrada: var(--ease-out-back);
+  /* Lo que se abre muchas veces por minuto: un menú (el de una carta en la mesa también) y un aviso. */
+  --duracion-rapida: 160ms;
+  /* Un modal, una hoja, un cajón y una pantalla. */
+  --duracion-entrada: 220ms;
+  /* Toda salida (`EXIT_MS`, un test los mantiene iguales). */
+  --duracion-salida: 150ms;
+
+  /* Un menú o un popover: se abre desde su botón (cada uno pone su `origin-*`). */
+  --animate-menu-in: menu-in var(--duracion-rapida) var(--ease-entrada) both;
+  /* La pantalla nueva barre desde el lado del destino (`--barrido-x` en el celular, `--barrido-y` con el menú lateral: nunca los dos). Sin relleno: al terminar no le queda `transform`. */
+  --animate-screen-in: screen-in var(--duracion-entrada) var(--ease-entrada);
+  /* La banda de un cartel de lado a lado: se abre desde el medio. */
+  --animate-band-in: band-in var(--duracion-entrada) var(--ease-entrada);
+
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+
+    30% {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes screen-in {
+    from {
+      transform: translate(var(--barrido-x, 0), var(--barrido-y, 0));
+    }
+  }
+
+  @keyframes band-in {
+    from {
+      transform: scaleX(0);
+    }
+  }
+}
+
+@layer base {
+  :root[data-effects='lite'] {
+    --ease-entrada: var(--ease-snap);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-dialog-enter: nav-scrim var(--duracion-rapida) var(--ease-out);
+    --animate-sheet-in: nav-scrim var(--duracion-rapida) var(--ease-out) both;
+    --animate-sheet-up: nav-scrim var(--duracion-rapida) var(--ease-out) both;
+    --animate-side-drawer: nav-scrim var(--duracion-rapida) var(--ease-out) both;
+    --animate-nav-drawer: nav-scrim var(--duracion-rapida) var(--ease-out) both;
+    --animate-toast-in: nav-scrim var(--duracion-rapida) var(--ease-out) both;
+    --animate-toast-out: nav-scrim var(--duracion-salida) var(--ease-out) reverse both;
+    --animate-menu-in: nav-scrim var(--duracion-rapida) var(--ease-out) both;
+    --animate-screen-in: nav-scrim var(--duracion-rapida) var(--ease-out);
+    --animate-band-in: nav-scrim var(--duracion-rapida) var(--ease-out);
   }
 }
 

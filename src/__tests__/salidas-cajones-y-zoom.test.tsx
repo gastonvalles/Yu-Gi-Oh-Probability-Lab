@@ -2,8 +2,6 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { useState } from 'react'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -66,7 +64,7 @@ function fakeAnimate() {
   }
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
   const style = Object.assign(document.createElement('style'), {
-    textContent: ['dialog-enter', 'nav-scrim', 'side-drawer', 'drawer-enter', 'pop'].map((name) => `.animate-${name} { animation-name: ${name} }`).join(' ') + ' .animate-veil-in { animation-name: nav-scrim } .motion-safe\\:animate-dialog-enter { animation-name: dialog-enter } .motion-safe\\:animate-sheet-up { animation-name: sheet-up }',
+    textContent: ['dialog-enter', 'nav-scrim', 'side-drawer', 'menu-in', 'pop'].map((name) => `.animate-${name} { animation-name: ${name} }`).join(' ') + ' .animate-veil-in { animation-name: nav-scrim } .motion-safe\\:animate-dialog-enter { animation-name: dialog-enter } .motion-safe\\:animate-sheet-up { animation-name: sheet-up }',
   })
   style.dataset.test = ''
   document.head.append(style)
@@ -126,7 +124,7 @@ describe('la carta en grande', () => {
 
     expect(dialog).toBeInTheDocument()
     expect(leavingNow(dialog)).toEqual(LEAVING)
-    expect(exits(calls, dialog)).toEqual([['DIV', [{ opacity: 0, transform: 'scale(0.96)' }]]])
+    expect(exits(calls, dialog)).toEqual([['DIV', [{ opacity: 0, transform: 'scale(0.9)' }]]])
     expect(document.body.style.position).toBe('')
     // Escape ya no la cierra otra vez y F no la da vuelta: las teclas son de lo que quedó abajo.
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -217,15 +215,7 @@ describe('el importador de decks', () => {
 })
 
 describe('el editor de reglas del Lab', () => {
-  it('la salida de `drawer-enter` es su fotograma inicial en index.css: 1,35 rem a la derecha y transparente', () => {
-    const css = readFileSync(path.join(process.cwd(), 'src', 'index.css'), 'utf8')
-    const from = /@keyframes drawer-enter\s*\{\s*from\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
-
-    expect(from).toMatch(/opacity:\s*0;/)
-    expect(from).toMatch(/transform:\s*translateX\(1\.35rem\);/)
-  })
-
-  it('al cerrarlo el panel se corre a la derecha y se funde, y el velo también (antes desaparecían de golpe); el foco ya volvió a lo que lo abrió', async () => {
+  it('al cerrarlo el panel vuelve a la derecha, por donde entró, y el velo se funde (antes desaparecían de golpe); el foco ya volvió a lo que lo abrió', async () => {
     const { calls, finish } = fakeAnimate()
 
     function Screen() {
@@ -255,7 +245,7 @@ describe('el editor de reglas del Lab', () => {
     expect(leavingNow(root)).toEqual(LEAVING)
     expect(exits(calls, root)).toEqual([
       ['BUTTON', [{ opacity: 0 }]],
-      ['ASIDE', [{ opacity: 0, transform: 'translateX(1.35rem)' }]],
+      ['ASIDE', [{ transform: 'translateX(100%)' }]],
     ])
     expect(document.activeElement).toBe(opener)
 

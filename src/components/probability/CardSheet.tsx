@@ -138,7 +138,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
         ref={ref}
         aria-label={name}
         tabIndex={-1}
-        className={cx('mat-square fixed inset-x-0 bottom-0 z-210 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none', !armed && 'pointer-events-none')}
+        className={cx('mat-square fixed inset-x-0 bottom-0 z-210 animate-sheet-up rounded-t-panel border border-b-0 border-border bg-card-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none', !armed && 'pointer-events-none')}
       >
         <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 bg-primary-soft/50" />
         <CloseButton size="sm" tone="ghost" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
