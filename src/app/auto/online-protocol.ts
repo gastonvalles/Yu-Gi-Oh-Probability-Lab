@@ -19,11 +19,6 @@ export const MAX_PARTS = 16
 export const AUTO_RATE_PER_SECOND = 25
 export const AUTO_BURST = 40
 
-/** Un deck como `[passcode, copias]` (el del builder, contado): lo que el invitado le manda al anfitrión. */
-export interface AutoDeckWire {
-  main: [number, number][]
-  extra: [number, number][]
-}
 export interface AutoPlayerWire {
   lp: number
   hand: number

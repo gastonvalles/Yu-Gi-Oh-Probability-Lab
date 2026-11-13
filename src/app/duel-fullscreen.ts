@@ -23,8 +23,6 @@ function set(next: boolean) {
 
 const canFullscreen = () => typeof document !== 'undefined' && typeof document.documentElement.requestFullscreen === 'function' && document.fullscreenEnabled !== false
 
-/** Si el navegador deja pasar a pantalla completa (si no, el botón sólo esconde el menú lateral). */
-export const fullscreenSupported = canFullscreen
 
 if (typeof document !== 'undefined') {
   // Escape (o salir por otro lado) apaga el modo: el estado sigue a lo que el navegador hace.

@@ -153,5 +153,3 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>, strip = ST
 
   return { lowered, setLowered, toggle: () => setLowered((current) => !current), handlers, style, gripRef }
 }
-
-export type SheetDrag = ReturnType<typeof useSheetDrag>
