@@ -1,6 +1,55 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-1-combos-rival-videos-menus",
+      "date": "2026-11-13",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Combos con el campo del rival y la cadena, videos más rápidos y menús que no se salen",
+        "novedades": [
+          "Los combos que grabás en «Jugar solo» ahora guardan lo que pasa en el campo del rival y la cadena: si le das una carta, se ve en su campo; salen la escena de la cadena y los medallones. Se ve al repasarlo, en el video y al abrirlo por enlace o desde Replays.",
+          "Los videos van 1,25 veces más rápido, muestran la mesa entera con el campo del rival y las manos al tamaño de la mesa, y la cadena sale inclinada como en el duelo.",
+          "Cuando una jugada apunta a una carta, en el video se ve la mira.",
+          "En el replay de un duelo, la carta que le das al rival se ve con su imagen, y en la computadora el campo es más ancho.",
+          "Los menús del duelo ya no se salen de la ventana, y la ventana no tapa tus vidas ni los botones de abajo.",
+          "En «Jugar solo», cuando le pasás el turno a un rival que no juega, se ven «Cambio de turno» y las fases en orden; la carta que robás llega después de tu Draw Phase y, cuando un efecto baraja tu mano, se ve el barajado."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Una invocación del Extra Deck que aparecía con dos botones ahora tiene uno.",
+          "Sin «Menús flotantes», los botones de la hoja de abajo tienen más aire.",
+          "El cartel del final del video ya no tapa el campo y no queda un hueco abajo."
+        ],
+        "ojo": [
+          "El campo del rival y la cadena salen en los combos que grabes desde ahora; los que ya tenías guardados se ven como antes.",
+          "El ritmo más rápido es sólo del video descargado."
+        ]
+      },
+      "en": {
+        "title": "Combos with the opponent's field and the chain, faster videos and menus that stay in the window",
+        "novedades": [
+          "Combos you record in «Play solo» now save what happens on the opponent's field and the chain: if you give them a card, it shows on their field; the chain scene and the medallions appear. You see it when you review it, in the video, and when you open it by link or from Replays.",
+          "Videos run 1.25 times faster, show the whole table with the opponent's field and hands at the table's size, and the chain appears tilted like in the duel.",
+          "When a play targets a card, the video shows the crosshair.",
+          "In a duel replay, the card you give the opponent shows with its image, and on the computer the field is wider.",
+          "Duel menus no longer spill out of the window, and the window doesn't cover your life points or the buttons at the bottom.",
+          "In «Play solo», when you pass the turn to an opponent who doesn't play, you see «Turn change» and the phases in order; the card you draw arrives after your Draw Phase and, when an effect shuffles your hand, you see the shuffle."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "An Extra Deck summon that showed up with two buttons now has one.",
+          "Without «Floating menus», the buttons on the bottom sheet have more room.",
+          "The banner at the end of the video no longer covers the field and no gap is left below."
+        ],
+        "ojo": [
+          "The opponent's field and the chain show in combos you record from now on; the ones you already saved look as before.",
+          "The faster pace applies only to the downloaded video."
+        ]
+      }
+    },
+    {
       "id": "2026-11-12-7-replay-video-cadena",
       "date": "2026-11-12",
       "tags": [
