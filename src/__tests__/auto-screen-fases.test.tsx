@@ -7,7 +7,7 @@ import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { setAutoPref } from '../app/auto-prefs'
 import type { MatAction, MatPhase } from '../app/practice-mat'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
-import { TURN_BAND_MS } from '../components/duel/PhaseBand'
+import { PHASE_BAND_MS, TURN_BAND_MS } from '../components/duel/PhaseBand'
 import { fakeSession, loc, pos, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, hand, handCard, lane, phaseButton, renderAuto } from './support/auto-screen-harness'
 import { tap } from './support/practice-mat-harness'
@@ -42,6 +42,10 @@ const goTo = (name: string) => {
   fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
+/** Hasta que se va el cartel de la fase (y el de «Cambio de turno», si lo hay): mientras tanto no se juega (TI-275). */
+const bandOver = () => {
+  for (let ms = 0; ms < TURN_BAND_MS + PHASE_BAND_MS; ms += 50) act(() => vi.advanceTimersByTime(50))
+}
 
 describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las fases son tuyas', () => {
   it('un duelo nuevo (vas primero, sin robo) entra directo a la Main Phase 1: el botón ofrece sólo lo que el núcleo deja', () => {
@@ -79,6 +83,9 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(phaseButton()).toBeDisabled()
     step()
     phaseIs('Main Phase 1')
+    // Con su cartel a la vista, todavía no se juega.
+    expect(phaseButton()).toBeDisabled()
+    bandOver()
     expect(phaseButton()).toBeEnabled()
     expect(fake.answers).toEqual([])
   })
@@ -125,6 +132,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
       seen.push(phaseButton().getAttribute('aria-label') ?? '')
     }
     expect(seen).toEqual(['End Phase', 'Draw Phase', 'Draw Phase', 'Main Phase 1'].map((name) => `Fases: ${name}`))
+    bandOver()
     fireEvent.click(phaseButton())
     expect(screen.getByRole('menuitem', { name: /^Battle Phase/ })).toHaveAttribute('aria-disabled', 'true')
   })
@@ -146,6 +154,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     core(() => fake.ask(windowAt(0x2)))
     step()
     phaseIs('Standby Phase')
+    bandOver()
     tap(handCard('Called by the Grave'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
     expect(fake.answers).toEqual([PASS, { type: 'select_chain', index: 0 }])
@@ -155,6 +164,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     core(() => fake.ask(IDLE))
     step()
     phaseIs('Main Phase 1')
+    bandOver()
     expect(phaseButton()).toBeEnabled()
   })
 
@@ -172,6 +182,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     core(() => fake.ask(IDLE))
     step()
     phaseIs('Main Phase 1')
+    bandOver()
     expect(phaseButton()).toBeEnabled()
   })
 
@@ -260,7 +271,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(rivalBanner()).toBeNull()
   })
 
-  it('tocar la mesa mientras se cuenta el turno del rival lo salta sin carteles en ráfaga', () => {
+  it('tocar la mesa con un cartel de fase o de turno a la vista no salta nada ni abre nada: los carteles siguen en orden y tu turno empieza cuando terminan (TI-275)', () => {
     const fake = renderAuto()
 
     rivalTurn(fake)
@@ -270,12 +281,15 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     for (let ms = 0; ms < TURN_BAND_MS + 500 + 50; ms += 50) act(() => vi.advanceTimersByTime(50))
     expect(rivalBanner()).toBe('Rival · Standby Phase')
     fireEvent.pointerDown(hand())
-    const seen = new Set<string>()
-    for (let i = 0; i < 8; i += 1) {
-      act(() => vi.advanceTimersByTime(STEP_MS))
-      seen.add(rivalBanner() ?? '')
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    const seen: string[] = []
+    for (let ms = 0; ms < 6_000; ms += 50) {
+      act(() => vi.advanceTimersByTime(50))
+      if (rivalBanner() && rivalBanner() !== seen.at(-1)) seen.push(rivalBanner()!)
     }
-    expect(seen).toEqual(new Set(['Rival · Standby Phase', '']))
+    expect(seen).toEqual(['Rival · Standby Phase', 'Rival · Main Phase 1', 'Rival · End Phase', 'Tu turno'])
     expect(phaseButton()).toBeEnabled()
+    expect(fake.answers).toEqual([])
   })
 })
