@@ -129,7 +129,7 @@ describe('«Descargar video» en «Guardar replay»', () => {
     render(<SaveReplayDialog isOpen onClose={() => {}} build={long} />)
     const fast = await screen.findByRole('switch', { name: 'Rápido (2×)' })
     expect(fast).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByText(/^Cada jugada a la mitad: el video dura 6:0\d en vez de 12:0\d\.$/)).toBeInTheDocument()
+    expect(screen.getByText(/^Cada jugada a la mitad: el video dura 4:\d\d en vez de 9:\d\d\.$/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Descargar video' }))
     await waitFor(() => expect(fake.calls).toHaveLength(1))
     expect(fake.calls[0]!.options.speed).toBe(2)
