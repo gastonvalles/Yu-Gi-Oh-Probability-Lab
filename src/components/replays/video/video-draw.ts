@@ -1,4 +1,7 @@
+import remolino from '../../../assets/duelo/remolino-medio-movil.avif'
+import remolinoIndigo from '../../../assets/duelo/remolino-medio-movil-indigo.avif'
 import { easeInOut } from '../../../app/motion'
+import { PHASES } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
 import { CARD_BACK_URL, FX_RGB } from '../../probability/practice-styles'
 import type { Flight } from './video-fx'
@@ -79,6 +82,8 @@ export interface VideoAssets {
   /** El arte por URL; `null` si no cargó (se dibuja el nombre). El de una Magia de Campo se suma cuando aparece (`loadFieldArt`). */
   arts: Map<string, ImageBitmap | null>
   back: ImageBitmap | null
+  /** El remolino de la mesa (`mat-scene`) de la paleta en uso; `null` si no cargó (queda el degradado). */
+  scene?: ImageBitmap | null
   /** Las capas que no cambian, pintadas una vez (la arena, la placa, el arte del campo recortado). */
   cache?: Map<string, CanvasImageSource>
 }
@@ -98,9 +103,10 @@ async function loadBitmap(url: string, signal?: AbortSignal, width = 160): Promi
 
 /** Carga las imágenes y espera la letra antes del primer cuadro (un `fillText` antes de que cargue saldría con otra). */
 export async function loadVideoAssets(urls: readonly string[], signal?: AbortSignal): Promise<VideoAssets> {
-  const [back, ...arts] = await Promise.all([loadBitmap(CARD_BACK_URL, signal), ...urls.map((url) => loadBitmap(url, signal))])
+  const swirl = document.documentElement.getAttribute('data-palette') === 'indigo' ? remolinoIndigo : remolino
+  const [back, scene, ...arts] = await Promise.all([loadBitmap(CARD_BACK_URL, signal), loadBitmap(swirl, signal, 1080), ...urls.map((url) => loadBitmap(url, signal))])
   await Promise.all(['400', '600', '700'].map((weight) => document.fonts.load(`${weight} 24px "Lexend Deca"`)))
-  return { theme: readVideoTheme(), arts: new Map(urls.map((url, index) => [url, arts[index] ?? null])), back: back ?? null, cache: new Map() }
+  return { theme: readVideoTheme(), arts: new Map(urls.map((url, index) => [url, arts[index] ?? null])), back: back ?? null, scene: scene ?? null, cache: new Map() }
 }
 
 /** El arte de una Magia de Campo, la primera vez que aparece (a 512 px: cubre media mesa). */
@@ -153,12 +159,18 @@ function ellipse(ctx: Ctx, box: Rect, cx: number, cy: number, rx: number, ry: nu
 }
 
 /** La arena de la mesa (`mat-scene` de `index.css`): el índigo con un pozo violeta debajo del campo, dos luces arriba y la viñeta. Sin el grano (no se ve en H.264). */
-function paintScene(ctx: Ctx, scene: Scene, theme: VideoTheme) {
+function paintScene(ctx: Ctx, scene: Scene, theme: VideoTheme, swirl?: ImageBitmap | null) {
   const W = scene.width
   const H = scene.height
   const box = { x: 0, y: 0, w: W, h: H }
   ctx.fillStyle = theme.background
   ctx.fillRect(0, 0, W, H)
+  // El remolino de la mesa, cubriendo el cuadro como `mat-scene` (`background-size: cover`); sin él, el degradado de antes.
+  if (swirl) {
+    const k = Math.max(W / swirl.width, H / swirl.height)
+    ctx.drawImage(swirl, (W - swirl.width * k) / 2, (H - swirl.height * k) / 2, swirl.width * k, swirl.height * k)
+    return
+  }
   const top = ctx.createLinearGradient(0, 0, 0, H)
   top.addColorStop(0, rgba(theme.cardRgb, 0.75))
   top.addColorStop(0.36, rgba(theme.cardRgb, 0))
@@ -374,6 +386,26 @@ function drawScore(ctx: Ctx, rect: Rect, name: string, lp: number, mine: boolean
   ctx.fillText(String(lp), inner, y + 66 * s)
 }
 
+/**
+ * La caja de la fase al medio del campo, como la de la mesa (`IconButton` `tile` en `p2`): cuadrada, del lado menor de su casilla, con la sigla grande; lima (borde y sigla) en el turno de abajo, la sigla en lila en el del otro.
+ */
+function drawPhase(ctx: Ctx, scene: Scene, theme: VideoTheme, s: number) {
+  const cell = scene.layout.cellAt(scene.layout.middle, 2)
+  const side = Math.min(cell.w, cell.h)
+  const box = { x: cell.x + (cell.w - side) / 2, y: cell.y + (cell.h - side) / 2, w: side, h: side }
+  const active = scene.turn === 0
+  ctx.fillStyle = theme.card
+  ctx.fillRect(box.x, box.y, box.w, box.h)
+  ctx.lineWidth = 2 * s
+  ctx.strokeStyle = active ? theme.info : theme.border
+  ctx.strokeRect(box.x + s, box.y + s, box.w - 2 * s, box.h - 2 * s)
+  ctx.fillStyle = active ? theme.info : theme.muted
+  ctx.font = `800 ${side * 0.3}px ${FONT}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(PHASES.find((phase) => phase.id === scene.phase)?.short ?? '', box.x + box.w / 2, box.y + box.h / 2 + s)
+}
+
 /** El arte de campo de un lado en un momento: cuál y cuánto se ve (0 a 1: su fundido de entrada o de salida). */
 export interface FieldLayer {
   src: string
@@ -497,7 +529,7 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
 
   layer(ctx, assets, `mesa:${scene.width}:${Math.round(plateOf(scene).y)}:${Math.round(plateOf(scene).h)}`, full, (target) => {
     // Sin placa: como en la mesa, las casillas son transparentes y se ve el fondo a través.
-    paintScene(target, scene, theme)
+    paintScene(target, scene, theme, assets.scene)
   })
 
   // El arte de la Magia de Campo de cada lado, encima del fondo y debajo de las casillas.
@@ -513,6 +545,8 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
   ctx.lineWidth = 1.5 * s
   ctx.strokeStyle = rgba(theme.fieldLineRgb, 0.5)
   for (const r of scene.cells) ctx.strokeRect(r.x, r.y, r.w, r.h)
+
+  drawPhase(ctx, scene, theme, s)
 
   scene.sides.forEach((side, index) => {
     for (const slot of side.slots) {
@@ -551,14 +585,9 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
     ctx.font = `600 ${20 * s}px ${FONT}`
     ctx.fillText(wrap(ctx, scene.heading.subtitle, layout.score.w, 1)[0]!, layout.score.x, layout.score.y + 70 * s)
   } else {
-    // Las chapas de la mesa (el borde grueso dice de quién es el turno) y, entre ellas, el turno.
+    // Las chapas de la mesa: el borde grueso dice de quién es el turno (sin texto de turno, como en la mesa).
     drawScore(ctx, layout.score, mine.name, lp?.[0] ?? mine.lp, true, scene.turn === 0, assets, s)
     drawScore(ctx, layout.score, theirs.name, lp?.[1] ?? theirs.lp, false, scene.turn === 1, assets, s)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = scene.turn === 0 ? theme.accent : theme.infoSoft
-    ctx.font = `700 ${26 * s}px ${FONT}`
-    ctx.fillText(wrap(ctx, scene.turnText, layout.score.w * 0.4, 1)[0]!, layout.score.x + layout.score.w / 2, layout.score.y + layout.score.h / 2)
   }
   if (scene.caption) {
     ctx.textAlign = 'left'
