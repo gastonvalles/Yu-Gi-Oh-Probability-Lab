@@ -101,7 +101,8 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
       onClick={option.disabled ? undefined : () => onPick([option.id])}
     >
       <PositionCard value={Number(option.id)} card={card} />
-      <span className="whitespace-nowrap">{option.label}</span>
+      {/* Del ancho de su caja (en dos renglones si es largo): todas las opciones miden lo mismo y quedan parejas. */}
+      <span className="w-[calc(var(--pos-w)*614/421)] whitespace-normal! text-center">{option.label}</span>
     </Button>
   )
   const positions = (
@@ -109,7 +110,7 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
       role="menu"
       aria-label={title}
       data-positions=""
-      className="flex w-full min-w-0 flex-wrap items-start justify-center gap-3 [--pos-w:min(var(--desk-card,4.5rem),calc((100cqw_-_3rem)/2*421/614))]"
+      className="flex w-full min-w-0 flex-wrap items-start justify-center gap-3 [--pos-w:min(var(--desk-card,4.5rem),calc((100cqw_-_4.5rem)/2*421/614))]"
     >
       {options.map(button)}
     </div>
