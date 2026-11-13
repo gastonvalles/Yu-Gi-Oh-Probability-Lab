@@ -2964,7 +2964,8 @@ function PracticeMatBody({
   // tiene el turno; en la práctica el turno siempre es tuyo.
   const phaseNow = duel ? duel.phase : state.phase
   const myTurn = duel ? duel.myTurn : true
-  const passTurn = () => (duel?.auto ? duel.auto.endTurn?.() : play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) }))
+  // Sólo la mesa manual: en el automático terminar el turno es la respuesta `duel.auto.endTurn` que el núcleo espera (el botón de la fase la manda directo, sin cartel).
+  const passTurn = () => play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) })
   // El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos).
   // Eligiendo se apoya sobre la fila de abajo que ese momento no se usa (`absolute inset-0`): no suma ni quita alto. En un duelo de escritorio es una cápsula centrada que sí recibe toques (la barra de abajo no los ataja: el medio es de la mano).
   const pileSheet = !isDesktop && !covered && (viewerPile !== null || rivalViewing)
@@ -3223,7 +3224,9 @@ function PracticeMatBody({
                 className="size-[100cqmin]! min-h-11 min-w-11 border-2! text-lead font-extrabold leading-none"
                 onClick={(event) => {
                   // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
-                  if (!isDesktop && phaseNow === 'end') setEndingTurn(true)
+                  // En el automático no pregunta: terminar el turno es la respuesta que el núcleo espera (`endTurn`) y se manda directo; si no hay ninguna, muestra lo que el núcleo ofrece.
+                  if (!isDesktop && phaseNow === 'end' && !isAuto) setEndingTurn(true)
+                  else if (!isDesktop && phaseNow === 'end' && duel?.auto?.endTurn) duel.auto.endTurn()
                   else setMenu({ kind: 'phases', rect: event.currentTarget.getBoundingClientRect() })
                 }}
               >
@@ -3509,9 +3512,9 @@ function PracticeMatBody({
         />
       ) : null}</Presence>
 
-      {/* Celular: sin «Pasar turno», la End Phase pregunta si se termina el turno. «Seguir jugando» deja todo como está; para pasar el turno hay que volver a tocar el botón de la End Phase. */}
+      {/* Celular, mesa manual (en el automático no: terminar el turno es la respuesta que el núcleo espera): sin «Pasar turno», la End Phase pregunta si se termina el turno. «Seguir jugando» deja todo como está; para pasar el turno hay que volver a tocar el botón de la End Phase. */}
       <ConfirmDialog veil={false} anchor="mat"
-          isOpen={endingTurn && !isDesktop && !covered && myTurn && phaseNow === 'end'}
+          isOpen={endingTurn && !isDesktop && !isAuto && !covered && myTurn && phaseNow === 'end'}
           title={t('practice.mat.endTurnTitle')}
           description={duel ? t('practice.mat.endTurnText', { name: duel.control?.rival ?? t('duel.bar.rival') }) : t('practice.mat.endTurnSolo')}
           confirmLabel={t('practice.mat.endTurnConfirm')}

@@ -231,6 +231,21 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(phaseButton()).toBeEnabled()
   })
 
+  it('en el celular, elegir «End Phase» en el menú de fases contesta al núcleo una sola vez y no pregunta si terminás el turno (TI-295)', () => {
+    const fake = renderAuto(drawPhaseSession())
+
+    rearm(fake, START, IDLE)
+    goTo('End Phase')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 7, index: null }])
+    // El núcleo abre la ventana de la End Phase y el botón no abre un cartel: la mesa no se queda esperando.
+    core(() => fake.events([to('end')]))
+    core(() => fake.ask(windowAt(0x20)))
+    step()
+    phaseIs('End Phase')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
   it('«Main Phase 1» en la ventana de la DP pasa y la ventana de la SP se pasa sola, sin mostrarse', () => {
     const fake = renderAuto(drawPhaseSession())
 
@@ -255,10 +270,14 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     rearm(fake, [...START, to('end')], windowAt(0x20))
     phaseIs('End Phase')
     expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
-    // En el celular, el botón de la End Phase pregunta si terminás el turno (como en la mesa manual).
+    // En el celular, el botón de la End Phase termina el turno directo, sin el cartel de la mesa manual: es la respuesta que el núcleo espera (TI-295). Una sola vez.
     fireEvent.click(phaseButton())
-    fireEvent.click(within(screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })).getByRole('button', { name: 'Terminar turno' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(fake.answers).toEqual([PASS])
+    fireEvent.click(phaseButton())
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(fake.answers).toEqual([PASS])
+    fireEvent.keyDown(window, { key: 'Escape' })
 
     act(() => setAutoPref('chain', 'never'))
     core(() => fake.ask(windowAt(0x1)))
