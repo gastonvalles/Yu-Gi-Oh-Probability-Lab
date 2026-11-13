@@ -7,7 +7,7 @@ import { KIND_KEY, ORIGIN_KEY, routeOf } from '../../../app/mat-step-text'
 import { FOREIGN_PREFIX, isToken, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
 import { artOfDrawId, passcodeOfDrawId } from '../../duel/duel-art'
-import { phoneDuelLayout } from '../../probability/compact-field'
+import { HAND_ROOM, HAND_TOP_ROOM, phoneDuelLayout } from '../../probability/compact-field'
 import type { FxTone } from '../../probability/practice-styles'
 import { cardName, playerName, realOf, stepText } from '../duel-replay-text'
 
@@ -138,9 +138,14 @@ export interface VideoLayout {
   middle: number
 }
 
-/** El celular de referencia: el campo del video es el de la mesa a 390 px (`phoneDuelLayout`, con filas del alto de una carta), escalado al ancho del lienzo. */
+/**
+ * El cuadro es la pantalla del duelo de un celular de 390 px (`phoneDuelLayout`, la misma cuenta de la mesa) escalada al ancho del lienzo (Gastón, 2026-11-13: «los replays y campos de video deben ser
+ * iguales al campo de duelo»): el campo a todo el ancho (con la orilla de 4 px) y con filas del alto de una carta, las dos manos del tamaño de la mesa. Un 9:16 es más bajo que un celular: sin las dos
+ * barras del duelo (el texto flota sobre las puntas de las manos, `score` y `text`) y con el aire que tu mano deja debajo de sus cartas afuera del cuadro, la mano del rival queda pegada arriba y tus
+ * cartas, abajo. El campo manda: no se achica para que entre el texto.
+ */
 export const PHONE_WIDTH = 390
-const PHONE = phoneDuelLayout(PHONE_WIDTH, 844, { tilted: false, bar: 0, bottom: 0 })
+const PHONE = phoneDuelLayout(PHONE_WIDTH, (PHONE_WIDTH * BASE_H) / BASE_W, { tilted: false, bar: 0, bottom: HAND_TOP_ROOM - HAND_ROOM })
 /** El hueco entre casillas (`max-sm:gap-0.75`) y el ancho de una columna de los costados (0,6857 de una del centro). */
 const PHONE_GAP = 3
 const SIDE_COLUMN = 0.6857
@@ -167,36 +172,32 @@ export function fieldGrid(width: number, top: number, unit = width / PHONE_WIDTH
   }
 }
 
-/** El diseño del lienzo: medidas en el de referencia (720×1280) por la escala. Un alto distinto de 16:9 deja aire abajo o lo recorta: el video es siempre 9:16. */
+/**
+ * El diseño del lienzo: el de `PHONE` por `unit` (px del lienzo por px del celular). Las manos, las cartas de la mesa: la del rival, de su caja (`rivalRoom`) sin lo que suben sus puntas; la tuya,
+ * `HAND_TOP_ROOM` debajo del borde de arriba de su caja y a lo ancho de la columna. El texto va donde el duelo tiene sus barras, flotando: las vidas o el título arriba, sobre las puntas de la mano del
+ * rival, y la jugada abajo, sobre el pie de tus cartas (su recuadro de texto; el arte queda a la vista), cada uno con su velo. La marca, arriba al medio.
+ */
 export function videoLayout(width: number): VideoLayout {
   const s = width / BASE_W
+  const unit = width / PHONE_WIDTH
   const box = (x: number, y: number, w: number, h: number): Rect => ({ x: x * s, y: y * s, w: w * s, h: h * s })
-  // Entre las vidas (hasta 104) y el texto (desde 1120, con 4 de aire): la mano del rival, 6 px del celular, el campo, 8 y tu mano, cada mano con lo que suben o bajan las puntas
-  // de su abanico (`handSlots`: 1/16 de su alto). El campo se angosta lo que haga falta para que entren las manos del tamaño de la mesa.
-  const handPerUnit = (HAND_PER_CELL * PHONE.cell * 86) / 59
-  const unit = (1012 / (PHONE.fieldHeight + 6 + 8 + handPerUnit * (1 + RIVAL_HAND) * (17 / 16))) * s
-  const hand = handPerUnit * unit
-  const rival = hand * RIVAL_HAND
-  const fieldTop = 104 * s + (rival * 17) / 16 + 6 * unit
+  const rivalCard = PHONE.rivalCard * CARD_ASPECT
+  const card = PHONE.handCard * CARD_ASPECT
 
   return {
     scale: s,
     score: box(24, 20, 672, 84),
-    theirHand: { x: 64 * s, y: fieldTop - 6 * unit - rival, w: 592 * s, h: rival },
-    myHand: { x: 64 * s, y: fieldTop + PHONE.fieldHeight * unit + 8 * unit, w: 592 * s, h: hand },
-    text: box(24, 1120, 672, 120),
-    footer: box(24, 1244, 672, 28),
-    ...fieldGrid(width, fieldTop, unit),
+    theirHand: { x: ((PHONE_WIDTH - PHONE.rivalWidth) / 2) * unit, y: (PHONE.rivalTop + PHONE.rivalRoom - rivalCard) * unit, w: PHONE.rivalWidth * unit, h: rivalCard * unit },
+    myHand: { x: PHONE_EDGE * unit, y: (PHONE.handTop + HAND_TOP_ROOM) * unit, w: (PHONE_WIDTH - 2 * PHONE_EDGE) * unit, h: card * unit },
+    text: box(24, 1188, 672, 84),
+    footer: box(24, 0, 672, 20),
+    ...fieldGrid(width, PHONE.fieldTop * unit, unit),
     middle: 2,
   }
 }
 
-/**
- * La carta de tu mano mide 1,53 casillas de ancho, como en la mesa del celular (a 369×800: carta de 82 px, casilla de 54); la del rival, 0,8 de la tuya (`RIVAL_SCALE` de la mesa).
- * Así el video es la mesa del celular entera (con márgenes a los costados: el lienzo 9:16 es más ancho que un celular) y no un campo grande con manos chicas.
- */
-const HAND_PER_CELL = 1.53
-const RIVAL_HAND = 0.8
+/** La orilla de la columna de la mesa en el celular (`px-1`): tu mano se abre a lo ancho de la columna. */
+const PHONE_EDGE = 4
 
 /** El rectángulo de la mesa (todas sus casillas): ahí van la placa, la carta grande y el cartel. */
 export function fieldRect(cells: readonly Rect[]): Rect {
