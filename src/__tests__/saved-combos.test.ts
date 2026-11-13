@@ -46,14 +46,14 @@ describe('combos guardados', () => {
     expect(replayMat(saved.initial, saved.actions, 1).mz[0]?.id).toBe('card-1-1')
   })
 
-  it('un combo guardado antes de las fases arranca en la Draw Phase del turno 1', () => {
-    const combo = createSavedCombo({ name: 'Viejo', deckName: 'd', initial, actions, nameOf }, [])
-    const { phase: _phase, turn: _turn, ...legacyInitial } = combo.initial
-    localStorage.setItem('ygo-lab:practice-combos', JSON.stringify([{ ...combo, initial: legacyInitial }]))
+  it('un combo guardado antes de las fases ya no se lee: se descarta sin romper y los demás se quedan', () => {
+    const combo = createSavedCombo({ name: 'De hoy', deckName: 'd', initial, actions, nameOf }, [])
+    const { phase: _phase, turn: _turn, ...sinFases } = combo.initial
+    const { facedown: _facedown, extraUp: _extraUp, targeted: _targeted, ...sinBocaAbajo } = combo.initial
+    const viejos = [{ ...combo, id: 'v1', initial: sinFases }, { ...combo, id: 'v2', initial: sinBocaAbajo }]
+    localStorage.setItem('ygo-lab:practice-combos', JSON.stringify([...viejos, combo]))
 
-    const [read] = readSavedCombos()
-    expect(read?.initial.phase).toBe('draw')
-    expect(read?.initial.turn).toBe(1)
+    expect(readSavedCombos()).toEqual([combo])
   })
 
   it('ignora lo que no tiene forma de combo', () => {
