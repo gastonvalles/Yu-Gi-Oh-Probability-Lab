@@ -8,7 +8,7 @@ import { CHAIN_ALONE_MS, CHAIN_LEAVE_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainFee
 import { buildDuelReplay, replayChainSteps, type ReplayChainStep, type ReplayInput } from '../app/duel-replay'
 import { createMatState } from '../app/practice-mat'
 import { LAYOUT } from '../components/auto/ChainNotice'
-import { BACK_POSE, chainOverlays, chainSnapshots, drawMedal, medalTracks, MEDAL, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
+import { BACK_POSE, CHAIN_TILT, tiltPoint, chainOverlays, chainSnapshots, drawMedal, medalTracks, MEDAL, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
 import { overlaysOf } from '../components/replays/video/video-fx'
 import { cellsOf, fieldRect, placeRect, replayScenes, videoLayout } from '../components/replays/video/video-scene'
 import { chainBeats, chainMs, chainTimeline, frameDurations, INTRO_MS, OUTRO_MS, paceOf, STEP_MS, VIDEO_PACE, videoDurationMs } from '../components/replays/video/video-timeline'
@@ -100,10 +100,12 @@ describe('la escena de la cadena en el video', () => {
   const starts = startsOf(frameDurations({ kind: 'duel', replay: withChain }))
 
   it('se mueve con las clases de `ChainStage` (los lugares del celular) y con sus tiempos', () => {
-    expect(poseOfClasses(LAYOUT.narrow.left.depth[0]!)).toEqual({ x: -0.4, y: 0.5, rotate: (-8 * Math.PI) / 180, scale: 1.4, opacity: 1 })
-    expect(poseOfClasses(LAYOUT.narrow.right.depth[3]!)).toEqual({ x: -0.1, y: -0.75, rotate: (-3 * Math.PI) / 180, scale: 0.6, opacity: 1 })
-    expect(START_POSE).toEqual({ x: 0, y: 0, rotate: 0, scale: 1.5, opacity: 0 })
-    expect(BACK_POSE).toEqual({ x: 0, y: -1, rotate: 0, scale: 0.5, opacity: 0 })
+    const deg = (value: number) => (value * Math.PI) / 180
+    // Con su inclinación 3D (`chain-tilt-front`, `chain-tilt-back-flip`…).
+    expect(poseOfClasses(LAYOUT.narrow.left.depth[0]!)).toEqual({ x: -0.4, y: 0.5, rotate: deg(-8), scale: 1.4, opacity: 1, tiltX: deg(10), tiltY: deg(-7) })
+    expect(poseOfClasses(LAYOUT.narrow.right.depth[3]!)).toEqual({ x: -0.1, y: -0.75, rotate: deg(-3), scale: 0.6, opacity: 1, tiltX: deg(-8), tiltY: deg(-6) })
+    expect(START_POSE).toEqual({ x: 0, y: 0, rotate: 0, scale: 1.5, opacity: 0, tiltX: 0, tiltY: 0 })
+    expect(BACK_POSE).toEqual({ x: 0, y: -1, rotate: 0, scale: 0.5, opacity: 0, tiltX: 0, tiltY: 0 })
     // Impar a la izquierda, par a la derecha; desde el quinto lugar, se va hacia arriba.
     expect(stagePoseOf(0, 1).x).toBeLessThan(0)
     expect(stagePoseOf(0, 2).x).toBeGreaterThan(0)
@@ -111,6 +113,20 @@ describe('la escena de la cadena en el video', () => {
     // Las clases y los tiempos que copia el video siguen en `ChainStage`.
     const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'components', 'auto', 'ChainNotice.tsx'), 'utf8')
     for (const text of ['starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0', "'-translate-y-full scale-50 opacity-0'", `duration-${STAGE_MS.move}`, `delay-${STAGE_MS.newest} duration-${STAGE_MS.word}`, `'delay-${STAGE_MS.newest}'`, `delay-${STAGE_MS.bondDelay}`, 'left-1/3 top-2/7 aspect-[421/614] w-1/3', 'aspect-3/4 h-full max-w-full', 'top-2/5', 'bg-chain-veil/65', 'bg-chain-veil/45']) expect(source).toContain(text)
+  })
+
+  it('cada carta lleva la inclinación 3D de la mesa (`chain-tilt-*` de `index.css`, con su perspectiva): la de adelante se ve más ancha abajo y más alta del lado que se acerca', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8')
+    const [fx, fy] = CHAIN_TILT.front
+    const [bx, by] = CHAIN_TILT.back
+    for (const [name, x, y] of [['front', fx, fy], ['back', bx, by], ['front-flip', fx, -fy], ['back-flip', bx, -by]] as const)
+      expect(css).toMatch(new RegExp(`@utility chain-tilt-${name} \\{\\s*transform: perspective\\(56rem\\) rotateX\\(${x}deg\\) rotateY\\(${y}deg\\);`))
+    const { tiltX, tiltY } = poseOfClasses('chain-tilt-front')
+    const at = (x: number, y: number) => tiltPoint(x, y, tiltX, tiltY, 896)
+    // Una carta de 100 × 146: rotateX(10°) acerca el borde de abajo (más ancho que el de arriba) y rotateY(−7°), el de la derecha (más alto que el de la izquierda).
+    expect(at(50, 73)[0] - at(-50, 73)[0]).toBeGreaterThan(at(50, -73)[0] - at(-50, -73)[0])
+    expect(at(50, 73)[1] - at(50, -73)[1]).toBeGreaterThan(at(-50, 73)[1] - at(-50, -73)[1])
+    expect(at(0, 0)).toEqual([0, 0])
   })
 
   it('va sobre el campo, de su alto y 3:4, centrada', () => {

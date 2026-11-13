@@ -30,6 +30,8 @@ export interface VideoTheme {
   soft: string
   fieldLine: string
   danger: string
+  /** El tachado rojo de un medallón negado (`stroke-danger` de `ChainBadge`, más fuerte que `danger`, que es el del texto). */
+  strike: string
   success: string
   /** Los mismos, como «r g b» para `rgb(r g b / alfa)`. */
   primaryRgb: string
@@ -75,6 +77,7 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     soft: v('--text-soft'),
     fieldLine: v('--field-line'),
     danger: v('--danger-soft'),
+    strike: v('--danger'),
     success: v('--success-soft'),
     primaryRgb: v('--primary-rgb'),
     backgroundRgb: v('--background-rgb'),
@@ -138,7 +141,7 @@ function roundRect(ctx: Ctx, r: Rect, radius: number) {
 const rgba = (rgb: string | undefined, alpha: number) => `rgb(${rgb ?? '255 255 255'} / ${alpha})`
 
 /** Un lienzo aparte del tamaño dado (sin DOM, si se puede); null donde no hay lienzos (las pruebas). */
-function canvasOf(w: number, h: number): { canvas: CanvasImageSource; ctx: Ctx } | null {
+export function canvasOf(w: number, h: number): { canvas: HTMLCanvasElement | OffscreenCanvas; ctx: Ctx } | null {
   const canvas = typeof OffscreenCanvas === 'undefined' ? (typeof document === 'undefined' ? null : Object.assign(document.createElement('canvas'), { width: w, height: h })) : new OffscreenCanvas(w, h)
   const ctx = canvas?.getContext('2d') as Ctx | null | undefined
   return canvas && ctx ? { canvas, ctx } : null

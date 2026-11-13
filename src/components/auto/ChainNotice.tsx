@@ -431,9 +431,10 @@ export function ChainStage({
             </div>
           )
         })}
-        {/* «CADENA» (con dos o más): grande, blanca e itálica, al medio, entre las cartas y por delante; aparece cuando la carta se asienta y se queda hasta que se va la escena. */}
-        {rows.length > 1 && !hidden ? (
-          <span key={rows.length} aria-hidden="true" data-chain-word="" className="absolute inset-x-0 top-2/5 z-7 flex justify-center text-title font-extrabold uppercase italic text-white text-shadow-lg text-shadow-chain-glow transition-[opacity,scale] delay-100 duration-300 ease-out starting:scale-75 starting:opacity-0 motion-reduce:transition-opacity min-[1101px]:text-display">
+        {/* «CADENA» (con dos o más): grande, blanca e itálica, al medio, entre las cartas y por delante; aparece cuando la carta se asienta y se queda hasta que se va la escena: al resolver,
+            con el fundido de la escena (no de golpe); corrida, con el suyo. */}
+        {rows.length > 1 ? (
+          <span key={rows.length} aria-hidden="true" data-chain-word="" className={`absolute inset-x-0 top-2/5 z-7 flex justify-center text-title font-extrabold uppercase italic text-white text-shadow-lg text-shadow-chain-glow transition-[opacity,scale] delay-100 duration-300 ease-out starting:scale-75 starting:opacity-0 motion-reduce:transition-opacity min-[1101px]:text-display${away ? ' opacity-0' : ''}`}>
             {t('auto.chain.title')}
           </span>
         ) : null}

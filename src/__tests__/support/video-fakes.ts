@@ -2,7 +2,7 @@ import type { Ctx, VideoAssets } from '../../components/replays/video/video-draw
 
 /** Lo que pinta el video sin lienzo de verdad (jsdom y node no tienen): las imágenes no cargaron y los colores son de mentira. */
 export const fakeAssets: VideoAssets = {
-  theme: { background: '#000', card: '#111', raised: '#222', border: '#333', primary: '#80c', accent: '#0f9', info: '#fc0', infoSoft: '#fd6', foreground: '#fff', muted: '#aaa', soft: '#888', fieldLine: '#fff', danger: '#f66', success: '#6f6', primaryRgb: '128 0 203', backgroundRgb: '0 0 0', accentRgb: '0 255 153', infoRgb: '255 204 0', primaryForeground: '#fff', accentForeground: '#000', chain: { glow: '#5ef', flash: '#ffa', burst: '#fc3', veil: '#012', metal: '#abc', metalHi: '#fff', metalLo: '#345' } },
+  theme: { background: '#000', card: '#111', raised: '#222', border: '#333', primary: '#80c', accent: '#0f9', info: '#fc0', infoSoft: '#fd6', foreground: '#fff', muted: '#aaa', soft: '#888', fieldLine: '#fff', danger: '#f66', strike: '#d00', success: '#6f6', primaryRgb: '128 0 203', backgroundRgb: '0 0 0', accentRgb: '0 255 153', infoRgb: '255 204 0', primaryForeground: '#fff', accentForeground: '#000', chain: { glow: '#5ef', flash: '#ffa', burst: '#fc3', veil: '#012', metal: '#abc', metalHi: '#fff', metalLo: '#345' } },
   arts: new Map(),
   back: null,
 }
