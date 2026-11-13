@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type TouchEvent as ReactTouchEvent } from 'react'
 
+import { LIFT_RISE, LIFT_SCALE, pushWeight, settled, stepWeight, tiltOf, weightAt, type Weight } from './card-weight'
+import { prefersReducedMotion } from './motion'
 import type { MatPile, MatSpot } from './practice-mat'
 
 export type MatDropTarget = { kind: 'spot'; spot: MatSpot; index: number } | { kind: 'pile'; pile: MatPile }
@@ -51,6 +53,8 @@ interface Session {
   size: { width: number; height: number } | null
   /** El temporizador de la retención (0: no se espera ninguna). */
   hold: number
+  /** El peso del fantasma (`card-weight.ts`): crece, se eleva y se inclina con la velocidad del dedo. */
+  weight: Weight
 }
 
 const DRAG_THRESHOLD = 6
@@ -114,36 +118,49 @@ export function useMatDrag({ onDrop, onTap, onHold, onOver }: UseMatDragOptions)
     [],
   )
 
+  // El fantasma va levantado y con su peso (`card-weight.ts`): sube, crece y se inclina con la velocidad del dedo.
   const placeGhost = useCallback(() => {
     const ghost = ghostRef.current
     const { x, y } = positionRef.current
+    const weight = sessionRef.current?.weight
 
     if (ghost) {
-      ghost.style.transform = `translate3d(${x}px, ${y}px, 0)`
+      ghost.style.transform = weight ? `translate3d(${x}px, ${y - LIFT_RISE}px, 0) ${tiltOf(weight)}` : `translate3d(${x}px, ${y}px, 0)`
     }
   }, [])
 
+  // Un cuadro por vez mientras se arrastra: el movimiento nuevo (si llegó) y el peso; quieto el dedo y la carta derecha, no pide más cuadros hasta el próximo movimiento.
+  const loopRef = useRef<() => void>(() => {})
   const applyPending = useCallback(() => {
     frameRef.current = 0
     const session = sessionRef.current
     const move = pendingRef.current
     pendingRef.current = null
 
-    if (!session || !move) {
+    if (!session) {
       return
     }
 
-    positionRef.current = { x: move.x - session.offsetX, y: move.y - session.offsetY }
-    placeGhost()
+    if (move) {
+      positionRef.current = { x: move.x - session.offsetX, y: move.y - session.offsetY }
 
-    const target = document.elementFromPoint(move.x, move.y)?.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? null
+      const target = document.elementFromPoint(move.x, move.y)?.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? null
 
-    if (target !== overRef.current) {
-      const previous = overRef.current
-      overRef.current = target
-      onOver?.(previous, target)
+      if (target !== overRef.current) {
+        const previous = overRef.current
+        overRef.current = target
+        onOver?.(previous, target)
+      }
     }
+
+    stepWeight(session.weight, LIFT_SCALE, prefersReducedMotion())
+    placeGhost()
+    if (!settled(session.weight, LIFT_SCALE)) frameRef.current = window.requestAnimationFrame(() => loopRef.current())
   }, [placeGhost, onOver])
+
+  useEffect(() => {
+    loopRef.current = applyPending
+  }, [applyPending])
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>, source: MatDragSource) => {
     if (event.button !== 0 || sessionRef.current) {
@@ -164,6 +181,7 @@ export function useMatDrag({ onDrop, onTap, onHold, onOver }: UseMatDragOptions)
       element,
       size,
       hold: 0,
+      weight: weightAt(event.clientX, event.clientY, event.timeStamp),
     }
 
     sessionRef.current = session
@@ -207,6 +225,7 @@ export function useMatDrag({ onDrop, onTap, onHold, onOver }: UseMatDragOptions)
       // Lo que no se arrastra no lleva fantasma ni enciende zonas.
       if (session.source.still) return
       pendingRef.current = { x: event.clientX, y: event.clientY }
+      pushWeight(session.weight, event.clientX, event.clientY, event.timeStamp)
 
       if (!frameRef.current) {
         frameRef.current = window.requestAnimationFrame(applyPending)

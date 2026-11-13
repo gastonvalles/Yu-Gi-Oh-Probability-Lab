@@ -9,6 +9,7 @@ import { opaqueOfForeign } from '../../app/mat-control'
 import { SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type MenuPlace } from '../../app/mat-menu-order'
 import { isOpaqueId } from '../../app/mat-public'
 import { EASE_IN_OUT } from '../../app/motion'
+import { DROP_MS, dropFrames } from '../../app/card-weight'
 import {
   activeScales,
   allMatIds,
@@ -463,6 +464,8 @@ const MAT_CARD = [
   // Al cambiar de posición la carta se acuesta (o se para) pasándose un poco y volviendo; al pasar el mouse se eleva.
   CARD_TRANSITION,
   CARD_HOVER,
+  // La carta del menú, y la soltada que espera que se elija cómo sale, se levanta con peso (`card-weight.ts`: crece un 15 %); al jugarse cae (`DROP_FRAMES`).
+  'data-[selected=true]:-translate-y-1 data-[selected=true]:scale-115',
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
   // En el duelo automático no se arrastra (`still`): sólo se toca.
@@ -1297,7 +1300,8 @@ function PracticeMatBody({
   // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo): `artById`, de arriba.
   // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
   // dejaban la medida de cuando todavía volaban, y la próxima jugada arrancaba de ahí (desde el mazo, con una carta gigante y estirada).
-  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}:${pendingId ?? ''}`)
+  // La carta del menú se levanta (crece un 15 %): se vuelve a medir, así al jugarla sale volando desde donde se ve.
+  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}:${pendingId ?? ''}:${menu?.kind === 'card' ? menu.id : ''}`)
   // El rival tocó su deck o sumó una carta a su mano: su deck y su mano se barajan (lo ve quien mira).
   const rivalShuffle = duel?.rivalShuffle ?? 0
   useEffect(() => {
@@ -3802,6 +3806,16 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
 
   const cardRef = useRef<HTMLDivElement | null>(null)
   const previousPos = useRef(placed.pos)
+  const wasPending = useRef(pending)
+
+  // La soltada que esperaba levantada en su casilla, al jugarse ahí: la pausa en lo alto, cae y se asienta (`dropFrames`; el impacto espera a que toque, `DROP_HIT_MS`).
+  useEffect(() => {
+    const dropped = wasPending.current && !pending
+    wasPending.current = pending
+    const card = cardRef.current
+
+    if (dropped && card && typeof card.animate === 'function' && !prefersReducedMotion()) cancelWhenDone(card.animate(dropFrames(4), { duration: DROP_MS }))
+  }, [pending])
 
   useEffect(() => {
     const wasFaceDown = previousPos.current === 'set'

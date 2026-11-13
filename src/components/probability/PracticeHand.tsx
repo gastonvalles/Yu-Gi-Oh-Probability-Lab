@@ -20,6 +20,7 @@ import {
   type HandLayout,
 } from '../../app/practice-hand-layout'
 import type { SpotlightKind } from '../../app/mat-effects'
+import { LIFT_SCALE, pushWeight, settled, stepWeight, tiltOf, weightAt, type Weight } from '../../app/card-weight'
 import { DEAL_EDGE_AT, DEAL_LAND_AT, dealFrames } from '../../app/deal-flight'
 import { EASE_IN_OUT, EASE_OUT, cancelWhenDone } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
@@ -65,8 +66,9 @@ const HAND_CARD = [
   // cada pregunta del núcleo cambian varias cartas a la vez). Sin `filter`: lo gris y lo atenuado también cambian de una, porque la carta que se enciende destella con su propio
   // `filter` (`animate-card-glow`) y dos animaciones de la misma propiedad en un elemento sacan a la de la GPU (Chromium: «incompatible»).
   '[transition:transform_var(--motion-duration)_var(--ease-out),translate_var(--motion-duration)_var(--ease-out),scale_var(--motion-duration)_var(--ease-out)]',
-  // Pasar el mouse: se eleva y su borde se enciende en blanco, tenue.
+  // Pasar el mouse: se eleva y su borde se enciende en blanco, tenue. La del menú, tocada o con el teclado, sube lo mismo (y crece: ver `restTransform`).
   HAND_CARD_HOVER,
+  'data-[selected=true]:-translate-y-3.5',
   // El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes.
   '[&>:not([data-back])]:pointer-events-none [&>:not([data-back])]:[-webkit-user-drag:none]',
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info',
@@ -133,9 +135,7 @@ interface PracticeHandProps {
   className?: string
 }
 
-/** Escala de la carta levantada mientras está sobre la mano. */
-const LIFT_SCALE = 1.1
-/** Inclinación máxima (perspectiva) al llegar al campo. */
+/** Inclinación máxima (perspectiva) al llegar al campo; la de la velocidad del dedo se suma (`card-weight.ts`, con su crecer un 15 %). */
 const MAX_TILT = 16
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
@@ -169,8 +169,8 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
   const layout = useMemo(() => computeHandLayout(width, count, maxCardWidth, sizeSlots), [width, count, maxCardWidth, sizeSlots])
   // La carta arrastrada: sólo cuál es. Dónde está se escribe en su `transform` por el ref, un cuadro por vez, sin pasar por React.
   const [draggedId, setDraggedId] = useState<string | null>(null)
-  // `at`: su lugar en el DOM cuando tomó el puntero (ver `handlePointerEnd`).
-  const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean; outside: string | null; element: HTMLElement; at: number } | null>(null)
+  // `at`: su lugar en el DOM cuando tomó el puntero (ver `handlePointerEnd`). `weight`: su peso (`card-weight.ts`); `x`, `y`, `scale` y `tilt`, lo último que pidió el dedo.
+  const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean; outside: string | null; element: HTMLElement; at: number; weight: Weight; x: number; y: number; scale: number; tilt: number } | null>(null)
   const cardsRef = useRef(cards)
   cardsRef.current = cards
   const layoutRef = useRef(layout)
@@ -195,22 +195,37 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
       outside: null,
       element: event.currentTarget,
       at: siblingIndex(event.currentTarget),
+      weight: weightAt(event.clientX, event.clientY, event.timeStamp),
+      x: 0,
+      y: 0,
+      scale: LIFT_SCALE,
+      tilt: 0,
     }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  // El movimiento se aplica una vez por cuadro (pointermove puede dispararse mucho más seguido
-  // que la pantalla) y se lee el rect del contenedor sólo ahí.
+  // Mientras se arrastra corre un cuadro por vez (`tick`): el movimiento nuevo (pointermove puede dispararse mucho más seguido que la pantalla) se aplica ahí, leyendo el rect del
+  // contenedor sólo entonces, y el peso de la carta (`card-weight.ts`: crece, se inclina con la velocidad y se endereza cuando el dedo se frena) se escribe en su `transform`.
   const pendingMoveRef = useRef<{ clientX: number; clientY: number } | null>(null)
   const moveFrameRef = useRef(0)
 
-  const applyPendingMove = () => {
+  const tick = () => {
     moveFrameRef.current = 0
     const state = dragRef.current
+
+    if (!state) return
+    applyPendingMove(state)
+    stepWeight(state.weight, state.scale, prefersReducedMotion())
+    state.element.style.transform = `translate3d(${state.x}px, ${TOP_ROOM + state.y - 16}px, 0) ${tiltOf(state.weight, state.tilt, 900)}`
+    // El cuadro siguiente, con los manejadores de ese momento (la mesa se redibuja mientras tanto: al reordenar, al encender una zona); quieta, hasta que el dedo se mueva.
+    if (!settled(state.weight, state.scale)) moveFrameRef.current = window.requestAnimationFrame(nextTick)
+  }
+
+  const applyPendingMove = (state: NonNullable<typeof dragRef.current>) => {
     const move = pendingMoveRef.current
     pendingMoveRef.current = null
 
-    if (!state || !move || !containerRef.current) {
+    if (!move || !containerRef.current) {
       return
     }
 
@@ -240,7 +255,10 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
       tilt = MAX_TILT * progress
     }
 
-    state.element.style.transform = `translate3d(${x}px, ${TOP_ROOM + y - 16}px, 0) perspective(900px) rotateX(${tilt}deg) scale(${scale})`
+    state.x = x
+    state.y = y
+    state.scale = scale
+    state.tilt = tilt
 
     if (outside !== state.outside) {
       state.outside = outside
@@ -276,9 +294,10 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
 
     state.moved = true
     pendingMoveRef.current = { clientX: event.clientX, clientY: event.clientY }
+    pushWeight(state.weight, event.clientX, event.clientY, event.timeStamp)
 
     if (!moveFrameRef.current) {
-      moveFrameRef.current = window.requestAnimationFrame(applyPendingMove)
+      moveFrameRef.current = window.requestAnimationFrame(nextTick)
     }
   }
 
@@ -354,10 +373,11 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
   }
 
   // Las cartas (con `memo`) reciben funciones fijas que leen siempre los últimos manejadores: tocar una no redibuja las demás.
-  const latest = useRef({ handlePointerDown, handlePointerMove, handlePointerEnd, handleKeyDown, getDeckRect })
+  const latest = useRef({ handlePointerDown, handlePointerMove, handlePointerEnd, handleKeyDown, getDeckRect, tick })
   useLayoutEffect(() => {
-    latest.current = { handlePointerDown, handlePointerMove, handlePointerEnd, handleKeyDown, getDeckRect }
+    latest.current = { handlePointerDown, handlePointerMove, handlePointerEnd, handleKeyDown, getDeckRect, tick }
   })
+  const nextTick = useCallback(() => latest.current.tick(), [])
   const onCardPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>, id: string) => latest.current.handlePointerDown(event, id), [])
   const onCardPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => latest.current.handlePointerMove(event), [])
   const onCardPointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>, id: string) => latest.current.handlePointerEnd(event, id), [])
@@ -377,10 +397,11 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
     >
       {cards.map((card, index) => {
         const isDragged = draggedId === card.id
-        // El lugar que le toca en el abanico; la carta arrastrada lo ignora (ver `HandCard`) y vuelve a él al soltarse.
-        const transform = restTransform(index)
         const flashing = flash?.id === card.id
         const selected = selectedId === card.id
+        // El lugar que le toca en el abanico; la carta arrastrada lo ignora (ver `HandCard`) y vuelve a él al soltarse. La del menú se levanta: sube como al pasar el mouse
+        // (`data-selected`, en `HAND_CARD`) y crece un 15 % (`card-weight.ts`) dentro de su `transform`, desde su centro (la propiedad `scale` la correría hacia el costado).
+        const transform = selected ? `${restTransform(index)} scale(${LIFT_SCALE})` : restTransform(index)
 
         return (
           <HandCard
