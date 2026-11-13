@@ -196,7 +196,6 @@ export const meta: Translated<typeof es> = {
   'meta.replays.moreOptions': 'More options for {label}',
   'meta.replays.viewDeck': 'View deck',
   'meta.replays.viewDeckLabel': 'View deck {deck}',
-  'meta.replays.viewDecks': 'View decks',
   'meta.replays.viewDecksLabel': 'View the decks of {label}',
   'meta.replays.stage.final': 'Final',
   'meta.replays.stage.semifinal': 'Semifinal',

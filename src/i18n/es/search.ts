@@ -28,8 +28,6 @@ export const search = {
 
   // Los filtros de la búsqueda (el cajón) y los chips de filtros activos.
   'search.filters.title': 'Filtros',
-  'search.filters.active': { one: '{count} filtro activo', other: '{count} filtros activos' },
-  'search.filters.none': 'Sin filtros activos',
   'search.filters.clear': 'Limpiar filtros',
   'search.filters.archetype': 'Arquetipo',
   'search.filters.frame': 'Marco',
