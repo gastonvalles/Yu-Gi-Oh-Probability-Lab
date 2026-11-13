@@ -10,8 +10,8 @@ import { CardPicker, copyGroups, copyToToggle, pickPlace, type PickCard } from '
 import { PileGroupContext, PileViewer } from '../components/probability/MatDialogs'
 
 /**
- * Elegir varias en un solo cartel (M-03) y el visor de una pila (P-01): las copias de la misma carta en el mismo lugar van juntas, con «×3»; tocar el grupo suma la próxima copia, que lleva su
- * número de orden; lleno, el toque suelta la última (decisión 7). Nunca en el campo. El visor junta sólo con `PileGroupContext` (apagado: la mesa manual no cambia).
+ * Elegir varias en un solo cartel (M-03) y el visor de una pila (P-01): eligiendo una, las copias de la misma carta en el mismo lugar van juntas, con «×3»; eligiendo varias, cada copia es una
+ * carta aparte, con su número de orden. Nunca en el campo. El visor junta sólo con `PileGroupContext` (apagado: la mesa manual no cambia).
  */
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 const render = (ui: ReactElement) => renderBare(ui, { wrapper: ({ children }) => <Provider store={store}>{children}</Provider> })
@@ -29,50 +29,69 @@ describe('las copias juntas (puro)', () => {
     expect(copyGroups([ash('a1'), { ...ash('g1'), ...pickPlace('gy', false) }])).toHaveLength(2)
   })
 
-  it('el toque suma la próxima libre hasta el tope; lleno, suelta la última del grupo; eligiendo una, la elegida', () => {
-    const open = () => true
+  it('eligiendo una, el toque sobre el grupo suelta la elegida o toma la primera que se puede elegir', () => {
     const group = CARDS.slice(0, 3)
 
-    expect(copyToToggle(group, [], true, open, 3)).toBe('a1')
-    expect(copyToToggle(group, ['a1', 'v'], true, open, 3)).toBe('a2')
-    expect(copyToToggle(group, ['a2', 'v', 'a1'], true, open, 3)).toBe('a1')
-    expect(copyToToggle(group, ['a1', 'a2', 'a3'], true, open, 3)).toBe('a3')
-    expect(copyToToggle(group, ['a2'], false, open)).toBe('a2')
-    expect(copyToToggle(group, ['v'], true, (card) => card.key === 'a3', 3)).toBe('a3')
-    expect(copyToToggle(group, [], true, () => false, 3)).toBeNull()
+    expect(copyToToggle(group, [], () => true)).toBe('a1')
+    expect(copyToToggle(group, ['a2'], () => true)).toBe('a2')
+    expect(copyToToggle(group, ['v'], (card) => card.key === 'a3')).toBe('a3')
+    expect(copyToToggle(group, [], () => false)).toBeNull()
   })
 })
 
 describe('M-03: elegir varias con copias', () => {
-  it('una carta con «×3», los números en el orden tocado, «2 de 3» y una sola principal que se prende al completar', () => {
+  it('cada copia es una carta: se eligen dos de la misma, con su número, «3 de 3» y una sola principal', () => {
     const onPick = vi.fn()
     render(<CardPicker title="Elegí 3 cartas" cards={CARDS} min={3} max={3} onPick={onPick} onCancel={() => {}} />)
     const dialog = screen.getByRole('dialog', { name: 'Elegí 3 cartas' })
     const options = within(dialog).getAllByRole('option')
 
-    // La mano propia va primero; después, el Deck.
-    expect(options).toHaveLength(2)
-    const ash = options[1]
-    expect(ash).toHaveAccessibleName(/^Ash Blossom, 3 copias/)
-    expect(ash!.querySelector('[data-pick-copies]')).toHaveTextContent('×3')
+    // La mano propia va primero; después, el Deck, una por copia y sin «×3».
+    expect(options).toHaveLength(4)
+    expect(dialog.querySelector('[data-pick-copies]')).toBeNull()
+    expect(options[1]).not.toHaveAccessibleName(/copias/)
 
-    fireEvent.click(ash!)
+    fireEvent.click(options[1]!)
     fireEvent.click(options[0]!)
-    fireEvent.click(ash!)
+    fireEvent.click(options[3]!)
     expect(within(dialog).getByRole('status')).toHaveTextContent('3 de 3')
-    expect(ash).toHaveAccessibleName(/1, 3/)
-    expect(ash).toHaveTextContent('1·3')
+    expect(options[3]).toHaveTextContent('3')
 
-    // Lleno: tocar el grupo suelta la última copia elegida.
-    fireEvent.click(ash!)
+    // Tocar una copia elegida la suelta a ella sola.
+    fireEvent.click(options[1]!)
     expect(within(dialog).getByRole('status')).toHaveTextContent('2 de 3')
     const primary = within(dialog).getAllByRole('button').at(-1)!
     expect(primary).toBeDisabled()
-    fireEvent.click(ash!)
+    fireEvent.click(options[2]!)
     expect(primary).toBeEnabled()
     expect(within(dialog).getAllByRole('button').filter((button) => button.className.includes('bg-primary'))).toHaveLength(1)
     fireEvent.click(primary)
-    expect(onPick).toHaveBeenCalledWith(['a1', 'v', 'a2'])
+    expect(onPick).toHaveBeenCalledWith(['v', 'a3', 'a2'])
+  })
+
+  it('un `select_unselect_card` de 2 (cada toque contesta: `apart`): tres copias, y cada toque manda una copia distinta', () => {
+    const onToggle = vi.fn()
+    const ashes = CARDS.slice(0, 3)
+    const picker = (chosen: string[]) => <CardPicker title="Elegí 2 cartas" cards={ashes} min={2} max={1} apart chosen={chosen} onToggle={onToggle} onPick={() => {}} />
+    const { rerender } = render(picker([]))
+    const options = () => within(screen.getByRole('dialog')).getAllByRole('option')
+
+    expect(options()).toHaveLength(3)
+    fireEvent.click(options()[0]!)
+    rerender(picker(['a1']))
+    fireEvent.click(options()[1]!)
+    expect(onToggle.mock.calls.map(([key]) => key)).toEqual(['a1', 'a2'])
+  })
+
+  it('eligiendo una sola, las copias siguen juntas con «×3»', () => {
+    const onPick = vi.fn()
+    render(<CardPicker title="Elegí 1 carta" cards={CARDS} min={1} max={1} onPick={onPick} />)
+    const ash = within(screen.getByRole('dialog')).getAllByRole('option')[1]!
+
+    expect(ash).toHaveAccessibleName(/^Ash Blossom, 3 copias/)
+    expect(ash.querySelector('[data-pick-copies]')).toHaveTextContent('×3')
+    fireEvent.click(ash)
+    expect(onPick).toHaveBeenCalledWith(['a1'])
   })
 })
 

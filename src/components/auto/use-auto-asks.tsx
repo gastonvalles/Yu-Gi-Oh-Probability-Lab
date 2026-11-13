@@ -1369,6 +1369,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         chosen: list.chosen.map((i) => listKeys[i]!),
         eligible: new Set(list.eligible.map((i) => listKeys[i]!)),
         done: list.done,
+        // Eligiendo varias (también un `select_unselect_card`, que se contesta de a una), cada copia es una carta aparte.
+        apart: list.max > 1,
         onInspect: inspectListed,
         onToggle: (key: string) => gesture({ kind: 'pick', index: listKeys.indexOf(key) }),
         ...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {}),
