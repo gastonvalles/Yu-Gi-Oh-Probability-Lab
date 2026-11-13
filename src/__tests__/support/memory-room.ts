@@ -8,7 +8,7 @@ import type { SpectatorTransport } from '../../app/duel-spectator'
  * antes de entregarlos, y cortar o volver a conectar a cualquiera de los dos.
  */
 
-export type Envelope =
+type Envelope =
   | { to: MemoryEnd; text: string }
   | { to: MemoryEnd; present: boolean }
   | { to: MemoryEnd; watchers: number; sync: boolean }

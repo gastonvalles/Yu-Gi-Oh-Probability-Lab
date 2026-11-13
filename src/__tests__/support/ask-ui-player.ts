@@ -49,7 +49,7 @@ export function gesturesOf(view: AskView): AskGesture[] {
   return out
 }
 
-export interface Played {
+interface Played {
   answer: CoreAnswer | null
   /** Se contestó sola (y por qué). */
   auto: AskView['auto']
