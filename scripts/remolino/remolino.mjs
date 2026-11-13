@@ -1,5 +1,5 @@
 // El remolino de fondo del duelo (`mat-scene` en src/index.css): una espiral de trazos finos, procedural y con semilla fija (sale igual cada vez), en dos paletas:
-// Carbón = violeta (#6E52C0) y verde (#67CB3A) del EVA-01 sobre el carbón (#18181C); Índigo = violeta de marca (#8000CB) y ámbar (#FFC100) sobre el índigo (#150A24).
+// Carbón = violeta (#723BFA) y lima (#B9F500) sobre el carbón (#18181C); Índigo = violeta de marca (#8000CB) y ámbar (#FFC100) sobre el índigo (#150A24).
 // Es nuestro: no copia ningún dorso de carta. Los AVIF comiteados en src/assets/duelo/ son la fuente de verdad; esto es para rehacerlos.
 // Dibuja en un <canvas> de Chromium (el de @playwright/test, `npx playwright install chromium`) y codifica a AVIF con sharp, bajando la calidad hasta entrar en 60 KB.
 // Uso: node scripts/remolino/remolino.mjs [carpeta de salida = src/assets/duelo] [paleta = indigo | carbon | todas]. Después, el contraste: node scripts/remolino/medir.mjs.
@@ -18,7 +18,7 @@ const FILES = [
 ]
 // base: el fondo (--background); pull: hacia dónde se bajan los píxeles que pasan el tope de luz; cool y warm: las dos hebras (RGB); suffix: lo que se suma al nombre del archivo.
 const PALETTES = {
-  carbon: { base: [24, 24, 28], pull: [24, 24, 24], cool: [110, 82, 192], warm: [103, 203, 58], suffix: '' },
+  carbon: { base: [24, 24, 28], pull: [24, 24, 24], cool: [114, 59, 250], warm: [185, 245, 0], suffix: '' },
   indigo: { base: [21, 10, 36], pull: [21, 10, 36], cool: [128, 0, 203], warm: [255, 193, 0], suffix: '-indigo' },
 }
 // n: trazos por megapíxel; a: opacidad mínima y máxima; lime: parte de los trazos en el color cálido (a media fuerza, limeA); lw: grosor en px; arc: largo angular (rad);
