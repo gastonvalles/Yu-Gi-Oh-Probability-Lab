@@ -58,7 +58,7 @@ import { NO_FIELD_STATS, fieldStatsOf, printedStat } from '../../app/field-stats
 import { whyNotResume } from '../../app/auto/resume'
 import { playSfx } from '../../app/sfx'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
-import { shuffleDeck, shuffleHand } from '../../app/shuffle-fx'
+import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
@@ -248,6 +248,10 @@ export interface DuelMatLink {
   rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
   /** Cuenta las veces que el rival tocó su deck o sumó una carta a su mano: cada vez que sube, su deck y su mano se barajan a la vista. */
   rivalShuffle?: number
+  /** Cuenta las veces que un efecto barajó tu mano (duelo automático): cada vez que sube, tu mano se baraja a la vista (no es una jugada: ni Pasos ni replay). */
+  handShuffle?: number
+  /** Lo mismo con la mano del rival: sólo el gesto, sin su deck ni el orden nuevo. */
+  rivalHandShuffle?: number
   /** Pedí volver atrás la última jugada de la mesa y espero que el rival la permita: Deshacer queda apagado hasta que conteste. */
   undoPending?: boolean
   /** Hay una jugada que deshacer: la última de la mesa, sea mía o del rival (sin esto, vale la cuenta de mis jugadas). */
@@ -1184,13 +1188,22 @@ function PracticeMatBody({
   }, [session.initial])
 
   const handTotal = state.hand.length
+  // Un efecto barajó tu mano (`duel.handShuffle`): como un paso que baraja, cuando está entera. Sólo al subir (montarse con la cuenta puesta no baraja) y si no se está barajando ya.
+  const effectShuffle = duel?.handShuffle ?? 0
+  const effectShuffleSeen = useRef(effectShuffle)
 
-  // La mano que se baraja (un paso que baraja o que le suma una carta), ya entera: si la carta nueva todavía vuela, `shuffleHand` espera a que aterrice.
+  useEffect(() => {
+    if (effectShuffle === effectShuffleSeen.current) return
+    effectShuffleSeen.current = effectShuffle
+    if (!shuffling(sectionRef.current?.querySelectorAll('[data-drop="hand"] [role="listitem"]') ?? [])) handShuffleRef.current = true
+  }, [effectShuffle])
+
+  // La mano que se baraja (un paso que baraja o que le suma una carta, o un efecto), ya entera: si la carta nueva todavía vuela, `shuffleHand` espera a que aterrice.
   useEffect(() => {
     if (!handShuffleRef.current || dealt < handTotal) return
     handShuffleRef.current = false
     shuffleHand(sectionRef.current?.querySelectorAll('[data-drop="hand"] [role="listitem"]') ?? [])
-  }, [step, dealt, handTotal])
+  }, [step, dealt, handTotal, effectShuffle])
 
   useEffect(() => {
     if (dealt >= handTotal) {
@@ -1268,6 +1281,13 @@ function PracticeMatBody({
     shuffleDeck(root?.querySelectorAll('[data-rival-drop="deck"] [data-layer]') ?? [])
     shuffleHand(root?.querySelectorAll(THEIR_HAND_CARDS) ?? [])
   }, [rivalShuffle])
+  // Un efecto barajó su mano: sólo su mano (si no se está barajando ya, por sumarle una carta).
+  const rivalHandShuffle = duel?.rivalHandShuffle ?? 0
+  useEffect(() => {
+    const cards = sectionRef.current?.querySelectorAll(THEIR_HAND_CARDS) ?? []
+
+    if (rivalHandShuffle !== 0 && !shuffling(cards)) shuffleHand(cards)
+  }, [rivalHandShuffle])
   // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
   useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
 
