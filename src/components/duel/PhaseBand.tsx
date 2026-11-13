@@ -5,12 +5,16 @@ import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import type { PlayerSide } from './player-color'
 
-/** Una fase que empieza: cuál y de quién. Cambiar `key` la vuelve a anunciar. `turn`: empieza otro turno (nunca el primero del duelo) y `side` es quien empieza a jugar. */
+/**
+ * Una fase que empieza: cuál y de quién. Cambiar `key` la vuelve a anunciar. `turn`: empieza otro turno (nunca el primero del duelo) y `side` es quien empieza a jugar. `settle`: puede durar menos
+ * que su banda (tu End Phase en un duelo, que el pase suele seguir enseguida): espera `PHASE_BAND_SETTLE_MS` antes de entrar y, si en ese rato pasa el turno, no entra.
+ */
 export interface PhaseCue {
   key: number
   phase: MatPhase
   side: PlayerSide
   turn?: boolean
+  settle?: boolean
 }
 
 /** Lo que se queda la banda (ya entró) antes de salir, y lo que dura todo con la salida: entra en 200 ms, el nombre llega 100 ms después y sale en otros 200. */
@@ -19,6 +23,11 @@ export const PHASE_BAND_MS = 850
 /** «Cambio de turno», con más peso: entra en 250 ms, la frase llega 100 ms después, se queda hasta los 1000 y sale en otros 250. Después, la banda de la fase. */
 export const TURN_BAND_HOLD_MS = 1000
 export const TURN_BAND_MS = 1250
+/**
+ * Lo que espera, quieta, una fase que puede pasar sola antes de leerse: tu End Phase en un duelo (el pase llega ~250 ms después) y, tras tu «Cambio de turno», tus fases (en el automático tu Draw y tu
+ * Standby pasan cada ~250 ms): entra la que dura este rato sin que llegue otra. Las del rival no esperan (el núcleo las cuenta de a una, más largas que su banda) y nadie espera a la banda.
+ */
+export const PHASE_BAND_SETTLE_MS = 400
 
 /**
  * Los colores de la casa por dueño (los de las chapas de vidas, nada de rojo ni azul): la tuya violeta con el texto claro, la del rival lima con el texto oscuro (AA de sobra: 5,6:1 y 13:1). Los
@@ -80,7 +89,8 @@ const fromSide = (fromLeft: boolean, leaving: boolean) =>
  * El cartel de una fase nueva, como en Master Duel pero con los colores de la casa: una banda que cruza el campo de borde a borde sobre la fila del medio (la del botón de fase), entra desde el costado
  * de quien juega (la tuya desde la izquierda, la del rival desde la derecha), el nombre llega un instante después, se queda y sale por el otro lado: 850 ms en total. Si llega otra fase mientras se ve, la
  * misma banda cambia de texto y vuelve a contar (no se apilan ni vuelve a entrar); si cambia de dueño, entra la del otro. Un turno nuevo (`turn`) entra antes con «Cambio de turno», más alta y del color
- * de quien empieza (1250 ms), y después, una detrás de la otra, la banda de la fase más nueva (la Draw Phase, o la que ya llegó mientras tanto). Se ubica sola en la fila `p2` de la grilla del campo (va
+ * de quien empieza (1250 ms), y después, una detrás de la otra, la banda de la fase más nueva (la Draw Phase, o la que ya llegó mientras tanto); en tu turno, la primera en la que te quedás
+ * (`PHASE_BAND_SETTLE_MS`: tu Draw y tu Standby, que pasan solas, no entran para irse). Tu End Phase en un duelo (`settle`) espera ese rato: si pasa el turno, no sale. Se ubica sola en la fila `p2` de la grilla del campo (va
  * adentro de él, debajo de la cadena y de las preguntas, que son otra capa), no ataja toques y nadie la espera: lleva su propio reloj, así que quien la monta puede sacar `cue` cuando quiera. Con
  * movimiento reducido, sólo aparece y se va. Sólo `translate` y `opacity`.
  */
@@ -89,21 +99,41 @@ export function PhaseBand({ cue, hold = false }: { cue: PhaseCue | null; hold?: 
   const [leaving, setLeaving] = useState(false)
   const [turn, setTurn] = useState<PhaseCue | null>(null)
   const [turnLeaving, setTurnLeaving] = useState(false)
+  // La fase que espera quieta (`PHASE_BAND_SETTLE_MS`): tu End Phase en un duelo (`settle`) o la de tu turno nuevo (detrás de tu «Cambio de turno», y la más nueva hasta que se asienta).
+  const [pending, setPending] = useState<PhaseCue | null>(null)
   const [last, setLast] = useState<string | null>(null)
   const id = idOf(cue)
 
   // Una fase nueva se toma en el mismo dibujo (el patrón de React para seguir una prop): con un efecto, se vería un cuadro la anterior. Que `cue` se vaya no la saca: tiene su reloj.
   if (id !== last) {
     setLast(id)
-    if (cue) {
+    if (cue?.turn) {
+      setTurn(cue)
+      setTurnLeaving(false)
+      // Tu turno: tus fases esperan a asentarse. El del rival, como siempre: detrás de «Cambio de turno», la más nueva (y la End Phase que esperaba no sale: no llegaba a leerse).
+      setShown(cue.side === 'mine' ? null : cue)
+      setLeaving(false)
+      setPending(cue.side === 'mine' ? cue : null)
+    } else if (cue && (cue.settle || (pending && !pending.settle))) {
+      setPending(cue)
+    } else if (cue) {
       setShown(cue)
       setLeaving(false)
-      if (cue.turn) {
-        setTurn(cue)
-        setTurnLeaving(false)
-      }
+      setPending(null)
     }
   }
+
+  // La que espera entra cuando pasa su rato sin que llegue otra (cada una vuelve a contar) y sin «Cambio de turno» delante: si hay una banda tuya a la vista, cambia de texto.
+  useEffect(() => {
+    if (!pending || turn) return
+    const settle = window.setTimeout(() => {
+      setShown(pending)
+      setLeaving(false)
+      setPending(null)
+    }, PHASE_BAND_SETTLE_MS)
+
+    return () => window.clearTimeout(settle)
+  }, [pending, turn])
 
   useEffect(() => {
     if (!turn) return
