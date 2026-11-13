@@ -49,4 +49,20 @@ describe('auto-screen · el combo con el campo del rival', () => {
     act(() => vi.advanceTimersByTime(1400 + 5))
     expect(given()).toBeNull()
   })
+
+  it('con la cadena guardada, el paso de la activación arma la escena de la cadena (como en vivo y en el replay de un duelo); sin ella, la carta grande', () => {
+    const chain = [
+      { at: 1, kind: 'chain' as const, index: 0, link: { code: 102, side: 0 as const, place: [0, L.SZONE, 0] as [0, number, number] } },
+      { at: 1, kind: 'solving' as const, index: 0 },
+      { at: 1, kind: 'solved' as const, index: 0 },
+      { at: 1, kind: 'end' as const, index: -1 },
+    ]
+    writeSavedCombos([createSavedCombo({ name: 'Imperm', deckName: 'Test', initial: createMatState(['card-102-1', 'card-100-1'], [], 2), actions: [{ type: 'activate', id: 'card-102-1' }], nameOf, auto: true, extras: { chain } }, [])])
+    dueled()
+    fireEvent.click(within(panel()).getByRole('radio', { name: /Combos/ }))
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Cargar Imperm' }))
+    expect(document.querySelectorAll('[data-chain-card]')).toHaveLength(0)
+    act(() => vi.advanceTimersByTime(1400 + 5))
+    expect(document.querySelectorAll('[data-chain-card]')).toHaveLength(1)
+  })
 })

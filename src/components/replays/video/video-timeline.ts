@@ -2,7 +2,7 @@ import type { ChainStep } from '../../../app/auto/chain-feed'
 import { replayChainSteps, type DuelReplay } from '../../../app/duel-replay'
 import { safeFileName, type SharedCombo } from '../../../app/combo-share'
 import type { MatAction } from '../../../app/practice-mat'
-import type { SavedCombo } from '../../../app/saved-combos'
+import { comboChainSteps, type SavedCombo } from '../../../app/saved-combos'
 import { chainDwell, stepsUpTo } from '../../auto/ChainNotice'
 import { titleOf } from '../duel-replay-text'
 
@@ -38,8 +38,8 @@ export const LONG_VIDEO_MS = 6 * 60_000
 
 export const stepMs = (action: MatAction, speed: VideoSpeed = 1, kind: VideoSubject['kind'] = 'duel') => (action.type === 'phase' ? (kind === 'combo' ? COMBO_PHASE_MS : PHASE_MS) : kind === 'combo' ? COMBO_STEP_MS : STEP_MS) / speed
 
-/** La cadena del replay de un duelo, vista desde quien grabó (abajo en el video); un combo no tiene (no hay núcleo que la cuente): vacía. */
-export const subjectChain = (subject: VideoSubject): ChainStep[] => (subject.kind === 'duel' ? replayChainSteps(subject.replay, 0) : [])
+/** La cadena, vista desde quien grabó (abajo en el video): la del replay de un duelo o la de un combo grabado en «Jugar solo automático» (sin ella, vacía). */
+export const subjectChain = (subject: VideoSubject): ChainStep[] => (subject.kind === 'duel' ? replayChainSteps(subject.replay, 0) : comboChainSteps(subject.combo))
 
 /** Hasta dónde se muestra la cadena después de `seen` mensajes: el siguiente y los que no se dejan ver solos (`chainDwell` 0), como `nextShown` del reproductor (`DuelReplayScreen`). */
 function nextShown(steps: readonly ChainStep[], seen: number, due: number): number {

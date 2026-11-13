@@ -5,6 +5,7 @@ import { describeMatAction, isForeignId, isToken, matReducer, type MatState } fr
 import { comboCardIds, comboTheirReal, comboTheirsAt, type SavedCombo } from '../../../app/saved-combos'
 import { t } from '../../../i18n'
 import { passcodeOfDrawId } from '../../duel/duel-art'
+import type { RowLook } from './video-chain'
 import { artOfId, cellsOf, duelRows, explainOf, fieldArtUrl, focusOf, halfOf, handSlots, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, videoLayout, type Look, type Scene, type SceneSide, type VideoLayout } from './video-scene'
 
 /**
@@ -42,6 +43,12 @@ export function comboTheirLook(names: Readonly<Record<string, string>>, known: R
     const real = isToken(id) ? id : comboTheirReal(id, known)
     return real ? { art: artOfId(real), name: names[real] ?? (isToken(id) ? t('practice.token.the') : t('practice.card.unknown')) } : null
   }
+}
+
+/** Cómo se ve cada carta de la cadena de un combo (va por passcode): su arte y el nombre de cualquier copia suya en `names`. */
+export function comboRowLook(names: Readonly<Record<string, string>>): RowLook {
+  const byCode = new Map(Object.entries(names).flatMap(([id, name]) => (passcodeOfDrawId(rivalCardOf(id)) !== null ? [[passcodeOfDrawId(rivalCardOf(id))!, name] as const] : [])))
+  return (row) => ({ art: row.code ? artOfId(`card-${row.code}-1`) : null, name: byCode.get(row.code) ?? t('practice.card.unknown') })
 }
 
 /** Los nombres que faltan (un combo abierto por enlace no los trae: el enlace corto los saca), pedidos por passcode como hace la mesa. Sin red, quedan los que había. */

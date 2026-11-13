@@ -8,6 +8,7 @@ import { createMatState, type MatAction } from '../app/practice-mat'
 import { comboChainSteps, comboTheirsAt, createSavedCombo, migrateSavedCombo, type SavedCombo } from '../app/saved-combos'
 import { comboScenes } from '../components/replays/video/video-combo'
 import { placeRect } from '../components/replays/video/video-scene'
+import { chainMs, chainTimeline, frameDurations, subjectChain } from '../components/replays/video/video-timeline'
 
 // Un combo de «Jugar solo automático» contra el bot pasivo: la mano de apertura (plegada), paso a la Main, invoco h0, le doy h1 (un Kaiju: el rival lo toma en su zona 3) y activo h2,
 // que hace una cadena de un eslabón. Después el rival empieza su turno (eso ya no es del combo).
@@ -118,6 +119,24 @@ describe('el combo de «Jugar solo automático» guarda el campo del rival y la 
     expect(card(3)?.rect).toEqual(placeRect(scenes[3]!.layout, 1, 'mz:2'))
     // Su mano robada, de dorso.
     expect(scenes[3]!.sides[1].hand.map((slot) => slot.card?.faceDown)).toEqual([true, true, true, true, true])
+  })
+
+  it('la línea de tiempo del video: la jugada con la cadena dura lo que tarda en contarse (`chainMs`) y sus momentos salen en `chainTimeline`, como en el video de un duelo', () => {
+    const combo = recorded()
+    const subject = { kind: 'combo' as const, combo }
+    const { chain: _chain, ...plain } = combo
+    const durations = frameDurations(subject)
+    const steps = subjectChain(subject)
+    const starts = durations.reduce<number[]>((list, ms) => [...list, list.at(-1)! + ms], [0])
+
+    expect(steps).toEqual(comboChainSteps(combo))
+    expect(durations[4]! - frameDurations({ kind: 'combo', combo: plain })[4]!).toBe(chainMs(steps, 4))
+    expect(chainMs(steps, 4)).toBeGreaterThan(0)
+    // Los momentos de la cadena caen en el tramo de la jugada 4 (y el `end`, en el de la 5).
+    const beats = chainTimeline(steps, starts)
+    expect(beats.length).toBeGreaterThan(0)
+    expect(beats.filter((beat) => beat.t >= starts[4]! && beat.t < starts[5]!).length).toBeGreaterThan(0)
+    expect(beats.find((beat) => beat.seen > 0)?.t).toBe(starts[4])
   })
 
   it('lo raro de afuera no entra: un paso del rival fuera de orden, una cadena con `at` de más o un id con forma rara', () => {

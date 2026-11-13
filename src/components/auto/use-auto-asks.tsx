@@ -27,7 +27,7 @@ import type { CardTextHighlight } from '../../app/card-text'
 import type { Activity } from '../../app/duel-protocol'
 import { allMatIds, cardKindOf, createMatState, isToken, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
 import type { ReplayChainStep } from '../../app/duel-replay'
-import { comboTheirReal, comboTheirsAt, type ComboTheirs, type SavedCombo } from '../../app/saved-combos'
+import { comboChainSteps, comboTheirReal, comboTheirsAt, type ComboTheirs, type SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
@@ -863,41 +863,45 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, vanilla, codeOf, placeBack, session, zoneLabel])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
-  // Repasando tus jugadas (un combo guardado no trae cadena: ahí sale la carta grande de la mesa), la cadena de cada paso como en vivo (`snap.chainSteps`): un paso adelante muestra
-  // sus mensajes desde lo que ya se veía, con el mismo ritmo (`chainDwell`); saltar a otro paso la corta (`cut`), como los demás efectos. El paso `c` del repaso son `c + skip` jugadas.
-  const reviewAt = review && review.name === undefined ? review.session.cursor + opening.skip : null
+  // Repasando tus jugadas, la cadena de cada paso como en vivo (`snap.chainSteps`): un paso adelante muestra sus mensajes desde lo que ya se veía, con el mismo ritmo (`chainDwell`);
+  // saltar a otro paso la corta (`cut`), como los demás efectos. El paso `c` del repaso son `c + skip` jugadas. Un combo guardado con su cadena (`review.chain`, con `at` en sus
+  // jugadas), igual; sin ella, sale la carta grande de la mesa.
+  const reviewCombo = review?.chain
+  const comboSteps = useMemo(() => (reviewCombo ? comboChainSteps({ chain: reviewCombo }) : null), [reviewCombo])
+  const reviewSteps = comboSteps ?? steps
+  const reviewAt = review && review.name === undefined ? review.session.cursor + opening.skip : review && comboSteps ? review.session.cursor : null
   const [reviewChain, setReviewChain] = useState<{ at: number; seen: number; cut: boolean; gone: number } | null>(null)
 
   if (reviewAt === null ? reviewChain !== null : reviewChain?.at !== reviewAt) {
     if (reviewAt === null) setReviewChain(null)
     else {
-      const due = stepsUpTo(steps, reviewAt)
+      const due = stepsUpTo(reviewSteps, reviewAt)
       const stepped = reviewChain !== null && reviewAt === reviewChain.at + 1
-      let seen = stepped ? stepsUpTo(steps, reviewChain.at) : due
+      let seen = stepped ? stepsUpTo(reviewSteps, reviewChain.at) : due
 
       if (seen < due) seen += 1
-      while (seen < due && chainDwell(steps, seen - 1) === 0) seen += 1
-      const whole = chainFeed(steps, due)
+      while (seen < due && chainDwell(reviewSteps, seen - 1) === 0) seen += 1
+      const whole = chainFeed(reviewSteps, due)
 
       setReviewChain({ at: reviewAt, seen, cut: !stepped, gone: stepped ? reviewChain.gone : whole?.done ? whole.key : -1 })
     }
   }
   useEffect(() => {
     if (!reviewChain || reviewChain.cut) return
-    const due = stepsUpTo(steps, reviewChain.at)
+    const due = stepsUpTo(reviewSteps, reviewChain.at)
 
     if (reviewChain.seen >= due) return
     const timer = window.setTimeout(() => {
       let next = reviewChain.seen + 1
 
-      while (next < due && chainDwell(steps, next - 1) === 0) next += 1
+      while (next < due && chainDwell(reviewSteps, next - 1) === 0) next += 1
       setReviewChain((current) => (current === reviewChain ? { ...current, seen: next } : current))
-    }, chainDwell(steps, reviewChain.seen - 1))
+    }, chainDwell(reviewSteps, reviewChain.seen - 1))
 
     return () => window.clearTimeout(timer)
-  }, [reviewChain, steps])
+  }, [reviewChain, reviewSteps])
   const liveFeed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
-  const reviewFeed = useMemo(() => (reviewChain && !reviewChain.cut ? chainFeed(steps, reviewChain.seen) : null), [reviewChain, steps])
+  const reviewFeed = useMemo(() => (reviewChain && !reviewChain.cut ? chainFeed(reviewSteps, reviewChain.seen) : null), [reviewChain, reviewSteps])
   const feed = reviewing ? reviewFeed : liveFeed
   const gone = reviewing ? (reviewChain?.gone ?? -1) : chainGone
   // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena.
@@ -1491,9 +1495,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       const real = isToken(id) ? id : comboTheirReal(id, at.known)
       return real ? (cardsById.get(real)?.art ?? artOfDrawId(real)) : null
     }
-    const side: DuelSideView = { state: at.state, artOf: artOfRival, handCount: at.state.hand.length }
-    return { opponent: <SideCells side={side} owner="theirs" />, sharedZone: (index: number) => sharedZoneCard(side, index), rivalHand: <TheirHand count={at.state.hand.length} />, foreignKnown: at.known }
-  }, [review, cardsById])
+    // Con la cadena del combo, sus medallones y lo que se activa también van en su campo.
+    const side: DuelSideView = { state: at.state, artOf: artOfRival, handCount: at.state.hand.length, act: acting.theirs, links: links.theirs, medals: medals.theirs }
+    return { opponent: <SideCells side={side} owner="theirs" />, sharedZone: (index: number) => sharedZoneCard(side, index), rivalHand: <TheirHand count={at.state.hand.length} medals={medals.theirs.get('hand') ?? null} />, foreignKnown: at.known }
+  }, [review, cardsById, acting.theirs, links.theirs, medals.theirs])
   const rivalTargeted = useMemo(() => new Set(theirs.targeted), [theirs.targeted])
   const rivalViewerHidden = choosing || frozen || ended || Boolean(snap.fault)
   const rivalActing = acting.theirs
