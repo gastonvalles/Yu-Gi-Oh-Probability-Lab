@@ -25,7 +25,8 @@ import { useRises, useRivalShuffle } from '../../app/rival-shuffle'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
 import type { Activity } from '../../app/duel-protocol'
-import { allMatIds, cardKindOf, createMatState, isToken, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
+import { opaqueOfForeign } from '../../app/mat-control'
+import { allMatIds, cardKindOf, createMatState, isForeignId, isToken, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
 import type { ReplayChainStep } from '../../app/duel-replay'
 import { comboChainSteps, comboTheirReal, comboTheirsAt, type ComboTheirs, type SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
@@ -1066,7 +1067,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     }),
     [theirs, artOf, gesture, rivalPicks, rivalZones, rivalPlays, showRival, rivalPeekOf, acting, links, medals, fieldStats.theirs],
   )
-  const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
+  // Lo del rival que la mesa debe poder nombrar: lo que está en su mesa y lo suyo que controlo yo (`f.c12` en la mía, ya fuera de la suya: el núcleo sigue sabiendo su código).
+  const foreignKnown = useMemo(() => {
+    const known = [...allMatIds(theirs).map((id) => [id, codeOf({ side: 'theirs', id })] as const), ...allMatIds(state).filter(isForeignId).map((id) => [opaqueOfForeign(id), codeOf({ side: 'mine', id })] as const)]
+
+    return Object.fromEntries(known.flatMap(([id, code]) => (code ? [[id, drawIdOf(code)]] : [])))
+  }, [theirs, state, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
   // Lo del rival que la mesa recibe, armado una vez por mesa del rival (y no por aviso del núcleo): su campo, su mano, sus vuelos y sus Zonas Extra.
   const opponentCells = useMemo(() => <SideCells side={opponent} owner="theirs" />, [opponent])
