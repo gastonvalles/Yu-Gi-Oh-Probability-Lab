@@ -3,6 +3,7 @@ import { createMatState, locateCard, matReducer, type MatAction, type MatPile, t
 import { LOCATION as L, POSITION as P, type AutoEvent, type EventOf, type LocPos, type Seat, type WireEvent } from './protocol'
 import { chainOutcome, type ChainStep } from './chain-feed'
 import { isPublic } from './referee'
+import { NO_TALLY, tallyStep, type Tally, type TallyContext } from './tally'
 
 /**
  * El adaptador: del núcleo a la mesa (§2.3 y §3.3 del diseño). El núcleo manda y la mesa es una proyección: cada evento que el árbitro le
@@ -77,6 +78,8 @@ export interface AutoOverlay {
    * real en `auto-ask-why.slow.test.ts`), así que lo que se pregunta mientras tanto es de esa activación (`ask-why.ts`).
    */
   activating?: true
+  /** Lo que cuentan cartas como Angelechy Shatranga o Nibiru, con los eventos públicos (`tally.ts`). */
+  tally: Tally
 }
 export type NormalPlay = 'summon' | 'set'
 export type TriggerCause = { kind: 'normal' | 'special' | 'flip'; codes: number[] } | { kind: 'phase'; phase: MatState['phase'] }
@@ -250,7 +253,7 @@ export function copyIds(codes: readonly number[]): string[] {
   })
 }
 
-const freshOverlay = (lp: [number, number]): AutoOverlay => ({ stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [...lp], turn: 0, turnPlayer: null, phase: 0, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null], cause: null })
+const freshOverlay = (lp: [number, number]): AutoOverlay => ({ stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [...lp], turn: 0, turnPlayer: null, phase: 0, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null], cause: null, tally: NO_TALLY })
 
 export function createAdapter(options: AdapterOptions): Adapter {
   const { seat, typeOf } = options
@@ -1036,6 +1039,32 @@ export function createAdapter(options: AdapterOptions): Adapter {
     }
   }
 
+  const tallyContext: TallyContext = {
+    seat,
+    typeOf,
+    ownerAt: (place) => {
+      const card = place.location === L.MZONE ? places[place.controller].mzone[place.sequence] : null
+
+      return card ? (card.owner === seat ? 'mine' : 'theirs') : null
+    },
+    solver: () => overlay.chain.findLast((link) => link.state === 'solving')?.card?.side ?? null,
+    spells: () =>
+      ([seat, rival] as const).flatMap((controller) =>
+        places[controller].szone.slice(0, 5).flatMap((card, i) => {
+          const placed = stateOf(controller).st[i]
+
+          return card && placed && placed.pos !== 'set' && card.code !== 0 && !card.unsure ? [{ side: controller === seat ? ('mine' as const) : ('theirs' as const), id: matId(card, controller), code: card.code }] : []
+        }),
+      ),
+  }
+
+  /** Lo que cuentan las cartas (`tally.ts`), con cada evento ya aplicado. */
+  function tallied(event: WireEvent) {
+    const tally = tallyStep(overlay.tally, event, tallyContext)
+
+    if (tally !== overlay.tally) overlay = { ...overlay, tally }
+  }
+
   function stats(cards: Extract<AutoEvent, { t: 'stats' }>['cards']) {
     const next: AutoOverlay['stats'] = { mine: {}, theirs: {} }
 
@@ -1069,7 +1098,10 @@ export function createAdapter(options: AdapterOptions): Adapter {
       fromDeck = [null, null]
       openedNow = new Set()
 
-      if (event.t === 'events' && event.seat === seat) event.events.forEach((item, i) => handle(item, event.events.slice(i + 1)))
+      if (event.t === 'events' && event.seat === seat) event.events.forEach((item, i) => {
+        handle(item, event.events.slice(i + 1))
+        tallied(item)
+      })
       else if (event.t === 'stats' && event.seat === seat) stats(event.cards)
       else if (event.t === 'end') overlay = { ...overlay, end: { winner: event.winner, reason: event.reason } }
       out.overlay = overlay
