@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 
 import { createPattern } from './pattern-factory'
 import { toNonNegativeInteger } from './utils'
-import type { CardEntry, HandPattern, Matcher } from '../types'
+import type { HandPattern, Matcher } from '../types'
 import type { PatternEditorActions } from '../components/probability/pattern-editor-actions'
 import { useAppDispatch } from './store-hooks'
 import {
@@ -28,24 +28,17 @@ import {
 
 type PatternDispatch = (action: UnknownAction) => unknown
 
-export interface PatternEditorDefaults {
-  derivedMainCards: CardEntry[]
-}
-
 /** Acciones del editor de reglas sobre el store global. */
-export function usePatternEditorActions(defaults: PatternEditorDefaults): PatternEditorActions {
+export function usePatternEditorActions(): PatternEditorActions {
   const dispatch = useAppDispatch()
-  return useMemo(() => createPatternEditorActions(dispatch, defaults), [dispatch, defaults])
+  return useMemo(() => createPatternEditorActions(dispatch), [dispatch])
 }
 
 /**
  * Traduce cada edición en una acción del slice de reglas. Recibe el `dispatch` por
  * parámetro: el mismo código sirve para el store global o para un borrador local.
  */
-export function createPatternEditorActions(
-  dispatch: PatternDispatch,
-  { derivedMainCards }: PatternEditorDefaults,
-): PatternEditorActions {
+export function createPatternEditorActions(dispatch: PatternDispatch): PatternEditorActions {
   return {
     addPattern(category) {
       const nextPattern = createPattern('', undefined, category)
@@ -89,7 +82,7 @@ export function createPatternEditorActions(
       dispatch(setPatternAllowSharedCards({ patternId, value }))
     },
     addRequirement(patternId) {
-      dispatch(addRequirementToPattern({ patternId, derivedMainCards }))
+      dispatch(addRequirementToPattern({ patternId }))
     },
     removeRequirement(patternId, requirementId) {
       dispatch(removeRequirementFromPattern({ patternId, requirementId }))

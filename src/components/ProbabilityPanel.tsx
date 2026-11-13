@@ -4,7 +4,6 @@ import { useAppSelector } from '../app/store-hooks'
 import type { DeckCardInstance } from '../app/model'
 import type { RoleDistribution } from '../app/role-distribution'
 import { Presence } from '../app/use-presence'
-import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
 import { t } from '../i18n'
 import type { ApiCardReference, CardEntry, CardOrigin, CardRole, HandPattern, TurnView } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
@@ -39,7 +38,6 @@ interface ProbabilityPanelProps {
   onRenameSystemRule: (ruleId: string, name: string) => void
   derivedMainCards: CardEntry[]
   patternActions: PatternEditorActions
-  patternEditorDefaults: PatternEditorDefaults
   isEditingDeck: boolean
   onSetOrigin: (ygoprodeckId: number, origin: CardOrigin) => void
   onToggleRole: (ygoprodeckId: number, role: CardRole) => void
@@ -56,7 +54,6 @@ export function ProbabilityPanel({
   onRenameSystemRule,
   derivedMainCards,
   patternActions,
-  patternEditorDefaults,
   isEditingDeck,
   onSetOrigin,
   onToggleRole,
@@ -111,7 +108,6 @@ export function ProbabilityPanel({
       handSize={handSize}
       results={results}
       patternActions={patternActions}
-      patternEditorDefaults={patternEditorDefaults}
       onToggleGenericRule={onSetGenericRuleEnabled}
       onRenameSystemRule={onRenameSystemRule}
     />

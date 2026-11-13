@@ -220,8 +220,7 @@ export function useDeckModeController() {
     () => (settings.deckFormat === 'genesys' ? calculateGenesysDeckPointTotal(deckBuilder) : null),
     [deckBuilder, settings.deckFormat],
   )
-  const patternEditorDefaults = useMemo(() => ({ derivedMainCards }), [derivedMainCards])
-  const patternActions = usePatternEditorActions(patternEditorDefaults)
+  const patternActions = usePatternEditorActions()
 
   const handleSetGenericRuleEnabled = useCallback(
     (ruleId: string, enabled: boolean) => dispatch(setGenericRuleEnabled({ ruleId, enabled })),
@@ -693,7 +692,6 @@ export function useDeckModeController() {
       onRenameSystemRule: handleRenameSystemRule,
       derivedMainCards,
       patternActions,
-      patternEditorDefaults,
       isEditingDeck: deckBuilder.isEditingDeck,
       onSetOrigin: handleSetOrigin,
       onToggleRole: handleToggleRole,
