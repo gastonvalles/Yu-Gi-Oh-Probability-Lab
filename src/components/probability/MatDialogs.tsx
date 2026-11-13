@@ -562,6 +562,8 @@ interface PileViewerProps {
   anonymous?: boolean
   /** Lo de arriba del título (sin esto, «Mesa»): el deck del duelo automático dice que va por nombre, no en su orden. */
   kicker?: string
+  /** El título en lugar del nombre de la pila (con la cuenta igual): las cartas del rival que te mostró un efecto («Cartas reveladas · 5»). */
+  title?: string
   /** Debajo del título: lo que pide una búsqueda del duelo automático y por qué («Elegí 1 carta para Invocar de forma Especial» y `AskWhy`). */
   note?: ReactNode
 }
@@ -599,7 +601,7 @@ export const COPIES = 'absolute left-0.5 top-0.5 z-4 grid h-5 place-items-center
  * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera;
  * con su asa se baja sin cerrarse, para ver la mano (`BottomSheet`).
  */
-export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, onPick, onPeek, onHover, many, onClose, anonymous = false, kicker, note }: PileViewerProps) {
+export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, onPick, onPeek, onHover, many, onClose, anonymous = false, kicker, title: heading, note }: PileViewerProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const strip = useContext(PileStripContext) && desktop
   const [query, setQuery] = useState('')
@@ -637,7 +639,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   const copies = Map.groupBy(visible, copyOf)
   const shown = [...copies.values()].map((group) => group[0]!)
   const allVisible = visibleIds.length > 0 && visibleIds.every((id) => picked.includes(id))
-  const title = pile ? `${PILE_TITLES[pile]} · ${ids.length}` : ''
+  const title = pile ? `${heading ?? PILE_TITLES[pile]} · ${ids.length}` : ''
 
   // Abrirlo (o pasar a otra pila) arranca sin lo buscado, arriba y, con `many.start`, eligiendo ésas (lo buscado en el deck no se hereda al abrir el cementerio). Cerrarlo o esconderlo
   // no cambia nada: sale tal cual estaba (también bajada) y, si se vuelve a abrir mientras sale, es el mismo visor (no se monta otro).

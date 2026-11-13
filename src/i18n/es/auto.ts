@@ -499,6 +499,7 @@ export const auto = {
   'auto.why.rivalTurn': 'Es el turno del rival.',
   'auto.why.noRules': 'No tiene reglas automáticas: se juega sin efecto.',
   'auto.vanilla': { one: '{count} de tus cartas no tiene reglas automáticas y se juega sin efecto: {names}.', other: '{count} de tus cartas no tienen reglas automáticas y se juegan sin efecto: {names}.' },
+  'auto.revealed.title': 'Cartas reveladas',
   'auto.why.summoned': 'Ya hiciste una Invocación Normal este turno.',
   'auto.why.set': 'Ya Colocaste un monstruo este turno.',
   'auto.why.monsterZones': 'Tus cinco zonas de monstruo están ocupadas.',

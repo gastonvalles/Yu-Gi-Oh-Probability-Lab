@@ -120,7 +120,7 @@ export function askFor(asker: Seat, ask: CoreAsk): CoreAsk {
   return out.type === 'select_effectyn' && !askKnows(asker, out) ? hide(out) : out
 }
 
-/** De lo consultado del campo, lo que `seat` puede ver: el resto no le llega (ni el código ni el ATK de una carta colocada del rival). */
+/** De lo consultado del campo, lo que `seat` puede ver: el resto no le llega (ni el código ni el ATK de una carta colocada del rival). La mano llega sólo si es pública por un efecto (`core-host.ts`): la ven los dos. */
 export function statsFor(seat: Seat, cards: readonly CardStat[]): CardStat[] {
-  return cards.filter((card) => knows(seat, card))
+  return cards.filter((card) => card.location === LOCATION.HAND || knows(seat, card))
 }

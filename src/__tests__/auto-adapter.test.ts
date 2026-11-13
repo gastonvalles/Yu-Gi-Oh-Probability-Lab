@@ -392,4 +392,37 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     adapter.apply(events(0, move(0, at(1, L.HAND, 0, 10), at(1, L.SZONE, 0, P.FACEDOWN_DEFENSE))))
     expect(adapter.theirs.state.hand.map((id) => adapter.publicInHand({ side: 'theirs', id })).filter(Boolean)).toEqual([777])
   })
+
+  it('lo oculto del rival que te mostró un efecto va en `seen` de su jugada (con la carta del efecto), aunque se baraje en la misma tanda; lo tuyo o lo que no viste, no', () => {
+    const adapter = make()
+    const haxorz: WireEvent = { type: 'chaining', code: 75392615, controller: 0, location: L.SZONE, sequence: 0, position: P.FACEUP_ATTACK, triggering_controller: 0, triggering_location: L.SZONE, triggering_sequence: 0, description: '0', chain_size: 1 }
+
+    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(2) }, { type: 'draw', player: 0, drawn: [{ code: 111, position: 10 }] }))
+    const out = adapter.apply(events(0, haxorz, { type: 'chain_solving', chain_size: 1 }, { type: 'confirm_cards', player: 0, cards: [{ code: 778, controller: 1, location: L.HAND, sequence: 1 }, { code: 777, controller: 1, location: L.HAND, sequence: 0 }] }, { type: 'shuffle_hand', player: 1, cards: [0, 0] }))
+    const ids = adapter.theirs.state.hand
+
+    expect(out.theirs.at(-1)?.seen).toEqual({ ids: [ids[1], ids[0]], codes: [778, 777], by: 75392615 })
+    // No se ata en el espejo, y barajada su mano ya no es pública.
+    expect(adapter.theirs.known).toEqual({})
+    expect(ids.map((id) => adapter.publicInHand({ side: 'theirs', id }))).toEqual([0, 0])
+    // Su mano mostrada a otro (sin códigos) y la tuya mostrada al rival: sin `seen`.
+    expect(adapter.apply(events(0, { type: 'confirm_cards', player: 1, cards: [{ code: 0, controller: 1, location: L.HAND, sequence: 0 }, { code: 111, controller: 0, location: L.HAND, sequence: 0 }] })).theirs.some((wire) => wire.seen)).toBe(false)
+  })
+
+  it('su mano pública por un efecto (`stats` con la mano, `EFFECT_PUBLIC`): queda sabida en su lugar hasta que se baraje', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(2) }, { type: 'shuffle_hand', player: 1, cards: [0, 0] }))
+    const ids = adapter.theirs.state.hand
+    const before = adapter.overlay
+
+    adapter.apply({ t: 'stats', seat: 0, cards: [{ code: 777, controller: 1, location: L.HAND, sequence: 0, position: P.FACEUP_ATTACK, attack: 1000, defense: 0, level: 4 }, { code: 778, controller: 1, location: L.HAND, sequence: 1, position: P.FACEUP_ATTACK, attack: 0, defense: 0, level: 4 }] })
+    // Su mano es bolsa: qué id de la mesa es cuál lo decide el adaptador; lo que importa es que las dos quedan sabidas.
+    expect(ids.map((id) => adapter.publicInHand({ side: 'theirs', id })).toSorted()).toEqual([777, 778])
+    // La sesión avisa (otro overlay) y el espejo no se entera.
+    expect(adapter.overlay).not.toBe(before)
+    expect(adapter.theirs.known).toEqual({})
+    adapter.apply(events(0, { type: 'shuffle_hand', player: 1, cards: [0, 0] }))
+    expect(ids.map((id) => adapter.publicInHand({ side: 'theirs', id }))).toEqual([0, 0])
+  })
 })

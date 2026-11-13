@@ -476,6 +476,7 @@ export const auto: Translated<typeof es> = {
   'auto.why.rivalTurn': "It's your opponent's turn.",
   'auto.why.noRules': 'It has no automatic rules: it plays without its effect.',
   'auto.vanilla': { one: '{count} of your cards has no automatic rules and plays without its effect: {names}.', other: '{count} of your cards have no automatic rules and play without their effects: {names}.' },
+  'auto.revealed.title': 'Revealed cards',
   'auto.why.summoned': 'You already Normal Summoned this turn.',
   'auto.why.set': 'You already Set a monster this turn.',
   'auto.why.monsterZones': 'Your five Monster Zones are taken.',

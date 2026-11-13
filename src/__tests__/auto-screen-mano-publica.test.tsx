@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { fakeSession } from './support/auto-session-fake'
+import { LOCATION as L } from '../app/auto/protocol'
+import type { WireAct } from '../app/mat-public'
+import { fakeSession, pos } from './support/auto-session-fake'
 import { core, dispatches, renderAuto } from './support/auto-screen-harness'
 
 // La mano del rival, de dorso salvo lo que es de conocimiento público (`Adapter.publicInHand`): se ve boca arriba con un aro que late, se abre al tocarla y se pierde al barajar su mano.
@@ -42,6 +44,36 @@ describe('auto-screen · la mano del rival', () => {
     expect(hand()).toHaveAccessibleName('Mano del rival: 3')
     expect(hand().querySelector('[data-public]')).toBeNull()
     expect(within(hand()).queryAllByRole('button')).toHaveLength(0)
+    expect(dispatches).toBe(0)
+  })
+
+  it('lo que un efecto te mostró (`seen`) se abre cara arriba en el visor de su lado, con la carta del efecto, aunque su mano ya se haya barajado; se cierra y no vuelve solo', () => {
+    const fake = fakeSession()
+    const shown: WireAct = { action: { type: 'batch', actions: [{ type: 'reveal', id: 'c3' }, { type: 'reveal', id: 'c2' }] }, reveal: {}, seen: { ids: ['c3', 'c2'], codes: [400, 100], by: 700 } }
+
+    renderAuto(fake)
+    core(() => fake.set({ theirs: { ...fake.getSnapshot().theirs, hand: HAND } }))
+    expect(screen.queryByRole('heading', { name: /^Cartas reveladas/ })).toBeNull()
+    // Mind Haxorz: mira su mano y la baraja en la misma tanda (su abanico queda de dorso: `publicHand` vacío).
+    core(() => fake.set({ theirsActs: [shown], order: ['theirs'] }))
+    act(() => void vi.runOnlyPendingTimers())
+    const viewer = screen.getByRole('heading', { name: 'Cartas reveladas · 2' }).closest('section, [role="dialog"], aside') as HTMLElement
+
+    expect(within(viewer).getByText('Blue-Eyes White Dragon')).toBeInTheDocument()
+    expect(within(viewer).getAllByRole('button', { name: /Ash Blossom|Nibiru/ })).toHaveLength(2)
+    expect(screen.getByLabelText(/^Mano del rival:/)).toHaveAccessibleName('Mano del rival: 3')
+    // Cerrarlo lo cierra; otra tanda sin nada mostrado no lo vuelve a abrir.
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Cerrar' }))
+    core(() => fake.set({}))
+    act(() => void vi.runOnlyPendingTimers())
+    expect(screen.queryByRole('heading', { name: /^Cartas reveladas/ })).toBeNull()
+    // Confiscation: la pregunta que sigue elige entre su mano (la bandeja las muestra): el visor no se abre.
+    core(() => {
+      fake.set({ theirsActs: [shown, shown], order: ['theirs', 'theirs'] })
+      fake.ask({ type: 'select_card', player: 0, can_cancel: false, min: 1, max: 1, selects: [pos(0, L.HAND, 0, 10, 1), pos(0, L.HAND, 1, 10, 1)] })
+    })
+    act(() => void vi.runOnlyPendingTimers())
+    expect(screen.queryByRole('heading', { name: /^Cartas reveladas/ })).toBeNull()
     expect(dispatches).toBe(0)
   })
 })
