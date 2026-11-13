@@ -1385,7 +1385,7 @@
 }
 
 /*
- * El fondo de la mesa, de la sala y de la apertura del duelo (Gastón, 2026-11-10: «de fondo algo así con nuestros colores»): un remolino violeta y lima sobre el carbón, generado por
+ * El fondo de la mesa, de la sala y de la apertura del duelo (Gastón, 2026-11-10: «de fondo algo así con nuestros colores»): un remolino violeta y lima sobre el carbón (violeta y ámbar sobre el índigo en la paleta Índigo), generado por
  * `scripts/remolino/` (con un tope de luz: el contraste contra su punto más claro lo mide `scripts/remolino/medir.mjs`). El campo no lleva placa: sus casillas son transparentes y el remolino se ve a través.
  * El navegador baja sólo el de su tamaño (escritorio desde 1101 px); mientras carga, o sin AVIF, queda el carbón. Plano y quieto: sin `bg-fixed` (repinta al desplazar en el celular), sin animación,
  * sin `filter` y sin `preload` (es decoración: `aria-hidden`, sin toques; no cambia el tamaño ni el lugar de nada). En la vista 3D no se inclina: va fuera del campo inclinado.
@@ -1718,6 +1718,9 @@
 
   /* Índigo: la paleta de antes de `85dc26c0` (índigo, violeta y ámbar), a elección en el menú (`app/palette.ts`, `ui/PaletteSwitcher`). Sólo los valores que cambian, con los mismos nombres. Va después de Carbón (la de fábrica, la que leen los tests). */
   :root[data-palette='indigo'] {
+    /* El remolino del duelo con los colores de Índigo (`scripts/remolino/`): sólo se baja la imagen de la paleta en uso. */
+    --image-remolino-movil: url('./assets/duelo/remolino-medio-movil-indigo.avif');
+    --image-remolino-escritorio: url('./assets/duelo/remolino-medio-escritorio-indigo.avif');
     --color-lavender-light: #eee9ff;
     --background: #150a24;
     --background-rgb: 21 10 36;
