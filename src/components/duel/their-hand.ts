@@ -15,5 +15,6 @@ export const TheirHandSize = createContext<{ cardWidth: number; maxWidth: number
 /** Las cartas de la mano del rival, de dorso o boca arriba (se tocan o no): lo que se baraja a la vista (`shuffleHand`). */
 export const THEIR_HAND_CARDS = '[data-rival-drop="hand"] [data-their-card]'
 
-/** Cuánto suben las puntas del abanico (el centro es lo más cercano al campo): el de tu mano (1,6) a 0,8. */
-export const THEIR_FAN_RISE = 1.28
+/** Cuánto bajan las puntas del abanico de tu mano (`PracticeHand`; el centro es lo más cercano al campo) y cuánto suben las de la del rival: la tuya a 0,8. */
+export const HAND_FAN_RISE = 1.6
+export const THEIR_FAN_RISE = HAND_FAN_RISE * 0.8

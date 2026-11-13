@@ -7,7 +7,7 @@ import { createMatState, type MatAction } from '../app/practice-mat'
 import { muxMp4 } from '../components/replays/video/mp4-mux'
 import { lifeMs, lifeOf, overlaysOf } from '../components/replays/video/video-fx'
 import { placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
-import { phoneDuelLayout } from '../components/probability/compact-field'
+import { PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, phoneDuelLayout } from '../components/probability/compact-field'
 import { drawBanner } from '../components/replays/video/video-draw'
 import { artUrls, fieldRect, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
@@ -51,19 +51,24 @@ const inside = (inner: Rect, outer: Rect) => inner.x >= outer.x - 0.01 && inner.
 const cardIn = (scene: Scene, side: 0 | 1, rect: Rect) => scene.sides[side].slots.find((slot) => slot.card && slot.rect.x === rect.x && slot.rect.y === rect.y)?.card
 
 describe('el diseño del cuadro', () => {
-  it('es 9:16, la mesa entra centrada entre las dos manos y 1080 es 720 por 1,5', () => {
+  it('es 9:16, la pantalla del duelo del celular sin sus barras (la mano del rival arriba, el campo y tu mano abajo); el texto flota sobre las puntas de las manos; 1080 es 720 por 1,5', () => {
     const layout = videoLayout(720)
     expect(VIDEO_HEIGHT_OF(720)).toBe(1280)
     expect(VIDEO_HEIGHT_OF(1080)).toBe(1920)
     const first = layout.cellAt(0, 0)
     const end = layout.cellAt(4, 6)
+    // A todo el ancho, con la orilla de 4 px del celular.
     expect(first.x).toBeCloseTo(720 - (end.x + end.w))
+    expect(first.x).toBeCloseTo(4 * layout.unit)
     expect(first.y).toBeGreaterThan(layout.theirHand.y + layout.theirHand.h)
     expect(end.y + end.h).toBeLessThan(layout.myHand.y)
-    // Con lo que bajan las puntas del abanico (1/16 del alto), tu mano no pisa el texto ni la del rival las vidas.
-    expect(layout.myHand.y + (layout.myHand.h * 17) / 16).toBeLessThan(layout.text.y)
-    expect(layout.theirHand.y - layout.theirHand.h / 16).toBeGreaterThanOrEqual(layout.score.y + layout.score.h - 0.01)
-    expect(layout.footer.y + layout.footer.h).toBeLessThanOrEqual(1280)
+    expect(layout.theirHand.y).toBeGreaterThanOrEqual(0)
+    expect(layout.myHand.y + layout.myHand.h).toBeLessThanOrEqual(1280.01)
+    // Las vidas (o el título) y la jugada no pisan el campo; la jugada tapa sólo el pie de tus cartas (su arte queda a la vista).
+    expect(layout.score.y + layout.score.h).toBeLessThan(layout.cellAt(0, 1).y)
+    expect(layout.text.y).toBeGreaterThan(end.y + end.h)
+    expect(layout.text.y).toBeGreaterThan(layout.myHand.y + layout.myHand.h * 0.6)
+    expect(layout.footer.y + layout.footer.h).toBeLessThanOrEqual(layout.score.y)
     expect(videoLayout(1080).cellAt(4, 6)).toEqual({ x: expect.closeTo(end.x * 1.5, 6), y: expect.closeTo(end.y * 1.5, 6), w: expect.closeTo(end.w * 1.5, 6), h: expect.closeTo(end.h * 1.5, 6) })
   })
 
@@ -71,9 +76,17 @@ describe('el diseño del cuadro', () => {
     const layout = videoLayout(720)
     const phone = phoneDuelLayout(PHONE_WIDTH, 844, { tilted: false, bar: 0, bottom: 0 })
     const k = layout.unit
-    // Angostado para que la carta de tu mano mida 1,53 casillas de ancho, como en la mesa a 369×800 (y la del rival, 0,8 de la tuya).
-    expect(k).toBeLessThan(720 / PHONE_WIDTH)
-    expect((layout.myHand.h * 59) / 86 / (phone.cell * k)).toBeCloseTo(1.53)
+    // A todo el ancho (sin márgenes a los costados).
+    expect(k).toBeCloseTo(720 / PHONE_WIDTH)
+    // Las mismas cajas que la mesa del duelo a 390 × 844 (con su barra y su fila de abajo), por el ancho de la pantalla y del cuadro, a menos del 2 %: el campo, una casilla, la carta de tu mano
+    // (de la carta de la mesa) y la del rival (0,8 de la tuya).
+    const mat = phoneDuelLayout(PHONE_WIDTH, 844, { tilted: false, bar: PHONE_DUEL_BAR, bottom: PHONE_DUEL_BOTTOM })
+    const near = (video: number, duel: number) => expect(Math.abs(video / 720 / (duel / PHONE_WIDTH) - 1)).toBeLessThan(0.02)
+    near(layout.cellAt(4, 6).x + layout.cellAt(4, 6).w - layout.cellAt(0, 0).x, mat.fieldWidth)
+    near(layout.cellAt(0, 1).w, mat.cell)
+    near(layout.cellAt(0, 1).h, mat.row)
+    near((layout.myHand.h * 421) / 614, mat.handCard)
+    near((layout.theirHand.h * 421) / 614, mat.rivalCard)
     expect(layout.theirHand.h / layout.myHand.h).toBeCloseTo(0.8)
     // Las del centro: el ancho de la casilla y el alto de la fila (una carta), a 3 px; el campo, del ancho del de la mesa y centrado.
     const center = [1, 2, 3, 4, 5].map((col) => layout.cellAt(0, col))
@@ -105,7 +118,7 @@ describe('el diseño del cuadro', () => {
     const { text } = last.layout
     const field = fieldRect(last.cells)
     expect(rects[0]!.slice(0, 4)).toEqual([text.x, text.y, text.w, text.h])
-    expect(rects[0]![1]).toBeGreaterThan(last.layout.myHand.y + last.layout.myHand.h)
+    expect(rects[0]![1]).toBeGreaterThan(field.y + field.h)
     expect(rects[1]![1]! + rects[1]![3]!).toBeLessThan(field.y + field.h)
   })
 

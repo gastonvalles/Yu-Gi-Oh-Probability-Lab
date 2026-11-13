@@ -50,7 +50,7 @@ import { growHand, handFloor, handInset, mergeHandOrder } from '../../app/practi
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { comboBranches, comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, stepBranchesOf, writeSavedCombos, type ComboExtras, type SavedCombo } from '../../app/saved-combos'
 import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
-import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
+import { DESKTOP_AUTO_CHROME_REM, DuelRailsContext, RAILS_CHROME_REM, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
 import type { TallyView } from '../../app/auto/tally'
@@ -98,7 +98,7 @@ import { AskWhy } from '../duel/AskWhy'
 import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND, THEIR_HAND_CARDS, TheirHandSize } from '../duel/their-hand'
-import { matDuelLayout } from './compact-field'
+import { PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, matDuelLayout, phoneFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, LayerBackContext, NoPlays, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
@@ -135,10 +135,10 @@ export interface MatCard {
  * ni combos guardados, y la mascota no se sienta en el campo. Lo arma la pantalla del duelo: la mesa no sabe nada de la red.
  */
 /** El aire entre el campo y la mano (`gap-2`) y el que la mano deja sobre sus cartas (`TOP_ROOM` de `PracticeHand`): la mano sube la primera distancia y queda separada del campo por la segunda. */
-const MAT_GAP = 8
+export const MAT_GAP = 8
 const HAND_TOP_ROOM = 8
 /** Escritorio: cuánto se separa del campo la mano del rival (arriba). Las manos nunca tapan el campo (Gastón, 2026-10-19: «ya no quiero que las cartas tapen la mesa nunca»). */
-const DESKTOP_HAND_GAP = 8
+export const DESKTOP_HAND_GAP = 8
 /**
  * El duelo automático desde 1101 px (sin laterales): la mano del rival sube al medio de la barra, que está vacío (la flecha a la izquierda; los íconos y el turno a la derecha), y su chapa queda
  * junto a sus íconos. Con eso, la casilla de ~100 px a 1440 × 900 entra sin scroll.
@@ -148,9 +148,9 @@ const DESKTOP_AUTO_RISE = 58
  * Su casilla crece con el alto que queda (sin línea bajo el campo): lo que deja el alto sin la barra, la mano del rival (menos lo que sube), tu mano (`DESKTOP_AUTO_HAND`) y la fila de abajo
  * (24,95 rem), y nunca más de lo que entra a lo ancho de la columna del medio (`cqw` de su caja, `@container`: con el detalle y los pasos a los costados no queda mucho).
  */
-const DESKTOP_AUTO_CELL = 'max(3rem, min(12rem, calc((100dvh - 24.95rem) / 5), calc((100cqw - 3rem) / 6.3714)))'
+const DESKTOP_AUTO_CELL = `max(3rem, min(12rem, calc((100dvh - ${DESKTOP_AUTO_CHROME_REM}rem) / 5), calc((100cqw - 3rem) / 6.3714)))`
 /** Y su mano: un poco más chica que la de los otros duelos de escritorio (100 px), para que la casilla crezca; es su presupuesto de alto, y crece sólo con lo que sobra debajo (`growHand`). */
-const DESKTOP_AUTO_HAND = 80
+export const DESKTOP_AUTO_HAND = 80
 /** Celular: cuánto se separan las manos del campo (la del rival sube, la tuya baja) sin moverlo: se corren con `transform` y `margin` de un elemento absoluto, que no cambian el alto de lo que se centra. */
 const MOBILE_HAND_GAP = 14
 /**
@@ -161,12 +161,6 @@ const REVIEW_HAND: CSSProperties = { transform: 'translateY(4px) scale(0.72)', t
 /** Con el replay partido, el campo y tu mano suben lo que mide la línea de tiempo (44 px, pegada a los botones: sus pastillas ya llevan aire): ella pasó de arriba (debajo del aviso) a abajo, debajo de los botones. También es una transformación. */
 const REVIEW_LIFT = '-translate-y-11'
 
-/**
- * El duelo en el celular (`phoneDuelLayout`), medido: la barra, sólo la fila de los íconos con las vidas del rival (50 px) y el hueco de la columna (8); y abajo tu fila (tu chapa y la botonera,
- * 60 px) con el margen de la columna (8).
- */
-const PHONE_BAR = 58
-const PHONE_BOTTOM = 68
 const onResize = (listener: () => void) => {
   window.addEventListener('resize', listener)
   return () => window.removeEventListener('resize', listener)
@@ -945,10 +939,10 @@ function PracticeMatBody({
   const isDuel = Boolean(duel)
   // El duelo en el celular: geometría fija, sacada sólo del tamaño de la pantalla (`phoneDuelLayout`): el campo y tu mano no se mueven con nada de lo que aparece.
   const [screenWidth, screenHeight] = screen.split('x').map(Number) as [number, number]
-  const phone = bare ? matDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_BAR, bottom: PHONE_BOTTOM }) : null
+  const phone = bare ? matDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_DUEL_BAR, bottom: PHONE_DUEL_BOTTOM }) : null
   // La caja del campo: arriba, el lugar de la mano del rival (en 3D, menos lo que la perspectiva baja su borde); las filas con forma de carta y la carta de adentro, por variables (ver `CELL`).
   const phoneField = phone
-    ? ({ width: phone.fieldWidth, height: phone.fieldHeight, marginInline: 'auto', marginTop: phone.rivalRoom + phone.rivalGap - phone.drop, gridTemplateRows: `repeat(5, ${phone.row}px)`, '--zone-aspect': 'auto', '--pile-width': '100%', '--pile-align': 'center', '--field-card': `${phone.card}px`, '--field-card-top': `${phone.cardTop}px` } as CSSProperties)
+    ? ({ ...phoneFieldStyle(phone), marginInline: 'auto', marginTop: phone.rivalRoom + phone.rivalGap - phone.drop } as CSSProperties)
     : null
   // La mano del rival, a 0,8 de la tuya (`TheirHand` la lee).
   const [rivalCard, rivalWidth, rivalRoom] = phone ? [phone.rivalCard, phone.rivalWidth, phone.rivalRoom] : [0, 0, 0]
@@ -3095,7 +3089,7 @@ function PracticeMatBody({
       <div
         ref={columnRef}
         // Con laterales: una grilla de tres columnas (lateral, campo, lateral) y tres filas (arriba, el medio que se estira y abajo); el campo ocupa las tres. `--cell-h` es la casilla que deja el alto: sin la barra de arriba ni la de abajo sobran 17,25 rem.
-        style={rails ? ({ '--cell-h': `max(3.5rem, min(12rem, calc((100dvh - 22.95rem) / 5)))` } as CSSProperties) : undefined}
+        style={rails ? ({ '--cell-h': `max(3.5rem, min(12rem, calc((100dvh - ${RAILS_CHROME_REM}rem) / 5)))` } as CSSProperties) : undefined}
         className={cx(
           !duel && '@container',
           Boolean(detail) && 'min-[1440px]:col-start-2',
@@ -3127,7 +3121,7 @@ function PracticeMatBody({
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        {/* En el celular el grupo va pegado abajo, sobre tu fila de 60 px (`mb-15`, en `PHONE_BOTTOM`), y cada pieza mide lo que dice `phoneDuelLayout`: su lugar sale sólo del alto de la pantalla. */}
+        {/* En el celular el grupo va pegado abajo, sobre tu fila de 60 px (`mb-15`, en `PHONE_DUEL_BOTTOM`), y cada pieza mide lo que dice `phoneDuelLayout`: su lugar sale sólo del alto de la pantalla. */}
         <div ref={groupRef} className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative flex flex-col', phone ? 'mt-auto mb-15' : 'my-auto gap-2', deskLine && '@container', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
         {/* Escritorio sin laterales: las vidas del rival en la esquina de arriba a la derecha, apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren
             nada. En el celular van en la barra de arriba (las pone la pantalla). */}

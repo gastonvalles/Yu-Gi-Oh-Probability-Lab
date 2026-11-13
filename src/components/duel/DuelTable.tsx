@@ -10,7 +10,7 @@ import { useMatView } from '../../app/mat-view'
 import { computeHandLayout, fanAngle } from '../../app/practice-hand-layout'
 import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
-import { THEIR_FAN_RISE, THEIR_HAND, TheirHandSize } from './their-hand'
+import { HAND_FAN_RISE, THEIR_FAN_RISE, THEIR_HAND, TheirHandSize } from './their-hand'
 import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -106,7 +106,7 @@ export const DUEL_AREAS = [...THEIR_ROWS, middleRow(true, true), ...MINE_ROWS].j
  * Siete columnas en todos los anchos, también en el celular (Gastón, 2026-11-10: «en mobile tenemos espacio para usar el campo default, el de desktop»): el Deck y el Extra en los extremos, la Zona de campo y el Cementerio a los costados de los monstruos.
  */
 const GRID =
-  'relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:var(--areas)] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,6.5rem)*0.6857))_repeat(5,minmax(0,var(--cell,6.5rem)))_minmax(0,calc(var(--cell,6.5rem)*0.6857))]'
+  'relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 data-phone:gap-0.75 [grid-template-areas:var(--areas)] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,6.5rem)*0.6857))_repeat(5,minmax(0,var(--cell,6.5rem)))_minmax(0,calc(var(--cell,6.5rem)*0.6857))]'
 
 const ZONE_LABEL: Record<MatSpot, () => string> = {
   mz: () => t('practice.zone.mz'),
@@ -281,7 +281,8 @@ export function TheirHand({
       <div role={open ? 'group' : 'img'} aria-label={label ?? (cards ? (cards.includes(null) ? (cards.some(Boolean) ? t('duel.hand.theirsPublic', { count: cards.length, cards: cards.flatMap((card) => (card ? [card.name] : [])).join(', ') }) : t('duel.hand.theirs', { count })) : t('duel.hand.theirsShown', { cards: cards.map((card) => card!.name).join(', ') })) : t('duel.hand.theirs', { count }))} className="absolute inset-0 z-7">
         {Array.from({ length: shown }, (_, index) => {
           // El espejo de la nuestra (Gastón, 2026-11-12): el centro es lo más cercano al campo y las puntas suben, abiertas hacia el rival.
-          const raise = Math.abs(index - (shown - 1) / 2) ** 2 * THEIR_FAN_RISE
+          // Debajo del campo (la mano de abajo del replay), el de tu mano en la mesa.
+          const raise = Math.abs(index - (shown - 1) / 2) ** 2 * (below ? HAND_FAN_RISE : THEIR_FAN_RISE)
           const card = cards?.[index]
 
           return (

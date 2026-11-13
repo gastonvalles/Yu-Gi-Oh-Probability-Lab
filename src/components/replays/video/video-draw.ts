@@ -689,6 +689,20 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
   }
   ctx.restore()
 
+  // El texto flota sobre las puntas de las manos (el cuadro es la pantalla del duelo sin sus barras, `videoLayout`): un velo del fondo arriba, que se apaga hacia el campo, y otro abajo, debajo de la
+  // jugada, que deja ver el arte de tus cartas.
+  const veil = (from: number, to: number, solid: number) => {
+    const fade = ctx.createLinearGradient(0, from, 0, to)
+    fade.addColorStop(0, rgba(theme.backgroundRgb, solid))
+    fade.addColorStop(1, rgba(theme.backgroundRgb, 0))
+    ctx.fillStyle = fade
+    ctx.fillRect(0, Math.min(from, to), scene.width, Math.abs(to - from))
+  }
+  veil(0, layout.score.y + layout.score.h + 24 * s, 0.85)
+  ctx.fillStyle = rgba(theme.backgroundRgb, 0.88)
+  ctx.fillRect(0, layout.text.y - 8 * s, scene.width, scene.height - layout.text.y + 8 * s)
+  veil(layout.text.y - 8 * s, layout.text.y - 40 * s, 0.88)
+
   // Arriba: tus vidas, de quién es el turno y las del rival.
   const [mine, theirs] = scene.sides
   if (scene.heading) {

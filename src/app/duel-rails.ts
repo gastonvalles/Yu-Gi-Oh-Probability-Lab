@@ -43,6 +43,34 @@ export function fieldZoom({ width, height, availWidth, availHeight }: { width: n
   return Math.min(FIELD_ZOOM_MAX, Math.max(1, Math.min(availWidth / width, availHeight / height)))
 }
 
+/** Con laterales, lo que no es campo en el alto de la pantalla (la columna y las dos manos, sin barras): la casilla es `(100dvh − 22,95 rem) / 5` (`--cell-h` de la mesa). */
+export const RAILS_CHROME_REM = 22.95
+
+/** La casilla del campo con laterales en una pantalla de ese alto (px), como `--cell-h` de la mesa: la usa también el replay de un duelo en escritorio. */
+export function railsCell(height: number): number {
+  return Math.min(CELL_MAX_PX, Math.max(CELL_MIN_PX, (height - RAILS_CHROME_REM * REM_PX) / 5))
+}
+
+/**
+ * El duelo automático de escritorio sin laterales (`DESKTOP_AUTO_CELL` de la mesa): su casilla crece con lo que deja el alto sin la barra, las dos manos y la fila de abajo (24,95 rem), de 3 a 12 rem.
+ * Desde 1440 px la mesa lleva el panel del detalle y su columna ya no tiene lugar para los laterales: es lo que se ve ahí.
+ */
+export const DESKTOP_AUTO_CHROME_REM = 24.95
+
+export function lineCell(height: number): number {
+  return Math.min(CELL_MAX_PX, Math.max(3 * REM_PX, (height - DESKTOP_AUTO_CHROME_REM * REM_PX) / 5))
+}
+
+/**
+ * El campo con laterales en una columna de `width` px, como lo arma la mesa: la casilla `cell` (`railsCell` o `lineCell`, la del alto), sin pasarse de lo que dejan los dos laterales de 13 rem y su
+ * aire (`--cell`: lo que entra a lo ancho de la columna del medio). Devuelve la casilla y el ancho del campo (cinco casillas, los dos costados y los seis huecos de 8 px).
+ */
+export function railsField(width: number, cell: number): { cell: number; width: number } {
+  cell = Math.max(CELL_MIN_PX, Math.min(cell, (width - COLUMN_PAD_PX - 2 * (RAIL_MIN_PX + RAIL_GAP_PX) - FIELD_GAPS_PX) / FIELD_CELLS))
+
+  return { cell, width: FIELD_CELLS * cell + FIELD_GAPS_PX }
+}
+
 /** Cuánto mide la casilla del campo con la barra arriba y abajo, en una columna de ese alto (px). */
 export function classicCell(height: number): number {
   return Math.min(CELL_MAX_PX, Math.max(CELL_MIN_PX, (height - CLASSIC_CHROME_PX) / 5))

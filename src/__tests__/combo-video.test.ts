@@ -81,11 +81,12 @@ describe('la escena de un combo', () => {
     expect(layout.theirHand.y + layout.theirHand.h).toBeLessThanOrEqual(layout.cellAt(0, 1).y)
   })
 
-  it('sin hueco abajo: tu mano y la franja de la jugada llegan hasta la marca, como en el video de un duelo', () => {
+  it('sin hueco abajo: tu mano llega al borde del cuadro y la franja de la jugada flota sobre el pie de sus cartas, como en el video de un duelo', () => {
     const { layout } = last
-    expect(layout.text.y + layout.text.h).toBeGreaterThanOrEqual(layout.footer.y - 8)
     expect(layout.myHand.y).toBeGreaterThan(layout.cellAt(4, 1).y + layout.cellAt(4, 1).h)
-    expect(layout.text.y).toBeGreaterThan(layout.myHand.y + layout.myHand.h)
+    expect(layout.myHand.y + layout.myHand.h).toBeCloseTo(1280, 0)
+    expect(layout.text.y).toBeGreaterThan(layout.myHand.y + layout.myHand.h * 0.6)
+    expect(layout.text.y + layout.text.h).toBeLessThanOrEqual(1280)
   })
 
   it('no muestra nada que la mesa tape: lo del deck y lo colocado, de dorso en todos los cuadros y en las transiciones', () => {

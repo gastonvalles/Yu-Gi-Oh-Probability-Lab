@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 /** El celular en vertical: menos de 640 px de ancho (el corte `sm` de Tailwind). El campo tiene siete columnas en todos los anchos. */
 export const COMPACT_FIELD_MEDIA_QUERY = '(max-width: 639.98px)'
 
@@ -11,7 +13,7 @@ const TILT = (14 * Math.PI) / 180
 const PERSPECTIVE = 900
 /** Tu mano (`PracticeHand`): las cartas se enciman al 55 % (cinco entran en 3,2 cartas), su caja suma 30 px a la carta y la carta es 1 : 1,4612. */
 const HAND_FIT = 3.2
-const HAND_ROOM = 30
+export const HAND_ROOM = 30
 const CARD_RATIO = 1.4612
 const HAND_CARD_MAX = 140
 const HAND_CARD_MIN = 64
@@ -21,6 +23,15 @@ const RIVAL_FAN = 8
 const RIVAL_GAP = 6
 /** Del borde de abajo del campo a la caja de tu mano: sin línea en el medio (los avisos flotan sobre tu mano). */
 const HAND_GAP = 8
+/** Dentro de la caja de tu mano, cuánto bajan las cartas desde su borde de arriba (`PracticeHand`; el replay de un duelo pone su mano de abajo en el mismo lugar). */
+export const HAND_TOP_ROOM = 8
+
+/**
+ * Lo que mide la pantalla del duelo del celular arriba y abajo del campo y las manos: la barra (la fila de los íconos con las vidas del rival, 50 px, y el hueco de la columna, 8) y tu fila (tu chapa y
+ * la botonera, 60 px, con el margen de la columna, 8). La mesa y el replay de un duelo los usan para `phoneDuelLayout`, así los dos tienen el campo y las manos en el mismo lugar.
+ */
+export const PHONE_DUEL_BAR = 58
+export const PHONE_DUEL_BOTTOM = 68
 /** Una carta en defensa gira sobre su casilla y pisa hasta 11 px de cada vecina (no se achica para entrar). */
 const DEFENSE_OVERLAP = 11
 
@@ -99,6 +110,14 @@ export function phoneDuelLayout(width: number, height: number, { tilted, bar, bo
     rivalCard, rivalWidth: (width - 2 * PHONE_EDGE) * RIVAL_SCALE, rivalRoom, rivalGap: RIVAL_GAP, rivalTop: fieldTop - RIVAL_GAP - rivalRoom,
     lineTop, gap: HAND_GAP, handTop, handHeight, handCard, bottomTop: handTop + handHeight,
   }
+}
+
+/**
+ * La caja del campo del duelo del celular (lleva `data-phone`): su ancho y su alto, las filas con forma de carta y la carta de adentro, por variables (las lee `CELL` de la mesa). La misma en la mesa
+ * (`PracticeMat`) y en el replay de un duelo (`DuelTable`).
+ */
+export function phoneFieldStyle(layout: PhoneDuelLayout): CSSProperties {
+  return { width: layout.fieldWidth, height: layout.fieldHeight, gridTemplateRows: `repeat(5, ${layout.row}px)`, '--zone-aspect': 'auto', '--pile-width': '100%', '--pile-align': 'center', '--field-card': `${layout.card}px`, '--field-card-top': `${layout.cardTop}px` } as CSSProperties
 }
 
 /** Desde este ancho el campo ya no ocupa toda la columna: se angosta hasta que sus casillas tengan forma de carta (el celular, más angosto, va a todo el ancho). */
