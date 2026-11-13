@@ -11,11 +11,11 @@ import type { DeckFormat } from '../types'
 const ZONE_TITLES: Record<DeckZone, string> = { main: 'Main', extra: 'Extra', side: 'Side' }
 
 // Los mismos colores que el builder (src/index.css y deck-zone-styles.ts): la imagen es una captura de la pantalla.
-const ZONE_DOT: Record<DeckZone, string> = { main: '#723bfa', extra: '#3b82f6', side: '#2ee08f' }
+const ZONE_DOT: Record<DeckZone, string> = { main: '#6e52c0', extra: '#3b82f6', side: '#2edcb4' }
 const ZONE_TINT: Record<DeckZone, string> = {
-  main: 'rgba(114, 59, 250, 0.14)',
+  main: 'rgba(110, 82, 192, 0.14)',
   extra: 'rgba(59, 130, 246, 0.13)',
-  side: 'rgba(46, 224, 143, 0.09)',
+  side: 'rgba(46, 220, 180, 0.09)',
 }
 /** Los puntos de cada tipo: los del builder (`ZONE_TYPE_SWATCH`), del marco de la carta. */
 export const TYPE_SWATCH: Record<string, string> = {
