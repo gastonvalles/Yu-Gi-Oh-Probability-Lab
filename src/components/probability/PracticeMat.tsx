@@ -105,7 +105,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhasePulse, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -487,7 +487,7 @@ const ACTIVATE_MS = 950
 /** Cuánto se queda el destello de una invocación (con lo que espera a que la carta aterrice) y el cartel de una fase. */
 const LANDING_MS = 1300
 const BANNER_MS = 1100
-/** Lo que el lector de pantalla oye de un cambio de fase o de turno en un duelo (PhasePulse): quién, si no es tuya, y la fase (o «Turno de Ana»). */
+/** Lo que el lector de pantalla oye de un cambio de fase o de turno en un duelo (el `status` del botón de fase): quién, si no es tuya, y la fase (o «Turno de Ana»). */
 const phaseSaid = (notice: { phase: MatPhase; who?: string; label?: string } | null) => (notice ? [notice.who, notice.label ?? PHASES.find((entry) => entry.id === notice.phase)?.name ?? notice.phase].filter(Boolean).join(' · ') : '')
 /** Cuánto se queda el marco de la mano cuando recibe una carta. */
 const HAND_FLASH_MS = 900
@@ -3202,7 +3202,7 @@ function PracticeMatBody({
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
               </IconButton>
               {/* Sin el aro del botón: la banda de la fase ya lo cruza (no son dos avisos); queda el `status` para el lector de pantalla. */}
-              {duel && !session.replay ? <PhasePulse pulse={null} text={phaseSaid(duel.notice ?? (banner ? { phase: banner.phase, ...(banner.turn !== null && duel.rivalTurnLabel ? { label: duel.rivalTurnLabel } : {}) } : null))} /> : null}
+              {duel && !session.replay ? <span role="status" className="sr-only">{phaseSaid(duel.notice ?? (banner ? { phase: banner.phase, ...(banner.turn !== null && duel.rivalTurnLabel ? { label: duel.rivalTurnLabel } : {}) } : null))}</span> : null}
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
               {isDesktop && !isAuto && myTurn && phaseNow === 'end' ? (
                 <Button
@@ -3665,7 +3665,7 @@ function PracticeMatBody({
         {duel?.prompt ? (
           <div ref={promptLayerRef} data-testid="duel-prompt-layer" data-spot="extra" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] flex flex-col items-center justify-end px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
-            <div ref={promptRef} className="pointer-events-auto flex min-h-0 w-[min(24rem,100%)] max-w-full flex-col has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
+            <div ref={promptRef} className="pointer-events-auto flex min-h-0 w-[min(24rem,100%)] max-w-full flex-col has-data-leaving:pointer-events-none has-data-minimized:w-auto">
               <LayerBackContext value={layerBack}>{duel.prompt}</LayerBackContext>
             </div>
           </div>

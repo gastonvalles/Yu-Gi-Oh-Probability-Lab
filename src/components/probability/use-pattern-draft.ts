@@ -1,7 +1,7 @@
 import { useMemo, useReducer, useState } from 'react'
 
 import { patternsReducer, replacePatterns, type PatternsState } from '../../app/patterns-slice'
-import { createPatternEditorActions, type PatternEditorDefaults } from '../../app/use-pattern-editor-actions'
+import { createPatternEditorActions } from '../../app/use-pattern-editor-actions'
 import type { HandPattern } from '../../types'
 
 const EMPTY_DRAFT_STATE: PatternsState = {
@@ -16,10 +16,10 @@ const EMPTY_DRAFT_STATE: PatternsState = {
  * Borrador de una regla: el editor la modifica con las mismas acciones del slice,
  * pero sobre un estado local. El store (y el cálculo) sólo cambian al guardar.
  */
-export function usePatternDraft(defaults: PatternEditorDefaults) {
+export function usePatternDraft() {
   const [state, dispatch] = useReducer(patternsReducer, EMPTY_DRAFT_STATE)
   const [baseline, setBaseline] = useState<HandPattern | null>(null)
-  const actions = useMemo(() => createPatternEditorActions(dispatch, defaults), [defaults])
+  const actions = useMemo(() => createPatternEditorActions(dispatch), [])
   const draft = state.patterns[0] ?? null
 
   return {

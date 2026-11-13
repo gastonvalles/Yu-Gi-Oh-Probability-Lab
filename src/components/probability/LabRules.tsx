@@ -6,7 +6,6 @@ import type { LabResults } from '../../app/probability-lab'
 import { buildRuleExample, duplicateRule, findDuplicateRule, removeRule, restoreGenericRule, restoreRemovedRule, setRuleEnabled, type RemovedRule, type RuleCandidate, type RuleExampleId } from '../../app/rule-edits'
 import { useShellInsets } from '../../app/shell-layout'
 import { useToastMessage } from '../../app/use-toast-message'
-import type { PatternEditorDefaults } from '../../app/use-pattern-editor-actions'
 import { createId } from '../../app/utils'
 import { t } from '../../i18n'
 import type { CardEntry, HandPattern, PatternKind } from '../../types'
@@ -40,7 +39,6 @@ interface LabRulesProps {
   /** El resultado del Lab de hoy: el «antes» del número en vivo y de borrar. */
   results: LabResults | null
   patternActions: PatternEditorActions
-  patternEditorDefaults: PatternEditorDefaults
   onToggleGenericRule: (presetId: string, enabled: boolean) => void
   onRenameSystemRule: (presetId: string, name: string) => void
   className?: string
@@ -79,13 +77,12 @@ export function LabRules({
   handSize,
   results,
   patternActions,
-  patternEditorDefaults,
   onToggleGenericRule,
   onRenameSystemRule,
   className,
 }: LabRulesProps) {
   const { showToast } = useToastMessage()
-  const draft = usePatternDraft(patternEditorDefaults)
+  const draft = usePatternDraft()
   const draftPattern = draft.draft
   const [editor, setEditor] = useState<EditorState | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)

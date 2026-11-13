@@ -21,8 +21,6 @@ interface ProgressRingProps {
   label: string
   /** El valor en palabras para el lector de pantalla (`aria-valuetext`), p. ej. «78 de cada 100». */
   valueText?: string
-  /** Marcas sobre el anillo (0 a 1). */
-  ticks?: ReadonlyArray<number>
   /** Milisegundos de espera antes de llenarse (para escalonar varios anillos). */
   delay?: number
   /** Contenido fijo del centro; por defecto el número «de cada 100», entero y sin «%» (`formatPer100`). */
@@ -34,7 +32,7 @@ interface ProgressRingProps {
 }
 
 /** Anillo de progreso que se llena al aparecer, con su número al centro. Es la única forma de mostrar un porcentaje en la app. */
-export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, valueText, ticks, delay = 0, children, format, unmeasured = false }: ProgressRingProps) {
+export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, valueText, delay = 0, children, format, unmeasured = false }: ProgressRingProps) {
   const clamped = clamp01(value)
   const { stroke, radius, circumference, center } = ringGeometry(size, strokeWidth)
   const { ref, revealed, settled, delayMs, instant } = useRingReveal<HTMLDivElement>(delay)
@@ -78,23 +76,6 @@ export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWi
             className={cx(RING_TRANSITION, arc ? 'stroke-[rgb(var(--tone-rgb))]' : 'stroke-lavender-light')}
           />
         )}
-        {ticks?.map((tick) => {
-          const angle = tick * 2 * Math.PI
-          const inner = radius - stroke / 2
-          const outer = radius + stroke / 2
-
-          return (
-            <line
-              key={tick}
-              x1={center + inner * Math.cos(angle)}
-              y1={center + inner * Math.sin(angle)}
-              x2={center + outer * Math.cos(angle)}
-              y2={center + outer * Math.sin(angle)}
-              strokeWidth={2.5}
-              className="stroke-background"
-            />
-          )
-        })}
       </svg>
       {size >= RING_MIN_NUMBER_SIZE ? (
         <span className={cx('absolute inset-0 grid place-items-center text-center tabular-nums', ringCenterText(size), onBrand ? 'text-primary-foreground' : 'text-foreground')}>

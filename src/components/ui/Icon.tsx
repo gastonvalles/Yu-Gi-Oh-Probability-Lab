@@ -90,13 +90,6 @@ const PATHS = {
       <path d="M8 3.5h10.5a2 2 0 0 1 2 2V16" />
     </>
   ),
-  /** Borrar (la tecla del teclado de LP): una etiqueta con una cruz. */
-  backspace: (
-    <>
-      <path data-fill d="M20 6H8l-5 6 5 6h12z" />
-      <path data-cut d="M12 9l6 6M18 9l-6 6" />
-    </>
-  ),
   /** Pegar desde el portapapeles. */
   clipboard: (
     <>
@@ -119,8 +112,6 @@ const PATHS = {
       <rect data-fill x="14" y="4" width="5" height="16" rx="1.2" />
     </>
   ),
-  /** Avance rápido: dos triángulos, como en un replay. */
-  'fast-forward': <path data-fill d="M3.5 6.1v11.8a1 1 0 0 0 1.56.83L12 13.3v4.6a1 1 0 0 0 1.56.83l8-5.9a1 1 0 0 0 0-1.66l-8-5.9A1 1 0 0 0 12 6.1v4.6L5.06 5.27A1 1 0 0 0 3.5 6.1z" />,
   /** Volver al principio (de un replay): una barra y un triángulo hacia la izquierda. */
   'skip-back': (
     <>
@@ -366,13 +357,6 @@ const PATHS = {
   'chevron-up': <path d="m6 15 6-6 6 6" />,
   'chevron-left': <path d="m15 6-6 6 6 6" />,
   'chevron-right': <path d="m9 6 6 6-6 6" />,
-  /** Contraer el menú lateral: dos flechas hacia la izquierda. */
-  'chevrons-left': (
-    <>
-      <path d="m11 17-5-5 5-5" />
-      <path d="m18 17-5-5 5-5" />
-    </>
-  ),
   /** El agarre para arrastrar algo hacia arriba o hacia abajo (una fila de la tier list): una flecha arriba y otra abajo. */
   'chevrons-up-down': (
     <>

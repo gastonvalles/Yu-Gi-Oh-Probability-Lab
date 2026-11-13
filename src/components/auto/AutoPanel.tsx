@@ -138,7 +138,7 @@ interface AutoPanelProps {
  * ancho de tu mano sin pisar tu chapa ni la botonera (`--window-w`). Su barra violeta lleva la pregunta (el `h2`, en un renglón) y el contador, y es el asa (`useDraggableOffset`: se lleva con
  * el mouse; enfocada, flechas, Alt + flechas la estiran, Enter o doble clic la vuelven a su lugar y su tamaño); se estira del borde derecho, del de abajo y de la esquina. Con `side`, las cartas
  * del tamaño de las de tu mano (`--desk-card`, sin pasar el alto que queda bajo el campo) y los botones en la misma fila, abajo a la derecha. Lugar y tamaño se recuerdan por tipo
- * (`autoWindowKey`). Con la hoja de la cadena abierta en el celular (`SheetHost`), va en su pie: una sola hoja. Va dentro de un `Presence` (así sale al contestarse).
+ * (`autoWindowKey`). Va dentro de un `Presence` (así sale al contestarse).
  */
 export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, aside, children, actions, focus, escape = false, role = 'dialog', labelledBy, describedBy, onDismiss, crumb, variant, tall = false, className }: AutoPanelProps) {
   const ref = useRef<HTMLDivElement | null>(null)
@@ -146,14 +146,12 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
   const titleId = givenId ?? ownId
   const leaving = useLeaving()
   const host = useSheetHost()
-  const slot = host?.slot ?? null
   // En un marco del catálogo (`SheetHost phone`), en su lugar: ni portal ni `fixed`.
-  const inline = host?.phone === true && !slot
+  const inline = host?.phone === true
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
-  // En el pie de la hoja de la cadena (celular) nunca es ventana.
   // «Menús flotantes» (Opciones): la ventana también en el celular, con el dedo. En un marco del catálogo no vale.
   const menus = useMatMenus()
-  const floating = !slot && (variant === 'floating' || (variant === undefined && (desktop || (menus === 'floating' && !inline))))
+  const floating = variant === 'floating' || (variant === undefined && (desktop || (menus === 'floating' && !inline)))
   const phoneWindow = floating && !desktop && !inline
   // La ventana de escritorio (también la del catálogo): las cartas al medio y los botones a su lado. La del celular, en columna; las dos llevan la pregunta en la barra (`data-window`).
   const desk = floating && !phoneWindow
@@ -165,7 +163,7 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
   useLayoutEffect(() => {
     const root = ref.current
 
-    if (!root || slot || inline) return
+    if (!root || inline) return
     // La ventana del celular escribe el techo y el piso en su marco (`frame`, que los hereda a ella): con ellos el marco es lo que la ventana puede ocupar.
     const holder = phoneWindow && root.parentElement ? root.parentElement : root
     const set = (name: string, value: string) => {
@@ -218,7 +216,7 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
-  }, [slot, inline, minimized, tall, desk, phoneWindow, floating])
+  }, [inline, minimized, tall, desk, phoneWindow, floating])
   // La ventana se lleva de la barra y se estira del borde y la esquina; posición y tamaño, por tipo (`autoWindowKey`). En la mesa se centra con su `translate`: el corrimiento va en `--drag-x/y`.
   const move = useDraggableOffset(phoneWindow ? onPhone(autoWindowKey(kind)) : autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, phoneWindow ? WINDOW_MIN_PHONE : WINDOW_MIN, true, true)
   // Minimizar y abrir sin saltos: baja hasta la tira y recién ahí se minimiza; abierto, sube desde la tira. En el marco del catálogo (en el flujo, sin apoyarse abajo), como siempre.
@@ -226,7 +224,7 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
   const dragged = useRef(0)
   // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; soltada cerca, vuelve deslizándose. Minimizado, la tira hacia arriba lo abre.
   const follow = (dy: number | null) => {
-    if (ref.current) ref.current.style.translate = dy === null ? '' : `${desktop && !slot ? '-50%' : '0'} ${dy}px`
+    if (ref.current) ref.current.style.translate = dy === null ? '' : `${desktop ? '-50%' : '0'} ${dy}px`
     if (dy === null) fold.settle(dragged.current)
     dragged.current = dy ?? 0
   }
@@ -244,7 +242,7 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
     const target = minimized ? '[data-panel-show]' : (focus ?? '[data-panel-grip], [data-window-bar]')
 
     ref.current?.querySelector<HTMLElement>(target)?.focus({ preventScroll: true })
-  }, [minimized, focus, slot])
+  }, [minimized, focus])
 
   // Lo que lo cierra tocando afuera: el toque fantasma del celular (el clic que sigue al dedo que abrió la ficha) no cuenta.
   useEffect(() => {
@@ -262,20 +260,18 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
     // `data-lowered`: el mismo estado con el nombre de las hojas del celular (lo leen la mesa y sus pruebas).
     ...(minimized ? { 'data-minimized': '', 'data-lowered': '' } : {}),
   }
-  const place = slot
-    ? 'border-t border-border-subtle'
-    : inline
-      ? 'relative mx-auto w-full max-w-155 border border-primary/60'
-      : cx(
-        // En la tableta (hasta 1100 px), de ancho máximo razonable y centrada (el celular, hasta 619 px, la lleva a todo el ancho).
-        'fixed inset-x-0 bottom-0 z-[130] mx-auto max-w-155 min-[640px]:border-x max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] border-t border-primary/60 shadow-overlay',
-        // Una sola hoja abajo en el celular: lo que abrís con una pregunta abierta (la ficha, el visor de una pila) va encima y la esconde sin cerrarla; al cerrarlo, vuelve. Lo que ya estaba
-        // abierto cuando llegó la pregunta, al revés, queda guardado debajo de ella (`PracticeMat`).
-        !onDismiss && 'in-[body:has(>[data-auto-panel=docked][data-prompt=card],[data-pile-sheet]:not([hidden]))]:hidden',
-      )
+  const place = inline
+    ? 'relative mx-auto w-full max-w-155 border border-primary/60'
+    : cx(
+      // En la tableta (hasta 1100 px), de ancho máximo razonable y centrada (el celular, hasta 619 px, la lleva a todo el ancho).
+      'fixed inset-x-0 bottom-0 z-[130] mx-auto max-w-155 min-[640px]:border-x max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] border-t border-primary/60 shadow-overlay',
+      // Una sola hoja abajo en el celular: lo que abrís con una pregunta abierta (la ficha, el visor de una pila) va encima y la esconde sin cerrarla; al cerrarlo, vuelve. Lo que ya estaba
+      // abierto cuando llegó la pregunta, al revés, queda guardado debajo de ella (`PracticeMat`).
+      !onDismiss && 'in-[body:has(>[data-auto-panel=docked][data-prompt=card],[data-pile-sheet]:not([hidden]))]:hidden',
+    )
   const surface = 'group/panel mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-sheet-in'
   // El aire de abajo de la hoja, apoyada en el borde: el suyo más el área segura, en una sola clase (dos `pb-*` sueltas se pisaban y la fila de botones quedaba al ras del borde).
-  const fixedDock = !slot && !inline
+  const fixedDock = !inline
 
   // La ventana del escritorio: apoyada sobre tu mano y centrada en la columna de la mesa como el cartel de siempre (no empuja ni tapa el campo al abrirse); corrida, flota encima de lo que haya.
   const windowPlace = inline
@@ -472,7 +468,7 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
   // (arrastrada o con un tamaño guardado nunca pasa del piso ni tapa la chapa, como pasaba con la pantalla entera de área).
   const frame = phoneWindow ? <div className="pointer-events-none fixed inset-x-0 top-[var(--panel-ceiling,50dvh)] bottom-[var(--panel-floor,0px)] z-[130] overflow-hidden">{view}</div> : view
   const content =
-    onDismiss && !slot && !inline ? (
+    onDismiss && !inline ? (
       <>
         {/* Tocar afuera cierra (no en la tira: ahí la mesa sigue viva). */}
         {minimized ? null : <div aria-hidden="true" className="fixed inset-0 z-[129]" onClick={() => performance.now() - openedAt.current >= GHOST_CLICK_MS && onDismiss()} />}
@@ -482,7 +478,7 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
       frame
     )
 
-  return usePresence(!leaving, inline ? content : typeof document === 'undefined' ? null : createPortal(content, slot ?? document.body), () => [ref.current])
+  return usePresence(!leaving, inline ? content : typeof document === 'undefined' ? null : createPortal(content, document.body), () => [ref.current])
 }
 
 /** La franja que se arrastra (`useSwipeFold`): un componente por estado, así lo que recuerda un arrastre (el clic que lo sigue se descarta) no pasa a la tira ni al cartel abierto. */

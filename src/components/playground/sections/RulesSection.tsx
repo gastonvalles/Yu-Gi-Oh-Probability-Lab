@@ -69,7 +69,6 @@ const GROUPS: RuleEntryGroups = {
 
 const role = (value: 'starter' | 'extender' | 'searcher' | 'handtrap' | 'disruption') => ({ type: 'role', value }) as const
 const noop = () => {}
-const DEFAULTS = { derivedMainCards: CARDS }
 
 /** Las reglas de muestra de la frase y de las condiciones (una vez: cada una arma ids nuevos). */
 function samplePatterns() {
@@ -219,7 +218,7 @@ export function RulesSection() {
 
 /** El borrador de una muestra que se puede tocar: se abre una vez con la regla de muestra. */
 function useSampleDraft(pattern: HandPattern) {
-  const draft = usePatternDraft(DEFAULTS)
+  const draft = usePatternDraft()
   const opened = useRef(false)
 
   useEffect(() => {
@@ -272,7 +271,7 @@ function ConditionSample({ pattern, count, groupsByKey, showError = false }: { p
 
 /** El editor como en el Lab: arranca en blanco y no se puede crear hasta que cada condición diga qué cuenta. */
 function EditorSample() {
-  const draft = usePatternDraft(DEFAULTS)
+  const draft = usePatternDraft()
   const [state, setState] = useState<{ examples: boolean } | null>(null)
   const rule = draft.draft
   const complete = rule !== null && rule.conditions.length > 0 && rule.conditions.every((condition) => condition.matcher !== null)

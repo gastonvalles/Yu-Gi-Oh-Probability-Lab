@@ -2,7 +2,6 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { normalizeRuleName } from './pattern-presets'
 
 import type {
-  CardEntry,
   HandPattern,
   HandPatternCategory,
   Matcher,
@@ -64,8 +63,8 @@ const patternsSlice = createSlice({
   name: 'patterns',
   initialState,
   reducers: {
-    addRequirementToPattern(state, action: PayloadAction<{ patternId: string; derivedMainCards: CardEntry[] }>) {
-      state.patterns = addRequirement(state.patterns, action.payload.patternId, action.payload.derivedMainCards)
+    addRequirementToPattern(state, action: PayloadAction<{ patternId: string }>) {
+      state.patterns = addRequirement(state.patterns, action.payload.patternId)
     },
     appendPattern(state, action: PayloadAction<HandPattern>) {
       state.patterns.push(action.payload)

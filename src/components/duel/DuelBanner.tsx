@@ -28,7 +28,7 @@ export function TurnOrderBanner({ first, rival, onDone }: { first: boolean; riva
     <div aria-live="polite" data-testid="turn-banner" data-turn={first ? 'first' : 'second'} className="pointer-events-none fixed inset-0 z-65 grid place-items-center">
       <span aria-hidden="true" className="absolute inset-0 animate-banner-veil bg-background/80 motion-reduce:animate-none" />
       <div className="relative grid justify-items-center gap-4 px-6 text-center">
-        <DuelMedal tone={tone} numeral={first ? '1' : '2'} size="md" className="mt-2" />
+        <DuelMedal tone={tone} numeral={first ? '1' : '2'} className="mt-2" />
         <h2 className={cx('m-0 animate-banner-rise border-2 bg-background px-4 py-1.5 text-balance text-lead font-extrabold text-foreground motion-reduce:animate-none', first ? 'border-primary' : 'border-accent')}>
           {first ? t('duel.turnOrder.first') : t('duel.turnOrder.second')}
         </h2>

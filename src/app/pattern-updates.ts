@@ -1,5 +1,4 @@
 import type {
-  CardEntry,
   HandPattern,
   HandPatternCategory,
   Matcher,
@@ -14,11 +13,7 @@ import {
   resolvePatternLogic,
 } from './patterns'
 
-export function addRequirement(
-  patterns: HandPattern[],
-  patternId: string,
-  _derivedMainCards: CardEntry[],
-): HandPattern[] {
+export function addRequirement(patterns: HandPattern[], patternId: string): HandPattern[] {
   return patterns.map((pattern) => {
     if (pattern.id !== patternId) {
       return pattern
