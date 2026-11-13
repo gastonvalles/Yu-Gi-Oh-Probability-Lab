@@ -256,6 +256,45 @@ describe('el anfitrión del núcleo', () => {
       expect(auto.answers.at(-1)).toEqual({ type: 'announce_card', code: 89631139 })
     })
 
+    it('la mano del rival que un efecto deja a la vista (Mind Scan: `EFFECT_PUBLIC`, sin ningún mensaje) se puede declarar, y lo visto va antes que el deck propio', async () => {
+      const [PROHIBITION, MIND_SCAN, TOON_MERMAID, BLUE_EYES, DARK_MAGICIAN, CELTIC] = [43711255, 34298391, 65458948, 89631139, 46986414, 91152256]
+      const events: AutoEvent[] = []
+      const auto = host(events)
+      const at = (code: number, controller: 0 | 1, location: number, sequence = 0, position = 10) => ({ code, controller, location, sequence, position })
+      const mine = [PROHIBITION, MIND_SCAN, TOON_MERMAID, ...Array(8).fill(BLUE_EYES)]
+      const theirs = [DARK_MAGICIAN, ...Array(9).fill(CELTIC)]
+      const setup = {
+        lp: [8000, 8000],
+        cards: [
+          ...Array.from({ length: 8 }, () => at(BLUE_EYES, 0, OcgLocation.DECK)),
+          ...Array.from({ length: 9 }, () => at(CELTIC, 1, OcgLocation.DECK)),
+          at(PROHIBITION, 0, OcgLocation.HAND),
+          at(MIND_SCAN, 0, OcgLocation.SZONE, 1, 1),
+          at(TOON_MERMAID, 0, OcgLocation.GRAVE, 0, 1),
+          at(DARK_MAGICIAN, 1, OcgLocation.HAND),
+        ],
+      }
+
+      await auto.handle({ t: 'create', seed: 4, flags: MR5, players: PLAYERS.map((player) => ({ ...player, hand: 0 })), decks: [deck(mine), deck(theirs)], setup })
+      let announced: Extract<AutoEvent, { t: 'ask' }> | undefined
+
+      for (let i = 0; i < 30 && !announced; i += 1) {
+        const asked = events.filter((event) => event.t === 'ask').at(-1) as Extract<AutoEvent, { t: 'ask' }>
+        const activate = asked.ask.type === 'select_idlecmd' && asked.seat === 0 ? asked.ask.activates.findIndex((card) => card.code === PROHIBITION) : -1
+
+        if (asked.ask.type === 'announce_card') announced = asked
+        else await auto.handle({ t: 'answer', askId: asked.askId, answer: activate >= 0 ? { type: 'select_idlecmd', action: 5, index: activate } : passivePolicy()(asked.ask) })
+      }
+
+      const offered = announced?.ask.type === 'announce_card' ? (announced.ask.cards ?? []) : []
+
+      expect(offered).toContain(DARK_MAGICIAN)
+      expect(offered).not.toContain(CELTIC)
+      expect(offered.indexOf(DARK_MAGICIAN)).toBeLessThan(offered.indexOf(BLUE_EYES))
+      await auto.handle({ t: 'answer', askId: announced!.askId, answer: { type: 'announce_card', code: DARK_MAGICIAN } })
+      expect(auto.answers.at(-1)).toEqual({ type: 'announce_card', code: DARK_MAGICIAN })
+    })
+
     it('con la clave, los decks que usa el núcleo son los de `teamOrder` con la clave (no los de la semilla); la misma clave, el mismo duelo, también con rewind', async () => {
       // Veinte Monstruos Normales distintos, así dos órdenes no coinciden por casualidad.
       const normals = [...cards.values()].filter((card) => (card.type & 0x1004011) === 0x11 && !card.alias && !needsScript(card)).slice(0, 20).map((card) => card.code)
