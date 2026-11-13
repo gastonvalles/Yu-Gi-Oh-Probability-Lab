@@ -25,8 +25,9 @@ import { useRivalShuffle } from '../../app/rival-shuffle'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
 import type { Activity } from '../../app/duel-protocol'
-import { allMatIds, cardKindOf, createMatState, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
-import type { SavedCombo } from '../../app/saved-combos'
+import { allMatIds, cardKindOf, createMatState, isToken, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
+import type { ReplayChainStep } from '../../app/duel-replay'
+import { comboTheirReal, comboTheirsAt, type ComboTheirs, type SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
@@ -315,7 +316,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
    * El repaso («Jugar solo»): un combo guardado (`name`), o tus jugadas hasta un paso, en la misma mesa y con la lista de siempre. El duelo vivo espera donde estaba: ni el ritmo, ni
    * tocar la mesa lo mueven y no se muestra ninguna pregunta; la cinta (`paced`) se sigue rehaciendo sólo del núcleo. El lado del rival queda vacío.
    */
-  const [review, setReview] = useState<{ name?: string; session: MatSession } | null>(null)
+  const [review, setReview] = useState<{ name?: string; session: MatSession; theirs?: ComboTheirs; chain?: ReplayChainStep[] } | null>(null)
   const reviewing = review !== null
 
   // Reiniciar es otro duelo: lo pedido vuelve a cero y el repaso se cierra.
@@ -458,7 +459,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const matSession = useMemo<MatSession>(() => ({ initial: opening.initial, actions: played, cursor: played.length, names, replay: false }), [opening.initial, played, names])
   // Lo que se repasa se ve en la misma mesa; la del duelo (`state`, `matSession`) queda como estaba.
   const reviewState = useMemo(() => (review ? replayMat(review.session.initial, review.session.actions, review.session.cursor) : null), [review])
-  const load = useCallback((combo: SavedCombo) => setReview({ name: combo.name, session: { initial: combo.initial, actions: combo.actions, cursor: 0, names: combo.names, replay: true } }), [])
+  // Un combo grabado acá con el campo del rival o una cadena (`theirs`, `chain`) los trae: se ven como en el replay de un duelo.
+  const load = useCallback(
+    (combo: SavedCombo) =>
+      setReview({ name: combo.name, session: { initial: combo.initial, actions: combo.actions, cursor: 0, names: combo.names, replay: true }, ...(combo.theirs ? { theirs: combo.theirs } : {}), ...(combo.chain ? { chain: combo.chain } : {}) }),
+    [],
+  )
   const back = useCallback(() => setReview(null), [])
   // Un paso: repasando, el de lo que se repasa (el último de tus jugadas es ahora: vuelve al duelo); en vivo, uno de tus jugadas (como en la práctica, sin los controles del replay).
   const seek = useCallback(
@@ -1477,6 +1483,17 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     </>
   )
 
+  // El campo del rival del combo que se repasa (`theirs`): en el paso que se mira, con lo que se vio de sus cartas; las tuyas que le diste, con su arte.
+  const reviewRival = useMemo<RivalOverride | null>(() => {
+    const at = review?.theirs ? comboTheirsAt(review.theirs, review.session.cursor) : null
+    if (!at) return null
+    const artOfRival = (id: string) => {
+      const real = isToken(id) ? id : comboTheirReal(id, at.known)
+      return real ? (cardsById.get(real)?.art ?? artOfDrawId(real)) : null
+    }
+    const side: DuelSideView = { state: at.state, artOf: artOfRival, handCount: at.state.hand.length }
+    return { opponent: <SideCells side={side} owner="theirs" />, sharedZone: (index: number) => sharedZoneCard(side, index), rivalHand: <TheirHand count={at.state.hand.length} />, foreignKnown: at.known }
+  }, [review, cardsById])
   const rivalTargeted = useMemo(() => new Set(theirs.targeted), [theirs.targeted])
   const rivalViewerHidden = choosing || frozen || ended || Boolean(snap.fault)
   const rivalActing = acting.theirs
@@ -1522,7 +1539,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     notice: reviewing ? undefined : notice,
     skipAhead,
     lane,
-    mat: reviewState ? reviewMat(mat, reviewState.phase) : mat,
+    mat: reviewState ? reviewMat(mat, reviewState.phase, reviewRival) : mat,
     pieces,
     nameOf,
     artOf,
@@ -1550,9 +1567,12 @@ const NO_TARGETS: DuelMatLink['attackTargets'] = []
 /** La ficha de una carta y las fases del automático (`AutoPanel`): la mesa las dibuja en lugar de las de la manual. */
 const AUTO_MENUS: DuelMatLink['menus'] = { Card: AutoCardSheet }
 
-/** La mesa del repaso: el lado del rival vacío y sin sus vuelos (al volver al duelo, sus cartas siguen donde estaban) y la fase del paso que se mira. */
-function reviewMat(mat: AutoAsks['mat'], phase: MatPhase): AutoAsks['mat'] {
+/** El lado del rival del repaso cuando el combo lo trae (`reviewRival`). */
+type RivalOverride = Pick<AutoAsks['mat'], 'opponent' | 'sharedZone' | 'rivalHand' | 'foreignKnown'>
+
+/** La mesa del repaso: el lado del rival vacío (o el del combo, si lo trae) y sin sus vuelos (al volver al duelo, sus cartas siguen donde estaban) y la fase del paso que se mira. */
+function reviewMat(mat: AutoAsks['mat'], phase: MatPhase, rival: RivalOverride | null): AutoAsks['mat'] {
   const { rivalFlights: _flights, ...rest } = mat
 
-  return { ...rest, opponent: NO_RIVAL_CELLS, sharedZone: NO_SHARED_ZONE, rivalHand: NO_RIVAL_HAND, attackTargets: NO_TARGETS, phase }
+  return { ...rest, opponent: NO_RIVAL_CELLS, sharedZone: NO_SHARED_ZONE, rivalHand: NO_RIVAL_HAND, attackTargets: NO_TARGETS, phase, ...rival }
 }

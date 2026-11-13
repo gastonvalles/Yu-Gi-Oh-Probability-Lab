@@ -6,6 +6,8 @@ import { compactEnvelope, decodeComboPayload, encodeComboPayload, parseComboText
 import type { WireAct } from '../app/mat-public'
 import { createMatState, type MatAction } from '../app/practice-mat'
 import { comboChainSteps, comboTheirsAt, createSavedCombo, migrateSavedCombo, type SavedCombo } from '../app/saved-combos'
+import { comboScenes } from '../components/replays/video/video-combo'
+import { placeRect } from '../components/replays/video/video-scene'
 
 // Un combo de «Jugar solo automático» contra el bot pasivo: la mano de apertura (plegada), paso a la Main, invoco h0, le doy h1 (un Kaiju: el rival lo toma en su zona 3) y activo h2,
 // que hace una cadena de un eslabón. Después el rival empieza su turno (eso ya no es del combo).
@@ -101,6 +103,21 @@ describe('el combo de «Jugar solo automático» guarda el campo del rival y la 
 
     // Medido: 265 → 351 (el rival, +59, con lo que nadie vio de su Deck y su mano como un solo id repetido; la cadena de 4 mensajes, +31).
     expect(withAll.length - without.length).toBeLessThan(120)
+  })
+
+  it('el video: la mesa entera como la de un duelo, con la carta que le di en su zona (arriba, de cabeza, boca arriba y con su nombre) desde la jugada en que la toma', () => {
+    const combo = recorded()
+    const scenes = [...comboScenes(combo, combo.names, 720)]
+    const card = (n: number) => scenes[n]!.sides[1].slots.find((slot) => slot.card?.id === `f.${h1}`)
+
+    // Las 5 filas del duelo (32 casillas, como `sceneAt`), no las 3 de tu mitad.
+    expect(scenes[3]!.cells).toHaveLength(32)
+    expect(card(2)).toBeUndefined()
+    expect(card(3)?.card).toMatchObject({ faceDown: false, upsideDown: true, name: `Carta ${h1}` })
+    // Su zona 3, espejada (en su fila de monstruos), donde va también su medallón de la cadena.
+    expect(card(3)?.rect).toEqual(placeRect(scenes[3]!.layout, 1, 'mz:2'))
+    // Su mano robada, de dorso.
+    expect(scenes[3]!.sides[1].hand.map((slot) => slot.card?.faceDown)).toEqual([true, true, true, true, true])
   })
 
   it('lo raro de afuera no entra: un paso del rival fuera de orden, una cadena con `at` de más o un id con forma rara', () => {
