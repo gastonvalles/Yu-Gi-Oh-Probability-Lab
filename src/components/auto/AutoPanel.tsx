@@ -183,7 +183,7 @@ export function AutoPanel({ kind, label, titleId: givenId, line, strip, head, to
     const place = () => {
       const line = document.querySelector('[data-duel-line]')
       // La ventana del celular puede subir sobre el campo lo que necesite (con 226 px bajo la línea, las cartas quedaban de 45 px y la ficha cortada): su techo es el borde de arriba de la mesa.
-      const edge = tall ? (desk ? line?.parentElement?.getBoundingClientRect().top : undefined) : phoneWindow ? line?.parentElement?.getBoundingClientRect().top : line?.getBoundingClientRect().bottom
+      const edge = phoneWindow || (tall && desk) ? line?.parentElement?.getBoundingClientRect().top : tall ? undefined : line?.getBoundingClientRect().bottom
 
       set('--panel-ceiling', edge === undefined ? '50dvh' : `${Math.max(0, Math.round(edge))}px`)
       // Y su piso, 8 px arriba de tu chapa y de la botonera (↶ ≡ ⚙): nunca las tapa.
