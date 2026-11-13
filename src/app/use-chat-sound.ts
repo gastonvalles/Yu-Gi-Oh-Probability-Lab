@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 
-import { unlockAudio } from './audio'
 import { playChatSound } from './chat-sound'
 import type { ChatLine } from './duel-games'
+import { useUnlockAudio } from './use-unlock-audio'
 
 /**
  * Un sonido sutil por cada mensaje nuevo del chat, tuyo o del rival (también las reacciones): distinto para cada uno. Lo que ya estaba escrito al abrir la pantalla no suena.
@@ -27,17 +27,5 @@ export function useChatSound(chat: readonly ChatLine[] | undefined, me: ChatLine
     seen.current = Math.max(seen.current, last)
   }, [chat, last, me])
 
-  useEffect(() => {
-    if (!active) {
-      return
-    }
-
-    window.addEventListener('pointerdown', unlockAudio)
-    window.addEventListener('keydown', unlockAudio)
-
-    return () => {
-      window.removeEventListener('pointerdown', unlockAudio)
-      window.removeEventListener('keydown', unlockAudio)
-    }
-  }, [active])
+  useUnlockAudio(active)
 }

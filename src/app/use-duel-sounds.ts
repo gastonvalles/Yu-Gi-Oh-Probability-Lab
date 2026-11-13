@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
 
-import { unlockAudio } from './audio'
 import { duelResult } from './duel-games'
 import type { DuelSnapshot } from './duel-session'
 import { playSfx, sfxOfAction } from './sfx'
 import type { MatAction } from './practice-mat'
+import { useUnlockAudio } from './use-unlock-audio'
 
 /**
  * Lo último que se vio de algo, para sonar sólo lo que cambia después: `undefined` hasta la primera vez que hay algo que mirar (lo que ya estaba al abrir la pantalla o al reconectar
@@ -83,17 +83,5 @@ export function useDuelSounds(snapshot: DuelSnapshot | null): void {
     playSfx(now === 'draw' ? 'turn' : now === `loss${me}` ? 'lose' : 'win')
   })
 
-  useEffect(() => {
-    if (!active) {
-      return
-    }
-
-    window.addEventListener('pointerdown', unlockAudio)
-    window.addEventListener('keydown', unlockAudio)
-
-    return () => {
-      window.removeEventListener('pointerdown', unlockAudio)
-      window.removeEventListener('keydown', unlockAudio)
-    }
-  }, [active])
+  useUnlockAudio(active)
 }
