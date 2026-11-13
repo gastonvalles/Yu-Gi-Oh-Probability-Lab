@@ -846,8 +846,6 @@ describe('la pantalla del duelo', () => {
   })
 
   it('Deshacer le pide permiso al rival: él ve un aviso sobre la línea del registro (no un diálogo que tapa la mesa) para permitirlo o no, y quien pidió espera con Deshacer apagado y la jugada sigue hasta que se lo permitan', () => {
-    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
-    asDesktop()
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)
@@ -865,7 +863,8 @@ describe('la pantalla del duelo', () => {
     // Sin diálogo: nada tapa la mesa. El aviso se apoya sobre la línea del registro (la misma fila: no suma alto).
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(lane(guest, 'undoAsked')).toHaveTextContent('Ana quiere volver atrás la última jugada')
-    expect(lane(guest, 'undoAsked')!.parentElement).toHaveClass('relative', 'max-sm:-mb-11')
+    // Hasta 1100 px el aviso flota debajo de la barra, sobre la mano del rival (`data-mat-line`): no ocupa lugar.
+    expect(lane(guest, 'undoAsked')!.closest('[data-mat-line]')).not.toBeNull()
     // Quien pidió ve que espera, en el mismo lugar.
     expect(lane(host, 'undoAsking')).toHaveTextContent('Le pedís a Beto volver atrás la última jugada…')
     const ask = within(lane(guest, 'undoAsked')!)

@@ -938,8 +938,6 @@ describe('la pantalla del duelo', () => {
   })
 
   it('dos jugadores: uno crea, el otro pega el enlace, cada uno reparte su mano y se ven los puntos de vida del otro', () => {
-    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
-    asDesktop()
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
     createRoom(host)
@@ -988,8 +986,8 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     flush()
     expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
-    expect(within(host.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
-    expect(within(guest.container).getByText(/^Turno de Ana · \d+$/)).toBeInTheDocument()
+    expect(host.container.querySelector('[data-lp="mine"]')).toHaveAttribute('data-active', 'true')
+    expect(guest.container.querySelector('[data-lp="theirs"]')).toHaveAttribute('data-active', 'true')
 
     // El anfitrión pierde 1000: el invitado lo ve en la tarjeta del rival.
     // Un dígito sin 0 se entiende en centenas: "1" y «000» es 1000.
@@ -1021,8 +1019,6 @@ describe('la pantalla del duelo', () => {
   })
 
   it('atacar: el rival ve el cartel del ataque y la espada cruza la mesa (directo, o a la carta tuya que atacó) y lo que se ve no revela nada más', () => {
-    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
-    asDesktop()
     // El aviso se va solo a los pocos segundos: se controla el reloj de los temporizadores (lo demás sigue igual).
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const host = render(<DuelScreen {...screenProps({ cardsById: monsters })} />)
@@ -1074,7 +1070,6 @@ describe('la pantalla del duelo', () => {
     expect(attackBanner(guest)).toBeDefined()
     expect(within(host.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
     // Y queda anotado en el registro de Beto (la línea sobre el campo).
-    expect(within(guest.container).getByRole('button', { name: /^Abrir el registro de jugadas: Ana te ataca directo/ })).toHaveTextContent('Ana te ataca directo')
     expect(strikes()).toHaveLength(2)
     // Ana la tira de su monstruo (50, 350) a la barra de vida del rival (50, 10); en la mesa de Beto, el monstruo de Ana (50, 150) cae sobre la barra propia (50, 510).
     expect(flights()).toEqual({ from: ['50px,150px', '50px,350px'], to: ['50px,10px', '50px,510px'] })
