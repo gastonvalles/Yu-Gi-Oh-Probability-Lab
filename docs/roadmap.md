@@ -28,7 +28,7 @@ En orden de valor sobre costo.
    sólo pasados 3 minutos, si en el celular pesa.
 5. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
    la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
-6. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax;
+6. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists;
    en la sala, mientras gira, el dado de un jugador tapa su chip «Listo» (`DieSeat` en `toss-views.tsx`); en un celular bajo,
    antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo); en Jugar solo, salir de
    la mesa a otro paso y volver con Atrás cambia la mano y la fase (medido con «Inicio» y con «Tier lists»): la práctica no se conserva.
@@ -82,13 +82,16 @@ No se vuelve a proponer sin un motivo nuevo.
 
 ## Limpieza de código
 
-Inventario, sin ejecutar. `npx knip` es la fuente de lo que no se usa.
+Lo que queda después de auditar el repo entero.
 
-- **Archivos sin uso:** ninguno. `scripts/barrido-alineacion.js` es a propósito: se pega en la consola (`docs/design-system.md`).
-- **Exports sin uso fuera de su archivo:** ~40 (p. ej. `getDerivedCardId` en `calculator-state.ts`, `isSessionActive` y
-  `recordDeckChange` en `deck-before.ts`, `useMatTableItems` en `MatBarActions.tsx`, `rematchLabel` en `DuelResult.tsx`) y ~25
-  tipos: sacarles el `export` o borrarlos si tampoco se usan adentro. Los de `duel-relay/src/index.ts` son la entrada del Worker.
-- **Dependencias:** knip no encuentra ninguna sin uso; `motion` no está.
+- **Sin uso:** ni archivos, ni tests huérfanos, ni dependencias. `scripts/barrido-alineacion.js` es a propósito.
+- **`export` de más:** ~250 símbolos que sólo usa su archivo y ~40 funciones que sólo usa su test.
+- **Sólo en `/playground`** (decide Gastón): `LifeTile`, `PhaseStrip`, `TurnStrip` y el kit `feel-*` de `index.css`.
+- **Formatos viejos guardados** (decide Gastón: sacarlos rompe lo guardado): la configuración portable vieja
+  (`app-state-codec.ts`), `migrateSavedCombo` y la rama `j` del enlace.
+- **Duplicado:** la búsqueda de cartas de escritorio y de celular (`DesktopSearchPanel`, `MobileCardSearch`).
+- **Sin auditar a fondo:** `duel-session.ts`, `auto/online.ts`, `practice-mat.ts`, `ask-ui.ts`, `adapter.ts` y el interior
+  de `PracticeMat.tsx`.
 - **Constantes que se separaron:** `CLASSIC_CHROME_PX` de `app/duel-rails.ts` sigue en 30,45 rem y la mesa usa 30,8 rem.
   `Skeleton` impone `relative`, así que el `absolute inset-0` que le pasan `CardPicker.tsx` y `PileViewer` no rige (en `CardArt`
   se arregló con `absolute!`; el fondo es que `Skeleton` no lo imponga).
@@ -96,5 +99,5 @@ Inventario, sin ejecutar. `npx knip` es la fuente de lo que no se usa.
   de `master` sin fijar el commit (decidir si se fija como en `auto-data.lock.json`). Las muestras y los scripts de medición del
   filtro Efecto no están en el repo (`docs/motor-de-cartas.md`).
 - **CSS propio:** `src/foil.css` (28 KB) es la excepción heredada a «Tailwind, nunca CSS puro»; migrarlo a `@utility` y `@theme`.
-- **Archivos grandes** (candidatos a partir; los toca casi todo cambio): `PracticeMat.tsx` (~3.400 líneas), `DuelScreen.tsx`
-  (~2.000), `duel-session.ts` (~1.800), `auto/online.ts` (~1.600), `practice-mat.ts` (~1.400), `use-auto-asks.tsx` (~1.260).
+- **Archivos grandes** (candidatos a partir; los toca casi todo cambio): `PracticeMat.tsx` (~3.500 líneas), `DuelScreen.tsx`
+  (~2.000), `duel-session.ts` (~1.800), `auto/online.ts` (~1.600), `use-auto-asks.tsx` (~1.550), `practice-mat.ts` (~1.400).
