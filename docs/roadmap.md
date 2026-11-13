@@ -86,7 +86,7 @@ Lo que queda después de auditar el repo entero.
 
 - **Sin uso:** ni archivos, ni tests huérfanos, ni dependencias. `scripts/barrido-alineacion.js` es a propósito.
 - **`export` de más:** ~250 símbolos que sólo usa su archivo y ~40 funciones que sólo usa su test.
-- **Sólo en `/playground`** (decide Gastón): `PhaseStrip`, `TurnStrip` y el kit `feel-*` de `index.css`.
+- **Sólo en `/playground`** (decide Gastón): el kit `feel-*` de `index.css`.
 - **Formatos viejos guardados** (decide Gastón: sacarlos rompe lo guardado): la configuración portable vieja
   (`app-state-codec.ts`), `migrateSavedCombo` y la rama `j` del enlace.
 - **Duplicado:** la búsqueda de cartas de escritorio y de celular (`DesktopSearchPanel`, `MobileCardSearch`).
