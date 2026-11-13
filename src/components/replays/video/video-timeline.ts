@@ -1,4 +1,5 @@
-import type { DuelReplay } from '../../../app/duel-replay'
+import { chainDwell, stepsUpTo, type ChainStep } from '../../../app/auto/chain-feed'
+import { replayChainSteps, type DuelReplay } from '../../../app/duel-replay'
 import { safeFileName, type SharedCombo } from '../../../app/combo-share'
 import type { MatAction } from '../../../app/practice-mat'
 import type { SavedCombo } from '../../../app/saved-combos'
@@ -36,10 +37,53 @@ export const LONG_VIDEO_MS = 6 * 60_000
 
 export const stepMs = (action: MatAction, speed: VideoSpeed = 1, kind: VideoSubject['kind'] = 'duel') => (action.type === 'phase' ? (kind === 'combo' ? COMBO_PHASE_MS : PHASE_MS) : kind === 'combo' ? COMBO_STEP_MS : STEP_MS) / speed
 
-/** Cuánto dura cada tramo: la mesa al empezar (con el título), cada jugada y el cierre con el resultado. Sin jugadas, un solo tramo. */
+/** La cadena del replay de un duelo, vista desde quien grabó (abajo en el video); un combo no tiene (no hay núcleo que la cuente): vacía. */
+export const subjectChain = (subject: VideoSubject): ChainStep[] => (subject.kind === 'duel' ? replayChainSteps(subject.replay, 0) : [])
+
+/** Hasta dónde se muestra la cadena después de `seen` mensajes: el siguiente y los que no se dejan ver solos (`chainDwell` 0), como `nextShown` del reproductor (`DuelReplayScreen`). */
+function nextShown(steps: readonly ChainStep[], seen: number, due: number): number {
+  let next = Math.min(seen + 1, due)
+  while (next < due && chainDwell(steps, next - 1) === 0) next += 1
+  return next
+}
+
+/** Un momento de la cadena dentro de una jugada: `at` ms después de que empezó (a 1×), se ven los primeros `seen` mensajes; `from`, los que ya se veían antes de ella. */
+export interface ChainBeat {
+  at: number
+  from: number
+  seen: number
+}
+
+/**
+ * La cadena de la jugada `cursor` como la cuenta el reproductor al avanzar de a un paso: sus mensajes de a uno con el ritmo de la mesa (`chainDwell`) y, cuando llegó el último, la
+ * jugada sigue su tiempo de siempre. Sin cadena en el replay, ninguno; una jugada sin mensajes, uno solo (lo que ya se veía sigue igual).
+ */
+export function chainBeats(steps: readonly ChainStep[], cursor: number): ChainBeat[] {
+  if (steps.length === 0 || cursor < 1) return []
+  const from = stepsUpTo(steps, cursor - 1)
+  const due = stepsUpTo(steps, cursor)
+  const beats = [{ at: 0, from, seen: nextShown(steps, from, due) }]
+  for (let last = beats[0]!; last.seen < due; ) {
+    last = { at: last.at + chainDwell(steps, last.seen - 1), from, seen: nextShown(steps, last.seen, due) }
+    beats.push(last)
+  }
+  return beats
+}
+
+/** Lo que la cadena le suma a la jugada `cursor` (a 1×): hasta que se ve su último mensaje. */
+export const chainMs = (steps: readonly ChainStep[], cursor: number) => chainBeats(steps, cursor).at(-1)?.at ?? 0
+
+/** Cuánto dura cada tramo: la mesa al empezar (con el título), cada jugada (con lo que tarda su cadena, si la hay) y el cierre con el resultado. Sin jugadas, un solo tramo. */
 export function frameDurations(subject: VideoSubject, speed: VideoSpeed = 1): number[] {
-  const steps = subjectActions(subject).map((action) => stepMs(action, speed, subject.kind))
+  const chain = subjectChain(subject)
+  const steps = subjectActions(subject).map((action, index) => stepMs(action, speed, subject.kind) + chainMs(chain, index + 1) / speed)
   return steps.length === 0 ? [INTRO_MS + OUTRO_MS] : [INTRO_MS, ...steps, OUTRO_MS]
+}
+
+/** La cadena de todo el video: cada momento en que cambia lo que se ve (`t`, ms de video desde el principio), con `starts` el comienzo de cada tramo (`frameDurations` acumulado). */
+export function chainTimeline(steps: readonly ChainStep[], starts: readonly number[], speed: VideoSpeed = 1): Array<ChainBeat & { t: number }> {
+  // El tramo 0 es la mesa al empezar: la jugada `cursor` es el tramo `cursor`.
+  return starts.slice(1, -2).flatMap((start, index) => chainBeats(steps, index + 1).map((beat) => ({ ...beat, t: start + beat.at / speed })))
 }
 
 export const videoDurationMs = (subject: VideoSubject, speed: VideoSpeed = 1) => frameDurations(subject, speed).reduce((sum, ms) => sum + ms, 0)
