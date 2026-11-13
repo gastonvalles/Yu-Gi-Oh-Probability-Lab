@@ -166,7 +166,7 @@ describe('el buscador de cartas del celular sale', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
 
     const exits = calls.map(({ element, keyframes, options }) => ({ element, keyframes, options }))
-    expect(exits).toContainEqual({ element: dialog, keyframes: [{ opacity: 0, transform: 'translateY(10px)' }], options: { duration: EXIT_MS, easing: EASE_OUT, fill: 'forwards' } })
+    expect(exits).toContainEqual({ element: dialog, keyframes: [{ opacity: 0, transform: 'translateY(1.5rem)' }], options: { duration: EXIT_MS, easing: EASE_OUT, fill: 'forwards' } })
     // El cajón de los filtros vuelve a la derecha a la vez (antes se quedaba quieto encima y desaparecía de golpe).
     expect(exits).toContainEqual({ element: filters, keyframes: [{ transform: 'translateX(100%)' }], options: { duration: EXIT_MS, easing: EASE_OUT, fill: 'forwards' } })
 

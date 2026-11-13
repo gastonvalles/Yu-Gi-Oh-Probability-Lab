@@ -198,7 +198,7 @@ export function PatternEditorDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={view === 'picker' && pickingIndex >= 0 ? t('builder.picker.title', { index: pickingIndex + 1 }) : title}
-        className="absolute inset-y-0 right-0 grid w-full animate-drawer-enter grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-card-background outline-none motion-reduce:animate-none md:w-140 md:border-l md:border-border-subtle md:shadow-overlay"
+        className="absolute inset-y-0 right-0 grid w-full animate-side-drawer grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-card-background outline-none motion-reduce:animate-none md:w-140 md:border-l md:border-border-subtle md:shadow-overlay"
       >
         {view === 'picker' && pattern && pickingCondition ? (
           <CategoryPicker

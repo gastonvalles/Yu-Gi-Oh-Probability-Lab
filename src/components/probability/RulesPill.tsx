@@ -152,7 +152,7 @@ export function RulesPill({ summary, children, defaultOpen = false }: { summary:
               aria-label={name}
               tabIndex={-1}
               // Es de la mesa y sale por un portal: recto como ella (`mat-square` y, para las fichas en `rounded-full`, `**:rounded-none!`).
-              className="mat-square fixed z-70 animate-pop rounded-panel **:rounded-none! border border-border bg-card-background p-2 shadow-overlay focus-visible:outline-none motion-reduce:animate-none"
+              className="mat-square fixed z-70 origin-top-right animate-menu-in rounded-panel **:rounded-none! border border-border bg-card-background p-2 shadow-overlay focus-visible:outline-none motion-reduce:animate-none"
               style={place}
             >
               {children}

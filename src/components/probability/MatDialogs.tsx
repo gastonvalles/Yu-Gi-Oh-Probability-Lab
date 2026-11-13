@@ -403,7 +403,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
         tabIndex={-1}
         // Sin nada que elegir, el foco va al panel.
         data-initial-focus={items.length === 0 && !onInspect ? '' : undefined}
-        className={cx(MENU_PANEL, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto overflow-x-hidden px-1 py-1 outline-none animate-dialog-enter motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
+        className={cx(MENU_PANEL, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto overflow-x-hidden px-1 py-1 outline-none animate-menu-in motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
         onClick={(event) => event.stopPropagation()}
         onKeyDown={onPanelKey}
@@ -440,12 +440,12 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
       </div>
       {sub ? (
         <div
-          // Uno nuevo por fila: cambiar de submenú vuelve a fundirse.
+          // Uno nuevo por fila: cambiar de submenú lo vuelve a abrir.
           key={subIndex}
           ref={subRef}
           role="menu"
           aria-label={sub.label}
-          className={cx(MENU_PANEL, 'absolute left-0 top-0 px-1 py-1 animate-dialog-enter motion-reduce:animate-none', sub.wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-36')}
+          className={cx(MENU_PANEL, 'absolute left-0 top-0 px-1 py-1 animate-menu-in motion-reduce:animate-none', sub.wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-36')}
           onClick={(event) => event.stopPropagation()}
           onMouseEnter={cancelIntent}
           onMouseLeave={() => hover(null)}
@@ -515,7 +515,7 @@ export function PlayTag({ anchor, item, name, onClose }: { anchor: DOMRect | nul
         icon={tagIcon(item.label)}
         aria-label={`${item.label} · ${name}`}
         data-initial-focus=""
-        className={cx('absolute border-2 border-[rgb(var(--playable-rgb))] animate-dialog-enter motion-reduce:animate-none', position ? 'visible' : 'invisible')}
+        className={cx('absolute border-2 border-[rgb(var(--playable-rgb))] animate-menu-in motion-reduce:animate-none', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
         onClick={(event) => {
           event.stopPropagation()

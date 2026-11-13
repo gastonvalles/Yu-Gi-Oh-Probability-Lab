@@ -169,7 +169,7 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
   }
 
   const current = () => (applied.current.element === ref.current ? applied.current.offset : ZERO)
-  /** Dónde está el cartel sin correr. Su tamaño de verdad (`offset*`): al aparecer se agranda desde el 96 % (`animate-dialog-enter`, desde el centro) y el rectángulo lo daría más chico. */
+  /** Dónde está el cartel sin correr. Su tamaño de verdad (`offset*`): al aparecer crece desde el 90 % (`animate-dialog-enter`, desde el centro) y el rectángulo lo daría más chico. */
   const natural = (element: HTMLElement): Box => {
     const rect = element.getBoundingClientRect()
     const width = element.offsetWidth || rect.width

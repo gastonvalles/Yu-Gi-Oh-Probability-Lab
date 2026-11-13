@@ -169,11 +169,11 @@ function SpeedMenu({ speed, onSpeed, tall = false }: { speed: ReplaySpeed; onSpe
     return () => document.removeEventListener('pointerdown', close)
   }, [open])
 
-  // Al cerrarse se achica y se funde, la inversa de su entrada (`usePresence`), como el menú de cada carta.
+  // Se abre desde su botón (abajo a la derecha) y al cerrarse vuelve a él, la inversa de su entrada (`usePresence`), como el menú de cada carta.
   const menu = usePresence(
     open,
     open ? (
-      <div ref={menuRef} id={menuId} role="menu" aria-label={t('practice.replay.speed')} className="absolute bottom-full right-0 z-30 mb-2 grid min-w-32 gap-0.5 rounded-card border border-border-subtle bg-card-background p-1 shadow-overlay animate-pop motion-reduce:animate-none">
+      <div ref={menuRef} id={menuId} role="menu" aria-label={t('practice.replay.speed')} className="absolute bottom-full right-0 z-30 mb-2 grid min-w-32 origin-bottom-right gap-0.5 rounded-card border border-border-subtle bg-card-background p-1 shadow-overlay animate-menu-in motion-reduce:animate-none">
         {REPLAY_SPEEDS.map((value) => (
           <button
             key={value}

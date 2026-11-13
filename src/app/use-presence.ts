@@ -8,19 +8,19 @@ import { EASE_OUT, prefersReducedMotion } from './motion'
  * se ata a «abierto» (el foco, Escape, el bloqueo del scroll) ya se soltó: el foco vuelve enseguida, sin esperar la salida.
  */
 
-/** Lo que dura una salida: lo que responde a un toque sale en 150 ms o menos. */
+/** Lo que dura una salida (`--duracion-salida` de index.css): sale más rápido que como entró (160–220 ms). */
 export const EXIT_MS = 150
 /** Si la salida no avisa que terminó (la pestaña quedó atrás), se desmonta igual a su duración más este margen. */
 const NET_MS = 100
 
-/** La salida de cada entrada, por el nombre de su `@keyframes` en `index.css`: lo mismo al revés. Lo que no está acá no se anima al salir. */
-const EXITS: Record<string, Keyframe> = {
-  'dialog-enter': { opacity: 0, transform: 'scale(0.96)' },
+/** La salida de cada entrada, por el nombre de su `@keyframes` en `index.css`: su primer cuadro (lo vigila `use-presence.test.tsx`). Lo que no está acá no se anima al salir. */
+export const EXITS: Readonly<Record<string, Keyframe>> = {
+  'dialog-enter': { opacity: 0, transform: 'scale(0.9)' },
+  'menu-in': { opacity: 0, transform: 'scale(0.85)' },
   pop: { opacity: 0, transform: 'scale(0.7)' },
-  'sheet-in': { opacity: 0, transform: 'translateY(10px)' },
+  'sheet-in': { opacity: 0, transform: 'translateY(1.5rem)' },
   'sheet-up': { transform: 'translateY(100%)' },
   'side-drawer': { transform: 'translateX(100%)' },
-  'drawer-enter': { opacity: 0, transform: 'translateX(1.35rem)' },
   'nav-drawer': { transform: 'translateX(-100%)' },
   'nav-scrim': { opacity: 0 },
 }

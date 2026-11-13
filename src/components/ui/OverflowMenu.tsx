@@ -159,7 +159,7 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
     </button>
   )
 
-  // Al cerrarse se achica y se funde, la inversa de su entrada (`usePresence`).
+  // Se abre desde el botón (su esquina) y, al cerrarse, vuelve a él: la inversa de su entrada (`usePresence`).
   const menu = usePresence(
     open,
     open ? (
@@ -169,7 +169,7 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
         aria-label={label}
         tabIndex={-1}
         style={bar && room !== null ? { maxWidth: `min(calc(100vw - 1rem), ${room - 8}px)` } : undefined}
-        className={cx('absolute right-0 z-70 grid', up ? 'bottom-full mb-1' : 'top-full mt-1', 'animate-pop gap-0.5 border border-border shadow-overlay focus-visible:outline-none motion-reduce:animate-none', bar ? 'w-80 max-w-[calc(100vw-1rem)] rounded-panel bg-card-background p-2' : 'min-w-48 rounded-control bg-surface-raised p-1')}
+        className={cx('absolute right-0 z-70 grid', up ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right', 'animate-menu-in gap-0.5 border border-border shadow-overlay focus-visible:outline-none motion-reduce:animate-none', bar ? 'w-80 max-w-[calc(100vw-1rem)] rounded-panel bg-card-background p-2' : 'min-w-48 rounded-control bg-surface-raised p-1')}
       >
         {sections(items).map((section, index) =>
           section.title === undefined ? (

@@ -269,7 +269,8 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
       // abierto cuando llegó la pregunta, al revés, queda guardado debajo de ella (`PracticeMat`).
       !onDismiss && 'in-[body:has(>[data-auto-panel=docked][data-prompt=card],[data-pile-sheet]:not([hidden]))]:hidden',
     )
-  const surface = 'group/panel mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-sheet-in'
+  // La hoja sube desde abajo, de su borde (`sheet-up`); la ventana crece desde el centro (`dialog-enter`).
+  const surface = 'group/panel mat-square pointer-events-auto bg-card-background text-body text-foreground motion-safe:animate-sheet-up'
   // El aire de abajo de la hoja, apoyada en el borde: el suyo más el área segura, en una sola clase (dos `pb-*` sueltas se pisaban y la fila de botones quedaba al ras del borde).
   const fixedDock = !inline
 

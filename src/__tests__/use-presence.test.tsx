@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { EASE_OUT } from '../app/motion'
-import { EXIT_MS, Presence, useLeaving, usePresence } from '../app/use-presence'
+import { EXIT_MS, EXITS, Presence, useLeaving, usePresence } from '../app/use-presence'
 import { CardSheet } from '../components/probability/CardSheet'
 import { GHOST_CLICK_MS } from '../components/probability/MatDialogs'
 import { Modal } from '../components/ui/Modal'
@@ -99,7 +101,7 @@ describe('usePresence: lo que se cierra también sale', () => {
     expect(root.style.pointerEvents).toBe('none')
     expect(calls.map(({ element, keyframes }) => [(element as HTMLElement).dataset.testid, keyframes])).toEqual([
       ['veil', [{ opacity: 0 }]],
-      ['panel', [{ opacity: 0, transform: 'scale(0.96)' }]],
+      ['panel', [{ opacity: 0, transform: 'scale(0.9)' }]],
     ])
     expect(calls.every(({ options }) => options.duration === EXIT_MS && EXIT_MS <= 150 && options.easing === EASE_OUT && options.fill === 'forwards')).toBe(true)
 
@@ -109,16 +111,7 @@ describe('usePresence: lo que se cierra también sale', () => {
 
   it('cerrar no lee el estilo computado: cada salida es la inversa de la entrada que avisó su `animationstart`', () => {
     const { calls } = fakeAnimate()
-    const exits: Record<string, Keyframe> = {
-      'dialog-enter': { opacity: 0, transform: 'scale(0.96)' },
-      pop: { opacity: 0, transform: 'scale(0.7)' },
-      'sheet-in': { opacity: 0, transform: 'translateY(10px)' },
-      'sheet-up': { transform: 'translateY(100%)' },
-      'side-drawer': { transform: 'translateX(100%)' },
-      'drawer-enter': { opacity: 0, transform: 'translateX(1.35rem)' },
-      'nav-drawer': { transform: 'translateX(-100%)' },
-      'nav-scrim': { opacity: 0 },
-    }
+    const exits = EXITS
     function Many({ open }: { open: boolean }) {
       const root = useRef<HTMLDivElement>(null)
 
@@ -145,6 +138,21 @@ describe('usePresence: lo que se cierra también sale', () => {
     expect(computed).not.toHaveBeenCalled()
     expect(Object.fromEntries(calls.map(({ element, keyframes }) => [(element as HTMLElement).dataset.testid, keyframes[0]]))).toEqual(exits)
     computed.mockRestore()
+  })
+
+  it('cada salida es el primer cuadro de su entrada en index.css (sale por donde vino), en `--duracion-salida`, más rápido que toda entrada', () => {
+    const css = readFileSync(path.join(process.cwd(), 'src', 'index.css'), 'utf8')
+    const token = (name: string) => Number.parseFloat(css.match(new RegExp(`--${name}:\\s*([\\d.]+)ms;`))?.[1] ?? 'NaN')
+
+    for (const [name, frame] of Object.entries(EXITS)) {
+      const from = new RegExp(`@keyframes ${name}\\s*\\{\\s*from\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? ''
+      const declared = Object.fromEntries([...from.matchAll(/([a-z-]+):\s*([^;]+);/g)].map(([, property, value]) => [property, value!.trim()]))
+
+      expect(declared, name).toEqual(Object.fromEntries(Object.entries(frame).map(([property, value]) => [property, String(value)])))
+    }
+    expect(token('duracion-salida')).toBe(EXIT_MS)
+    expect(EXIT_MS).toBeLessThan(token('duracion-rapida'))
+    expect(token('duracion-rapida')).toBeLessThan(token('duracion-entrada'))
   })
 
   it('si la salida no avisa que terminó, la red lo desmonta a su duración más un margen', () => {

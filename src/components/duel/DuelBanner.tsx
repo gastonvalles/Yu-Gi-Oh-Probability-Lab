@@ -86,8 +86,8 @@ export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave
         {title}
       </h2>
       <section data-result-block="" className="pointer-events-auto @container relative grid w-full justify-items-center gap-2 px-2 pb-4 pt-11 @min-[36rem]:pt-4">
-        {/* La banda: de lado a lado, opaca y recta (detrás del texto y los botones no se ve ninguna carta); arriba y abajo, el campo. Aparece (`opacity`). */}
-        <span aria-hidden="true" data-result-band="" className="absolute inset-0 animate-nav-scrim border-y border-border-subtle bg-background/95 motion-reduce:animate-none" />
+        {/* La banda: de lado a lado, opaca y recta (detrás del texto y los botones no se ve ninguna carta); arriba y abajo, el campo. Se abre desde el medio (`band-in`). */}
+        <span aria-hidden="true" data-result-band="" className="absolute inset-0 animate-band-in border-y border-border-subtle bg-background/95 motion-reduce:animate-none" />
         {close ? <CloseButton size="lg" aria-label={closeLabel} title={closeLabel} className="absolute right-1 top-1" onClick={close} /> : null}
         {/* La palabra: su tamaño, por el ancho que tiene («Victoria» entra en un renglón desde 360 px). */}
         <div aria-hidden="true" data-result-word={tone} className="@container relative grid w-full place-items-center">

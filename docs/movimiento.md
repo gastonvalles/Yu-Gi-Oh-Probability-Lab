@@ -4,9 +4,9 @@ Cómo se anima sin trabar la app (sobre todo la mesa, en un celular); la base, e
 
 ## Curvas
 
-Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas (para qué es cada una, en `app/motion.ts`): `--ease-out`, `--ease-in-out` y `--ease-snap`. Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out`). En el JS, `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts`; en un `@keyframes`, el valor literal. Con rebote, sólo `--ease-out-back` y `--ease-rebote-*`.
+Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas (para qué es cada una, en `app/motion.ts`): `--ease-out`, `--ease-in-out` y `--ease-snap`. Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out`). En el JS, sus espejos (`EASE_*`); en un `@keyframes`, el valor literal. Con rebote, sólo `--ease-out-back` y `--ease-rebote-*`.
 
-**El campo se mueve sólo a propósito** (una sacudida de impacto); sin querer, es un bug. **Lo que entra y sale, con barrido o rebote;** con movimiento reducido, fundido.
+**El campo se mueve sólo a propósito** (una sacudida de impacto); sin querer, es un bug. **Lo que entra y sale barre o rebota desde su lado, nunca en diagonal** (`index.css`); con movimiento reducido, fundido.
 
 ## La mesa: nada en el hilo principal
 
