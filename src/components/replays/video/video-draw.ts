@@ -309,6 +309,101 @@ export function drawCard(ctx: Ctx, pose: Pose, card: SceneCard, assets: VideoAss
   ctx.restore()
 }
 
+/** `fx-lock` de la mesa (480 ms): llega grande y girada, sin verse, y a los 55 % ya se ve y rebota un poco antes de fijarse. */
+const LOCK = { ms: 480, at: 0.55, scale: [2.3, 0.92], turn: [-80, 8] } as const
+const lerp = (a: number, b: number, p: number) => a + (b - a) * Math.min(1, Math.max(0, p))
+
+/**
+ * La mira de un objetivo, como `TargetMark` de la mesa (en el rojo de marcar, `FX_RGB.red`): el aro rojo con su resplandor por fuera de la carta y, adentro (recortado a la carta), el tinte
+ * rojo, las cuatro esquinas, los cuatro tics, el aro punteado y el punto del centro. `lock` (0 a 1): cómo cae sobre la carta (`fx-lock`); `ping` (0 a 1, o nada): la onda que sale al fijarse
+ * (`fx-ping`); `alpha`: su fundido al irse. `k`: px del video por px del celular (las líneas de 2 y 3 px de la mesa).
+ */
+export function drawTargetMark(ctx: Ctx, pose: Pose, k: number, lock = 1, alpha = 1, ping?: number) {
+  const red = FX_RGB.red
+  const { w, h } = pose
+  const p = lock / LOCK.at
+  const opacity = alpha * Math.min(1, p)
+  if (opacity <= 0) return
+  const settle = (lock - LOCK.at) / (1 - LOCK.at)
+  const scale = lock < LOCK.at ? lerp(LOCK.scale[0], LOCK.scale[1], 1 - (1 - p) ** 3) : lerp(LOCK.scale[1], 1, settle)
+  const turn = ((lock < LOCK.at ? lerp(LOCK.turn[0], LOCK.turn[1], 1 - (1 - p) ** 3) : lerp(LOCK.turn[1], 0, settle)) * Math.PI) / 180
+
+  ctx.save()
+  ctx.translate(pose.x, pose.y)
+  ctx.rotate(pose.angle)
+  ctx.globalAlpha *= opacity
+  // El aro de la carta marcada (`fx-ring`): 2 px rojos y un resplandor de 14.
+  ctx.strokeStyle = rgba(red, 0.95)
+  ctx.lineWidth = 2 * k
+  ctx.shadowColor = rgba(red, 0.5)
+  ctx.shadowBlur = 14 * k
+  ctx.strokeRect(-w / 2 - k, -h / 2 - k, w + 2 * k, h + 2 * k)
+  ctx.shadowBlur = 0
+  ctx.beginPath()
+  ctx.rect(-w / 2, -h / 2, w, h)
+  ctx.clip()
+  if (ping !== undefined && ping > 0 && ping < 1) {
+    // La onda: un aro del 56 % que crece de 0,5 a 2,4 y se apaga.
+    ctx.save()
+    ctx.globalAlpha *= 0.95 * (1 - ping)
+    ctx.strokeStyle = rgba(red, 1)
+    ctx.lineWidth = 2 * k
+    ctx.beginPath()
+    ctx.arc(0, 0, w * 0.28 * lerp(0.5, 2.4, 1 - (1 - ping) ** 3), 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
+  }
+  ctx.rotate(turn)
+  ctx.scale(scale, scale)
+  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.hypot(w, h) / 2)
+  glow.addColorStop(0, rgba(red, 0.34))
+  glow.addColorStop(0.72, rgba(red, 0))
+  ctx.fillStyle = glow
+  ctx.fillRect(-w / 2, -h / 2, w, h)
+  ctx.strokeStyle = rgba(red, 1)
+  ctx.fillStyle = rgba(red, 1)
+  ctx.shadowColor = rgba(red, 1)
+  ctx.shadowBlur = 3 * k
+  // Las esquinas: 22 % del ancho, a 7 % de los costados y 5 % de arriba y abajo, de 3 px.
+  const arm = w * 0.22
+  const [x0, y0] = [-w / 2 + w * 0.07, -h / 2 + h * 0.05]
+  ctx.lineWidth = 3 * k
+  ctx.beginPath()
+  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
+    const [x, y] = [sx * x0, sy * y0]
+    ctx.moveTo(x, y + sy * arm)
+    ctx.lineTo(x, y)
+    ctx.lineTo(x + sx * arm, y)
+  }
+  ctx.stroke()
+  // Los tics (`fx-crosshair`): en un cuadrado del 64 %, de 2 px y el 20 % de largo, desde cada borde hacia el centro.
+  const half = w * 0.32
+  const tick = w * 0.64 * 0.2
+  ctx.lineWidth = 2 * k
+  ctx.beginPath()
+  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]] as const) {
+    ctx.moveTo(dx * half, dy * half)
+    ctx.lineTo(dx * (half - tick), dy * (half - tick))
+  }
+  ctx.stroke()
+  // El aro punteado del 46 % y el punto del centro (6 px, con su resplandor).
+  ctx.setLineDash([4 * k, 3 * k])
+  ctx.beginPath()
+  ctx.arc(0, 0, w * 0.23, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.shadowBlur = 8 * k
+  ctx.beginPath()
+  ctx.arc(0, 0, 3 * k, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+/** Cuánto tardan la mira en fijarse y su onda (`fx-lock`, `fx-ping`), y en irse. */
+export const TARGET_LOCK_MS = LOCK.ms
+export const TARGET_PING_MS = 750
+export const TARGET_OUT_MS = 200
+
 function badge(ctx: Ctx, x: number, y: number, text: string, fill: string, color: string, s: number, fromEnd = false) {
   ctx.font = `700 ${14 * s}px ${FONT}`
   const w = Math.max(22 * s, ctx.measureText(text).width + 10 * s)
@@ -533,9 +628,9 @@ function drawExplain(ctx: Ctx, scene: Scene, theme: VideoTheme, s: number) {
  * Un cuadro entero. Con `moving` (las cartas que dibuja una transición, `video-motion.ts`, o un efecto que las anima, como el barajado: `lado:id`, o `lado:pile:deck` para la pila
  * entera), esas no se dibujan en su casilla: ahí va lo que había en `before` (la pila con su carta de antes, la zona vacía) hasta que llegan, y el aro de la jugada espera a que
  * lleguen. Así sale el fondo de toda la transición de una vez, y cada cuadro de ella es ese fondo más las cartas en vuelo. `lp`: las vidas mientras cuentan. `fields`: el arte de
- * campo de cada lado mientras entra o se va (sin él, el de la escena, quieto).
+ * campo de cada lado mientras entra o se va (sin él, el de la escena, quieto). `fresh`: lo marcado como objetivo en esta jugada (su mira la dibuja su efecto, `targetOverlays`).
  */
-export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: { keys: ReadonlySet<string>; before: Scene }, lp?: readonly [number, number] | null, fields?: readonly (readonly FieldLayer[])[]) {
+export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: { keys: ReadonlySet<string>; before: Scene }, lp?: readonly [number, number] | null, fields?: readonly (readonly FieldLayer[])[], fresh?: ReadonlySet<string>) {
   const { theme } = assets
   const { layout } = scene
   const s = layout.scale
@@ -573,6 +668,11 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
       drawSlot(ctx, under.card && moving?.keys.has(`${index}:${under.card.id}`) ? { ...under, card: undefined } : under, assets, s)
     }
     for (const slot of side.hand) if (!(slot.card && moving?.keys.has(`${index}:${slot.card.id}`))) drawSlot(ctx, slot, assets, s)
+    // La mira de lo marcado como objetivo, quieta (la que se marca en esta jugada la dibuja su efecto mientras cae: `fresh`).
+    for (const slot of [...side.slots, ...side.hand]) {
+      const key = slot.card ? `${index}:${slot.card.id}` : ''
+      if (slot.card?.targeted && !moving?.keys.has(key) && !fresh?.has(key)) drawTargetMark(ctx, poseOf(slot.rect, slot.card), layout.unit)
+    }
   })
 
   // Lo que tocó la jugada: un aro ámbar («se activa / ahora») con su resplandor, cuando ya llegó.

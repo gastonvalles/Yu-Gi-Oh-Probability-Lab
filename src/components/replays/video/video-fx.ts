@@ -3,7 +3,7 @@ import { EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../
 import { PHASES } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
-import { drawCard, FONT, wrap, type Ctx, type VideoAssets } from './video-draw'
+import { drawCard, drawTargetMark, FONT, TARGET_LOCK_MS, TARGET_OUT_MS, TARGET_PING_MS, wrap, type Ctx, type VideoAssets } from './video-draw'
 import { placesOf, poseOf, type Motion, type Pose } from './video-motion'
 import { fieldRect, STAGE_TONE, type Rect, type Scene, type SceneCard, type SceneSlot } from './video-scene'
 import type { VideoSpeed } from './video-timeline'
@@ -100,7 +100,7 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
@@ -684,6 +684,43 @@ export function titleOverlay(draw: (ctx: Ctx, alpha: number) => void, start: num
 }
 
 /** Para agregar lo de una jugada nueva: lo del mismo tipo que sigue en pantalla se va (otra carta grande, otro destello). Una banda de fase que sigue a la vista, si es del mismo dueño, no vuelve a entrar: cambia el texto (`carry`). */
+const targetsOf = (scene: Scene) => new Map([...placesOf(scene)].filter(([, place]) => place.card?.targeted))
+
+/** Lo que se marca como objetivo en esta jugada (`lado:id`): su mira la dibuja `targetOverlays` mientras cae, no la mesa de abajo. */
+export const freshTargets = (before: Scene, after: Scene): Set<string> => {
+  const was = targetsOf(before)
+  return new Set([...targetsOf(after).keys()].filter((key) => !was.has(key)))
+}
+
+/**
+ * La mira de un objetivo que entra o se va, como en la mesa: la que se marca en esta jugada cae girando y se fija con su onda (`fx-lock`, `fx-ping`) y se queda toda la jugada (`length`);
+ * la que se saca se apaga en `TARGET_OUT_MS` donde estaba. La que sigue marcada la pinta la mesa de abajo (`drawFrame`).
+ */
+export function targetOverlays(before: Scene, after: Scene, start: number, length: number, speed: VideoSpeed): Overlay[] {
+  const was = targetsOf(before)
+  const now = targetsOf(after)
+  const k = after.layout.unit
+  const fresh = [...now].filter(([key]) => !was.has(key)).map(([, place]): Overlay => ({
+    kind: 'target',
+    start,
+    duration: length,
+    draw: (ctx, p) => {
+      const ms = p * length * speed
+      drawTargetMark(ctx, place.pose, k, Math.min(1, ms / TARGET_LOCK_MS), 1, ms > TARGET_LOCK_MS * LOCK_AT ? (ms - TARGET_LOCK_MS * LOCK_AT) / TARGET_PING_MS : undefined)
+    },
+  }))
+  const gone = [...was].filter(([key]) => !now.has(key)).map(([, place]): Overlay => ({
+    kind: 'target',
+    start,
+    duration: TARGET_OUT_MS / speed,
+    draw: (ctx, p) => drawTargetMark(ctx, place.pose, k, 1, 1 - easeInOut(p)),
+  }))
+  return [...fresh, ...gone]
+}
+
+/** La onda sale cuando la mira se fija (a los 55 % de `fx-lock`). */
+const LOCK_AT = 0.55
+
 export function replaceOverlays(live: readonly Overlay[], next: readonly Overlay[], now: number): Overlay[] {
   const kinds = new Set(next.map((overlay) => overlay.kind))
   const open = live.find((overlay) => overlay.kind === 'banner' && (now - overlay.start) / overlay.duration < 1)

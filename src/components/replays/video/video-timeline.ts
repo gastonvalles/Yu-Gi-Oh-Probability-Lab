@@ -9,11 +9,17 @@ import { titleOf } from '../duel-replay-text'
 /**
  * Cuánto se ve cada jugada en el video. El video va a cuadros constantes (`FPS`): lo que se mueve se anima cuadro a cuadro como en la mesa y lo quieto repite el cuadro (en
  * H.264 casi no pesa). Una jugada de un duelo dura lo del reproductor (`STEP_MS`); la de un combo, lo que espera la mesa al reproducirlo (`COMBO_STEP_MS`); un cambio de fase,
- * que no mueve cartas, menos (su cartel sigue encima de lo que viene). Al principio, la mesa al empezar con los nombres; al final, el resultado. «Rápido (2×)»: cada jugada
- * y cada animación a la mitad (el título y el cierre, igual).
+ * que no mueve cartas, menos (su cartel sigue encima de lo que viene). Al principio, la mesa al empezar con los nombres; al final, el resultado. Todo eso (jugadas, vuelos,
+ * reparto, cadena, bandas) va a `VIDEO_PACE` del ritmo de la mesa; «Rápido (2×)», al doble de eso (el título y el cierre, igual).
  */
 
-export type VideoSpeed = 1 | 2
+/** El ritmo efectivo: cuántas veces más rápido que la mesa (`paceOf`); cada tiempo del video se divide por él. */
+export type VideoSpeed = number
+/** Lo que se elige al armar el video: normal o «Rápido (2×)». */
+export type VideoChoice = 1 | 2
+/** El ritmo de fábrica del video (Gastón, 2026-11-13: «deberia moverse todo en x1.25 mas rapido»). La mesa y el replay de la app no lo usan. */
+export const VIDEO_PACE = 1.25
+export const paceOf = (choice: VideoChoice): VideoSpeed => choice * VIDEO_PACE
 
 /** De qué es el video: el replay de un duelo o un combo de la práctica (de un solo jugador). */
 export type VideoSubject = { kind: 'duel'; replay: DuelReplay } | { kind: 'combo'; combo: SavedCombo | SharedCombo }
@@ -36,7 +42,7 @@ export const OUTRO_MS = 3000
 /** Desde cuánto se ofrece «Rápido (2×)». */
 export const LONG_VIDEO_MS = 6 * 60_000
 
-export const stepMs = (action: MatAction, speed: VideoSpeed = 1, kind: VideoSubject['kind'] = 'duel') => (action.type === 'phase' ? (kind === 'combo' ? COMBO_PHASE_MS : PHASE_MS) : kind === 'combo' ? COMBO_STEP_MS : STEP_MS) / speed
+export const stepMs = (action: MatAction, speed: VideoSpeed = VIDEO_PACE, kind: VideoSubject['kind'] = 'duel') => (action.type === 'phase' ? (kind === 'combo' ? COMBO_PHASE_MS : PHASE_MS) : kind === 'combo' ? COMBO_STEP_MS : STEP_MS) / speed
 
 /** La cadena, vista desde quien grabó (abajo en el video): la del replay de un duelo o la de un combo grabado en «Jugar solo automático» (sin ella, vacía). */
 export const subjectChain = (subject: VideoSubject): ChainStep[] => (subject.kind === 'duel' ? replayChainSteps(subject.replay, 0) : comboChainSteps(subject.combo))
@@ -75,19 +81,19 @@ export function chainBeats(steps: readonly ChainStep[], cursor: number): ChainBe
 export const chainMs = (steps: readonly ChainStep[], cursor: number) => chainBeats(steps, cursor).at(-1)?.at ?? 0
 
 /** Cuánto dura cada tramo: la mesa al empezar (con el título), cada jugada (con lo que tarda su cadena, si la hay) y el cierre con el resultado. Sin jugadas, un solo tramo. */
-export function frameDurations(subject: VideoSubject, speed: VideoSpeed = 1): number[] {
+export function frameDurations(subject: VideoSubject, speed: VideoSpeed = VIDEO_PACE): number[] {
   const chain = subjectChain(subject)
   const steps = subjectActions(subject).map((action, index) => stepMs(action, speed, subject.kind) + chainMs(chain, index + 1) / speed)
   return steps.length === 0 ? [INTRO_MS + OUTRO_MS] : [INTRO_MS, ...steps, OUTRO_MS]
 }
 
 /** La cadena de todo el video: cada momento en que cambia lo que se ve (`t`, ms de video desde el principio), con `starts` el comienzo de cada tramo (`frameDurations` acumulado). */
-export function chainTimeline(steps: readonly ChainStep[], starts: readonly number[], speed: VideoSpeed = 1): Array<ChainBeat & { t: number }> {
+export function chainTimeline(steps: readonly ChainStep[], starts: readonly number[], speed: VideoSpeed = VIDEO_PACE): Array<ChainBeat & { t: number }> {
   // El tramo 0 es la mesa al empezar: la jugada `cursor` es el tramo `cursor`.
   return starts.slice(1, -2).flatMap((start, index) => chainBeats(steps, index + 1).map((beat) => ({ ...beat, t: start + beat.at / speed })))
 }
 
-export const videoDurationMs = (subject: VideoSubject, speed: VideoSpeed = 1) => frameDurations(subject, speed).reduce((sum, ms) => sum + ms, 0)
+export const videoDurationMs = (subject: VideoSubject, speed: VideoSpeed = VIDEO_PACE) => frameDurations(subject, speed).reduce((sum, ms) => sum + ms, 0)
 
 /**
  * «Ana-vs-Beto-2026-10-29.mp4» (en «Jugar solo», «Duelista-vs-Rival-…» en su idioma) o «Linea-basica-2026-10-29.mp4» (el nombre del combo), sin lo que un sistema de archivos no

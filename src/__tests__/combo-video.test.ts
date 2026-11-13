@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { createMatState, matReducer, type MatAction, type MatState } from '../app/practice-mat'
 import { createSavedCombo } from '../app/saved-combos'
 import { comboLook, comboScenes, resolveComboNames } from '../components/replays/video/video-combo'
-import { flightsOf, MESA, overlaysOf, replaceOverlays, type Overlay } from '../components/replays/video/video-fx'
+import { TARGET_OUT_MS } from '../components/replays/video/video-draw'
+import { flightsOf, freshTargets, MESA, overlaysOf, replaceOverlays, targetOverlays, type Overlay } from '../components/replays/video/video-fx'
 import { transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { videoLayout, type Scene, type SceneCard } from '../components/replays/video/video-scene'
 import { bitrateFor } from '../components/replays/video/video-support'
-import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, videoFileName } from '../components/replays/video/video-timeline'
+import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, VIDEO_PACE, videoFileName } from '../components/replays/video/video-timeline'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
 
 // Un combo chico con el simulador de handtraps: paso a la Main, invoco h0, coloco h1, el rival usa su Ash, mando h0 al cementerio y saco una ficha.
@@ -118,11 +119,12 @@ describe('el archivo y los tiempos', () => {
   it('se llama como el combo, con la fecha; dura lo de sus jugadas más el título y el cierre', () => {
     expect(videoFileName({ kind: 'combo', combo })).toBe('Linea-basica-2026-10-29.mp4')
     expect(videoFileName({ kind: 'combo', combo: { ...combo, name: '../../ «»' } })).toBe('2026-10-29.mp4')
-    // El título, cada jugada (la de un combo, lo que espera la mesa al reproducirlo; un cambio de fase, menos) y el cierre.
+    // El título, cada jugada (la de un combo, lo que espera la mesa al reproducirlo; un cambio de fase, menos; todo a `VIDEO_PACE`) y el cierre.
     const durations = frameDurations({ kind: 'combo', combo })
     expect(durations).toHaveLength(actions.length + 2)
     expect(durations[0]).toBe(INTRO_MS)
-    expect(durations.slice(1, -1)).toEqual(actions.map((action) => (action.type === 'phase' ? MESA.banner : COMBO_STEP_MS)))
+    expect(durations.slice(1, -1)).toEqual(actions.map((action) => (action.type === 'phase' ? MESA.banner : COMBO_STEP_MS) / VIDEO_PACE))
+    expect(VIDEO_PACE).toBe(1.25)
     expect(durations.at(-1)).toBe(OUTRO_MS)
   })
 })
@@ -189,5 +191,29 @@ describe('lo que anima la mesa, en el video', () => {
     expect(replaceOverlays([banner(0)], [banner(1000)], 1000)).toHaveLength(1)
     expect(replaceOverlays([stage(0)], [stage(500)], 500)).toHaveLength(1)
     expect(replaceOverlays([stage(0)], [], 1200)).toEqual([])
+  })
+})
+
+describe('los objetivos en el video', () => {
+  // Invoco h0, la marco y después le saco la marca (como la mesa a los 5 s).
+  const marking: MatAction[] = [actions[1]!, { type: 'target', id: h0 }, { type: 'target', id: h0 }]
+  const marked = createSavedCombo({ name: 'Mira', deckName: 'Snake-Eye', initial, actions: marking, nameOf }, [], new Date('2026-10-29T12:00:00Z'))
+  const shots = [...comboScenes(marked, marked.names, 720)]
+  const isMarked = (scene: Scene) => scene.sides[0].slots.some((slot) => slot.card?.id === h0 && slot.card.targeted)
+
+  it('la carta marcada lleva la mira mientras la mesa la deja marcada; entra cayendo toda la jugada y se va con un fundido', () => {
+    expect(shots.map(isMarked)).toEqual([false, false, true, false])
+    expect([...freshTargets(shots[1]!, shots[2]!)]).toEqual([`0:${h0}`])
+    expect(freshTargets(shots[2]!, shots[2]!).size).toBe(0)
+    const [enter] = targetOverlays(shots[1]!, shots[2]!, 1000, 1400, 1)
+    expect(enter).toMatchObject({ kind: 'target', start: 1000, duration: 1400 })
+    const [leave] = targetOverlays(shots[2]!, shots[3]!, 2400, 1400, 1)
+    expect(leave).toMatchObject({ kind: 'target', start: 2400, duration: TARGET_OUT_MS })
+    const ctx = fakeCtx()
+    for (const p of [0, 0.1, 0.3, 0.6, 1]) {
+      enter!.draw(ctx, p)
+      leave!.draw(ctx, p)
+    }
+    expect(ctx.calls).toBeGreaterThan(40)
   })
 })

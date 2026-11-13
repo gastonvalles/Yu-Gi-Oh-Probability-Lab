@@ -6,13 +6,13 @@ import { playerName, replayResultText, titleOf } from '../duel-replay-text'
 import { muxMp4, type Mp4Sample } from './mp4-mux'
 import { EASE_OUT, UI_ANIMATION_MS, bezierEase } from '../../../app/motion'
 import { drawBanner, drawFlight, drawFrame, loadFieldArt, loadVideoAssets, type FieldLayer } from './video-draw'
-import { dealOverlays, flightsOf, lifeOf, overlaysOf, replaceOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
+import { dealOverlays, flightsOf, freshTargets, lifeOf, overlaysOf, replaceOverlays, targetOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
 import { movingKeys, transitionOf } from './video-motion'
 import { comboArtUrls, comboRowLook, comboScenes, resolveComboNames } from './video-combo'
 import { chainLayers, replayRowLook, type RowLook } from './video-chain'
 import { artUrls, replayScenes, videoLayout, type Scene } from './video-scene'
 import { bitrateFor, VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
-import { FPS, frameDurations, frameOf, subjectChain, type VideoSpeed, type VideoSubject } from './video-timeline'
+import { FPS, frameDurations, frameOf, paceOf, subjectChain, type VideoChoice, type VideoSpeed, type VideoSubject } from './video-timeline'
 
 /**
  * El video de un replay o un combo, entero en el navegador: cada cuadro se pinta en un lienzo, `VideoEncoder` (WebCodecs) lo codifica en H.264 y `mp4-mux.ts` arma el .mp4.
@@ -29,7 +29,7 @@ const SLICE_MS = 30
 const TITLE_FADE_MS = 250
 
 export interface VideoOptions {
-  speed?: VideoSpeed
+  speed?: VideoChoice
   signal?: AbortSignal
   /** De 0 a 1. */
   onProgress?: (done: number) => void
@@ -124,7 +124,9 @@ function fieldFade(before: Scene | null, after: Scene, speed: VideoSpeed): ((ms:
 const fadeEase = bezierEase(EASE_OUT)
 
 export async function makeReplayVideo(subject: VideoSubject, options: VideoOptions = {}): Promise<VideoResult> {
-  const { signal, speed = 1 } = options
+  const { signal } = options
+  // Todo lo que anima el video corre a este ritmo (el de fábrica por lo elegido).
+  const speed = paceOf(options.speed ?? 1)
   const support = await videoSupport()
   if (!support.ok) throw new Error(`replay-video: ${support.reason}`)
 
@@ -210,8 +212,10 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
       if (before && before !== scene) {
         flights = flightsOf(transitionOf(before, scene), scene.layout.scale, speed, durations[index]!)
         live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind, chained), start)
+        live.push(...targetOverlays(before, scene, start, durations[index]!, speed))
         life = lifeOf(before, scene, speed)
       }
+      const fresh = before && before !== scene ? freshTargets(before, scene) : undefined
       const shown = scene
       // El arte de una Magia de Campo que aparece se baja antes de pintarla (una vez por carta).
       for (const side of scene.sides) if (side.fieldArt) await loadFieldArt(side.fieldArt, assets, signal)
@@ -241,7 +245,7 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
         const key = `${flying}:${hiding.map((overlay) => `${overlay.kind}${overlay.start}`).join()}:${lp?.join(',') ?? ''}:${field?.map((layers) => layers.map((art) => art.alpha.toFixed(2)).join()).join('|') ?? ''}`
         if (key !== drawnBase) {
           const keys = flying || hiding.length > 0 ? new Set([...(flying && moving ? moving.keys : []), ...hiding.flatMap((overlay) => overlay.hides!)]) : null
-          drawFrame(baseCtx, scene, assets, keys ? { keys, before: flying && before ? before : scene } : undefined, lp, field ?? undefined)
+          drawFrame(baseCtx, scene, assets, keys ? { keys, before: flying && before ? before : scene } : undefined, lp, field ?? undefined, fresh)
           drawnBase = key
           clean = false
         }

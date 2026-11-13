@@ -3,10 +3,11 @@ import { act, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
-import { CHAIN_LINGER_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainDwell, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION as L } from '../app/auto/protocol'
+import type { ReplayChainStep } from '../app/duel-replay'
 import { createMatState, type MatAction, type MatPhase } from '../app/practice-mat'
-import { createSavedCombo, writeSavedCombos } from '../app/saved-combos'
+import { comboChainSteps, createSavedCombo, writeSavedCombos } from '../app/saved-combos'
 import { CARDS, fakeSession, SPOTS } from './support/auto-session-fake'
 import { core, renderAuto } from './support/auto-screen-harness'
 
@@ -93,5 +94,45 @@ describe('auto-screen · la cadena en el repaso', () => {
     act(() => vi.advanceTimersByTime(1400 + 5))
     expect(document.querySelector('[data-activation][data-kind="activate"]')).not.toBeNull()
     expect(scene()).toBe(0)
+  })
+
+  const LONE: ReplayChainStep[] = [
+    { at: 1, kind: 'chain', index: 0, link: { code: 102, side: 0, place: [0, L.SZONE, 0] } },
+    { at: 1, kind: 'solving', index: 0 },
+    { at: 1, kind: 'solved', index: 0 },
+    { at: 1, kind: 'end', index: -1 },
+  ]
+  // Con dos eslabones la cadena dura más que los 1400 entre jugadas: el pedido del paso siguiente llega en el medio y espera.
+  const TWO: ReplayChainStep[] = [
+    LONE[0]!,
+    { at: 1, kind: 'chain', index: 1, link: { code: 101, side: 1 } },
+    { at: 1, kind: 'solving', index: 1 },
+    { at: 1, kind: 'solved', index: 1 },
+    ...LONE.slice(1),
+  ]
+
+  it.each([['sola', LONE], ['de dos eslabones', TWO]] as const)('reproduciendo solo un combo con su cadena (%s), el paso siguiente espera a que la cadena se cuente entera y después lo suyo', (_, chain) => {
+    const nameOf = (id: string) => CARDS.get(id)?.name ?? id
+    const combo = createSavedCombo({ name: 'Imperm', deckName: 'Test', initial: createMatState(['card-102-1', 'card-100-1'], [], 2), actions: [{ type: 'activate', id: 'card-102-1' }, to('battle')], nameOf }, [])
+    const steps = comboChainSteps({ chain: [...chain] })
+    const told = steps.reduce((sum, _step, i) => sum + chainDwell(steps, i), 0)
+    const current = () => screen.getAllByRole('slider')[0]?.getAttribute('aria-valuenow')
+    // De a poco: cada mensaje rearma los relojes al dibujarse.
+    const walk = (ms: number) => {
+      for (let left = ms; left > 0; left -= 50) act(() => vi.advanceTimersByTime(Math.min(50, left)))
+    }
+
+    writeSavedCombos([{ ...combo, chain: [...chain] }])
+    dueled()
+    fireEvent.click(within(panel()).getByRole('radio', { name: /Combos/ }))
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Cargar Imperm' }))
+    act(() => vi.advanceTimersByTime(1400))
+    expect(current()).toBe('1')
+    expect(scene()).toBe(1)
+    // No a los 1400 de siempre: lo que dura la cadena (hasta que se va) y, desde ahí, los 1400.
+    walk(told + CHAIN_LINGER_MS + 1400 - 100)
+    expect(current()).toBe('1')
+    walk(200)
+    expect(current()).toBe('2')
   })
 })

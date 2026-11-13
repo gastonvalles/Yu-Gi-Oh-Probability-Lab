@@ -913,6 +913,36 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // Los medallones, sólo al resolver y donde se activó cada eslabón (`medalsOf`).
   const medals = useMemo(() => medalsOf(chainLive), [chainLive])
 
+  // Reproduciendo solo, la mesa pide el paso siguiente a su ritmo sin mirar la cadena: mientras la de este paso está a la vista, el pedido espera y sale cuando se fue, tras la misma
+  // espera que llevaba desde el último cambio (un paso dura lo suyo más su cadena, como el replay de un duelo y el video). `reviewSeek` cambia con cada mensaje: así el reloj de la
+  // reproducción vuelve a empezar desde ahí.
+  const telling = reviewing && chainLive !== null
+  const [heldSeek, setHeldSeek] = useState<{ to: number; wait: number } | null>(null)
+  const restartedAt = useRef(0)
+  const reviewSeek = useCallback(
+    (step: number) => {
+      const next = review !== null && reviewChain !== null && step === review.session.cursor + 1
+
+      if (next && telling) return setHeldSeek({ to: step, wait: Date.now() - restartedAt.current })
+      setHeldSeek(null)
+      seek(step)
+    },
+    [review, reviewChain, telling, seek],
+  )
+  useEffect(() => {
+    restartedAt.current = Date.now()
+  }, [reviewSeek])
+  useEffect(() => {
+    if (!heldSeek || telling) return
+    const timer = window.setTimeout(() => {
+      setHeldSeek(null)
+      // Si entretanto se fue a otro paso (o se dejó de repasar), el pedido ya no corre.
+      if (review?.session.cursor === heldSeek.to - 1) seek(heldSeek.to)
+    }, heldSeek.wait)
+
+    return () => window.clearTimeout(timer)
+  }, [heldSeek, telling, seek, review])
+
   // ── El rival: su espejo, dibujado por lo que el núcleo dejó ver (`codeOf`). ──
   const theirs = theirsState
   /** La carta del rival que se tocó, grande (como «Ver carta»), donde no está el detalle fijo de la izquierda. */
@@ -1129,7 +1159,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // última carta).
   useEffect(() => {
     if (!feed?.done) return
-    const timer = window.setTimeout(() => (reviewing ? setReviewChain((current) => current && { ...current, gone: feed.key }) : setChainGone(feed.key)), CHAIN_LINGER_MS)
+    const timer = window.setTimeout(() => (reviewing ? setReviewChain((current) => (current && current.gone !== feed.key ? { ...current, gone: feed.key } : current)) : setChainGone(feed.key)), CHAIN_LINGER_MS)
 
     return () => window.clearTimeout(timer)
   }, [feed, reviewing])
@@ -1562,7 +1592,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     turn: turnNumber,
     lp,
     shownAt,
-    review: { active: reviewing, load, seek, back },
+    review: { active: reviewing, load, seek: reviewSeek, back },
     // Tu turno libre (tus jugadas o la ventana de una fase tuya) no es «estar eligiendo».
     told:
       snap.status === 'loading' || snap.replaying

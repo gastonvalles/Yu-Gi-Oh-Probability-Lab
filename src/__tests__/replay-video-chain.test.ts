@@ -11,7 +11,7 @@ import { LAYOUT } from '../components/auto/ChainNotice'
 import { BACK_POSE, chainOverlays, chainSnapshots, drawMedal, medalTracks, MEDAL, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
 import { overlaysOf } from '../components/replays/video/video-fx'
 import { cellsOf, fieldRect, placeRect, replayScenes, videoLayout } from '../components/replays/video/video-scene'
-import { chainBeats, chainMs, chainTimeline, frameDurations, INTRO_MS, OUTRO_MS, STEP_MS, videoDurationMs } from '../components/replays/video/video-timeline'
+import { chainBeats, chainMs, chainTimeline, frameDurations, INTRO_MS, OUTRO_MS, paceOf, STEP_MS, VIDEO_PACE, videoDurationMs } from '../components/replays/video/video-timeline'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
 
 // El duelo del reproductor (`duel-replay-ui.test.tsx`): activo algo, el rival encadena, se resuelve del último al primero; después el rival pasa a su Standby Phase.
@@ -65,11 +65,12 @@ describe('la cadena en la línea de tiempo del video', () => {
   })
 
   it('la jugada con cadena dura lo suyo más la cadena (a 2×, todo a la mitad); sin cadena, nada cambia', () => {
+    // Todo a `VIDEO_PACE` (1,25×); «Rápido (2×)», al doble de eso.
     const plain = frameDurations({ kind: 'duel', replay: without })
-    expect(plain).toEqual([INTRO_MS, STEP_MS, 400, OUTRO_MS])
-    expect(frameDurations({ kind: 'duel', replay: withChain })).toEqual([INTRO_MS, STEP_MS + chainMs(steps, 1), 400, OUTRO_MS])
-    expect(frameDurations({ kind: 'duel', replay: withChain }, 2)).toEqual([INTRO_MS, (STEP_MS + chainMs(steps, 1)) / 2, 200, OUTRO_MS])
-    expect(videoDurationMs({ kind: 'duel', replay: withChain }) - videoDurationMs({ kind: 'duel', replay: without })).toBe(3200)
+    expect(plain).toEqual([INTRO_MS, 720, 320, OUTRO_MS])
+    expect(frameDurations({ kind: 'duel', replay: withChain })).toEqual([INTRO_MS, (STEP_MS + chainMs(steps, 1)) / VIDEO_PACE, 320, OUTRO_MS])
+    expect(frameDurations({ kind: 'duel', replay: withChain }, paceOf(2))).toEqual([INTRO_MS, (STEP_MS + chainMs(steps, 1)) / 2.5, 160, OUTRO_MS])
+    expect(videoDurationMs({ kind: 'duel', replay: withChain }) - videoDurationMs({ kind: 'duel', replay: without })).toBe(2560)
     expect(chainBeats(replayChainSteps(without, 0), 1)).toEqual([])
   })
 
@@ -79,16 +80,17 @@ describe('la cadena en la línea de tiempo del video', () => {
     const timeline = chainTimeline(steps, starts)
     const feedAt = (t: number) => chainFeed(steps, timeline.filter((beat) => beat.t <= t).at(-1)?.seen ?? 0)
 
-    expect(timeline.map((beat) => beat.t)).toEqual([INTRO_MS, INTRO_MS + 700, INTRO_MS + 1400, INTRO_MS + 2300, INTRO_MS + 3200, starts[2]])
-    // Al empezar la jugada, el CL1 armado; 0,7 s después, el CL2; a los 1,4 s empieza a resolverse (la escena se va y salen los medallones); al final, nada.
+    // Los tiempos de la mesa (0,7 · 1,4 · 2,3 · 3,2 s) a `VIDEO_PACE`.
+    expect(timeline.map((beat) => beat.t)).toEqual([INTRO_MS, INTRO_MS + 560, INTRO_MS + 1120, INTRO_MS + 1840, INTRO_MS + 2560, starts[2]])
+    // Al empezar la jugada, el CL1 armado; después, el CL2; después empieza a resolverse (la escena se va y salen los medallones); al final, nada.
     expect(feedAt(INTRO_MS)?.rows.map((row) => row.state)).toEqual(['chained'])
-    expect(feedAt(INTRO_MS + 700)?.rows.map((row) => row.state)).toEqual(['chained', 'chained'])
-    expect(feedAt(INTRO_MS + 1400)).toMatchObject({ resolving: true, current: 1 })
-    expect(feedAt(INTRO_MS + 2300)).toMatchObject({ resolving: true, current: 0 })
-    expect(feedAt(INTRO_MS + 3200)).toMatchObject({ done: true })
+    expect(feedAt(INTRO_MS + 560)?.rows.map((row) => row.state)).toEqual(['chained', 'chained'])
+    expect(feedAt(INTRO_MS + 1120)).toMatchObject({ resolving: true, current: 1 })
+    expect(feedAt(INTRO_MS + 1840)).toMatchObject({ resolving: true, current: 0 })
+    expect(feedAt(INTRO_MS + 2560)).toMatchObject({ done: true })
     // A 2×, a la mitad.
-    const fast = frameDurations({ kind: 'duel', replay: withChain }, 2).reduce<number[]>((list, ms) => [...list, list.at(-1)! + ms], [0])
-    expect(chainTimeline(steps, fast, 2).map((beat) => beat.t)).toEqual([INTRO_MS, INTRO_MS + 350, INTRO_MS + 700, INTRO_MS + 1150, INTRO_MS + 1600, fast[2]])
+    const fast = frameDurations({ kind: 'duel', replay: withChain }, paceOf(2)).reduce<number[]>((list, ms) => [...list, list.at(-1)! + ms], [0])
+    expect(chainTimeline(steps, fast, paceOf(2)).map((beat) => beat.t)).toEqual([INTRO_MS, INTRO_MS + 280, INTRO_MS + 560, INTRO_MS + 920, INTRO_MS + 1280, fast[2]])
   })
 })
 

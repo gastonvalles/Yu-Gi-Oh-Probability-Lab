@@ -7,7 +7,7 @@ import { Modal } from '../ui/Modal'
 import { ProgressRing } from '../ui/ProgressRing'
 import { Switch } from '../ui/Switch'
 import { videoSupport, type VideoSupport } from './video/video-support'
-import { LONG_VIDEO_MS, videoDurationMs, videoFileName, type VideoSpeed, type VideoSubject } from './video/video-timeline'
+import { LONG_VIDEO_MS, paceOf, videoDurationMs, videoFileName, type VideoChoice, type VideoSubject } from './video/video-timeline'
 
 /**
  * «Descargar video» de un replay: se arma en el navegador (`video/video-encode.ts`, que se carga recién acá con `import()`), con su progreso y «Cancelar», y al terminar queda
@@ -40,7 +40,7 @@ export function useReplayVideo() {
     job.current = null
     setState({ stage: 'idle' })
   }, [])
-  const start = useCallback(async (subject: VideoSubject, speed: VideoSpeed) => {
+  const start = useCallback(async (subject: VideoSubject, speed: VideoChoice) => {
     job.current?.abort()
     const controller = new AbortController()
     job.current = controller
@@ -88,14 +88,14 @@ export function FastSwitch({ subject, fast, onChange }: { subject: VideoSubject;
     <div className="flex items-center justify-between gap-3">
       <span className="grid min-w-0 gap-0.5">
         <span className="text-body font-semibold text-foreground">{t('meta.duels.video.fast')}</span>
-        <span className="text-micro text-soft">{t('meta.duels.video.fastHint', { normal: clock(videoDurationMs(subject, 1)), fast: clock(videoDurationMs(subject, 2)) })}</span>
+        <span className="text-micro text-soft">{t('meta.duels.video.fastHint', { normal: clock(videoDurationMs(subject, paceOf(1))), fast: clock(videoDurationMs(subject, paceOf(2))) })}</span>
       </span>
       <Switch checked={fast} onChange={onChange} label={t('meta.duels.video.fast')} />
     </div>
   )
 }
 
-export const isLongVideo = (subject: VideoSubject) => videoDurationMs(subject, 1) > LONG_VIDEO_MS
+export const isLongVideo = (subject: VideoSubject) => videoDurationMs(subject, paceOf(1)) > LONG_VIDEO_MS
 
 /**
  * Lo que muestra el diálogo mientras se arma, cuando está listo o si falló (el título, el cuerpo y el pie); `retry` lo arma de nuevo y `back` (en «Guardar replay») vuelve a sus
@@ -177,7 +177,7 @@ export function ReplayVideoDialog({ subject, onClose }: { subject: VideoSubject 
   const supported = useVideoSupport()
   const [fast, setFast] = useState(true)
   const long = subject ? isLongVideo(subject) : false
-  const speed: VideoSpeed = long && fast ? 2 : 1
+  const speed: VideoChoice = long && fast ? 2 : 1
   const reason = unsupportedText(supported)
 
   // Quien abre el diálogo arma `{ kind, combo }` en cada dibujo suyo: lo que se filma es lo de adentro. Con el objeto de afuera, cada dibujo de la mesa cancelaba el video
