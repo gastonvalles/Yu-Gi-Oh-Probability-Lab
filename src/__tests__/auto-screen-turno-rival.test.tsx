@@ -116,6 +116,8 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
 
     expect(increasing([rivalTurn, standby, main1, raigeki, swept, resolved, inpachi, battle, attack, end, back])).toBe(true)
     expect(attack <= hit && hit < end).toBe(true)
+    // El bot no juega debajo de un cartel (TI-275): Raigeki espera a que se vaya el de su Main Phase 1, y el ataque, el de su Battle Phase.
+    expect([raigeki, attack].map((ms) => line.find((item) => item.ms === ms)!.band)).toEqual(['', ''])
     // Tus vidas no bajan antes del ataque; el marcador dice «Turno de Rival · 2» desde «Turno de Rival» hasta «Tu turno», y «Tu turno · 3» con su cartel.
     expect(line.filter((item) => item.ms < attack).map((item) => item.life)).toEqual(line.filter((item) => item.ms < attack).map(() => '8000'))
     expect(new Set(line.filter((item) => item.ms < rivalTurn).map((item) => item.turn))).toEqual(new Set(['mine']))

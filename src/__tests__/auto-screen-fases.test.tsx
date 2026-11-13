@@ -7,7 +7,7 @@ import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { setAutoPref } from '../app/auto-prefs'
 import type { MatAction, MatPhase } from '../app/practice-mat'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
-import { TURN_BAND_MS } from '../components/duel/PhaseBand'
+import { PHASE_BAND_MS, TURN_BAND_MS } from '../components/duel/PhaseBand'
 import { fakeSession, loc, pos, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, hand, handCard, lane, phaseButton, renderAuto } from './support/auto-screen-harness'
 import { tap } from './support/practice-mat-harness'
@@ -42,6 +42,10 @@ const goTo = (name: string) => {
   fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
+/** Hasta que se va el cartel de la fase (y el de «Cambio de turno», si lo hay): mientras tanto no se juega (TI-275). */
+const bandOver = () => {
+  for (let ms = 0; ms < TURN_BAND_MS + PHASE_BAND_MS; ms += 50) act(() => vi.advanceTimersByTime(50))
+}
 
 describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las fases son tuyas', () => {
   it('un duelo nuevo (vas primero, sin robo) entra directo a la Main Phase 1: el botón ofrece sólo lo que el núcleo deja', () => {
@@ -79,7 +83,73 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(phaseButton()).toBeDisabled()
     step()
     phaseIs('Main Phase 1')
+    // Con su cartel a la vista, todavía no se juega.
+    expect(phaseButton()).toBeDisabled()
+    bandOver()
     expect(phaseButton()).toBeEnabled()
+    expect(fake.answers).toEqual([])
+  })
+
+  it('el cartel manda, no el aviso: con «Cambio de turno» y su fase todavía a la vista cuando el aviso de tu pase ya se fue de la mesa, no se juega (TI-275)', () => {
+    const fake = renderAuto()
+
+    core(() => fake.events([to('end'), to('draw', true)]))
+    core(() => fake.ask(IDLE))
+    step()
+    step()
+    expect(band()).toHaveAttribute('data-turn')
+    // «Cambio de turno» (1250 ms) y detrás su Draw Phase (850): casi al final, la mesa ya no tiene el aviso de la fase y la banda sigue.
+    for (let ms = 0; ms < TURN_BAND_MS + PHASE_BAND_MS - 150; ms += 50) act(() => vi.advanceTimersByTime(50))
+    expect(band()).not.toBeNull()
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    expect(phaseButton()).toBeDisabled()
+    bandOver()
+    expect(band()).toBeNull()
+    expect(phaseButton()).toBeEnabled()
+  })
+
+  it('con «Cambio de turno» o el cartel de una fase a la vista, tocar una carta de tu mano no abre su menú ni juega (ni se guarda el toque); cuando se va, sí (TI-275)', () => {
+    const fake = renderAuto()
+
+    core(() => fake.events([to('end'), to('draw', true), { type: 'draw', count: 1, ids: ['card-101-1'] }, ...START]))
+    core(() => fake.ask(IDLE))
+    step()
+    step()
+    // Tu pase: «Cambio de turno» cruza el campo.
+    expect(band()).toHaveAttribute('data-turn')
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    step()
+    step()
+    step()
+    phaseIs('Main Phase 1')
+    expect(band()).not.toBeNull()
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    expect(phaseButton()).toBeDisabled()
+    bandOver()
+    expect(band()).toBeNull()
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    expect(fake.answers).toEqual([])
+    tap(handCard('Ash Blossom'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 0, index: 0 }])
+    expect(dispatches).toBe(0)
+  })
+
+  it('una pregunta que llega con el cartel de la fase a la vista se abre cuando el cartel termina (TI-275)', () => {
+    const fake = renderAuto(drawPhaseSession())
+
+    rearm(fake, [], null)
+    core(() => fake.events([to('standby')]))
+    core(() => fake.ask(windowAt(0x2)))
+    step()
+    phaseIs('Standby Phase')
+    expect(band()).not.toBeNull()
+    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'can')
+    bandOver()
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
     expect(fake.answers).toEqual([])
   })
 
@@ -125,6 +195,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
       seen.push(phaseButton().getAttribute('aria-label') ?? '')
     }
     expect(seen).toEqual(['End Phase', 'Draw Phase', 'Draw Phase', 'Main Phase 1'].map((name) => `Fases: ${name}`))
+    bandOver()
     fireEvent.click(phaseButton())
     expect(screen.getByRole('menuitem', { name: /^Battle Phase/ })).toHaveAttribute('aria-disabled', 'true')
   })
@@ -146,6 +217,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     core(() => fake.ask(windowAt(0x2)))
     step()
     phaseIs('Standby Phase')
+    bandOver()
     tap(handCard('Called by the Grave'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
     expect(fake.answers).toEqual([PASS, { type: 'select_chain', index: 0 }])
@@ -155,6 +227,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     core(() => fake.ask(IDLE))
     step()
     phaseIs('Main Phase 1')
+    bandOver()
     expect(phaseButton()).toBeEnabled()
   })
 
@@ -172,6 +245,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     core(() => fake.ask(IDLE))
     step()
     phaseIs('Main Phase 1')
+    bandOver()
     expect(phaseButton()).toBeEnabled()
   })
 
@@ -260,7 +334,7 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(rivalBanner()).toBeNull()
   })
 
-  it('tocar la mesa mientras se cuenta el turno del rival lo salta sin carteles en ráfaga', () => {
+  it('tocar la mesa con un cartel de fase o de turno a la vista no salta nada ni abre nada: los carteles siguen en orden y tu turno empieza cuando terminan (TI-275)', () => {
     const fake = renderAuto()
 
     rivalTurn(fake)
@@ -270,12 +344,15 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     for (let ms = 0; ms < TURN_BAND_MS + 500 + 50; ms += 50) act(() => vi.advanceTimersByTime(50))
     expect(rivalBanner()).toBe('Rival · Standby Phase')
     fireEvent.pointerDown(hand())
-    const seen = new Set<string>()
-    for (let i = 0; i < 8; i += 1) {
-      act(() => vi.advanceTimersByTime(STEP_MS))
-      seen.add(rivalBanner() ?? '')
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    const seen: string[] = []
+    for (let ms = 0; ms < 6_000; ms += 50) {
+      act(() => vi.advanceTimersByTime(50))
+      if (rivalBanner() && rivalBanner() !== seen.at(-1)) seen.push(rivalBanner()!)
     }
-    expect(seen).toEqual(new Set(['Rival · Standby Phase', '']))
+    expect(seen).toEqual(['Rival · Standby Phase', 'Rival · Main Phase 1', 'Rival · End Phase', 'Tu turno'])
     expect(phaseButton()).toBeEnabled()
+    expect(fake.answers).toEqual([])
   })
 })

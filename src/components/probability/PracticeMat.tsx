@@ -295,6 +295,8 @@ export interface DuelMatLink {
   onHighlight?: (highlight: CardTextHighlight | null) => void
   /** Lo que estoy haciendo y el rival tiene que ver (mirar mi deck, mi Extra Deck, mi cementerio o lo desterrado; elegir cómo jugar una carta); `null` si nada. Se llama sólo cuando cambia. */
   onActivity?: (activity: Activity | null) => void
+  /** Hay un cartel de fase o de «Cambio de turno» en curso (`PhaseBand`), antes de pintar y cada vez que cambia: el automático no deja jugar ni pregunta mientras tanto. */
+  onBanding?: (busy: boolean) => void
   /** El visor de las pilas del rival (`rivalViewer`) está abierto: el de la mesa se cierra, porque los dos van en el mismo lugar. */
   rivalViewing?: boolean
   /** El reloj de turnos: en la fila del medio, a la izquierda de la Zona Extra (la casilla `p1`). */
@@ -643,6 +645,12 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
   }
 }
 
+/** Lo que la banda de la fase muestra y cómo avisa que terminó con eso (`PhaseBand.onIdle`). */
+interface BandCue {
+  cue: PhaseCue | null
+  idle: () => void
+}
+
 /**
  * Lo que se monta en la tarea siguiente al dibujo de la jugada (las cartas grandes del centro y el cartel de la fase): `useDeferredValue` dibuja sólo este hijo, aparte, y la tarea del
  * toque queda para la mesa y los vuelos. Se ve un cuadro después del despegue; lo que se va solo, igual.
@@ -905,6 +913,24 @@ function PracticeMatBody({
 
     return own && rival ? (own.key >= rival.key ? own : rival) : (own ?? rival)
   }, [banner, rivalNotice, dueling])
+  // Si hay un cartel en curso: hasta que la banda dice que terminó con el aviso de ahora (`onIdle`). Cada cambio de `phaseCue` es un aviso nuevo, también quedarse sin fase (la
+  // banda sigue con su reloj): cuenta desde el dibujo en que llega (la banda lo toma un cuadro después, `Deferred`). En el automático, mientras tanto tus cartas no abren su menú y
+  // la pantalla no pregunta ni muestra la jugada siguiente (`onBanding`).
+  const [idleFor, setIdleFor] = useState<BandCue | null>(null)
+  const bandCue = useMemo(() => {
+    const now: BandCue = { cue: phaseCue, idle: () => setIdleFor(now) }
+
+    return now
+  }, [phaseCue])
+  const bandBusy = idleFor !== bandCue
+  const onBanding = duel?.onBanding
+  // Lo leen los toques (no la dibuja de nuevo: un cambio de la banda no rehace los oyentes de las cartas).
+  const banding = useRef(false)
+  useLayoutEffect(() => {
+    banding.current = bandBusy
+    onBanding?.(bandBusy)
+    return () => onBanding?.(false)
+  }, [bandBusy, onBanding])
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
@@ -1742,7 +1768,9 @@ function PracticeMatBody({
 
       // En automático una carta que la pregunta ofrece se elige con el toque; si no, abre su menú con las jugadas legales. Sin ninguna, el menú dice por qué (`duel.auto.whyNot`), ofrece
       // seguir en manual y, sin el detalle fijo a la izquierda, «Ver carta» (como en la mesa manual, tocar siempre muestra algo). Eligiendo cartas o una casilla, tocar otra no hace nada.
+      // Con un cartel de fase o de turno en curso, nada (mirarla, sí: el detalle de arriba y mantenerla apretada); el toque no se guarda para después.
       if (duel?.auto) {
+        if (banding.current) return
         const { cardPick, zonePick } = duel.auto
         // Eligiendo la casilla, tocar la carta que ocupa una que el núcleo ofrece (el material de un Xyz, de una Sincronía o de un Link: su casilla se libera al invocar) elige esa casilla, como en la mesa manual.
         const where = zonePick ? locateCard(state, id) : null
@@ -3232,7 +3260,7 @@ function PracticeMatBody({
           {pileCell('banished', 'ban')}
 
           {/* Cambio de fase: la banda cruza el campo por la fila del medio, del color de quien juega (`PhaseBand`), en la práctica, repasando un combo y en los duelos; en un duelo, el pase antes con «Cambio de turno». */}
-          <Deferred value={phaseCue}>{(cue) => <PhaseBand cue={cue} />}</Deferred>
+          <Deferred value={bandCue}>{({ cue, idle }) => <PhaseBand cue={cue} onIdle={idle} />}</Deferred>
           {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
           {announcement ? (
             <span

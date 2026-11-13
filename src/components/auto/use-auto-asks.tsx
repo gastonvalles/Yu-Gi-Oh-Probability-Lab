@@ -387,11 +387,18 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const { impactAt } = rivalStrike
   // El turno del rival (`rivalPhases`; Gastón, 2026-10-29: «no veo en pantalla el cartel del oponente pasando de fases»): el núcleo lo juega de una y la mesa lo cuenta jugada por
   // jugada en su lugar de `order`, con un solo cursor: cada fase con su cartel (`RIVAL_PHASE_MS`, la que te devuelve el turno dice «Tu turno»; su robo va con «Turno de Rival» y una
-  // Main Phase 2 vacía, sin cartel ni espera), cada jugada con su vuelo (`FLIGHT_MS`; la primera de una fase, a mitad de su cartel) y lo que sigue a un ataque, después del golpe; su robo,
+  // Main Phase 2 vacía, sin cartel ni espera), cada jugada con su vuelo (`FLIGHT_MS`; la primera de una fase, cuando su cartel terminó: `banding`) y lo que sigue a un ataque, después del golpe; su robo,
   // con su Draw Phase a la vista, y un turno sin jugadas, más ligero (`quietWait`). Tu turno (tu robo, tus fases, lo que podés hacer) empieza después de «Tu turno», con el mismo ritmo
   // hasta tu Main Phase 1. Lo que ya había al empezar o al rearmarse el núcleo, y lo que se salta tocando la mesa, se da por visto.
   const [notice, setNotice] = useState<DuelMatLink['notice']>(undefined)
+  // Gastón, 2026-11-13: «siempre deben terminar esas animaciones para que yo o mi oponente podamos jugar». Mientras la mesa tiene un cartel de fase o de «Cambio de turno» en curso
+  // (`PracticeMat.duel.onBanding`, lo dice la banda), no se pregunta nada, tocar la mesa no salta y la jugada que sigue (de los dos lados) espera; las fases y los robos, no.
+  const [banding, setBanding] = useState(false)
   const theirsNext = rivalPhases && theirsShown < snap.theirsActs.length && theirsShown < theirsUpTo(paced.cursor, paced.actions)
+  // La jugada que sigue espera al cartel; una fase o un robo no (ni vuelven a contar su espera cuando el cartel cambia), ni lo de un turno del rival sin jugadas (su descarte de la End
+  // Phase va al ritmo de los carteles, `quietWait`).
+  const upNext = theirsNext ? snap.theirsActs[theirsShown]?.action : paced.actions[paced.cursor]
+  const waitsBand = banding && upNext !== undefined && upNext.type !== 'phase' && upNext.type !== 'draw' && !(theirsNext && quietTurn(snap.theirsActs, theirsShown))
 
   // Se va solo (con menos movimiento queda quieto ese rato); sólo el que se ve: el siguiente pudo salir en el mismo instante. «Tu turno» se queda hasta tu primera fase (la saca el ritmo de
   // abajo; esto es la red): si se fuera antes, el lector de pantalla volvería a decir la fase vieja de tu mesa.
@@ -403,7 +410,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }, [notice])
 
   useEffect(() => {
-    if (reviewing) return
+    if (reviewing || waitsBand) return
     if (theirsNext) {
       if (snap.replaying || chainDue) return
       const index = theirsShown
@@ -417,11 +424,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           : quietTurn(snap.theirsActs, index)
             ? quietWait(action, before)
             : action.type === 'phase'
-              ? RIVAL_PHASE_MS
+              ? // Una fase detrás de otra, sin nada en el medio, le cambia el texto a la banda como en un turno sin jugadas (la Main Phase 2 sin cartel no cuenta: detrás va lo que pasó antes).
+                before?.type === 'phase' && before.phase !== 'main2'
+                ? quietWait(action, before)
+                : RIVAL_PHASE_MS
               : before?.type === 'phase'
-                ? action.type === 'draw'
-                  ? 0
-                  : RIVAL_PHASE_MS / 2
+                ? 0
                 : Math.max(FLIGHT_MS, impactAt - Date.now())
       const timer = window.setTimeout(() => {
         setPaced((current) => (current.theirs === index ? { ...current, theirs: index + 1 } : current))
@@ -447,7 +455,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     }, wait)
 
     return () => window.clearTimeout(timer)
-  }, [paced, limit, reviewing, chainNext, chainDue, impactAt, theirsNext, theirsShown, theirsAt, theirsBefore, rivalPhases, snap.theirsActs, snap.order, snap.replaying, rivalName])
+  }, [paced, limit, reviewing, chainNext, chainDue, impactAt, theirsNext, theirsShown, theirsAt, theirsBefore, rivalPhases, snap.theirsActs, snap.order, snap.replaying, rivalName, waitsBand])
   // El próximo mensaje de la cadena, cuando la mesa llegó hasta él y el anterior se vio su rato (contado desde que se mostró: una tanda nueva no lo reinicia).
   useEffect(() => {
     if (reviewing || snap.replaying || !chainDue) return
@@ -468,7 +476,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   // Tocar la mesa salta hasta el final; repasando, no. Lo del rival, también (sin carteles en ráfaga).
   const skipAhead = useCallback(() => {
-    if (reviewing) return
+    if (reviewing || banding) return
     const to = paced.actions.length
     const theirs = rivalPhases ? Math.max(paced.theirs, theirsUpTo(to, paced.actions)) : paced.theirs
 
@@ -476,7 +484,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // La cadena, hasta ahí también.
     setChainSeen((count) => Math.max(count, stepsDue(to, theirs)))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `theirsUpTo` y `stepsDue` leen `order` y `steps`
-  }, [reviewing, steps, paced, theirsBefore, rivalPhases])
+  }, [reviewing, banding, steps, paced, theirsBefore, rivalPhases])
   const settled = paced.cursor === paced.actions.length && theirsShown === snap.theirsActs.length && chainSeen >= steps.length && !snap.replaying
   // Las vidas (y el golpe letal) esperan también a la cadena: mientras falte mostrar un paso suyo, la escena puede estar a la vista (o yéndose): bajan después.
   const chainHolding = !reviewing && !snap.replaying && chainSeen < steps.length
@@ -757,7 +765,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // La ventana de una fase que ya pediste dejar (la SP, si desde la DP pediste la Main Phase 1) no se muestra: se pasa sola.
   const passing = view?.phaseWindow ? leaves(allowed, snap.mine.turn, view.phaseWindow) : false
   // Repasando no se pregunta nada: la pregunta espera y vuelve con «Volver al duelo».
-  const shown = settled && !frozen && !passing && !reviewing ? view : null
+  // Con un cartel en curso (`banding`), espera: se abre cuando termina.
+  const shown = settled && !banding && !frozen && !passing && !reviewing ? view : null
 
   if (reviewing && sub !== null) setSub(null)
 
@@ -1490,6 +1499,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     onRivalHover,
     rivalViewing: rivalPile !== null,
     onActivity,
+    onBanding: setBanding,
     onHighlight: setHighlight,
     auto,
     limits,
