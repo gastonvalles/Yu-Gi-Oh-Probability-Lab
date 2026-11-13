@@ -53,7 +53,10 @@ describe('la pantalla del replay de un duelo', () => {
     expect(step).toHaveTextContent('Ana: Invocación Normal de Ash Blossom')
     expect(screen.getByRole('slider', { name: 'Línea de tiempo del replay' })).toHaveAttribute('aria-valuenow', '2')
     // La mano de abajo (la de Ana) no dice qué cartas son.
-    expect(screen.queryByRole('img', { name: /^Mano del rival: .*Ash Blossom/ })).toBeNull()
+    expect(screen.queryByRole('img', { name: /Ash Blossom/ })).toBeNull()
+    // Cada mano dice de quién es (no «Mano del rival»).
+    expect(screen.getByRole('img', { name: /^Mano de Ana: \d/ })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /^Mano de Beto: / })).toBeInTheDocument()
     expect(screen.getByText('Vista de espectador')).toBeInTheDocument()
   })
 
@@ -166,12 +169,16 @@ describe('la pantalla del replay de un duelo', () => {
 
   it('con «mi mano», la de quien grabó se ve; compartido, ofrece guardarlo', () => {
     const onSave = vi.fn()
-    render(<DuelReplayScreen replay={replayOf('mine')} onClose={() => {}} shared={{ onSave }} actions={[]} />)
+    const replay = replayOf('mine')
+    const { rerender } = render(<DuelReplayScreen replay={replay} onClose={() => {}} shared={{ onSave }} actions={[]} />)
 
     expect(screen.getByText('Con la mano de Ana')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /^Mano del rival: .*Ash Blossom/ })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /^Mano de Ana: .*Ash Blossom/ })).toBeInTheDocument()
     fireEvent.click(within(screen.getByRole('region', { name: 'Replay compartido' })).getByRole('button', { name: 'Guardar en mis replays' }))
     expect(onSave).toHaveBeenCalled()
+    // Guardado ya no es compartido, pero la franja se queda en su lugar (la mesa no salta) y lo dice.
+    rerender(<Provider store={store}><DuelReplayScreen replay={replay} onClose={() => {}} actions={[]} /></Provider>)
+    expect(within(screen.getByRole('region', { name: 'Replay compartido' })).getByRole('button', { name: 'Guardado' })).toBeDisabled()
   })
 })
 
