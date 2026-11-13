@@ -199,7 +199,7 @@ export function TheirHand({
   count: number
   /** Lo que dice el lector de pantalla, si no es la mano del rival (el replay de un duelo: de quién es). */
   label?: string
-  /** Debajo del campo (la mano de abajo en el replay de un duelo): el abanico espejado, como la tuya en la mesa (el centro más alto, las puntas bajan) y colgado del borde de arriba. */
+  /** Debajo del campo (la mano de abajo en el replay de un duelo): el abanico espejado, como la tuya en la mesa (el centro más alto, las puntas bajan) y colgado del borde de arriba; lleva la marca de la mano propia (`data-drop`), de donde salen y a donde llegan sus vuelos. */
   below?: boolean
   /** Los medallones de lo que activó desde la mano (duelo automático, al resolver): sobre el abanico. */
   medals?: readonly ChainMedal[] | null
@@ -272,7 +272,7 @@ export function TheirHand({
 
   return (
     // Sólo el abanico recibe el toque (como cuando la caja medía eso): el resto de la caja deja pasar.
-    <div ref={boxRef} data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} className="pointer-events-none relative isolate shrink-0" style={{ width, height: room }}>
+    <div ref={boxRef} {...(below ? { 'data-drop': 'hand' } : { 'data-rival-drop': 'hand' })} data-targeted={marked ? 'true' : 'false'} className="pointer-events-none relative isolate shrink-0" style={{ width, height: room }}>
       {/* Debajo de las cartas, como la caja de antes: el aro de lo que se señala (que la sube a z 6: las cartas van en z 7). */}
       <div data-pointed={pointed ? 'true' : undefined} className="pointer-events-auto absolute inset-y-0" style={fanBox} />
       <div role={open ? 'group' : 'img'} aria-label={label ?? (cards ? (cards.includes(null) ? (cards.some(Boolean) ? t('duel.hand.theirsPublic', { count: cards.length, cards: cards.flatMap((card) => (card ? [card.name] : [])).join(', ') }) : t('duel.hand.theirs', { count })) : t('duel.hand.theirsShown', { cards: cards.map((card) => card!.name).join(', ') })) : t('duel.hand.theirs', { count }))} className="absolute inset-0 z-7">

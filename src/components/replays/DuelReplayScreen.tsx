@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
 
 import type { ChainStep } from '../../app/auto/chain-feed'
 import { medalsOf } from '../../app/card-glow'
 import { duelReplayAt, replayChainSteps, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
 import { matEffects } from '../../app/mat-effects'
 import { isToken } from '../../app/practice-mat'
+import { shuffleDeck } from '../../app/shuffle-fx'
+import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { ChainStage, chainDwell, chainFeed, outcomeLabel, stepsUpTo } from '../auto/ChainNotice'
@@ -107,6 +109,27 @@ function chainAt(steps: readonly ChainStep[], from: number, to: number): ChainSh
   return { at: to, from: before, seen: nextShown(steps, before, stepsUpTo(steps, to)) }
 }
 
+/** Quién barajó su Deck al avanzar un paso (la jugada, o una de un lote, es barajar), como en la mesa (`shuffleDeck`); saltar no lo muestra. */
+function shuffleAt(replay: DuelReplay, from: number, to: number): ReplaySide | null {
+  const step = to === from + 1 ? replay.steps[to - 1] : undefined
+  const action = step?.[1]
+  const parts = action?.type === 'batch' ? action.actions : action ? [action] : []
+
+  return step && parts.some((part) => part.type === 'shuffle') ? step[0] : null
+}
+
+/**
+ * Las cartas vuelan de donde estaban a donde quedan al avanzar de a un paso o reproducir, con el movimiento de la mesa (`useCardFlights`), como para quien mira un duelo: las de abajo
+ * con las marcas propias y las de arriba con las del rival (los ids de cada lado no cambian de un paso a otro). Al saltar o dar vuelta la mesa se monta de nuevo (`key`): nada vuela,
+ * sólo se mide.
+ */
+function ReplayFlights({ containerRef, bottom, top, layout }: { containerRef: RefObject<HTMLElement | null>; bottom: DuelSideView; top: DuelSideView; layout: string }) {
+  useCardFlights(containerRef, bottom.state, bottom.artOf, layout)
+  useCardFlights(containerRef, top.state, top.artOf, layout, 'theirs')
+
+  return null
+}
+
 export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, backLabel = t('meta.duels.back') }: DuelReplayScreenProps) {
   const total = replay.steps.length
   const [cursor, setCursor] = useState(startAt ?? total)
@@ -116,6 +139,9 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   const [banner, setBanner] = useState<PhaseCue | null>(null)
   const [activation, setActivation] = useState<Activation | null>(null)
   const [chain, setChain] = useState<ChainShown | null>(null)
+  // Los vuelos se montan de nuevo al saltar (`ReplayFlights`): nada vuela, sólo se mide. El barajado, el del lado que barajó en este paso.
+  const [flights, setFlights] = useState(0)
+  const [shuffled, setShuffled] = useState<{ key: number; drop: 'data-drop' | 'data-rival-drop' } | null>(null)
   const bottom: ReplaySide = flipped ? 1 : 0
   const top: ReplaySide = flipped ? 0 : 1
   const chainSteps = useMemo(() => replayChainSteps(replay, bottom), [replay, bottom])
@@ -166,9 +192,14 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       setBanner(bannerAt(replay, from, to))
       setActivation(activationAt(replay, shots, from, to))
       setChain(chainAt(chainSteps, from, to))
+      const side = shuffleAt(replay, from, to)
+      setShuffled(side === null ? null : { key: to, drop: side === bottom ? 'data-drop' : 'data-rival-drop' })
     },
-    [replay, shots, chainSteps],
+    [replay, shots, chainSteps, bottom],
   )
+  useEffect(() => {
+    if (shuffled) shuffleDeck(stageRef.current?.querySelectorAll(`[${shuffled.drop}="deck"] [data-layer]`) ?? [])
+  }, [shuffled])
   useEffect(() => {
     if (!activation) return
     const timer = window.setTimeout(() => setActivation(null), ACTIVATION_MS)
@@ -201,6 +232,8 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     setBanner(null)
     setActivation(null)
     setChain(null)
+    setShuffled(null)
+    setFlights((current) => current + 1)
     setCursor(at)
   }
   // Lo que se ve de la cadena: la escena mientras se arma (y su salida, si terminó en esta jugada) y los medallones al resolver, en el lado donde se activó cada eslabón.
@@ -283,6 +316,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
 
       {/* La mesa: las dos manos y el campo, que llena el alto que queda entre la barra y los controles (en el celular, la geometría del duelo: `phoneDuelLayout`). */}
       <div ref={stageRef} className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-1">
+        {stage ? <ReplayFlights key={`${flights}:${bottom}`} containerRef={stageRef} bottom={bottomView} top={topView} layout={`${stage.width}x${stage.height}`} /> : null}
         {field ? (
           <div className="relative flex flex-col items-center" style={{ gap: field.gap }}>
             {desktop ? <div className="absolute left-full top-0 z-20 ml-3">{badge(top, 'top')}</div> : null}
