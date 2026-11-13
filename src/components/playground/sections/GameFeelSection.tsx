@@ -67,7 +67,7 @@ export function GameFeelSamples() {
           </Heading>
           <p className={cx(supportText, 'max-w-prose')}>
             «Impacto Ligero»: botones y cartas con peso, la cadena, flipbooks y cortes, para tocar y decidir antes de llevar nada a las pantallas. Todo con DOM y CSS en el compositor, sin
-            librerías. Los efectos van con sus tres colores (dorado, cian y rojo, los del documento: `fx-destello`, `fx-energia` y `fx-impacto`); la cadena, en blanco y celeste. El rebote de los botones ya es de todo `Button`. Archivos: <Tag>playground/sections/GameFeelSection.tsx</Tag> y el bloque «Impacto Ligero» de{' '}
+            librerías. Los efectos van con sus tres colores (dorado, cian y rojo, los del documento: <Tag>fx-destello</Tag>, <Tag>fx-energia</Tag> y <Tag>fx-impacto</Tag>); la cadena, en blanco y celeste. El rebote de los botones ya es de todo <Tag>Button</Tag>. Archivos: <Tag>playground/sections/GameFeelSection.tsx</Tag> y el bloque «Impacto Ligero» de{' '}
             <Tag>index.css</Tag>
           </p>
         </div>
