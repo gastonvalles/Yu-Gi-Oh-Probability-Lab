@@ -39,6 +39,9 @@ describe('la frontera entre la mesa manual y el duelo automático', () => {
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
 
     expect(sheet).toHaveAttribute('data-auto-panel', 'docked')
+    // Apoyada en el borde: 8 px bajo los botones más el área segura, en una sola clase (dos `pb-*` se pisaban y la fila quedaba al ras).
+    expect(sheet).toHaveClass('pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]')
+    expect(sheet.className).not.toMatch(/(^|\s)pb-(2|\[env)/)
     expect(within(sheet).queryByRole('menuitem', { name: /Al deck|Revelar|Más/ })).toBeNull()
   })
 
