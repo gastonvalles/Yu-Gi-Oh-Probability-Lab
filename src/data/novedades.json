@@ -1,6 +1,57 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-2-declarar-nombre-copias-carteles",
+      "date": "2026-11-13",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Declarar el nombre de una carta, copias una por una y carteles que esperan",
+        "novedades": [
+          "Cuando un efecto te pide declarar el nombre de una carta, ahora podés buscar cualquiera por su nombre en inglés, completo o parcial. Lo que ya viste (la mano que te mostró un efecto, el Cementerio, el campo) aparece primero, a un toque, y cada resultado muestra su nombre completo.",
+          "Si un efecto te deja elegir dos o tres copias de la misma carta, cada copia sale como una carta aparte, en vez de una sola con «×3».",
+          "Las opciones de un efecto muestran el texto de la carta, ya no «Efecto 4».",
+          "Mientras dura el cartel de «Cambio de turno» o de una fase no se puede jugar: las cartas no responden y las preguntas esperan a que el cartel termine. Mirar una carta sí se puede.",
+          "En la computadora, la ruedita del mouse mueve la bandeja de cartas de un menú."
+        ],
+        "comoSeUsa": [
+          "Cuando aparezca la pregunta para declarar una carta, escribí parte de su nombre en inglés en el buscador, o tocá una de las cartas que ya viste, que aparecen primero.",
+          "Tocá el resultado que querés para declararlo."
+        ],
+        "arreglos": [
+          "«Cambio de turno» ya no cruza dos veces en el turno de un rival que juega.",
+          "Las copias de una misma carta ya no se juntan en una sola al elegir."
+        ],
+        "ojo": [
+          "El buscador para declarar encuentra por el nombre en inglés, y el texto de las opciones de un efecto también sale en inglés.",
+          "Tu primera jugada del turno espera a que se vaya el cartel de tu Main Phase 1, casi un segundo."
+        ]
+      },
+      "en": {
+        "title": "Naming a card, copies one by one and banners that wait",
+        "novedades": [
+          "When an effect asks you to declare a card name, you can now search any card by its English name, full or partial. What you've already seen (the hand an effect showed you, the Graveyard, the field) shows first, one tap away, and every result shows its full name.",
+          "If an effect lets you pick two or three copies of the same card, each copy shows as its own card instead of a single one with «×3».",
+          "An effect's options show the card's text, no longer «Effect 4».",
+          "While the «Turn change» or phase banner is up you can't play: cards don't respond and questions wait until the banner is gone. Looking at a card still works.",
+          "On the computer, the mouse wheel scrolls a menu's card tray."
+        ],
+        "comoSeUsa": [
+          "When the question to declare a card shows up, type part of its English name in the search box, or tap one of the cards you've already seen, which show first.",
+          "Tap the result you want to declare it."
+        ],
+        "arreglos": [
+          "«Turn change» no longer crosses twice during the turn of an opponent who plays.",
+          "Copies of the same card no longer merge into one when you choose."
+        ],
+        "ojo": [
+          "The declare search finds cards by their English name, and the text of an effect's options also comes out in English.",
+          "Your first play of the turn waits for your Main Phase 1 banner to leave, almost a second."
+        ]
+      }
+    },
+    {
       "id": "2026-11-13-1-combos-rival-videos-menus",
       "date": "2026-11-13",
       "tags": [
