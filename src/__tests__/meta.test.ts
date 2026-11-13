@@ -6,14 +6,12 @@ import {
   buildMetaReport,
   buildTierListHash,
   buildTournamentsHash,
-  cardIdsOfKind,
   countCopies,
   countKindCopies,
   filterMetaDecks,
   kindsOf,
   loadMetaDecklist,
   projectShare,
-  readMetaDeckIdFromHash,
   readTierListHash,
   readTournamentsHash,
   tierOf,
@@ -239,10 +237,7 @@ describe('tier lists de hand traps y de boardbreakers', () => {
     expect(buildMetaReport(data, 'tcg', 'both', 4, 'boardbreaker').cards).toEqual([])
   })
 
-  it('sabe qué cartas y cuántas copias de cada tipo lleva un deck', () => {
-    expect([...cardIdsOfKind('boardbreaker', both.cards)].sort()).toEqual([RAIGEKI, BYSTIAL])
-    expect([...cardIdsOfKind('handtrap', both.cards)].sort()).toEqual([ASH, IMPERM, NIBIRU, BYSTIAL])
-
+  it('sabe cuántas copias de cada tipo lleva un deck', () => {
     const [first, second] = both.decks as [MetaDeck, MetaDeck]
 
     expect(countKindCopies(first.main, 'handtrap', both.cards)).toBe(3)
@@ -257,13 +252,13 @@ describe('links directos', () => {
   it('arma y lee el link a un deck de torneo (y el de antes de separar las tier lists sigue andando)', () => {
     expect(buildMetaDeckHash(736578)).toBe('#tournaments?deck=736578')
     expect(buildMetaDeckHash(null)).toBe('#tournaments')
-    expect(readMetaDeckIdFromHash('#tournaments?deck=736578')).toBe(736578)
-    expect(readMetaDeckIdFromHash('#meta?deck=736578')).toBe(736578)
-    expect(readMetaDeckIdFromHash('#meta')).toBeNull()
-    expect(readMetaDeckIdFromHash('#tournaments')).toBeNull()
-    expect(readMetaDeckIdFromHash('#deck-builder?deck=1')).toBeNull()
-    expect(readMetaDeckIdFromHash('#tournaments?deck=abc')).toBeNull()
-    expect(readMetaDeckIdFromHash('')).toBeNull()
+    expect(readTournamentsHash('#tournaments?deck=736578').deck).toBe(736578)
+    expect(readTournamentsHash('#meta?deck=736578').deck).toBe(736578)
+    expect(readTournamentsHash('#meta').deck).toBeNull()
+    expect(readTournamentsHash('#tournaments').deck).toBeNull()
+    expect(readTournamentsHash('#deck-builder?deck=1').deck).toBeNull()
+    expect(readTournamentsHash('#tournaments?deck=abc').deck).toBeNull()
+    expect(readTournamentsHash('').deck).toBeNull()
   })
 
   it('el link de los decks de torneo lleva el deck abierto y el filtro por carta o por nombre de deck', () => {

@@ -8,7 +8,6 @@ import {
   MAX_MEASURED_CHANGES,
   applyChangeToMain,
   changeEffectOf,
-  handsOf,
   measureSnapshot,
   oddsInputOf,
   roleMeasure,
@@ -79,8 +78,9 @@ describe('el efecto de cada cambio', () => {
     const lab = computeLabResults(deriveMainDeckCardsFromZone(B.main), oddsInputOf(B.main, RULES).patterns, 5)
 
     if (lab.status !== 'ok') throw new Error('se esperaba un resultado')
-    expect(handsOf(effect.after, 'clean', 'first')).toEqual({ hands: lab.results.first.cleanHands, total: 658_008 })
-    expect(handsOf(effect.after, 'noOpening', 'second')?.total).toBe(3_838_380)
+    expect(effect.after.totals.first).toBe(658_008)
+    expect(Math.round(effect.after.values.clean!.first! * effect.after.totals.first)).toBe(lab.results.first.cleanHands)
+    expect(effect.after.totals.second).toBe(3_838_380)
   })
 
   it('«qué la mueve»: los cambios que mueven la medida, del que más al que menos, sin los que no', () => {

@@ -89,14 +89,3 @@ export function parseDuelDeck(text: string): DuelDeckCards | null {
 
   return [...deck.main, ...deck.extra, ...deck.side].every(isCardId) ? deck : null
 }
-
-/** Los ids de copia que usa la mesa (`card-14558127-2`): cada número de carta, con su cuenta de copias dentro de la zona. */
-export function duelCardIds(cards: readonly number[]): string[] {
-  const copies = new Map<number, number>()
-
-  return cards.map((card) => {
-    const copy = (copies.get(card) ?? 0) + 1
-    copies.set(card, copy)
-    return `card-${card}-${copy}`
-  })
-}

@@ -4,7 +4,6 @@ import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { LifeBadge } from '../components/duel/LifeScore'
-import { LifeTile } from '../components/duel/DuelBar'
 
 afterEach(() => {
   cleanup()
@@ -49,23 +48,5 @@ describe('la chapa de vidas cuenta suave', () => {
     expect(Number(number.textContent)).toBeLessThan(8000)
     frame(1500)
     expect(number).toHaveTextContent('7000')
-  })
-})
-
-describe('la barra de vidas se escala, no cambia de ancho', () => {
-  it('lleva el ancho completo, scaleX desde la izquierda y la duración de la cuenta del número', () => {
-    const view = render(<LifeTile name="Yeou" life={8000} mine />)
-    const bar = () => screen.getByRole('meter').firstElementChild as HTMLElement
-
-    expect(bar().style.transform).toBe('scaleX(1)')
-    expect(bar().style.width).toBe('')
-    expect(bar()).toHaveClass('origin-left', 'transition-transform', 'motion-reduce:transition-none')
-    expect(bar().className).not.toContain('transition-[width]')
-    act(() => {
-      view.rerender(<LifeTile name="Yeou" life={6000} mine />)
-    })
-    expect(bar().style.transform).toBe('scaleX(0.75)')
-    // La misma duración que la cuenta del número (lifeCountMs de 2000: 320 + 580 × 0,25 = 465).
-    expect(bar().style.transitionDuration).toBe('465ms')
   })
 })

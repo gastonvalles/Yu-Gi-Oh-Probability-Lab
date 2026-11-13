@@ -48,24 +48,6 @@ const EDGE = 'absolute inset-x-0 h-0.5 bg-linear-to-r from-transparent via-white
 
 const nameOf = (phase: MatPhase) => PHASES.find((entry) => entry.id === phase)?.name ?? phase
 
-/** La banda quieta (el catálogo): el nombre de la fase, grande, en mayúsculas e itálica, sobre el color de quien juega. */
-export function PhaseStrip({ phase, side }: { phase: MatPhase; side: PlayerSide }) {
-  return (
-    <div className={cx(BOX, HEIGHT, BAND[side])}>
-      <span className={TEXT}>{nameOf(phase)}</span>
-    </div>
-  )
-}
-
-/** «Cambio de turno» quieta (el catálogo), del color de quien empieza a jugar. */
-export function TurnStrip({ side }: { side: PlayerSide }) {
-  return (
-    <div className={cx(BOX, 'relative', TURN_HEIGHT, BAND[side])}>
-      <TurnFace />
-    </div>
-  )
-}
-
 function TurnFace({ className }: { className?: string }) {
   return (
     <>

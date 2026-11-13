@@ -300,7 +300,6 @@ export const duel = {
   'duel.bar.theirTurnN': 'Turno de {name} · {turn}',
   'duel.bar.lifeOf': 'Puntos de vida de {name}',
   'duel.bar.openCalculator': 'Abrir la calculadora de vidas',
-  'duel.bar.handCount': { one: 'Una carta en la mano', other: '{count} cartas en la mano' },
   'duel.bar.clock': 'Reloj de la ronda: {time}',
   'duel.bar.clockStart': 'Iniciar el reloj',
   'duel.bar.clockPause': 'Pausar el reloj',

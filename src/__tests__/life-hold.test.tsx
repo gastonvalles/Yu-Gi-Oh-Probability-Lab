@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, renderHook, screen } from '@testing-library/react'
+import { act, cleanup, renderHook } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { rivalAttacks, type RivalAttack } from '../app/auto/adapter'
-import { LifeHold, useHeldValue } from '../app/life-effects'
+import { useHeldValue } from '../app/life-effects'
 import type { MatAction } from '../app/practice-mat'
 import { useRivalStrike, useStrikeHold } from '../components/auto/use-auto-asks'
-import { LifeTile } from '../components/duel/DuelBar'
 import { IMPACT_MS } from '../components/probability/AttackFx'
 
 // Las vidas que se ven esperan al golpe del ataque (el núcleo ya las bajó): nunca se quedan viejas.
@@ -138,23 +137,5 @@ describe('useRivalStrike', () => {
     review.rerender({ ...base, live: false, attacks: [direct], total: 1 })
     review.rerender({ ...base, attacks: [direct], total: 1 })
     expect(review.result.current.shown).toBeNull()
-  })
-})
-
-describe('LifeTile con LifeHold', () => {
-  it('el número, la barra y lo que oye el lector esperan a que se suelte; sin LifeHold cambian ya', () => {
-    const tile = (life: number, held: boolean) => (
-      <LifeHold value={held}>
-        <LifeTile name="Beto" life={life} />
-      </LifeHold>
-    )
-    const { rerender } = render(tile(8000, false))
-
-    rerender(tile(7000, true))
-    expect(screen.getByRole('group')).toHaveAccessibleName(/8000/)
-    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuenow', '8000')
-    rerender(tile(7000, false))
-    expect(screen.getByRole('group')).toHaveAccessibleName(/7000/)
-    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuenow', '7000')
   })
 })

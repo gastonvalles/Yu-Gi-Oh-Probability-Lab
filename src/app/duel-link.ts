@@ -40,8 +40,3 @@ export function parseDuelView(hash: string): DuelView | null {
 
   return view === 'create' || view === 'watch' || view === 'join' ? view : null
 }
-
-/** La sala que pide el hash de la página (`#duel?room=CODE`), o null. */
-export function parseDuelHash(hash: string): string | null {
-  return parseDuelTarget(hash)?.room ?? null
-}

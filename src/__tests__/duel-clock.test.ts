@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { TURN_BANK_MS, TURN_BONUS_MS, formatTurnTime, freshTurnClock, runTurnClock, setTurnBank, startTurn, turnTimeLeft } from '../app/duel-clock'
-import { DEFAULT_SETTINGS, PROTOCOL_VERSION, encodeMessage, parseMessage, type DuelSettings } from '../app/duel-protocol'
+import { TURN_BANK_MS, formatTurnTime, freshTurnClock, runTurnClock, setTurnBank, startTurn, turnTimeLeft } from '../app/duel-clock'
+import { DEFAULT_SETTINGS, DEFAULT_TURN_BONUS_MIN, PROTOCOL_VERSION, encodeMessage, parseMessage, type DuelSettings } from '../app/duel-protocol'
 import { createDuel, type Duel } from '../app/duel-session'
 import { createMatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
+
+const TURN_BONUS_MS = DEFAULT_TURN_BONUS_MIN * 60_000
 
 describe('el reloj de turnos (la cuenta)', () => {
   it('arranca con 5 minutos para cada uno y sólo baja el de quien corre', () => {

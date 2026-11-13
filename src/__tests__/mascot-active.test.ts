@@ -4,9 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   MAX_ACTIVE_MASCOTS,
   activeMascotIds,
-  freeMascotSlots,
   getMascotState,
-  isMascotActive,
   mascotPositionKey,
   resetMascotChoiceForTests,
   resetMascotForTests,
@@ -44,7 +42,6 @@ describe('quiénes están afuera', () => {
     expect(summonMascot('winged-kuriboh')).toBe(true)
 
     expect(activeMascotIds()).toEqual(['cupsy', 'winged-kuriboh'])
-    expect(isMascotActive('winged-kuriboh')).toBe(true)
     expect(getMascotState('winged-kuriboh')).toBe('waving')
     expect(getMascotState('cupsy')).toBe('idle')
     expect(JSON.parse(localStorage.getItem('ygo-lab:mascots')!)).toEqual(['cupsy', 'winged-kuriboh'])
@@ -61,12 +58,10 @@ describe('quiénes están afuera', () => {
   it('con el máximo afuera no sale otra hasta que una descansa', () => {
     setMaxActiveMascotsForTests(1)
 
-    expect(freeMascotSlots()).toBe(0)
     expect(summonMascot('winged-kuriboh')).toBe(false)
     expect(activeMascotIds()).toEqual(['cupsy'])
 
     restMascot('cupsy')
-    expect(freeMascotSlots()).toBe(1)
     expect(summonMascot('winged-kuriboh')).toBe(true)
     // Sacar a una que ya está afuera es verdadero y no cambia nada.
     expect(summonMascot('winged-kuriboh')).toBe(true)

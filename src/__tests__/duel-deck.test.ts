@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { duelCardIds, parseDuelDeck } from '../app/duel-deck'
+import { parseDuelDeck } from '../app/duel-deck'
 import { createMemoryRoom } from './support/memory-room'
 import { createDuel } from '../app/duel-session'
 import { duelResult } from '../app/duel-games'
@@ -51,11 +51,6 @@ describe('el deck de un duelo', () => {
     ]
 
     bad.forEach((text) => expect(parseDuelDeck(text)).toBeNull())
-  })
-
-  it('arma los ids de copia de la mesa: cada carta cuenta sus copias dentro de la zona', () => {
-    expect(duelCardIds([14558127, 23434538, 14558127, 14558127])).toEqual(['card-14558127-1', 'card-23434538-1', 'card-14558127-2', 'card-14558127-3'])
-    expect(duelCardIds([])).toEqual([])
   })
 })
 

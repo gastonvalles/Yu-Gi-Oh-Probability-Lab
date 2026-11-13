@@ -132,8 +132,6 @@ export const builder = {
   'builder.condition.unitCopies': 'Copias',
   'builder.condition.unitNames': 'Nombres distintos',
 
-  'builder.requirementKind.include': 'Al menos',
-  'builder.requirementKind.exclude': 'Sin',
 
   'builder.cardType.monster': 'Monstruo',
   'builder.cardType.spell': 'Magia',

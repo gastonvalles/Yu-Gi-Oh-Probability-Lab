@@ -1,5 +1,5 @@
 import type { TurnContext, TurnView } from '../types'
-import { buildActiveRules, type ComparisonRules, type HandCount } from './build-comparison'
+import { buildActiveRules, type ComparisonRules } from './build-comparison'
 import { deriveMainDeckCardsFromZone } from './calculator-state'
 import type { MainChange } from './change-pairs'
 import type { LabOdds, LabOddsInput } from './lab-odds'
@@ -160,13 +160,6 @@ export function changeEffectOf(base: MeasureSnapshot, after: MeasureSnapshot): C
   }
 
   return { delta, after }
-}
-
-/** Cuántas manos cumplen esa medida de cuántas, en un turno (`null` si no aplica o no hay dato). */
-export function handsOf(snapshot: MeasureSnapshot, measure: MeasureKey, turn: 'first' | 'second'): HandCount | null {
-  const value = snapshot.values[measure]?.[turn] ?? null
-
-  return value === null ? null : { hands: Math.round(value * snapshot.totals[turn]), total: snapshot.totals[turn] }
 }
 
 export interface Mover {

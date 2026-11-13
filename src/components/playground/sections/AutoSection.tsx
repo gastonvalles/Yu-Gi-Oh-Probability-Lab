@@ -20,7 +20,7 @@ import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { AskWhy } from '../../duel/AskWhy'
-import { LifeTile, type LaneNotice } from '../../duel/DuelBar'
+import type { LaneNotice } from '../../duel/DuelBar'
 import { TheirHand } from '../../duel/DuelTable'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { BotDeckEditor } from '../../duel/BotDeckEditor'
@@ -195,7 +195,6 @@ export function AutoSection() {
       <ChainProposalSamples />
       <BarActionsSample />
       <RulesPillSample />
-      <LifePlateSample />
       <LifeBadgeSample />
       <DockSample />
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La barra de la práctica (la flecha y los íconos de <Tag>MatBarActions</Tag>) con lo propio del automático: el engranaje (en la mesa de escritorio va en la botonera), el turno, una sola vez, y las vidas planas (hasta 1100 px, en el marcador; con laterales, en el izquierdo; en escritorio sin ellos, en las esquinas del campo). La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
@@ -768,15 +767,15 @@ function LongTextSample() {
     <Specimen
       title="Textos largos · es y en"
       layout="column"
-      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano («▯ 12») no se cortan. Elegido, violeta con texto blanco (<Tag>primary</Tag>, 7,6:1).</>}
+      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las chapas de vidas no se cortan. Elegido, violeta con texto blanco (<Tag>primary</Tag>, 7,6:1).</>}
     >
       <div className="relative grid w-[min(22rem,100%)] gap-3 max-[1101px]:min-h-80 max-[1101px]:content-start">
         <RespondBand title="Respond to the chain" link={2} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} />
         <Segmented label="Responses" value={mode} onChange={setMode} options={modes} fullWidth />
         <Segmented label={t('auto.respond.mode')} value={mode} onChange={setMode} options={chainModeOptions()} fullWidth />
         <div className="flex gap-2">
-          <LifeTile name="Opponent" life={7000} compact hand={5} />
-          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine compact hand={12} />
+          <LifeBadge name="Opponent" label={t('duel.bar.rivalTag')} life={7000} compact />
+          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine compact />
         </div>
       </div>
     </Specimen>
@@ -952,42 +951,6 @@ function BotLogSample() {
 }
 
 /**
- * Las vidas de la mesa (`LifeTile`), la placa con barra: los estados (8000, bajando —el −1000, el destello y la sacudida—, la mitad, un cuarto y 0), la del celular (`compact`) y, en un lateral, el rival arriba y
- * vos abajo. «Recibir 1000» las baja de verdad: la sacudida es la de la mesa.
- */
-function LifePlateSample() {
-  const [mine, setMine] = useState(8000)
-
-  return (
-    <Specimen title="LifeTile · la placa con barra" layout="column" className="col-span-full" note={<>Cada jugador de su lado: la chapa del dueño rellena con el texto blanco (violeta, <Tag>primary</Tag>), las cartas de la mano, el número blanco (33 px en escritorio, 24 en el celular) y la barra de 8000 en su color: la excepción escrita a «los porcentajes son anillos», sólo para las vidas (<Tag>role="meter"</Tag>). Con la mitad o menos el corazón pasa a ámbar; con un cuarto, corazón y barra en rojo; en 0, el número también. Relieve tonal (<Tag>life-plate</Tag>). Archivo: <Tag>duel/DuelBar.tsx</Tag></>}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" onClick={() => setMine((life) => Math.max(0, life - 1000))}>
-          Recibir 1000
-        </Button>
-        <Button variant="tertiary" size="sm" onClick={() => setMine(8000)}>
-          Volver a 8000
-        </Button>
-      </div>
-      <div className="relative isolate flex flex-wrap items-start gap-3 overflow-hidden rounded-card border border-border-subtle p-3">
-        <MatScene className="absolute inset-0 -z-10" />
-        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={mine} mine hand={5} />
-        <LifeTile name={t('duel.bar.rival')} life={8000} hand={5} />
-        <LifeTile name={t('duel.bar.rival')} life={3600} hand={3} />
-        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={1500} mine hand={2} />
-        <LifeTile name={t('duel.bar.rival')} life={0} hand={0} />
-        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={mine} mine compact hand={5} />
-        <LifeTile name={t('duel.bar.rival')} life={8000} compact hand={5} />
-      </div>
-      <div className="relative isolate grid h-56 w-56 content-between overflow-hidden rounded-card border border-border-subtle p-3">
-        <MatScene className="absolute inset-0 -z-10" />
-        <LifeTile name={t('duel.bar.rival')} life={8000} hand={5} />
-        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={mine} mine hand={5} />
-      </div>
-    </Specimen>
-  )
-}
-
-/**
  * Las chapas de «Jugar solo automático» (`LifeBadge`, las mismas del celular, la tableta y el escritorio): la del rival arriba a la derecha y la tuya abajo a la izquierda, con el borde grueso de quien tiene el turno.
  * «Recibir 1000» baja las del rival de verdad (el conteo y el golpe: la sacudida, el número que se infla, el fogonazo y el «−N» que sube); el otro botón cambia el turno.
  */
@@ -1105,15 +1068,15 @@ function DockSample() {
       title="AutoDock · la botonera y las esquinas (escritorio)"
       layout="column"
       className="col-span-full"
-      note={<>Desde 1101 px, en «Jugar solo automático»: las vidas del rival arriba a la derecha del campo y las tuyas abajo a la izquierda, cada una con las cartas de su mano (<Tag>LifeTile</Tag> <Tag>hand</Tag>); abajo a la derecha, dos cuadrados de 44 px: ≡ «Pasos» (oculta y muestra el panel; plegado lleva cuántos pasos hay, y de fábrica va plegado debajo de 1440 px) y ⚙ «Opciones». Opciones abre la hoja recta de siempre (en escritorio, su ventana, que se lleva de la barra): filas de 44 px con su interruptor o su segmentado a la derecha (Vista 3D, Menús flotantes, Respuestas, Casilla, el rival, reiniciar, replay, bot, modo manual) y «Rendirse ›» al final; no mueve el campo. Archivo: <Tag>auto/AutoBar.tsx</Tag></>}
+      note={<>Desde 1101 px, en «Jugar solo automático»: las chapas de vidas (<Tag>LifeBadge</Tag>): la del rival arriba a la derecha del campo y la tuya abajo a la izquierda; abajo a la derecha, dos cuadrados de 44 px: ≡ «Pasos» (oculta y muestra el panel; plegado lleva cuántos pasos hay, y de fábrica va plegado debajo de 1440 px) y ⚙ «Opciones». Opciones abre la hoja recta de siempre (en escritorio, su ventana, que se lleva de la barra): filas de 44 px con su interruptor o su segmentado a la derecha (Vista 3D, Menús flotantes, Respuestas, Casilla, el rival, reiniciar, replay, bot, modo manual) y «Rendirse ›» al final; no mueve el campo. Archivo: <Tag>auto/AutoBar.tsx</Tag></>}
     >
       <div className="relative isolate grid min-h-48 grid-cols-[minmax(0,1fr)_auto] content-between gap-3 overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
         <span className="col-start-2 flex">
-          <LifeTile name={t('duel.bar.rival')} life={7000} hand={3} />
+          <LifeBadge name={t('duel.bar.rival')} label={t('duel.bar.rivalTag')} life={7000} />
         </span>
         <span className="col-start-1 flex self-end">
-          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine hand={5} />
+          <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine />
         </span>
         <span className="col-start-2 flex self-end pt-3">
           <AutoDock

@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import { MAX_SPECTATORS, SPECTATOR_RESYNC, encodeRelayFrame, encodeSpectatorText, parseRelayFrame, parseSpectatorText } from '../app/duel-relay-rules'
-import { TURN_BANK_MS, TURN_BONUS_MS, turnTimeLeft } from '../app/duel-clock'
+import { TURN_BANK_MS, turnTimeLeft } from '../app/duel-clock'
+import { DEFAULT_TURN_BONUS_MIN } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import { createSpectator } from '../app/duel-spectator'
 import { createMatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
+
+const TURN_BONUS_MS = DEFAULT_TURN_BONUS_MIN * 60_000
 
 const hostTable = createMatState(Array.from({ length: 12 }, (_, index) => `card-${1000 + index}-1`), ['card-1900-1'], 5)
 const guestTable = createMatState(Array.from({ length: 12 }, (_, index) => `card-${5000 + index}-1`), ['card-5900-1'], 5)

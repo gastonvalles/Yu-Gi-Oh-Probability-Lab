@@ -3,7 +3,7 @@ import * as fc from 'fast-check'
 import { createPattern, createMatcherPattern } from '../app/pattern-factory'
 import { buildPatternPresets } from '../app/pattern-presets'
 import { buildPatternCompactSummary, joinWord } from '../components/probability/pattern-helpers'
-import { getConditionLabel, getKindLabel } from '../components/probability/rule-builder/condition-labels'
+import { getConditionLabel } from '../components/probability/rule-builder/condition-labels'
 import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../app/patterns'
 import type {
   CardEntry,
@@ -145,9 +145,6 @@ describe('Drawer integration: existing patterns render without data loss', () =>
 
         // Each condition renders
         for (const condition of pattern.conditions) {
-          const kindLabel = getKindLabel(condition.kind)
-          expect(['Al menos', 'Sin']).toContain(kindLabel)
-
           const condLabel = getConditionLabel(condition.matcher, deck)
           expect(typeof condLabel).toBe('string')
           expect(condLabel.length).toBeGreaterThan(0)
@@ -227,7 +224,6 @@ describe('Drawer integration: legacy pattern compatibility', () => {
       new Map<string, CardEntry>(),
     )
     expect(summary.length).toBeGreaterThan(0)
-    expect(getKindLabel(legacyPattern.conditions[0].kind)).toBe('Al menos')
     expect(getConditionLabel(legacyPattern.conditions[0].matcher, [])).toBe('Starter')
   })
 

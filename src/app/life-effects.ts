@@ -72,7 +72,7 @@ export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = 
 }
 
 /**
- * Mientras vale true, las vidas que se ven (`LifeTile`: el número, el destello, el «−1000» y la sacudida) se quedan como estaban: en el duelo automático esperan al golpe de tu
+ * Mientras vale true, las vidas que se ven (`LifeScore` y `LifeBadge`: el número, el destello, el «−1000» y la sacudida) se quedan como estaban: en el duelo automático esperan al golpe de tu
  * ataque (`use-auto-asks`), que la mesa muestra a su ritmo después de que el núcleo ya bajó las vidas. Sin quien lo diga, false: cambian ya. El resultado usa siempre las de verdad.
  */
 export const LifeHold = createContext(false)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildDuelLink, extractRoomCode, parseDuelHash, parseDuelView } from '../app/duel-link'
+import { buildDuelLink, extractRoomCode, parseDuelTarget, parseDuelView } from '../app/duel-link'
 import { createRoomCode } from '../app/duel-relay-rules'
 import { createMatState } from '../app/practice-mat'
 import { whoseTurn } from '../app/duel-turn'
@@ -11,7 +11,7 @@ describe('el enlace del duelo', () => {
     const link = buildDuelLink('https://ygo.example', '/lab/', room)
 
     expect(link).toBe(`https://ygo.example/lab/#duel?room=${room}`)
-    expect(parseDuelHash(new URL(link).hash)).toBe(room)
+    expect(parseDuelTarget(new URL(link).hash)?.room).toBe(room)
     expect(extractRoomCode(link)).toBe(room)
   })
 
@@ -28,11 +28,11 @@ describe('el enlace del duelo', () => {
   })
 
   it('el hash sólo cuenta si es el del duelo y trae un código válido', () => {
-    expect(parseDuelHash('#duel?room=K7QF2M9X')).toBe('K7QF2M9X')
-    expect(parseDuelHash('#duel')).toBeNull()
-    expect(parseDuelHash('#duel?room=basura')).toBeNull()
-    expect(parseDuelHash('#practice?room=K7QF2M9X')).toBeNull()
-    expect(parseDuelHash('')).toBeNull()
+    expect(parseDuelTarget('#duel?room=K7QF2M9X')?.room).toBe('K7QF2M9X')
+    expect(parseDuelTarget('#duel')).toBeNull()
+    expect(parseDuelTarget('#duel?room=basura')).toBeNull()
+    expect(parseDuelTarget('#practice?room=K7QF2M9X')).toBeNull()
+    expect(parseDuelTarget('')).toBeNull()
   })
 })
 

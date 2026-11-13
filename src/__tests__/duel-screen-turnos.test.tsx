@@ -7,9 +7,7 @@ import { EFFECT_FACT } from '../app/card-effect-facts'
 import { EFFECT_PLACE } from '../app/card-effect-map'
 import { effectSentences } from '../app/card-text'
 import type { DuelConnect } from '../app/use-duel'
-import { LifeTile } from '../components/duel/DuelBar'
 import { DuelScreen } from '../components/duel/DuelScreen'
-import { applyLocale } from '../i18n'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 import { createDuelHarness, asDesktop, asSocket, calculator, closeCalculator, effectMonster, handOf, mainIds, monsters, moreButton, myLife, openCalculator, openGames, phaseChip, render, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
@@ -151,19 +149,6 @@ describe('la pantalla del duelo', () => {
     openTable(host, guest)
     expect(myLife(host)).toHaveAccessibleName(/8000/)
     expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Ana: 8000/ })).toBeInTheDocument()
-  })
-
-  it('puntos de vida: se escriben sin separador de miles en inglés también (12000, no 12,000)', () => {
-    applyLocale('en')
-
-    try {
-      const view = render(<LifeTile name="Yeou" life={12000} mine onClick={() => {}} />)
-
-      expect(within(view.container).getByRole('button')).toHaveTextContent('12000')
-      expect(view.container).not.toHaveTextContent('12,000')
-    } finally {
-      applyLocale('es')
-    }
   })
 
   it('rendirse: pide confirmación, termina el duelo para los dos y la revancha de los dos vuelve a la sala con todo de cero', () => {

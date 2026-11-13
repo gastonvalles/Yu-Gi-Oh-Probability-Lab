@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { PHASES } from '../../../app/practice-mat'
 import { DuelTable } from '../../duel/DuelTable'
-import { PHASE_BAND_MS, PhaseBand, PhaseStrip, TURN_BAND_MS, TurnStrip, type PhaseCue } from '../../duel/PhaseBand'
+import { PHASE_BAND_MS, PhaseBand, TURN_BAND_MS, type PhaseCue } from '../../duel/PhaseBand'
 import type { PlayerSide } from '../../duel/player-color'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
 import { Specimen, Tag } from '../Specimen'
 import { sampleDuel } from './duel-sample'
 
-/** La banda de la fase sobre la mesa del duelo, a 390 px: tocá una fase para verla entrar, la ráfaga (tres fases en medio segundo, como las que pasan solas) o el cambio de turno. Abajo, las quietas. */
+/** La banda de la fase sobre la mesa del duelo, a 390 px: tocá una fase para verla entrar, la ráfaga (tres fases en medio segundo, como las que pasan solas) o el cambio de turno. */
 export function PhaseBandSample() {
   const duel = useMemo(sampleDuel, [])
   const [side, setSide] = useState<PlayerSide>('mine')
@@ -69,16 +69,6 @@ export function PhaseBandSample() {
         <DuelTable mine={duel.mine} theirs={duel.theirs} turn={side}>
           <PhaseBand cue={cue} hold={hold} />
         </DuelTable>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {(['mine', 'theirs'] as const).map((owner) => (
-          <div key={owner} className="grid gap-2">
-            <TurnStrip side={owner} />
-            {PHASES.map((entry) => (
-              <PhaseStrip key={entry.id} phase={entry.id} side={owner} />
-            ))}
-          </div>
-        ))}
       </div>
     </Specimen>
   )
