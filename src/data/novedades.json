@@ -1,6 +1,45 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-4-replay-y-video-campo-del-duelo",
+      "date": "2026-11-13",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Los replays y el video, con el mismo campo que el duelo",
+        "novedades": [
+          "El replay de un duelo y el video que descargás usan el mismo campo que la mesa del duelo: mismas casillas, mismas pilas y las manos del mismo tamaño, en el celular, la tableta y la computadora.",
+          "En el replay, los controles ya no le sacan lugar al campo: van arriba y abajo, donde el duelo tiene sus barras."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "En el celular, «Volver al principio» del replay pasó al menú.",
+          "En la computadora, el campo del replay creció hasta el tamaño del duelo."
+        ],
+        "ojo": [
+          "La app dejó de convertir lo guardado con formatos anteriores: si no la abrías hace tiempo, podés perder reglas propias de antes de abril, roles viejos de las cartas, tu mascota elegida y combos guardados antes de mediados de octubre. Lo que guardaste con la app de hoy no cambia, y los enlaces compartidos siguen abriendo.",
+          "En el video, las manos quedan recortadas arriba y abajo y el texto de la jugada va sobre el pie de tus cartas."
+        ]
+      },
+      "en": {
+        "title": "Replays and the video, with the same field as the duel",
+        "novedades": [
+          "A duel replay and the video you download use the same field as the duel table: same zones, same piles and hands of the same size, on the phone, the tablet and the computer.",
+          "In the replay, the controls no longer take room from the field: they sit at the top and bottom, where the duel has its bars."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "On the phone, the replay's «Back to the start» moved to the menu.",
+          "On the computer, the replay field grew to the size of the duel."
+        ],
+        "ojo": [
+          "The app stopped converting data saved in earlier formats: if you hadn't opened it in a long time, you may lose your own rules from before April, old card roles, your chosen mascot and combos saved before mid-October. What you saved with today's app doesn't change, and shared links still open.",
+          "In the video, the hands are cropped at the top and bottom and the play text sits over the foot of your cards."
+        ]
+      }
+    },
+    {
       "id": "2026-11-13-3-contadores-de-carta",
       "date": "2026-11-13",
       "tags": [
