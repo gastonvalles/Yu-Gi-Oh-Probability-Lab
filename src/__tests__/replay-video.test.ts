@@ -7,7 +7,8 @@ import { createMatState, type MatAction } from '../app/practice-mat'
 import { muxMp4 } from '../components/replays/video/mp4-mux'
 import { lifeMs, lifeOf, overlaysOf } from '../components/replays/video/video-fx'
 import { placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
-import { artUrls, handRects, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
+import { phoneDuelLayout } from '../components/probability/compact-field'
+import { artUrls, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
 import { FPS, frameDurations, frameOf, INTRO_MS, OUTRO_MS, STEP_MS, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
 import { fakeAssets } from './support/video-fakes'
@@ -54,13 +55,40 @@ describe('el diseño del cuadro', () => {
     expect(VIDEO_HEIGHT_OF(720)).toBe(1280)
     expect(VIDEO_HEIGHT_OF(1080)).toBe(1920)
     const first = layout.cellAt(0, 0)
-    const end = layout.cellAt(6, 4)
+    const end = layout.cellAt(4, 6)
     expect(first.x).toBeCloseTo(720 - (end.x + end.w))
     expect(first.y).toBeGreaterThan(layout.theirHand.y + layout.theirHand.h)
     expect(end.y + end.h).toBeLessThan(layout.myHand.y)
     expect(layout.myHand.y + layout.myHand.h).toBeLessThan(layout.text.y)
     expect(layout.footer.y + layout.footer.h).toBeLessThanOrEqual(1280)
-    expect(videoLayout(1080).cellAt(6, 4)).toEqual({ x: end.x * 1.5, y: end.y * 1.5, w: end.w * 1.5, h: end.h * 1.5 })
+    expect(videoLayout(1080).cellAt(4, 6)).toEqual({ x: expect.closeTo(end.x * 1.5, 6), y: expect.closeTo(end.y * 1.5, 6), w: expect.closeTo(end.w * 1.5, 6), h: expect.closeTo(end.h * 1.5, 6) })
+  })
+
+  it('el campo es la mesa del celular (`phoneDuelLayout` a 390 px) escalada: siete columnas, casillas con forma de carta, las pilas a los costados del ancho de su columna', () => {
+    const layout = videoLayout(720)
+    const phone = phoneDuelLayout(PHONE_WIDTH, 844, { tilted: false, bar: 0, bottom: 0 })
+    const k = 720 / PHONE_WIDTH
+    expect(layout.unit).toBeCloseTo(k)
+    // Las del centro: el ancho de la casilla y el alto de la fila (una carta), a 3 px; el campo, del ancho del de la mesa y centrado.
+    const center = [1, 2, 3, 4, 5].map((col) => layout.cellAt(0, col))
+    for (const rect of center) expect([rect.w / k, rect.h / k]).toEqual([expect.closeTo(phone.cell, 6), expect.closeTo(phone.row, 6)])
+    expect((center[1]!.x - center[0]!.x - center[0]!.w) / k).toBeCloseTo(3)
+    expect(phone.row / phone.cell).toBeCloseTo(1.4612)
+    const left = layout.cellAt(0, 0)
+    const right = layout.cellAt(4, 6)
+    expect((right.x + right.w - left.x) / k).toBeCloseTo(phone.fieldWidth)
+    expect(left.x).toBeCloseTo(720 - (right.x + right.w))
+    expect((layout.cellAt(4, 1).y + layout.cellAt(4, 1).h - layout.cellAt(0, 1).y) / k).toBeCloseTo(phone.fieldHeight)
+    // Las de los costados: 0,6857 de una del centro, con forma de carta y centradas en su fila.
+    expect(left.w / center[0]!.w).toBeCloseTo(0.6857)
+    expect(left.h / left.w).toBeCloseTo(614 / 421)
+    expect(left.y + left.h / 2).toBeCloseTo(center[0]!.y + center[0]!.h / 2)
+    // Como `DuelTable`: arriba Deck · Mágicas y Trampas · Extra y GY · monstruos · Campo del rival; en el medio su Banish, las Zonas Extra y el tuyo; abajo Campo · monstruos · GY y Extra · Mágicas y Trampas · Deck.
+    const pileAt = (side: 0 | 1, pile: string) => last.sides[side].slots.find((slot) => slot.pile === pile)!.rect
+    expect([pileAt(1, 'deck'), pileAt(1, 'extra'), pileAt(1, 'gy'), pileAt(1, 'banished')]).toEqual([layout.cellAt(0, 0), layout.cellAt(0, 6), layout.cellAt(1, 0), layout.cellAt(2, 0)])
+    expect([pileAt(0, 'gy'), pileAt(0, 'extra'), pileAt(0, 'deck'), pileAt(0, 'banished')]).toEqual([layout.cellAt(3, 6), layout.cellAt(4, 0), layout.cellAt(4, 6), layout.cellAt(2, 6)])
+    // Siete columnas por cinco filas, menos las tres de las fases del medio.
+    expect(last.cells).toHaveLength(32)
   })
 
   it('las cartas de la mano entran en su franja: separadas si son pocas, encimadas si son muchas', () => {
@@ -83,17 +111,17 @@ describe('la escena de cada jugada', () => {
 
   it('pone cada carta en su casilla: lo mío abajo y derecho, lo del rival arriba, espejado y de cabeza; lo colocado, de dorso', () => {
     const layout = last.layout
-    const summoned = cardIn(last, 0, layout.cellAt(4, 0))
+    const summoned = cardIn(last, 0, layout.cellAt(3, 1))
     expect(summoned).toMatchObject({ id: replay.steps[1]![1].type === 'place' ? replay.steps[1]![1].id : '', faceDown: false, sideways: false, upsideDown: false, name: 'Carta 14558127' })
     // El arte va por el proxy (del mismo origen: el lienzo se puede leer).
     expect(summoned?.art).toMatch(/^\/api\/card-image\/cards_small\/14558127\.jpg\?w=128$/)
-    expect(cardIn(last, 0, layout.cellAt(5, 0))).toMatchObject({ faceDown: true, sideways: false, art: null, name: '' })
-    // La zona 3 del rival (índice 2) queda en la columna del medio; en defensa, acostada.
-    expect(cardIn(last, 1, layout.cellAt(2, 2))).toMatchObject({ id: 'c6', faceDown: false, sideways: true, upsideDown: true, name: 'Carta 55144522' })
+    expect(cardIn(last, 0, layout.cellAt(4, 1))).toMatchObject({ faceDown: true, sideways: false, art: null, name: '' })
+    // La zona 3 del rival (índice 2) queda en la columna del medio (la 3 de 7); en defensa, acostada.
+    expect(cardIn(last, 1, layout.cellAt(1, 3))).toMatchObject({ id: 'c6', faceDown: false, sideways: true, upsideDown: true, name: 'Carta 55144522' })
   })
 
   it('las pilas llevan cuántas cartas tienen y el deck va de dorso', () => {
-    const deckSlot = last.sides[0].slots.find((slot) => slot.rect.x === last.layout.cellAt(6, 4).x && slot.rect.y === last.layout.cellAt(6, 4).y)!
+    const deckSlot = last.sides[0].slots.find((slot) => slot.rect.x === last.layout.cellAt(4, 6).x && slot.rect.y === last.layout.cellAt(4, 6).y)!
     expect(deckSlot.count).toBe(duelReplayAt(replay, replay.steps.length).states[0].deck.length)
     expect(deckSlot.card?.faceDown).toBe(true)
   })
@@ -110,7 +138,7 @@ describe('la escena de cada jugada', () => {
   it('resalta lo que tocó la jugada y la cuenta con el texto del reproductor; a quién ataca, con su nombre', () => {
     const attack = last
     expect(attack.stepText).toBe('Beto: Atacás a Carta 14558127 con Carta 55144522')
-    expect(attack.focus).toEqual([last.layout.cellAt(2, 2), last.layout.cellAt(4, 0)])
+    expect(attack.focus).toEqual([last.layout.cellAt(1, 3), last.layout.cellAt(3, 1)])
     // Un cambio de fase no resalta ninguna casilla (no hay fila de fases): lo dice su cartel, que sale de `matEffects`.
     expect(scenes[1]!.focus).toEqual([])
     expect(scenes[1]!.phase).toBe('main1')
@@ -146,7 +174,7 @@ describe('las transiciones', () => {
   it('la carta que se mueve va de su lugar de antes al de después, con la curva de los vuelos de la mesa; lo que no cambia no se mueve', () => {
     // Jugada 2: invoco h0 de la mano a mi zona 1; las otras cartas de la mano se reacomodan.
     const summon = motions[1]!
-    const placed = cardIn(scenes[2]!, 0, scenes[2]!.layout.cellAt(4, 0))!
+    const placed = cardIn(scenes[2]!, 0, scenes[2]!.layout.cellAt(3, 1))!
     const move = summon.find((motion) => motion.key === `0:${placed.id}`)!
     expect(move.from).toEqual(placesOf(scenes[1]!).get(`0:${placed.id}`)!.pose)
     expect(move.to).toEqual(placesOf(scenes[2]!).get(`0:${placed.id}`)!.pose)

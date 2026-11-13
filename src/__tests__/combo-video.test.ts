@@ -35,27 +35,27 @@ const at = (scene: Scene, row: number, col: number) => {
 const faceUp = (scene: Scene) => scene.sides.flatMap((side) => [...side.slots, ...side.hand]).flatMap((slot) => (slot.card && !slot.card.faceDown ? [slot.card] : []))
 
 describe('la escena de un combo', () => {
-  it('una por jugada y la mesa inicial; arriba el nombre del combo y el deck, sin vidas ni turno; sólo tu campo (4 filas)', () => {
+  it('una por jugada y la mesa inicial; arriba el nombre del combo y el deck, sin vidas ni turno; sólo tu campo (3 filas)', () => {
     expect(scenes).toHaveLength(actions.length + 1)
     expect(last.heading).toEqual({ title: 'Línea básica', subtitle: 'Snake-Eye' })
     expect(last.turnText).toBe('')
-    // 4 filas de 5, menos las tres del medio que no son Zonas Extra.
+    // 3 filas de 7: la del medio (las dos Zonas Extra y tu Banish), tus monstruos y tus Mágicas y Trampas, con las pilas a los costados.
     expect(last.cells).toHaveLength(17)
     expect(last.stepLabel).toBe('Jugada 6 de 6')
     expect(scenes[2]!.stepText).toBe('Invocación Normal de Carta 10000000')
   })
 
   it('cada carta en su casilla: la invocada boca arriba con su nombre y su arte, la colocada de dorso, el deck de dorso con su cuenta, la mano boca arriba', () => {
-    const summoned = at(scenes[2]!, 1, 0)?.card
+    const summoned = at(scenes[2]!, 1, 1)?.card
     expect(summoned).toMatchObject({ id: h0, faceDown: false, name: 'Carta 10000000', upsideDown: false })
     expect(summoned?.art).toBe('/api/card-image/cards_small/10000000.jpg?w=128')
-    expect(at(scenes[3]!, 2, 1)?.card).toMatchObject({ id: h1, faceDown: true, name: '', art: null })
-    const deckSlot = at(last, 3, 4)!
+    expect(at(scenes[3]!, 2, 2)?.card).toMatchObject({ id: h1, faceDown: true, name: '', art: null })
+    const deckSlot = at(last, 2, 6)!
     expect(deckSlot.count).toBe(states.at(-1)!.deck.length)
     expect(deckSlot.card?.faceDown).toBe(true)
     expect(last.sides[0].hand.every((slot) => !slot.card?.faceDown)).toBe(true)
     // La ficha, en defensa (acostada).
-    expect(at(last, 1, 2)?.card).toMatchObject({ sideways: true, faceDown: false })
+    expect(at(last, 1, 3)?.card).toMatchObject({ sideways: true, faceDown: false })
   })
 
   it('la mano del rival del simulador va arriba, boca arriba; la que usó queda atenuada y se resalta', () => {
@@ -72,7 +72,7 @@ describe('la escena de un combo', () => {
     const plain = createSavedCombo({ name: 'Sin rival', deckName: '', initial: table, actions: actions.slice(0, 2), nameOf }, [])
     const [first] = comboScenes(plain, plain.names, 720)
     expect(first!.caption).toBeUndefined()
-    expect(first!.layout.cellAt(0, 0).y).toBeLessThan(scenes[0]!.layout.cellAt(0, 0).y)
+    expect(first!.layout.cellAt(0, 1).y).toBeLessThan(scenes[0]!.layout.cellAt(0, 1).y)
   })
 
   it('no muestra nada que la mesa tape: lo del deck y lo colocado, de dorso en todos los cuadros y en las transiciones', () => {

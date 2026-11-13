@@ -390,7 +390,7 @@ function drawScore(ctx: Ctx, rect: Rect, name: string, lp: number, mine: boolean
  * La caja de la fase al medio del campo, como la de la mesa (`IconButton` `tile` en `p2`): cuadrada, del lado menor de su casilla, con la sigla grande; lima (borde y sigla) en el turno de abajo, la sigla en lila en el del otro.
  */
 function drawPhase(ctx: Ctx, scene: Scene, theme: VideoTheme, s: number) {
-  const cell = scene.layout.cellAt(scene.layout.middle, 2)
+  const cell = scene.layout.cellAt(scene.layout.middle, 3)
   const side = Math.min(cell.w, cell.h)
   const box = { x: cell.x + (cell.w - side) / 2, y: cell.y + (cell.h - side) / 2, w: side, h: side }
   const active = scene.turn === 0
@@ -630,7 +630,7 @@ export function drawFlight(ctx: Ctx, flight: Flight, ms: number, assets: VideoAs
 export function drawBanner(ctx: Ctx, scene: Scene, banner: { title: string; subtitle: string }, assets: VideoAssets, alpha = 1) {
   const { theme } = assets
   const s = scene.layout.scale
-  const middle = scene.layout.cellAt(scene.layout.middle, 0)
+  const middle = scene.layout.cellAt(scene.layout.middle, 1)
   const r = { x: 40 * s, y: middle.y - 40 * s, w: scene.width - 80 * s, h: middle.h + 80 * s }
   ctx.globalAlpha = 0.94 * alpha
   ctx.fillStyle = theme.card
