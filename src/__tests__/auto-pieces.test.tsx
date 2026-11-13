@@ -1053,6 +1053,21 @@ describe('la carta del menú se toca (sin «Ver carta» visible)', () => {
   })
 })
 
+describe('verla en grande sin elegirla (TI-254)', () => {
+  it('toque largo, clic derecho o la tecla de menú (`contextmenu`) sobre una carta de «¿Respondés?» la abre en grande y no la elige; un toque normal sigue eligiendo', () => {
+    const onToggle = vi.fn()
+    const onInspect = vi.fn()
+    render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={onToggle} onInspect={onInspect} onChain={() => {}} onPass={() => {}} />)
+    const option = screen.getAllByRole('option')[0]!
+
+    fireEvent.contextMenu(option)
+    expect(onInspect).toHaveBeenCalledWith(CARDS[0]!.key)
+    expect(onToggle).not.toHaveBeenCalled()
+    fireEvent.click(option)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('la carta de la que se habla, siempre al medio (TI-248)', () => {
   it('un sí o no a secas («Do it / Don\'t do it») muestra la carta del efecto (`why`) al medio, sin «Ver carta» propio', () => {
     render(<AskPrompt text="¿Invocás 1 monstruo de Sincronía?" why={{ text: 'Efecto de Angelechy Seneschal', name: 'Angelechy Seneschal', art: null }} yes={{ label: 'Hacerlo', onSelect: () => {} }} no={{ label: 'No hacerlo', onSelect: () => {} }} />)

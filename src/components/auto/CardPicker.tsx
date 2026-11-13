@@ -123,6 +123,8 @@ interface PickGridProps {
   tabs?: boolean
   /** Cuántas se pueden elegir: con el tope, tocar un grupo de copias suelta la última en vez de sumar otra. */
   max?: number
+  /** Verla en grande sin elegirla: toque largo, clic derecho o la tecla de menú (Mayús+F10) sobre la carta (`contextmenu`). Un toque normal sigue eligiendo. */
+  onInspect?: (key: string) => void
 }
 
 /**
@@ -131,7 +133,7 @@ interface PickGridProps {
  * Las que dicen de dónde son (`from`) van por lugar, la mano propia primero, cada una con su chip: dos copias iguales de la mano y del Deck nunca se ven iguales. Las copias de la misma carta en el
  * mismo lugar van en una sola, con «×3» (`copyGroups`): tocarla suma la próxima copia (`copyToToggle`) y lleva los números de orden de las elegidas.
  */
-export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, max }: PickGridProps) {
+export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, max, onInspect }: PickGridProps) {
   const [active, setActive] = useState(0)
   // Las artes, en el render siguiente al de la entrada (de menor prioridad, de a pedazos): la hoja sale enseguida con los esqueletos, como si el arte no hubiera llegado.
   const arts = useDeferredValue(true, false)
@@ -189,6 +191,14 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
 
           if (key !== null) onToggle(key, event.shiftKey)
         }}
+        onContextMenu={
+          onInspect
+            ? (event) => {
+                event.preventDefault()
+                onInspect(card.key)
+              }
+            : undefined
+        }
       >
         {card.from ? <PlaceChip from={card.from} theirs={card.theirs ?? false} /> : null}
         {tabs && card.place && !card.from ? (
@@ -307,6 +317,8 @@ interface PickBandProps {
   why?: AskWhyView | null
   /** Sólo el catálogo lo fuerza (la ventana de escritorio en su marco); en la mesa, según el ancho. */
   variant?: 'floating'
+  /** Verla en grande sin elegirla (`PickGrid`). */
+  onInspect?: (key: string) => void
 }
 
 /**
@@ -314,7 +326,7 @@ interface PickBandProps {
  * caja y la principal a la derecha. Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la primera carta.
  * Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa. Sin «Cancelar», Escape lo minimiza.
  */
-export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note, why, variant }: PickBandProps) {
+export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note, why, variant, onInspect }: PickBandProps) {
   const titleId = useId()
   const whyId = useId()
   const primary = multi || done
@@ -357,7 +369,7 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
       }
     >
       <div className="grid gap-1">
-        <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} className={TRAY} />
+        <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} className={TRAY} {...(onInspect ? { onInspect } : {})} />
         {note ? <p className="m-0 text-micro text-muted">{note}</p> : null}
       </div>
     </AutoPanel>
@@ -389,6 +401,8 @@ interface CardPickerProps {
   onToggle?: (key: string) => void
   eligible?: ReadonlySet<string>
   done?: boolean
+  /** Verla en grande sin elegirla (`PickGrid`). */
+  onInspect?: (key: string) => void
 }
 
 /**
@@ -397,7 +411,7 @@ interface CardPickerProps {
  * elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, una sola principal («Elegir 3 cartas», o «Listo») que se
  * enciende con `min` (o con `done`) y el contador («2 de 3») a la derecha del título. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done }: CardPickerProps) {
+export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done, onInspect }: CardPickerProps) {
   const leaving = useLeaving()
   const whyId = useId()
   // El tramo de Mayús, en el orden que se ve (por lugar).
@@ -444,7 +458,7 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
       <div className="grid gap-2">
         {searchable ? <SearchField label={t('auto.picker.search')} placeholder={t('auto.picker.search')} value={query} onChange={setQuery} /> : null}
         {shown.length > 0 ? (
-          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} max={max} className={TRAY} />
+          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} max={max} className={TRAY} {...(onInspect ? { onInspect } : {})} />
         ) : (
           <p className="m-0 text-body text-muted">{t('auto.picker.noMatches', { query: query.trim() })}</p>
         )}

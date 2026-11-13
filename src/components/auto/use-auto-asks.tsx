@@ -1239,11 +1239,26 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const from = band && list && lead?.ref && sourceOf(lead) && list.cards.every((card) => card.ref?.side === lead.ref!.side && sourceOf(card) === sourceOf(lead)) ? sourceOf(lead)! : null
   const bandPlace = from ? pickPlace(from, lead!.ref!.side === 'theirs').place : null
   const bandCards = bandPlace ? listCards.map(({ place: _place, from: _from, theirs: _theirs, ...card }) => card) : listCards
+  // Toque largo o clic derecho sobre una carta para elegir o para responder: la abre en grande (el visor de la carta), sin elegirla.
+  const zoom = (code: number) => {
+    if (code) setRivalCard({ drawId: drawIdOf(code), rect: new DOMRect(window.innerWidth / 2, window.innerHeight / 2, 0, 0) })
+  }
+  const inspectListed = (key: string) => {
+    const card = list?.cards[listKeys.indexOf(key)]
+
+    if (card) zoom(card.ref ? codeOf(card.ref) || card.code : card.code)
+  }
+  const inspectOffered = (key: string) => {
+    const candidate = offer?.candidates.find((item) => item.key === key)
+
+    if (candidate) zoom(codeOf(candidate.ref))
+  }
   const listProps = list
     ? {
         chosen: list.chosen.map((i) => listKeys[i]!),
         eligible: new Set(list.eligible.map((i) => listKeys[i]!)),
         done: list.done,
+        onInspect: inspectListed,
         onToggle: (key: string) => gesture({ kind: 'pick', index: listKeys.indexOf(key) }),
         ...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {}),
       }
@@ -1311,6 +1326,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         cards={respondCards}
         chosen={offered?.key ?? null}
         onToggle={pickOffer}
+        onInspect={inspectOffered}
         onChain={() => {
           if (offered?.answer) gesture({ kind: 'item', answer: offered.answer })
         }}
