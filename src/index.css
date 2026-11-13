@@ -1145,21 +1145,9 @@
 }
 
 /*
- * Parallax: el fondo se mueve más lento que lo que está adelante. `parallax-slow` baja de a poco mientras el contenido sube (el adorno de una portada); `parallax-media` mueve la imagen
- * dentro de su marco mientras la tarjeta cruza la pantalla (una miniatura). Va con la línea de tiempo del scroll (corre en el compositor, sin JavaScript); donde el navegador no la tiene,
+ * Parallax: `parallax-media` mueve la imagen dentro de su marco mientras la tarjeta cruza la pantalla (una miniatura). Va con la línea de tiempo del scroll (corre en el compositor, sin JavaScript); donde el navegador no la tiene,
  * o con el movimiento reducido, todo queda quieto.
  */
-@utility parallax-slow {
-  @supports (animation-timeline: scroll()) {
-    animation: parallax-slow linear both;
-    animation-timeline: scroll(nearest block);
-    animation-range: 0 24rem;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
 @utility parallax-media {
   @supports (animation-timeline: view()) {
     animation: parallax-media linear both;
@@ -1168,12 +1156,6 @@
   }
   @media (prefers-reduced-motion: reduce) {
     animation: none;
-  }
-}
-
-@keyframes parallax-slow {
-  to {
-    transform: translateY(2.5rem);
   }
 }
 
