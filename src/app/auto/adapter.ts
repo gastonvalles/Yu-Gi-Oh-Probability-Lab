@@ -784,6 +784,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       case 'confirm_decktop':
       case 'confirm_extratop': {
         const shown: [Seat, string][] = []
+        const seen: WireAct['seen'] & {} = { ids: [], codes: [], by: overlay.chain.findLast((link) => link.state === 'solving')?.code ?? overlay.chain.at(-1)?.code ?? 0 }
 
         for (const item of event.cards) {
           const card = cardAt(item, item.code)
@@ -792,15 +793,25 @@ export function createAdapter(options: AdapterOptions): Adapter {
             note(`${event.type}: nothing there`)
             continue
           }
+          const id = matId(card, item.controller)
+          const placed = placedIn(stateOf(item.controller), id)
+
+          // Una carta del rival que este asiento no veía (su mano, su deck, lo colocado): la pantalla la muestra (`WireAct.seen`). Sólo lo que mira este asiento (`confirm_cards`
+          // de otro asiento ya llega sin códigos de lo oculto) y con el código de ahora: barajar su mano no lo borra de lo que se vio.
+          if (event.type === 'confirm_cards' && item.controller === rival && card.owner === rival && item.code !== 0 && (placed ? placed.pos === 'set' : (item.location & (L.HAND | L.DECK | L.EXTRA)) !== 0)) {
+            seen.ids.push(id)
+            seen.codes.push(item.code)
+          }
           learn(card, item.code)
           // Lo del deck y del Extra se muestra a la vista de los dos, pero en la mesa es «Mostrás»: va en la de su dueño.
-          shown.push([item.controller, matId(card, item.controller)])
+          shown.push([item.controller, id])
         }
         for (const player of [seat, rival]) {
           const ids = shown.filter(([owner]) => owner === player).map(([, id]) => id)
 
           if (ids.length > 0) emit(player, ids.length === 1 ? { type: 'reveal', id: ids[0]! } : { type: 'batch', actions: ids.map((id) => ({ type: 'reveal' as const, id })) })
         }
+        if (seen.ids.length > 0) out.theirs[out.theirs.length - 1] = { ...out.theirs.at(-1)!, seen }
         return
       }
 
@@ -1028,6 +1039,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
     for (const stat of cards) {
       const card = cardAt(stat, stat.code)
 
+      // Una carta de la mano del rival que un efecto hace pública (`EFFECT_PUBLIC`, `statsFor`): queda sabida en su lugar (`publicInHand`) hasta que se baraje su mano.
+      if (card && stat.location === L.HAND && card.owner === rival) learn(card, stat.code)
       if (card) next[stat.controller === seat ? 'mine' : 'theirs'][matId(card, stat.controller)] = { attack: stat.attack, defense: stat.defense, level: stat.level }
     }
     // Un equipo dura mientras las dos cartas sigan en el campo.

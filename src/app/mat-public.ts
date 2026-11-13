@@ -18,6 +18,11 @@ export interface WireAct {
   action: MatAction
   /** id opaco → id real de las cartas que el rival ve por primera vez con esta jugada. */
   reveal: Record<string, string>
+  /**
+   * Sólo el duelo automático (`adapter.ts`): las cartas ocultas que un efecto le mostró a quien mira (su mano, lo colocado), con el código que tenían en ese momento y la carta del
+   * efecto (`by`, 0 si no se sabe). No se atan en `known`: barajar las vuelve a esconder; la pantalla las abre en un visor.
+   */
+  seen?: { ids: string[]; codes: number[]; by: number }
 }
 
 type IdMap = (id: string) => string

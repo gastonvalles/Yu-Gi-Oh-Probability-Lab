@@ -102,5 +102,9 @@ describe('el árbitro (información oculta por asiento)', () => {
     const stat = (controller: 0 | 1, position: number) => ({ code: ACE, controller, location: 4, sequence: 0, position, attack: 2500, defense: 2100, level: 7 })
 
     expect(statsFor(1, [stat(0, 1), stat(0, 8), stat(1, 8)])).toEqual([stat(0, 1), stat(1, 8)])
+    // La mano sólo se consulta si es pública por un efecto (`EFFECT_PUBLIC`, en `core-host.ts`): llega a los dos.
+    const hand = { ...stat(0, 5), location: 2 }
+
+    expect(statsFor(1, [hand])).toEqual([hand])
   })
 })

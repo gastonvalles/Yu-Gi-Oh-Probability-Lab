@@ -90,6 +90,7 @@ const ASKS = new Set(Object.keys(ASK_SHAPES))
 const EVENTS = new Set(Object.keys(EVENT_SHAPES))
 const IGNORED = new Set<string>(IGNORED_MESSAGES)
 const STAT_FLAGS = (OcgQueryFlags.CODE | OcgQueryFlags.POSITION | OcgQueryFlags.ATTACK | OcgQueryFlags.DEFENSE | OcgQueryFlags.LEVEL) as QueryFlags
+const HAND_FLAGS = (STAT_FLAGS | OcgQueryFlags.IS_PUBLIC) as QueryFlags
 
 const TYPE_MONSTER = 0x1
 /** El script de una carta sin reglas automáticas (`vanillaScript`). */
@@ -338,6 +339,9 @@ export function createAutoHost(options: HostOptions): AutoHost {
           if (card?.code) cards.push({ code: card.code, controller, location, sequence, position: card.position ?? 0, attack: card.attack ?? 0, defense: card.defense ?? 0, level: card.level ?? 0 })
         })
       }
+      // La mano, sólo lo que es público por un efecto (`EFFECT_PUBLIC`: Ceremonial Bell, Respect Play): el núcleo no manda ningún mensaje, se consulta (`statsFor` la deja pasar).
+      lib.duelQueryLocation(handle, { flags: HAND_FLAGS, controller, location: OcgLocation.HAND }).forEach((card, sequence) => {        if (card?.code && card.isPublic) cards.push({ code: card.code, controller, location: OcgLocation.HAND, sequence, position: card.position ?? 0, attack: card.attack ?? 0, defense: card.defense ?? 0, level: card.level ?? 0 })
+      })
     }
     for (const seat of [0, 1] as const) emit({ t: 'stats', seat, cards: statsFor(seat, cards) })
   }
