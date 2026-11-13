@@ -15,17 +15,14 @@ import type {
 import {
   createOriginGroupKey,
   createRoleGroupKey,
-  isCardOriginGroupKey,
   serializeGroupKey,
   type DerivedDeckGroup,
 } from './deck-groups'
 import { matchesMonsterRequirementCard } from './card-attributes'
 import { cardBelongsToArchetype } from './card-archetypes'
 
-export function normalizeHandPatternCategory(
-  kind: HandPatternCategory | 'good' | 'bad' | null | undefined,
-): HandPatternCategory {
-  return kind === 'problem' || kind === 'bad' ? 'problem' : 'opening'
+export function normalizeHandPatternCategory(kind: unknown): HandPatternCategory {
+  return kind === 'problem' ? 'problem' : 'opening'
 }
 
 export function normalizePatternLogic(value: unknown): PatternLogic {
@@ -197,12 +194,6 @@ export function getConditionCardIds(
   }
 
   return []
-}
-
-export function createMatcherFromGroupKey(groupKey: CardGroupKey): Matcher {
-  return isCardOriginGroupKey(groupKey)
-    ? { type: 'origin', value: groupKey.value }
-    : { type: 'role', value: groupKey.value }
 }
 
 export function createCardPoolMatcher(cardIds: string[]): Matcher | null {

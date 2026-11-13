@@ -212,7 +212,6 @@ export const deck: Translated<typeof es> = {
   'deck.codec.invalidCondition': 'Condition #{condition} of rule #{pattern} is invalid.',
   'deck.codec.invalidItem': '"{field}" is invalid.',
   'deck.codec.fieldNotObject': '"{field}" must be an object.',
-  'deck.codec.cardNotInMain': `Rule "{pattern}" references "{card}", but it isn't in the Main Deck.`,
 
   // --- Export: screen, files and preview
   'deck.export.title': 'Export your deck',

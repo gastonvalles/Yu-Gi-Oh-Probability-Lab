@@ -212,7 +212,6 @@ export const deck = {
   'deck.codec.invalidCondition': 'La condición #{condition} del patrón #{pattern} es inválida.',
   'deck.codec.invalidItem': '"{field}" es inválido.',
   'deck.codec.fieldNotObject': '"{field}" debe ser un objeto.',
-  'deck.codec.cardNotInMain': 'El patrón "{pattern}" referencia "{card}", pero no existe en el Main Deck.',
 
   // --- Exportar: pantalla, archivos y vista previa
   'deck.export.title': 'Exportá tu deck',

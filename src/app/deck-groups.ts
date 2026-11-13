@@ -1,6 +1,5 @@
 import { t } from '../i18n'
 import type { CardEntry, CardOrigin, CardRole, GroupKey } from '../types'
-import { isRecord } from './utils'
 
 type DeckGroupKind = 'origin' | 'role'
 
@@ -32,11 +31,6 @@ export interface DerivedDeckGroup extends DeckGroupDefinition {
   cardIds: string[]
   cardNames: string[]
   copies: number
-}
-
-interface ParsedStoredGroupKey {
-  groupKey: GroupKey | null
-  isLegacy: boolean
 }
 
 const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
@@ -305,63 +299,6 @@ export function normalizeCardOriginKey(value: unknown): CardOrigin | null {
   }
 
   return CARD_ORIGIN_KEY_SET.has(value as CardOrigin) ? (value as CardOrigin) : null
-}
-
-export function parseStoredGroupKey(value: unknown): ParsedStoredGroupKey {
-  if (isRecord(value)) {
-    const type = value.type
-
-    if (type === 'origin') {
-      const normalizedOrigin = normalizeCardOriginKey(value.value)
-      return {
-        groupKey: normalizedOrigin ? createOriginGroupKey(normalizedOrigin) : null,
-        isLegacy: false,
-      }
-    }
-
-    if (type === 'role') {
-      const normalizedRole = normalizeCardRoleKey(value.value)
-      return {
-        groupKey: normalizedRole ? createRoleGroupKey(normalizedRole) : null,
-        isLegacy: false,
-      }
-    }
-
-    return {
-      groupKey: null,
-      isLegacy: false,
-    }
-  }
-
-  if (typeof value === 'string') {
-    const normalizedOrigin = normalizeCardOriginKey(value)
-
-    if (normalizedOrigin) {
-      return {
-        groupKey: createOriginGroupKey(normalizedOrigin),
-        isLegacy: true,
-      }
-    }
-
-    const normalizedRole = normalizeCardRoleKey(value)
-
-    if (normalizedRole) {
-      return {
-        groupKey: createRoleGroupKey(normalizedRole),
-        isLegacy: true,
-      }
-    }
-
-    return {
-      groupKey: null,
-      isLegacy: true,
-    }
-  }
-
-  return {
-    groupKey: null,
-    isLegacy: false,
-  }
 }
 
 export function isCardOriginGroupKey(groupKey: GroupKey): groupKey is Extract<GroupKey, { type: 'origin' }> {
