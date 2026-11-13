@@ -79,23 +79,15 @@ describe('lo que se guardaba cuando había una sola mascota', () => {
     return import('../app/mascot')
   }
 
-  it('la que había sigue afuera, en el mismo lugar que la habían dejado, y lo viejo se borra al primer cambio', async () => {
+  it('ya no se lee: arranca como la primera vez, sin la posición ni el descanso de antes', async () => {
+    localStorage.setItem('ygo-lab:mascot-id', 'winged-kuriboh')
+    localStorage.setItem('ygo-lab:mascot', 'off')
     localStorage.setItem('ygo-lab:mascot-position', JSON.stringify({ x: 40, y: 200 }))
 
     const mascot = await load()
 
     expect(mascot.activeMascotIds()).toEqual(['cupsy'])
-    expect(JSON.parse(localStorage.getItem(mascot.mascotPositionKey('cupsy'))!)).toEqual({ x: 40, y: 200 })
-
-    mascot.summonMascot('winged-kuriboh')
-    expect(localStorage.getItem('ygo-lab:mascot-position')).toBeNull()
-    expect(localStorage.getItem('ygo-lab:mascot')).toBeNull()
-  })
-
-  it('si la habían mandado a descansar, no sale ninguna', async () => {
-    localStorage.setItem('ygo-lab:mascot', 'off')
-
-    expect((await load()).activeMascotIds()).toEqual([])
+    expect(localStorage.getItem(mascot.mascotPositionKey('cupsy'))).toBeNull()
   })
 
   it('una lista guardada a mano con basura se limpia, y una lista vacía es "todas descansando"', async () => {

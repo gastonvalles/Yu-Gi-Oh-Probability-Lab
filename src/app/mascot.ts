@@ -42,10 +42,6 @@ export type MascotId = keyof typeof MASCOTS
 export const MAX_ACTIVE_MASCOTS = 3
 
 const ACTIVE_KEY = 'ygo-lab:mascots'
-// Lo que se guardaba cuando había una sola: cuál era y si estaba descansando ('off'), y dónde la habían dejado.
-const LEGACY_ID_KEY = 'ygo-lab:mascot-id'
-const LEGACY_ENABLED_KEY = 'ygo-lab:mascot'
-const LEGACY_POSITION_KEY = 'ygo-lab:mascot-position'
 
 export const isMascotId = (value: unknown): value is MascotId => typeof value === 'string' && value in MASCOTS
 
@@ -70,20 +66,10 @@ function readActive(): MascotId[] {
       return sanitizeActiveMascots(JSON.parse(stored))
     }
 
-    // Primera vez con varias: la que había estaba afuera, salvo que la hubieran mandado a descansar.
-    const legacyId = localStorage.getItem(LEGACY_ID_KEY)
-    const id: MascotId = isMascotId(legacyId) ? legacyId : 'cupsy'
-    const legacyPosition = localStorage.getItem(LEGACY_POSITION_KEY)
-
-    if (legacyPosition !== null && localStorage.getItem(mascotPositionKey(id)) === null) {
-      localStorage.setItem(mascotPositionKey(id), legacyPosition)
-    }
-
     // Quien nunca eligió nada y llega desde un celular o una tableta no las ve: dejan lugar al campo (se sacan desde Mascotas, abajo en el menú).
-    const firstVisit = legacyId === null && legacyPosition === null && localStorage.getItem(LEGACY_ENABLED_KEY) === null
     const narrow = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY).matches
 
-    return localStorage.getItem(LEGACY_ENABLED_KEY) === 'off' || (firstVisit && narrow) ? [] : [id]
+    return narrow ? [] : ['cupsy']
   } catch {
     return ['cupsy']
   }
@@ -92,10 +78,6 @@ function readActive(): MascotId[] {
 function writeActive(ids: readonly MascotId[]): void {
   try {
     localStorage.setItem(ACTIVE_KEY, JSON.stringify(ids))
-    // Ya está migrado: lo viejo no vuelve a leerse.
-    for (const key of [LEGACY_ID_KEY, LEGACY_ENABLED_KEY, LEGACY_POSITION_KEY]) {
-      localStorage.removeItem(key)
-    }
   } catch {
     // Sin storage se recuerda sólo hasta recargar.
   }

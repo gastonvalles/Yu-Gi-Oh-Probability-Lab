@@ -8,8 +8,8 @@ import { normalizeCardOriginKey, normalizeStoredRoles } from './deck-groups'
 
 const BACKUP_KEY = `${STORAGE_KEY}:backup`
 
-/** Claves de funciones que ya no existen (el calificador de manos de la práctica): se borran al cargar para que no queden datos huérfanos ni viajen en la copia de seguridad. */
-const RETIRED_KEYS = ['ygo-lab:hand-samples:v1']
+/** Claves de funciones que ya no existen (el calificador de manos de la práctica, la mascota única): se borran al cargar para que no queden datos huérfanos ni viajen en la copia de seguridad. */
+const RETIRED_KEYS = ['ygo-lab:hand-samples:v1', 'ygo-lab:mascot-id', 'ygo-lab:mascot', 'ygo-lab:mascot-position']
 
 export function loadState(): AppState {
   let raw: string | null = null
