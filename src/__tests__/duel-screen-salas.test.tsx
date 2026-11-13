@@ -1069,7 +1069,7 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(attackBanner(guest)).toBeDefined()
     expect(within(host.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
-    // Y queda anotado en el registro de Beto (la línea sobre el campo).
+    // Y queda anotado en el registro de Beto (en el chat; la línea sobre el campo ya no existe).
     expect(strikes()).toHaveLength(2)
     // Ana la tira de su monstruo (50, 350) a la barra de vida del rival (50, 10); en la mesa de Beto, el monstruo de Ana (50, 150) cae sobre la barra propia (50, 510).
     expect(flights()).toEqual({ from: ['50px,150px', '50px,350px'], to: ['50px,10px', '50px,510px'] })

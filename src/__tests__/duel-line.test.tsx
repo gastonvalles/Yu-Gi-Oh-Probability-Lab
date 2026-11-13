@@ -69,7 +69,7 @@ describe('la línea del celular', () => {
 
     // La última jugada (las vidas que cambia el rival con su calculadora) queda en el chat: la mesa no la muestra.
     changeLife(other, ['1', '0', '0', '0'])
-    expect(within(line()).queryByRole('button', { name: new RegExp(`^${t('duel.log.open')}`) })).toBeNull()
+    expect(within(line()).queryByRole('button')).toBeNull()
     expect(geometry()).toEqual(before)
 
     // Un aviso va arriba: debajo de la barra (absoluto, `top-full`), no en la marca de entre el campo y tu mano; no ocupa lugar ni corre el campo.

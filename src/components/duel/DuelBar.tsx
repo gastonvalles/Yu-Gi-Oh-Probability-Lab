@@ -33,7 +33,6 @@ import { respondersText } from './PassPrompt'
 import { ResultStrip } from './DuelResult'
 import { LifeBadge, LifeScore, SIGNAL_MS } from './LifeScore'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
-import { TypeMark } from './TypeMark'
 import { isEmojiSignal } from '../../app/duel-signals'
 
 export { SIGNAL_MS }
@@ -527,7 +526,7 @@ const laneKey = (lane: LaneNotice, name: string) => (lane.kind === 'looking' ? `
  * **Se saca deslizándolo** (Gastón, 2026-11-12: «no se pueden eliminar deslizandolos a la izquierda o derecha como antes»): uno sin botones se arrastra de costado (`useSwipeAway`; con teclado, Supr) y no
  * vuelve hasta que la línea diga otra cosa. Uno con botones no se desliza: se contesta.
  */
-export function DuelLine({ lane, rivalName, log = null }: { lane: LaneNotice | null; rivalName: string; log?: ReactNode }) {
+export function DuelLine({ lane, rivalName }: { lane: LaneNotice | null; rivalName: string }) {
   const replay = useContext(MatReplayContext)
   const key = lane ? laneKey(lane, rivalName) : null
   // El aviso que se sacó; otro aviso (o ninguno) lo olvida.
@@ -540,9 +539,6 @@ export function DuelLine({ lane, rivalName, log = null }: { lane: LaneNotice | n
 
   return (
     <div data-testid="duel-line" className="relative h-full">
-      <div inert={shown !== null} className={cx('h-full', shown && 'invisible')}>
-        {log}
-      </div>
       {shown && !laneAsks(shown) ? (
         <div
           tabIndex={0}
@@ -596,53 +592,6 @@ export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpe
         <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} feed={feed} fill />
       </SideDrawer>
     </>
-  )
-}
-
-interface DuelLogTickerProps {
-  feed: readonly FeedEntry[]
-  onOpen: () => void
-}
-
-/**
- * Las dos últimas jugadas del registro (lo último que pasó, con el punto del color de quien lo hizo), sobre el campo en el celular. Lo escrito no sale acá (Gastón, 2026-10-20: «el mensaje de arriba no debe
- * aparecer, no es necesario»): al otro le llega como un mensaje entrante y en el contador del chat, y en la línea salía dos veces. Tocarla abre el chat con el registro entero. Sin nada que mostrar deja el lugar reservado.
- * **Se saca con el dedo** (Gastón, 2026-10-21: «estos carteles no los puedo swipear para eliminarlos y debería poder»): arrastrarla de costado la manda para ese lado (`useSwipeAway`; con teclado, Supr);
- * queda el lugar reservado y la próxima jugada la vuelve a mostrar, con lo nuevo solo.
- */
-export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
-  const events = feed.filter((entry): entry is Extract<FeedEntry, { kind: 'event' }> => entry.kind === 'event')
-  // Lo último que había cuando se sacó el cartel: lo que viene después es lo que se muestra.
-  const [seen, setSeen] = useState<string | null>(null)
-  const lines = events.slice(seen === null ? 0 : events.findIndex((entry) => entry.id === seen) + 1).slice(-2)
-  const swipe = useSwipeAway(() => setSeen(events.at(-1)?.id ?? null))
-
-  // Sin nada todavía se reserva el lugar: la primera jugada no corre el campo (regla 7 del sistema de diseño).
-  if (lines.length === 0) return <div aria-hidden="true" className="min-h-11" />
-
-  return (
-    <button
-      type="button"
-      aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`}
-      aria-keyshortcuts="Delete"
-      title={t('duel.log.dismiss')}
-      // En el celular llena la línea (alto fijo), traslúcida al 88 % en alfa plano y con su borde.
-      className="flex h-full min-h-11 w-full min-w-0 cursor-pointer touch-pan-y items-center gap-2 rounded-control px-1 text-left transition-[transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none max-sm:pointer-events-auto max-sm:border max-sm:border-border-subtle max-sm:bg-card-background/88 max-sm:px-3"
-      style={swipe.style}
-      {...swipe.props}
-      onClick={onOpen}
-    >
-      <span className="grid min-w-0 flex-1 gap-0.5">
-        {lines.map((line) => (
-          <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">
-            <i aria-hidden="true" className={cx('size-1.5 shrink-0', line.side === 'mine' ? 'bg-accent' : 'bg-info')} />
-            {line.frame ? <TypeMark kind={line.frame} /> : null}
-            <span className="min-w-0 truncate">{line.text}</span>
-          </span>
-        ))}
-      </span>
-      <Icon name="chevrons-left" size={16} className="shrink-0 rotate-90 text-soft" />
-    </button>
   )
 }
 
