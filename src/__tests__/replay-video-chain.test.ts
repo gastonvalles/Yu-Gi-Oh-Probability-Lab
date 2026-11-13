@@ -8,9 +8,9 @@ import { CHAIN_ALONE_MS, CHAIN_LEAVE_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainFee
 import { buildDuelReplay, replayChainSteps, type ReplayChainStep, type ReplayInput } from '../app/duel-replay'
 import { createMatState } from '../app/practice-mat'
 import { LAYOUT } from '../components/auto/ChainNotice'
-import { BACK_POSE, chainOverlays, chainSnapshots, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
+import { BACK_POSE, chainOverlays, chainSnapshots, drawMedal, medalTracks, MEDAL, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
 import { overlaysOf } from '../components/replays/video/video-fx'
-import { cellsOf, fieldRect, replayScenes, videoLayout } from '../components/replays/video/video-scene'
+import { cellsOf, fieldRect, placeRect, replayScenes, videoLayout } from '../components/replays/video/video-scene'
 import { chainBeats, chainMs, chainTimeline, frameDurations, INTRO_MS, OUTRO_MS, STEP_MS, videoDurationMs } from '../components/replays/video/video-timeline'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
 
@@ -131,7 +131,7 @@ describe('la escena de la cadena en el video', () => {
   })
 
   it('pinta cada momento sin romperse y, sin cadena, no hay escena', () => {
-    const [stage] = chainOverlays(withChain, starts, 1, videoLayout(720), fakeAssets)
+    const stage = chainOverlays(withChain, starts, 1, videoLayout(720), fakeAssets).find((overlay) => overlay.kind === 'chain')
     expect(stage).toMatchObject({ kind: 'chain', start: INTRO_MS, duration: 2 * CHAIN_LINK_MS + CHAIN_LEAVE_MS })
     for (const p of [0, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99]) {
       const ctx = fakeCtx()
@@ -145,5 +145,53 @@ describe('la escena de la cadena en el video', () => {
     const scenes = [...replayScenes(withChain, 720)]
     expect(overlaysOf(scenes[0]!, scenes[1]!, [], fakeAssets, 1, 0, 'duel').map((overlay) => overlay.kind)).toContain('stage')
     expect(overlaysOf(scenes[0]!, scenes[1]!, [], fakeAssets, 1, 0, 'duel', true).map((overlay) => overlay.kind)).not.toContain('stage')
+  })
+})
+
+describe('los medallones en el video', () => {
+  const starts = startsOf(frameDurations({ kind: 'duel', replay: withChain }))
+  const layout = videoLayout(720)
+
+  it('van donde se activó cada eslabón: el CL1 en mi Zona de Mágicas 1, el CL2 en la Zona de Monstruos 3 del rival (espejada), en las casillas de la mesa del celular', () => {
+    const [cl1, cl2] = [...medalTracks(chainSnapshots(steps, starts, 1))].sort((a, b) => a.number - b.number)
+    expect(cl1).toMatchObject({ side: 0, place: 'st:0' })
+    expect(cl2).toMatchObject({ side: 1, place: 'mz:2' })
+    expect(placeRect(layout, cl1!.side, cl1!.place)).toEqual(layout.cellAt(4, 1))
+    expect(placeRect(layout, cl2!.side, cl2!.place)).toEqual(layout.cellAt(1, 3))
+  })
+
+  it('cada lugar de la mesa (zonas, Zonas Extra, pilas y mano) cae donde el video pone sus cartas', () => {
+    const last = [...replayScenes(withChain, 720)].at(-1)!
+    for (const side of [0, 1] as const) {
+      const pileAt = (pile: string) => last.sides[side].slots.find((slot) => slot.pile === pile)!.rect
+      for (const pile of ['deck', 'extra', 'gy', 'banished']) expect(placeRect(layout, side, pile)).toEqual(pileAt(pile))
+      expect(placeRect(layout, side, 'mz:0')).toEqual(layout.cellAt(side === 0 ? 3 : 1, side === 0 ? 1 : 5))
+      expect(placeRect(layout, side, 'st:4')).toEqual(layout.cellAt(side === 0 ? 4 : 0, side === 0 ? 5 : 1))
+      expect(placeRect(layout, side, 'field')).toEqual(layout.cellAt(side === 0 ? 3 : 1, side === 0 ? 0 : 6))
+      expect(placeRect(layout, side, 'hand')).toEqual(side === 0 ? layout.myHand : layout.theirHand)
+    }
+    // La Zona Extra 1 tuya es la 2 del rival (`SharedZone`): la misma casilla.
+    expect(placeRect(layout, 0, 'emz:0')).toEqual(placeRect(layout, 1, 'emz:1'))
+    expect(placeRect(layout, 0, 'emz:0')).toEqual(layout.cellAt(2, 2))
+    expect(placeRect(layout, 0, 'nada')).toBeNull()
+  })
+
+  it('salen al empezar a resolverse, del último al primero: el CL2 late y se va a los 0,9 s, el CL1 late después y se va al terminar', () => {
+    const [cl1, cl2] = [...medalTracks(chainSnapshots(steps, starts, 1))].sort((a, b) => a.number - b.number)
+    const resolve = INTRO_MS + 2 * CHAIN_LINK_MS
+    expect(cl2).toMatchObject({ enter: resolve, leave: resolve + CHAIN_SOLVE_MS, resolving: [{ t: resolve, on: true }], xs: [{ t: resolve, x: 0 }] })
+    expect(cl1).toMatchObject({ enter: resolve, leave: resolve + 2 * CHAIN_SOLVE_MS, resolving: [{ t: resolve + CHAIN_SOLVE_MS, on: true }] })
+    // Una capa mientras se ven, que termina cuando se apagó el último.
+    const medals = chainOverlays(withChain, starts, 1, layout, fakeAssets).filter((overlay) => overlay.kind === 'medal')
+    expect(medals).toMatchObject([{ start: resolve, duration: 2 * CHAIN_SOLVE_MS + MEDAL.fade }])
+    // Se pinta entrando, quieto, latiendo y yéndose; antes de entrar y después de irse, nada.
+    const calls = (now: number) => {
+      const ctx = fakeCtx()
+      drawMedal(ctx, cl2!, now, layout, fakeAssets, 1)
+      return ctx.calls
+    }
+    expect(calls(resolve - 1)).toBe(0)
+    for (const now of [resolve + 30, resolve + 100, resolve + 600, resolve + CHAIN_SOLVE_MS + 100]) expect(calls(now)).toBeGreaterThan(0)
+    expect(calls(resolve + CHAIN_SOLVE_MS + MEDAL.fade)).toBe(0)
   })
 })

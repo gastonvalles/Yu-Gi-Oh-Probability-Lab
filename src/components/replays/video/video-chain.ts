@@ -1,11 +1,12 @@
 import type { ChainFeed, ChainRow, ChainStep } from '../../../app/auto/chain-feed'
-import { replayChainSteps, type DuelReplay } from '../../../app/duel-replay'
+import { medalsOf } from '../../../app/card-glow'
+import { replayChainSteps, type DuelReplay, type ReplaySide } from '../../../app/duel-replay'
 import { EASE_OUT, bezierEase, easeInOut } from '../../../app/motion'
 import { t } from '../../../i18n'
 import { BOND_TRIM, BURST_RAYS, CELL, CHAIN_LEAVE_MS, chainFeed, CORNER_TIES, DIGIT_STEP, LAYOUT, SAG, SHOWN, SIDE_LEFT, glyphCells, hangingLinks } from '../../auto/ChainNotice'
 import { drawCard, FONT, type ChainColors, type Ctx, type VideoAssets } from './video-draw'
 import { keyed, type Overlay } from './video-fx'
-import { artOfId, cellsOf, fieldRect, type Rect, type VideoLayout } from './video-scene'
+import { artOfId, cellsOf, fieldRect, placeRect, type Rect, type VideoLayout } from './video-scene'
 import { chainTimeline, type VideoSpeed } from './video-timeline'
 
 /**
@@ -420,17 +421,152 @@ export function drawStage(ctx: Ctx, episode: StageEpisode, now: number, geo: Sta
 /** El arte y el nombre de la carta de un eslabón en el replay (por su passcode: el video ya cargó su arte, `artUrls`). */
 export const replayRowLook = (replay: DuelReplay): RowLook => (row) => ({ art: row.code ? artOfId(`card-${row.code}-1`) : null, name: replay.cards[String(row.code)] ?? t('practice.card.unknown') })
 
-/** Lo que la cadena dibuja en el video de un duelo (`starts`: dónde empieza cada tramo): una capa por cada escena. Sin cadena guardada, nada. */
+/**
+ * Los medallones de `ChainBadge`: de 36 px (`size-9`) en el viewBox de 40, corridos 24 px si hay varios en un lugar (`MEDAL_STEP_PX`); entran creciendo desde 0,75, se van creciendo
+ * hasta 1,25 mientras se apagan y se reacomodan, todo en 200 ms (`duration-200`); el que se resuelve late (`animate-pulse`: 2 s, a la mitad de opacidad).
+ */
+export const MEDAL = { size: 36, step: 24, fade: 200, pulse: 2000 } as const
+
+/** Un medallón de principio a fin: dónde va (lado y lugar de `medalPlaceOf`), cuándo entra y se va, cuándo cambia de lugar entre los de su casilla y cuándo empieza o deja de latir. */
+export interface MedalTrack {
+  side: ReplaySide
+  place: string
+  number: number
+  enter: number
+  leave: number | null
+  /** Su corrimiento (px del celular) desde cada momento. */
+  xs: Array<{ t: number; x: number }>
+  resolving: Array<{ t: number; on: boolean }>
+  voided: Array<{ t: number; on: boolean }>
+}
+
+/** Los medallones de toda la cadena del video (`medalsOf` en cada momento): abajo los de quien grabó, arriba los del rival. */
+export function medalTracks(snapshots: readonly Snapshot[]): MedalTrack[] {
+  const open = new Map<string, MedalTrack>()
+  const all: MedalTrack[] = []
+  const flip = (list: Array<{ t: number; on: boolean }>, t: number, on: boolean) => {
+    if ((list.at(-1)?.on ?? false) !== on) list.push({ t, on })
+  }
+  for (const { t, feed } of snapshots) {
+    const medals = medalsOf(feed)
+    const seen = new Set<string>()
+    for (const [owner, side] of [['mine', 0], ['theirs', 1]] as const) {
+      for (const [place, list] of medals[owner]) {
+        list.forEach((medal, index) => {
+          const key = `${side}|${place}|${medal.number}`
+          const x = (index - (list.length - 1) / 2) * MEDAL.step
+          let track = open.get(key)
+          if (!track) {
+            track = { side, place, number: medal.number, enter: t, leave: null, xs: [{ t, x }], resolving: [], voided: [] }
+            open.set(key, track)
+            all.push(track)
+          }
+          if (track.xs.at(-1)!.x !== x) track.xs.push({ t, x })
+          flip(track.resolving, t, medal.resolving)
+          flip(track.voided, t, medal.voided)
+          seen.add(key)
+        })
+      }
+    }
+    for (const [key, track] of open) {
+      if (seen.has(key)) continue
+      track.leave = t
+      open.delete(key)
+    }
+  }
+  return all
+}
+
+const onAt = (list: ReadonlyArray<{ t: number; on: boolean }>, now: number) => list.filter((item) => item.t <= now).at(-1)
+/** `pulse` de Tailwind con la palabra `ease-in-out` de CSS (simétrica): de lleno a la mitad y de vuelta. */
+const cssEaseInOut = bezierEase('cubic-bezier(0.42, 0, 0.58, 1)')
+const pulseAt = (p: number) => keyed(p - Math.floor(p), [[0, 1], [0.5, 0.5], [1, 1]], cssEaseInOut)
+
+/** Un medallón en el momento `now`: el aro de cadena sobre el fondo, su número blanco con luz celeste y, negado, tachado en rojo. */
+export function drawMedal(ctx: Ctx, track: MedalTrack, now: number, layout: VideoLayout, assets: VideoAssets, speed: VideoSpeed) {
+  const rect = placeRect(layout, track.side, track.place)
+  const fade = MEDAL.fade / speed
+  const out = track.leave === null ? 0 : clamp((now - track.leave) / fade)
+  if (!rect || now < track.enter || out >= 1) return
+  const entered = easeOut(clamp(((track.leave !== null && out > 0 ? track.leave : now) - track.enter) / fade))
+  const leaving = easeOut(out)
+  const scale = mix(mix(0.75, 1, entered), 1.25, leaving)
+  const alpha = mix(entered, 0, leaving)
+  // Se reacomoda entre los de su casilla (un `translate` de 200 ms); el que se va, desde donde estaba.
+  const at = track.xs.filter((item) => item.t <= now).length - 1
+  const x = at > 0 ? mix(track.xs[at - 1]!.x, track.xs[at]!.x, easeOut(clamp((now - track.xs[at]!.t) / fade))) : track.xs[0]!.x
+  const since = out > 0 ? undefined : onAt(track.resolving, now)
+  const beat = since?.on ? pulseAt((now - since.t) / (MEDAL.pulse / speed)) : 1
+  const k = (MEDAL.size * layout.unit) / 40
+  const colors = assets.theme.chain
+  faded(ctx, alpha * beat, () => {
+    ctx.translate(rect.x + rect.w / 2 + x * layout.unit, rect.y + rect.h / 2)
+    ctx.scale(scale * k, scale * k)
+    ctx.translate(-20, -20)
+    ctx.fillStyle = assets.theme.background
+    ctx.beginPath()
+    ctx.arc(20, 20, 18, 0, Math.PI * 2)
+    ctx.fill()
+    for (let i = 0; i < 12; i += 1) {
+      ctx.save()
+      ctx.translate(20, 20)
+      ctx.rotate((i * Math.PI) / 6)
+      ctx.translate(-20, -20)
+      if (i % 2 === 0) {
+        ctx.lineWidth = 2.4
+        ctx.strokeStyle = colors.metal
+        roundRect(ctx, 16.5, 0.5, 7, 4.5, 2.25)
+        ctx.stroke()
+      } else {
+        ctx.fillStyle = colors.metalLo
+        roundRect(ctx, 16.5, 1.25, 7, 3, 1.5)
+        ctx.fill()
+      }
+      ctx.restore()
+    }
+    if (onAt(track.voided, now)?.on) {
+      ctx.lineWidth = 3.5
+      ctx.lineCap = 'round'
+      ctx.strokeStyle = assets.theme.danger
+      ctx.beginPath()
+      ctx.moveTo(9, 31)
+      ctx.lineTo(31, 9)
+      ctx.stroke()
+    }
+    // El número: `text-lead` (19 px de un medallón de 36), blanco con la luz celeste de `text-shadow-md`.
+    ctx.font = `800 ${(19 * 40) / MEDAL.size}px ${FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.shadowColor = colors.glow
+    ctx.shadowBlur = 4 * layout.unit * scale
+    ctx.fillStyle = '#fff'
+    ctx.fillText(String(track.number), 20, 21)
+  })
+}
+
+/** Los tramos en que hay algún medallón a la vista (de que entra el primero a que termina de irse el último): una capa por tramo. */
+function medalRuns(tracks: readonly MedalTrack[], videoEnd: number, speed: VideoSpeed): Array<{ start: number; end: number }> {
+  const spans = tracks.map((track) => ({ start: track.enter, end: track.leave === null ? videoEnd : Math.min(videoEnd, track.leave + MEDAL.fade / speed) })).sort((a, b) => a.start - b.start)
+  return spans.reduce<Array<{ start: number; end: number }>>((runs, span) => {
+    const last = runs.at(-1)
+    if (last && span.start <= last.end) last.end = Math.max(last.end, span.end)
+    else runs.push({ ...span })
+    return runs
+  }, [])
+}
+
+/** Lo que la cadena dibuja en el video de un duelo (`starts`: dónde empieza cada tramo): una capa por cada escena y otra por cada tramo con medallones. Sin cadena guardada, nada. */
 export function chainOverlays(replay: DuelReplay, starts: readonly number[], speed: VideoSpeed, layout: VideoLayout, assets: VideoAssets): Overlay[] {
   const steps = replayChainSteps(replay, 0)
   if (steps.length === 0) return []
   const snapshots = chainSnapshots(steps, starts, speed)
   const geo = stageGeometry(layout)
   const look = replayRowLook(replay)
-  return stageEpisodes(snapshots, starts.at(-1)!, speed).map((episode) => ({
-    kind: 'chain',
-    start: episode.start,
-    duration: episode.end - episode.start,
-    draw: (ctx, p) => drawStage(ctx, episode, episode.start + p * (episode.end - episode.start), geo, assets, speed, look),
-  }))
+  const videoEnd = starts.at(-1)!
+  const tracks = medalTracks(snapshots)
+  const span = (start: number, end: number, kind: Overlay['kind'], paint: (ctx: Ctx, now: number) => void): Overlay => ({ kind, start, duration: end - start, draw: (ctx, p) => paint(ctx, start + p * (end - start)) })
+  return [
+    ...medalRuns(tracks, videoEnd, speed).map(({ start, end }) => span(start, end, 'medal', (ctx, now) => tracks.forEach((track) => drawMedal(ctx, track, now, layout, assets, speed)))),
+    ...stageEpisodes(snapshots, videoEnd, speed).map((episode) => span(episode.start, episode.end, 'chain', (ctx, now) => drawStage(ctx, episode, now, geo, assets, speed, look))),
+  ]
 }
