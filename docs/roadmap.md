@@ -85,10 +85,9 @@ No se vuelve a proponer sin un motivo nuevo.
 Lo que queda después de auditar el repo entero.
 
 - **Sin uso:** ni archivos, ni tests huérfanos, ni dependencias. `scripts/barrido-alineacion.js` es a propósito.
-- **`export` de más:** ~250 símbolos que sólo usa su archivo y ~40 funciones que sólo usa su test.
+- **`export` de más:** ~250 símbolos que sólo usa su archivo y ~30 funciones que sólo usa su test (costuras y referencias).
 - **Sólo en `/playground`** (decide Gastón): el kit `feel-*` de `index.css`.
-- **Formatos viejos guardados** (decide Gastón: sacarlos rompe lo guardado): la configuración portable vieja
-  (`app-state-codec.ts`), `migrateSavedCombo` y la rama `j` del enlace.
+- **Enlace viejo** (decide Gastón: sacarlo rompe lo ya compartido): la rama `j` sin comprimir del enlace de un combo.
 - **Duplicado:** la búsqueda de cartas de escritorio y de celular (`DesktopSearchPanel`, `MobileCardSearch`).
 - **Sin auditar a fondo:** `duel-session.ts`, `auto/online.ts`, `practice-mat.ts`, `ask-ui.ts`, `adapter.ts` y el interior
   de `PracticeMat.tsx`.
