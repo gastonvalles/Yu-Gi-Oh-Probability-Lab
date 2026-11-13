@@ -4,7 +4,7 @@ import { locateCard, type MatState } from './practice-mat'
 
 /**
  * Los flipbooks («Impacto Ligero», módulo C: «secuencias de flipbooks de 8 a 12 cuadros»): animaciones cuadro a cuadro dibujadas por nosotros en SVG (sin imágenes), un cuadro de 64 × 64
- * al lado del otro en una tira, más uno vacío al final (el reposo). La tira entera se corre con `steps()` sobre su `translate` dentro de una ventana recortada: compositor, sin repintar.
+ * al lado del otro en una tira (una sola imagen, `atlasOf`), más uno vacío al final (el reposo). La tira entera se corre con `steps()` sobre su `translate` dentro de una ventana recortada: compositor, sin repintar.
  * **Pocos y con sentido**, cada uno con el color de lo que dice (`--color-fx-*`):
  * - `SPARK`, la chispa (10 cuadros, dorado `fx-destello`): donde la línea de energía toca la carta que se encadena (`ChainStage`): activar un efecto.
  * - `CUT`, el corte (10, rojo `fx-impacto`): sobre el medallón del eslabón que queda negado o sin efecto (`ChainBadge`), en el sentido de la tacha que le queda.
@@ -126,26 +126,29 @@ export function playFlipbook(strip: HTMLElement, book: FlipbookArt, delay = 0): 
   return cancelWhenDone(strip.animate([{ translate: '0 0' }, { translate: restOf(book) }], { duration: durationOf(book), delay, easing: `steps(${book.frames})` }))
 }
 
-const SVG_NS = 'http://www.w3.org/2000/svg'
 const kebab = (name: string) => name.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`)
+const atlases = new Map<FlipbookArt, string>()
 
-/** La tira entera como SVG del DOM (para lo que se dibuja sin React, como el estallido de la mesa). */
-function stripSvg(book: FlipbookArt): SVGSVGElement {
-  const svg = document.createElementNS(SVG_NS, 'svg')
-  svg.setAttribute('viewBox', `0 0 ${(book.frames + 1) * FLIP_FRAME} ${FLIP_FRAME}`)
-  svg.setAttribute('class', 'block size-full')
-  for (let index = 0; index < book.frames; index += 1) {
-    const group = document.createElementNS(SVG_NS, 'g')
-    group.setAttribute('transform', `translate(${index * FLIP_FRAME} 0)`)
-    for (const { tag, attrs, className } of book.draw(index)) {
-      const shape = document.createElementNS(SVG_NS, tag)
-      for (const [name, value] of Object.entries(attrs)) shape.setAttribute(kebab(name), String(value))
-      shape.setAttribute('class', className)
-      group.append(shape)
-    }
-    svg.append(group)
-  }
-  return svg
+/**
+ * La tira entera como una sola imagen (el «atlas» del documento: un SVG en un `data:`), armada una vez por sesión: cada flipbook es un `<img>` y no noventa nodos SVG, así montarlo en la
+ * cadena no alarga la jugada. Las clases de color se cambian por el valor de su token (`--color-fx-*`, en `:root`): una imagen no lee el CSS de la página.
+ */
+export function atlasOf(book: FlipbookArt): string {
+  const cached = atlases.get(book)
+  if (cached) return cached
+
+  const root = typeof document === 'undefined' ? null : getComputedStyle(document.documentElement)
+  const color = (name: string) => (name === 'white' ? '#fff' : root?.getPropertyValue(`--color-${name}`).trim() || '#fff')
+  const paint = (className: string) => className.split(' ').map((token) => /^(stroke|fill)-(.+)$/.exec(token)).flatMap((match) => (match ? [`${match[1]}="${color(match[2]!)}"`] : [])).join(' ')
+  const frames = Array.from({ length: book.frames }, (_, index) => {
+    const shapes = book.draw(index).map(({ tag, attrs, className }) => `<${tag} ${Object.entries(attrs).map(([name, value]) => `${kebab(name)}="${value}"`).join(' ')} ${paint(className)}/>`)
+
+    return `<g transform="translate(${index * FLIP_FRAME} 0)">${shapes.join('')}</g>`
+  })
+  const url = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${(book.frames + 1) * FLIP_FRAME} ${FLIP_FRAME}">${frames.join('')}</svg>`)}`
+
+  atlases.set(book, url)
+  return url
 }
 
 /**
@@ -160,10 +163,11 @@ export function flipbookAt(x: number, y: number, book: FlipbookArt, delay = 0, s
   layer.dataset.fx = 'flipbook'
   layer.setAttribute('aria-hidden', 'true')
   Object.assign(layer.style, { width: `${size}px`, height: `${size}px`, translate: `${Math.round(x - size / 2)}px ${Math.round(y - size / 2)}px` })
-  const strip = document.createElement('div')
-  strip.className = 'h-full'
+  const strip = document.createElement('img')
+  strip.className = 'block h-full max-w-none'
+  strip.alt = ''
+  strip.src = atlasOf(book)
   Object.assign(strip.style, { width: `${(book.frames + 1) * 100}%`, translate: restOf(book) })
-  strip.append(stripSvg(book))
   layer.append(strip)
   document.body.append(layer)
 

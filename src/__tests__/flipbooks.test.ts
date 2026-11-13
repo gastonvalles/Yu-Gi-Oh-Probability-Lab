@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { BURST, CUT, SPARK, burstsOf, durationOf, restOf } from '../app/flipbooks'
+import { BURST, CUT, SPARK, atlasOf, burstsOf, durationOf, restOf } from '../app/flipbooks'
 import { createMatState, type MatState, type Placed } from '../app/practice-mat'
 
 const placed = (id: string): Placed => ({ id, pos: 'atk', counters: 0, materials: [] })
@@ -16,6 +16,13 @@ describe('los flipbooks de «Impacto Ligero»', () => {
       for (const tone of tones) expect(tone).toMatch(/^(stroke|fill)-(white|fx-(destello|energia|impacto))( (stroke|fill)-(white|fx-(destello|energia|impacto)))?$/)
     }
     expect(restOf(SPARK)).toBe(`${(-100 * 10) / 11}% 0`)
+    // Cada tira es una sola imagen (el atlas), con los colores escritos (una imagen no lee las clases) y armada una vez.
+    const atlas = decodeURIComponent(atlasOf(BURST))
+    expect(atlas).toMatch(/^data:image\/svg\+xml,<svg xmlns=/)
+    expect(atlas).not.toContain('class=')
+    expect(atlas).toContain('stroke="')
+    expect(atlas.match(/<g /g)).toHaveLength(12)
+    expect(atlasOf(BURST)).toBe(atlasOf(BURST))
   })
 
   it('el estallido: el monstruo que se va del campo al Cementerio, no los materiales de una invocación ni una Mágica que se resolvió; hasta tres', () => {

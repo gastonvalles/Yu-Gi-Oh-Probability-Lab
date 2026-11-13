@@ -1,6 +1,8 @@
 import { createElement, useEffect, useRef, type CSSProperties } from 'react'
 
-import { FLIP_FRAME, playFlipbook, restOf, type FlipbookArt } from '../../app/flipbooks'
+import { useEffects } from '../../app/effects'
+import { FLIP_FRAME, atlasOf, playFlipbook, restOf, type FlipbookArt } from '../../app/flipbooks'
+import { useMediaQuery } from '../../app/use-media-query'
 import { cx } from './cx'
 
 interface FlipbookProps {
@@ -26,24 +28,28 @@ interface FlipbookProps {
  *   de la mesa va por el DOM (`flipbookAt`), sin React.
  */
 export function Flipbook({ book, delay = 0, play = 0, center = false, className, style }: FlipbookProps) {
-  const strip = useRef<HTMLSpanElement | null>(null)
+  const strip = useRef<HTMLImageElement | null>(null)
+  const lite = useEffects() === 'lite'
+  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const off = lite || reduced
 
   useEffect(() => {
     const run = strip.current ? playFlipbook(strip.current, book, delay) : null
 
     return () => run?.cancel()
-  }, [book, delay, play])
+  }, [book, delay, play, off])
 
+  // Apagado no se monta nada (las clases quedan de respaldo por si el ajuste cambia en el medio).
+  if (off) return null
   return (
     <span aria-hidden="true" data-flipbook="" style={style} className={cx('pointer-events-none block overflow-hidden fx-lite:hidden motion-reduce:hidden', center && '-translate-1/2', className)}>
-      <span ref={strip} className="block h-full" style={{ width: `${(book.frames + 1) * 100}%`, translate: restOf(book) }}>
-        <FlipbookFrames book={book} />
-      </span>
+      {/* La tira es una sola imagen (`atlasOf`), no un SVG de noventa nodos. */}
+      <img ref={strip} src={atlasOf(book)} alt="" draggable={false} className="block h-full max-w-none" style={{ width: `${(book.frames + 1) * 100}%`, translate: restOf(book) }} />
     </span>
   )
 }
 
-/** La tira entera, cuadro al lado de cuadro (el «atlas»): la usa `Flipbook` y la muestra la enseña quieta. */
+/** La tira entera, cuadro al lado de cuadro, en SVG con sus clases (el «atlas» a la vista, para la muestra de /playground). */
 export function FlipbookFrames({ book, className = 'block size-full' }: { book: FlipbookArt; className?: string }) {
   return (
     <svg viewBox={`0 0 ${(book.frames + 1) * FLIP_FRAME} ${FLIP_FRAME}`} className={className} aria-hidden="true">
