@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { getKindLabel, getConditionLabel } from '../components/probability/rule-builder/condition-labels'
+import { getConditionLabel } from '../components/probability/rule-builder/condition-labels'
 import { createCardPoolMatcher } from '../app/patterns'
 import type {
   CardEntry,
   CardOrigin,
   CardRole,
   Matcher,
-  RequirementKind,
 } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -33,7 +32,6 @@ function makeCard(
   }
 }
 
-const arbRequirementKind: fc.Arbitrary<RequirementKind> = fc.constantFrom('include', 'exclude')
 const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(
   'starter', 'extender', 'enabler', 'handtrap', 'disruption',
   'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'draw',
@@ -44,35 +42,6 @@ const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_e
 // ---------------------------------------------------------------------------
 // Tests: UI → Model mapping
 // ---------------------------------------------------------------------------
-
-describe('ConditionBlock label mapping', () => {
-  it('Property 8: include is labelled "Al menos" and exclude "Sin"', () => {
-    /** Feature: visual-rule-builder, Property 8: UI label mapping correctness */
-    fc.assert(
-      fc.property(arbRequirementKind, (kind) => {
-        const label = getKindLabel(kind)
-
-        if (kind === 'include') {
-          expect(label).toBe('Al menos')
-        } else {
-          expect(label).toBe('Sin')
-        }
-
-      }),
-      { numRuns: 100 },
-    )
-  })
-
-  it('getKindLabel only returns "Al menos" or "Sin"', () => {
-    fc.assert(
-      fc.property(arbRequirementKind, (kind) => {
-        const label = getKindLabel(kind)
-        expect(['Al menos', 'Sin']).toContain(label)
-      }),
-      { numRuns: 100 },
-    )
-  })
-})
 
 // ---------------------------------------------------------------------------
 // Tests: Condition labels

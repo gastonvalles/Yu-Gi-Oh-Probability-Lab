@@ -8,7 +8,6 @@ import type { Duelist } from './life-calculator'
  * queda a quien termina su turno (la reserva de cada uno la corrige su dueño al pasar), así que las dos pantallas se parecen a menos de la demora de la red.
  */
 export const TURN_BANK_MS = 7 * 60_000
-export const TURN_BONUS_MS = 3 * 60_000
 /** Con cuánto tiempo por delante el número empieza a parpadear en rojo. */
 export const TURN_WARNING_MS = 30_000
 

@@ -150,18 +150,9 @@ export function activeMascotIds(): readonly MascotId[] {
   return active
 }
 
-export function isMascotActive(id: MascotId): boolean {
-  return active.includes(id)
-}
-
 /** Cuántas pueden estar afuera a la vez. */
 export function maxActiveMascots(): number {
   return maxActive
-}
-
-/** Cuántas pueden salir todavía. */
-export function freeMascotSlots(): number {
-  return Math.max(0, maxActive - active.length)
 }
 
 /** La primera que está afuera (o Cupsy si no hay ninguna): la de la pantalla de error, por ejemplo. */

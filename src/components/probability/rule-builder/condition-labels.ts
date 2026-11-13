@@ -1,15 +1,7 @@
-import type { CardEntry, CardRole, CardType, Matcher, RequirementKind } from '../../../types'
+import type { CardEntry, CardRole, CardType, Matcher } from '../../../types'
 import { CARD_ROLE_DEFINITIONS, getCardOriginDefinition, getCardRoleDefinition, getDeckGroupTheme } from '../../../app/deck-groups'
 import { formatInteger } from '../../../app/utils'
 import { t } from '../../../i18n'
-
-/**
- * Maps a RequirementKind to a human-friendly label in the current language.
- * "include" → "Al menos" / "At least", "exclude" → "Sin" / "Without"
- */
-export function getKindLabel(kind: RequirementKind): string {
-  return t(kind === 'include' ? 'builder.requirementKind.include' : 'builder.requirementKind.exclude')
-}
 
 /** Rótulo de un tipo de carta (Monstruo, Magia, Trampa): lo comparten los rótulos de condición, la lectura de la regla y el selector. */
 export function getCardTypeLabel(type: CardType): string {

@@ -78,11 +78,6 @@ export function kindsOf(card: MetaCard | undefined): MetaCardKind[] {
   return card?.kinds ?? ['handtrap']
 }
 
-/** Los ids de las cartas de un tipo (para resaltarlas en la lista de un deck). */
-export function cardIdsOfKind(kind: MetaCardKind, cards: Record<string, MetaCard> = META_DECKS.cards): Set<number> {
-  return new Set(Object.entries(cards).filter(([, card]) => kindsOf(card).includes(kind)).map(([id]) => Number(id)))
-}
-
 /** Copias de un tipo de carta en una zona de un deck (el deck trae hand traps y boardbreakers mezclados). */
 export function countKindCopies(entries: ReadonlyArray<[number, number]>, kind: MetaCardKind, cards: Record<string, MetaCard> = META_DECKS.cards): number {
   return countCopies(entries.filter(([id]) => kindsOf(cards[String(id)]).includes(kind)))
@@ -418,10 +413,6 @@ export function readTournamentsHash(hash: string): { deck: number | null; card: 
     card: Number.isInteger(card) && card > 0 ? card : null,
     archetype: archetype && archetype.length <= 120 ? archetype : null,
   }
-}
-
-export function readMetaDeckIdFromHash(hash: string): number | null {
-  return readTournamentsHash(hash).deck
 }
 
 export function filterMetaDecks(decks: readonly MetaDeck[], filter: MetaDeckFilter): MetaDeck[] {

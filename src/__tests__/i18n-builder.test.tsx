@@ -12,7 +12,7 @@ import { PatternEditorDrawer } from '../components/probability/PatternEditorDraw
 import type { PatternEditorActions } from '../components/probability/pattern-editor-actions'
 import { buildPatternCompactSummary, buildPatternPreview, joinWord } from '../components/probability/pattern-helpers'
 import { CategoryPicker } from '../components/probability/rule-builder/CategoryPicker'
-import { getConditionLabel, getKindLabel } from '../components/probability/rule-builder/condition-labels'
+import { getConditionLabel } from '../components/probability/rule-builder/condition-labels'
 import { ConditionBlock } from '../components/probability/rule-builder/ConditionBlock'
 import { KindToggle } from '../components/probability/rule-builder/KindToggle'
 import { LogicSelector } from '../components/probability/rule-builder/LogicSelector'
@@ -146,8 +146,6 @@ describe('las frases de la regla, en inglés', () => {
   })
 
   it('los rótulos de condición y de tipo, y la palabra que une las condiciones', () => {
-    expect(getKindLabel('include')).toBe('At least')
-    expect(getKindLabel('exclude')).toBe('Without')
     expect(joinWord(pattern([condition(role('starter')), condition(role('extender'))]))).toBe('and')
     expect(joinWord(pattern([condition(role('starter')), condition(role('extender'))], { logic: 'any' }))).toBe('or')
     expect(joinWord(pattern([condition(role('starter')), condition(role('extender'))], { logic: 'any', minimumConditionMatches: 2 }))).toBe('and / or')

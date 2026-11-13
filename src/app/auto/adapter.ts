@@ -243,7 +243,7 @@ export function spotOf(location: number, sequence: number): { zone: MatSpot; ind
 /** Boca abajo es `set`; boca arriba en defensa (sólo un monstruo), `def`; lo demás, `atk`. */
 const posOf = (location: number, position: number): MatPos => ((position & P.FACEDOWN) !== 0 ? 'set' : location === L.MZONE && (position & P.FACEUP_DEFENSE) !== 0 ? 'def' : 'atk')
 
-/** Ids de copia como los de la mesa (`duelCardIds`): cada código con su cuenta. */
+/** Ids de copia como los de la mesa (`card-14558127-2`): cada código con su cuenta. */
 export function copyIds(codes: readonly number[]): string[] {
   const seen = new Map<number, number>()
 
