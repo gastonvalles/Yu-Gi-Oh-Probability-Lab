@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 import { canRunAuto, setAutoPref, useAutoPrefs, type AutoPrefs } from '../../app/auto-prefs'
 import { botDeckList } from '../../app/bot-deck-lists'
@@ -378,8 +379,8 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
         <>
           {/* El alto de la barra fija: lo último de la lista no queda debajo de ella. */}
           <div aria-hidden="true" className="h-16" />
-          {/* La barra del pulgar, fija encima de la de navegación (siempre a la vista, también con la lista corta; la página deja su alto abajo): contra quién (abre la ficha) a la izquierda y «Jugar» a la derecha. */}
-          <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 flex items-center gap-3 border-t border-border-subtle bg-background px-gutter py-3">
+          {/* La barra del pulgar, fija encima de la de navegación (siempre a la vista, también con la lista corta; la página deja su alto abajo): contra quién (abre la ficha) a la izquierda y «Jugar» a la derecha. Va al `body`: la pantalla entra con un `transform` (el barrido) y un `fixed` adentro se correría. */}
+          {createPortal(<div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 flex items-center gap-3 border-t border-border-subtle bg-background px-gutter py-3">
             <button type="button" aria-haspopup="dialog" className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-control text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={() => setSheetOpen(true)}>
               {lead()}
               <span className="grid min-w-0">
@@ -395,7 +396,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
                 {deckReady ? t('solo.playShort') : t('solo.needDeck')}
               </Button>
             </ShineFrame>
-          </div>
+          </div>, document.body)}
           <Modal isOpen={sheetOpen} onClose={() => setSheetOpen(false)} size="keypad" title={name} footer={playButton(true)}>
             {ficha}
           </Modal>

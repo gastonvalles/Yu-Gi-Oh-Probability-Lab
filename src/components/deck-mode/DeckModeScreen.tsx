@@ -14,6 +14,7 @@ import { dealRival, readHandtrapConfig } from '../../app/handtraps'
 import { createMatState, randomSeed, shuffleWithSeed, type MatState } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
 import { Presence } from '../../app/use-presence'
+import { sweepDirection, type SweepDirection } from '../../app/screen-sweep'
 import { createRoomsApi } from '../../app/duel-rooms'
 import { findPausedDuel } from '../../app/duel-save'
 import { readSavedBuilds } from '../../app/saved-builds'
@@ -68,6 +69,12 @@ import { useDeckModeController } from './use-deck-mode-controller'
  */
 const LazyAutoSolo = lazy(() => import('../auto/AutoSoloScreen').then((m) => ({ default: m.AutoSoloScreen })))
 const LazyAutoDuel = lazy(() => import('../auto/AutoDuelScreen').then((m) => ({ default: m.AutoDuelScreen })))
+
+/** Desde dónde barre la pantalla nueva (`animate-screen-in`): un solo eje, el de la navegación (la barra de abajo del celular es horizontal; el menú lateral, vertical). */
+const SWEEP: Record<SweepDirection, string> = {
+  next: '[--barrido-x:2rem] min-[1101px]:[--barrido-x:0px] min-[1101px]:[--barrido-y:2rem]',
+  prev: '[--barrido-x:-2rem] min-[1101px]:[--barrido-x:0px] min-[1101px]:[--barrido-y:-2rem]',
+}
 
 /** Los datos de un enlace de combo (`#combo=…`), o null. */
 const comboHash = (hash: string) => (hash.startsWith('#combo=') ? comboPayloadOf(hash) : null)
@@ -323,6 +330,12 @@ export function DeckModeScreen() {
   const onCardQuery = deckBuilderStep.onQueryChange
   // El menú: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel encima) y la referencia. La práctica necesita cartas en el Main.
   const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { duel: duelConnect !== null, paused: pausedDuel }), [navigationItems, duelConnect, pausedDuel])
+  // Hacia dónde barre la pantalla nueva: el sentido en que se anduvo por el menú.
+  const [sweep, setSweep] = useState<{ step: DeckWorkflowStepKey; dir: SweepDirection | null }>({ step: activeStep, dir: null })
+
+  if (sweep.step !== activeStep) {
+    setSweep({ step: activeStep, dir: sweepDirection(navGroups.flatMap((group) => group.items.map((item) => item.key)), sweep.step, activeStep) })
+  }
   const handleNavSelect = useCallback(
     (key: string, detail?: string) => {
       if (key === 'mascots') setMascotsOpen(true)
@@ -506,8 +519,9 @@ export function DeckModeScreen() {
     <div
       key={activeStep}
       className={cx(
-        // La pantalla nueva aparece (fundido) donde va a quedar: nada se desliza ni cambia de lugar.
-        'min-w-0 animate-step-in motion-reduce:animate-none',
+        // La pantalla nueva barre 2 rem desde el lado del destino (de costado en el celular, de arriba o de abajo con el menú lateral; nunca en diagonal) y se asienta; el scroll no se anima.
+        'min-w-0 animate-screen-in motion-reduce:animate-none',
+        sweep.dir && SWEEP[sweep.dir],
         // En escritorio toda pantalla mide el recuadro del armazón (sin pie): una más alta lo desborda y scrollea; una que reparte el alto entre columnas (Expansiones) lo usa justo.
         isDeckBuilderStep || isCategorizationStep || isPracticeStep || isDuelStep || isLifeStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
       )}

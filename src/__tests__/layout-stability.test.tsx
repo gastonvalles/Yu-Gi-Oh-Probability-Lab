@@ -77,17 +77,22 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
     expect(source('App.tsx')).not.toContain('min-h-screen')
   })
 
-  it('cambiar de pestaña no desliza ni anima el scroll: la pantalla nueva aparece con un fundido, ya arriba de todo', () => {
+  it('cambiar de pestaña no anima el scroll: la pantalla nueva, ya arriba de todo, barre en un solo eje (nunca en diagonal) y sin fundido', () => {
     const screenSource = source('components/deck-mode/DeckModeScreen.tsx')
 
     expect(screenSource).not.toMatch(/behavior:\s*['"]smooth['"]/)
     expect(screenSource).toContain("behavior: 'instant'")
-    expect(screenSource).toContain('animate-step-in')
+    expect(screenSource).toContain('animate-screen-in')
 
-    const keyframes = /@keyframes step-in\s*\{[\s\S]*?\n {2}\}/.exec(source('index.css'))?.[0] ?? ''
+    const keyframes = /@keyframes screen-in\s*\{[\s\S]*?\n {2}\}/.exec(source('index.css'))?.[0] ?? ''
 
-    expect(keyframes).toContain('opacity')
-    expect(keyframes).not.toContain('transform')
+    expect(keyframes).toContain('transform: translate(var(--barrido-x, 0), var(--barrido-y, 0))')
+    expect(keyframes).not.toContain('opacity')
+
+    // En el celular sólo de costado; con el menú lateral (desde 1101 px), sólo de arriba o de abajo.
+    const sweeps = [...screenSource.matchAll(/^\s*(next|prev): '([^']*)',$/gm)].map(([, , classes]) => classes)
+    expect(sweeps).toHaveLength(2)
+    for (const classes of sweeps) expect(classes).toMatch(/^\[--barrido-x:-?2rem\] min-\[1101px\]:\[--barrido-x:0px\] min-\[1101px\]:\[--barrido-y:-?2rem\]$/)
   })
 })
 

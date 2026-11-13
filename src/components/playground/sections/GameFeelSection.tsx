@@ -829,7 +829,7 @@ function FlipbookSample() {
 
 // ——— 6. Transición de pantalla ———
 
-type Swap = 'horizontal' | 'slash'
+type Swap = 'next' | 'prev' | 'down' | 'up'
 
 function FakeScreen({ which }: { which: number }) {
   return which === 0 ? (
@@ -855,105 +855,49 @@ function FakeScreen({ which }: { which: number }) {
   )
 }
 
+/** Desde dónde barre la pantalla nueva: los dos sentidos de cada eje, como en la app (`DeckModeScreen`, `SWEEP`). Nada en diagonal. */
+const SAMPLE_SWEEP: Record<Swap, string> = {
+  next: '[--barrido-x:2rem]',
+  prev: '[--barrido-x:-2rem]',
+  down: '[--barrido-y:2rem]',
+  up: '[--barrido-y:-2rem]',
+}
+
 function ScreenSample() {
-  const feel = useFeel()
-  const [current, setCurrent] = useState(0)
-  const [cut, setCut] = useState<{ screen: number; angle: number; length: number } | null>(null)
-  const frame = useRef<HTMLDivElement | null>(null)
-  const screens = useRef<Array<HTMLDivElement | null>>([])
-  const halves = useRef<Array<HTMLDivElement | null>>([])
-  const bar = useRef<HTMLDivElement | null>(null)
-  const flash = useRef<HTMLDivElement | null>(null)
-  const busy = useRef(false)
-
-  const go = (kind: Swap) => {
-    const from = screens.current[current]
-    const to = screens.current[1 - current]
-    const box = frame.current?.getBoundingClientRect()
-
-    if (busy.current || !from || !to || !box) return
-    busy.current = true
-
-    if (kind === 'slash' && !feel.reduced) {
-      flushSync(() => {
-        setCut({ screen: current, angle: (-Math.atan2(box.height, box.width) * 180) / Math.PI, length: Math.hypot(box.width, box.height) })
-        setCurrent(1 - current)
-      })
-      const ease = token('ease-gravedad-caida')
-      const [upper, lower] = halves.current
-      if (bar.current) animate(bar.current, [{ scale: '0 1', opacity: 1 }, { scale: '1 1', opacity: 1, offset: 0.35 }, { scale: '1 1', opacity: 0 }], { duration: 260, easing: EASE_OUT })
-      if (feel.full && flash.current) animate(flash.current, [{ opacity: 0 }, { opacity: 0.55, offset: 0.3 }, { opacity: 0 }], { duration: 240, delay: 40, easing: EASE_OUT })
-      if (upper) upper.animate([{ translate: '0 0' }, { translate: '-50% -50%' }], { duration: 190, delay: 70, easing: ease, fill: 'forwards' })
-      if (lower)
-        lower.animate([{ translate: '0 0' }, { translate: '50% 50%' }], { duration: 190, delay: 70, easing: ease, fill: 'forwards' }).finished.then(
-          () => {
-            setCut(null)
-            busy.current = false
-          },
-          () => (busy.current = false),
-        )
-      return
-    }
-
-    to.style.visibility = 'visible'
-    const finish = (running: Animation[]) =>
-      Promise.all(running.map((animation) => animation.finished)).then(
-        () => {
-          flushSync(() => setCurrent(1 - current))
-          to.style.visibility = ''
-          running.forEach((animation) => animation.cancel())
-          busy.current = false
-        },
-        () => (busy.current = false),
-      )
-
-    if (feel.reduced) {
-      // Con movimiento reducido queda el fundido: la nueva aparece encima.
-      finish([to.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: EASE_OUT, fill: 'forwards' })])
-      return
-    }
-    const timing = { duration: 220, easing: entryEase(feel), fill: 'forwards' } as const
-    finish([from.animate([{ translate: '0 0' }, { translate: '-100% 0' }], timing), to.animate([{ translate: '100% 0' }, { translate: '0 0' }], timing)])
-  }
+  const [shown, setShown] = useState<{ which: number; from: Swap | null; key: number }>({ which: 0, from: null, key: 0 })
+  const go = (from: Swap) => setShown((current) => ({ which: 1 - current.which, from, key: current.key + 1 }))
 
   return (
     <Specimen
-      title="6 · Transición de pantalla"
+      title="6 · Entrar y salir"
       layout="column"
       note={
         <>
-          Dos pantallas falsas. El barrido (220 ms, <Tag>--ease-out-back</Tag>; con «Rebote suave», sin pasada) reemplaza al fundido; el corte diagonal dibuja una línea en 90 ms y abre la
-          pantalla en dos mitades (copias recortadas con un <Tag>clip-path</Tag> quieto que se corren con <Tag>translate</Tag>). Con movimiento reducido, un fundido de 150 ms. El barrido
-          diagonal salió: a Gastón no le gustó.
+          La pantalla nueva barre 2 rem desde el lado del destino (<Tag>animate-screen-in</Tag>, 220 ms, <Tag>--ease-entrada</Tag>): de costado en el celular, de arriba o de abajo con el menú
+          lateral, nunca en diagonal; sin fundido y sin rebote que se note (~3 px). El resto, con la misma curva: un modal crece desde el centro (del 90 %, <Tag>dialog-enter</Tag>), un menú
+          desde su botón (del 85 %, <Tag>menu-in</Tag>, 160 ms), lo que flota sube 1,5 rem (<Tag>sheet-in</Tag>, el aviso) y las hojas y los cajones entran por su borde sin pasarse
+          (<Tag>sheet-up</Tag>, <Tag>side-drawer</Tag>). Todo sale por donde vino en 150 ms. Con «Efectos: Livianos», sin pasada; con movimiento reducido, un fundido corto.
         </>
       }
     >
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="secondary" onClick={() => go('horizontal')}>
-          Barrido horizontal
+        <Button size="sm" variant="secondary" onClick={() => go('prev')}>
+          Anterior (celular)
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => go('slash')}>
-          Corte diagonal
+        <Button size="sm" variant="secondary" onClick={() => go('next')}>
+          Siguiente (celular)
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => go('up')}>
+          Anterior (menú lateral)
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => go('down')}>
+          Siguiente (menú lateral)
         </Button>
       </div>
-      <div ref={frame} className="relative mx-auto h-72 w-full max-w-xs overflow-hidden border border-border-subtle bg-background">
-        {[0, 1].map((which) => (
-          <div key={which} ref={(element) => void (screens.current[which] = element)} className={cx('absolute inset-0', which !== current && 'invisible')}>
-            <FakeScreen which={which} />
-          </div>
-        ))}
-        {cut ? (
-          <>
-            <div ref={(element) => void (halves.current[0] = element)} className="absolute inset-0 [clip-path:polygon(0_0,100%_0,0_100%)]">
-              <FakeScreen which={cut.screen} />
-            </div>
-            <div ref={(element) => void (halves.current[1] = element)} className="absolute inset-0 [clip-path:polygon(100%_0,100%_100%,0_100%)]">
-              <FakeScreen which={cut.screen} />
-            </div>
-            <div ref={bar} aria-hidden style={{ width: cut.length, rotate: `${cut.angle}deg` }} className="pointer-events-none absolute bottom-0 left-0 h-1 origin-left bg-white shadow-[0_0_14px_3px_var(--color-fx-energia)]" />
-            {feel.full ? <div ref={flash} aria-hidden className="pointer-events-none absolute inset-0 bg-white opacity-0 mix-blend-plus-lighter" /> : null}
-          </>
-        ) : null}
+      <div className="relative mx-auto h-72 w-full max-w-xs overflow-hidden border border-border-subtle bg-background">
+        <div key={shown.key} className={cx('absolute inset-0 animate-screen-in motion-reduce:animate-none', shown.from && SAMPLE_SWEEP[shown.from])}>
+          <FakeScreen which={shown.which} />
+        </div>
       </div>
     </Specimen>
   )
