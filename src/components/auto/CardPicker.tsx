@@ -1,6 +1,7 @@
-import { useDeferredValue, useId, useState, type KeyboardEvent } from 'react'
+import { useDeferredValue, useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
+import { useWheelRow } from '../../app/use-wheel-row'
 import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { AskWhyView } from '../../app/auto/ask-why'
@@ -129,6 +130,9 @@ interface PickGridProps {
  */
 export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, apart = false, onInspect }: PickGridProps) {
   const [active, setActive] = useState(0)
+  // La bandeja se desliza de costado: con el mouse, también con la rueda vertical.
+  const row = useRef<HTMLDivElement>(null)
+  useWheelRow(row)
   // Las artes, en el render siguiente al de la entrada (de menor prioridad, de a pedazos): la hoja sale enseguida con los esqueletos, como si el arte no hubiera llegado.
   const arts = useDeferredValue(true, false)
   const sorted = groupsOf(given).flat()
@@ -230,6 +234,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
 
   return (
     <div
+      ref={row}
       role="listbox"
       aria-label={label}
       aria-multiselectable={multi || undefined}
