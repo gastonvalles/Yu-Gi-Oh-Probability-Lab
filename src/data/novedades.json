@@ -21,7 +21,7 @@
         ],
         "arreglos": [
           "«Cambio de turno» ya no cruza dos veces en el turno de un rival que juega.",
-          "Las copias de una misma carta ya no se juntan en una sola al elegir."
+          "La mano que te muestra un efecto como Mind Scan ahora se puede usar para declarar."
         ],
         "ojo": [
           "El buscador para declarar encuentra por el nombre en inglés, y el texto de las opciones de un efecto también sale en inglés.",
@@ -43,7 +43,7 @@
         ],
         "arreglos": [
           "«Turn change» no longer crosses twice during the turn of an opponent who plays.",
-          "Copies of the same card no longer merge into one when you choose."
+          "The hand an effect like Mind Scan shows you can now be used to declare."
         ],
         "ojo": [
           "The declare search finds cards by their English name, and the text of an effect's options also comes out in English.",
