@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-12T15:27:17.959Z",
+  "fetchedAt": "2026-11-13T14:44:09.105Z",
   "windowDays": 56,
   "source": "https://ygoprodeck.com/deck-search/",
   "cards": {
@@ -713,6 +713,7 @@
     }
   },
   "decks": [
+    {"id":744432,"region":"tcg","name":"Blitzclique","date":"2026-11-08","tournament":"Mechelen WCQ Regional","placement":"Top 8","players":30,"player":"Mehmed Yordanov","cover":81674782,"url":"blitzclique-744432","main":[[14558127,3],[59438930,3],[94145021,1],[10045474,3],[97045737,3]],"side":[[42141493,3],[84192580,3],[14883228,3]]},
     {"id":744249,"region":"tcg","name":"Ars Magna Elfnote","date":"2026-11-08","tournament":"Mechelen WCQ Regional","placement":"Top 8","players":30,"player":"Manon Lequertier","cover":8267140,"url":"ars-magna-elfnote-744249","main":[[42141493,3],[14558127,3],[59438930,3],[94145021,1],[97268402,3],[10045474,3]],"side":[[67750322,3],[84192580,3],[27204311,3],[8267140,3]]},
     {"id":744248,"region":"tcg","name":"Dark Time Wizard Sky Striker","date":"2026-11-08","tournament":"Weston-Super-Mare WCQ Regional","placement":"Top 8","players":46,"player":"Ben Gregson","cover":40235813,"url":"dark-time-wizard-sky-striker-744248","main":[[14558127,3],[59438930,3],[94145021,1],[97268402,3],[5318639,1]],"side":[[42141493,3],[27204311,2],[12580477,1],[8267140,2],[2729965,1]]},
     {"id":744245,"region":"tcg","name":"Despia Branded","date":"2026-11-08","tournament":"Bologna WCQ Regional","placement":"Top 8","players":115,"player":"Gennaro Cirillo","cover":89558743,"url":"despia-branded-744245","main":[[69680031,1],[82489470,1],[42141493,3],[14558127,3],[59438930,3],[94145021,1],[48130397,3]],"side":[[84192580,3],[27204311,2],[8267140,2],[2729965,1],[14883228,1]]},

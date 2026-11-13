@@ -40,13 +40,13 @@
 ["SP18-EN020","Common","1st Edition",2.41,163971,61283655,"Trickstar Candina"],
 ["SP18-EN020","Starfoil Rare","1st Edition",3.55,163972,61283655,"Trickstar Candina"],
 ["SP18-EN021","Common","1st Edition",0.7,163974,98700941,"Trickstar Lilybell"],
-["SP18-EN021","Starfoil Rare","1st Edition",0.78,163973,98700941,"Trickstar Lilybell"],
+["SP18-EN021","Starfoil Rare","1st Edition",0.77,163973,98700941,"Trickstar Lilybell"],
 ["SP18-EN022","Common","1st Edition",0.7,163975,35199656,"Trickstar Lycoris"],
 ["SP18-EN022","Starfoil Rare","1st Edition",0.68,163976,35199656,"Trickstar Lycoris"],
 ["SP18-EN023","Common","1st Edition",0.22,163978,91505214,"Trickstar Narkissus"],
 ["SP18-EN023","Starfoil Rare","1st Edition",0.61,163977,91505214,"Trickstar Narkissus"],
 ["SP18-EN024","Common","1st Edition",0.13,164018,28593329,"Dark Angel"],
-["SP18-EN024","Starfoil Rare","1st Edition",0.65,164017,28593329,"Dark Angel"],
+["SP18-EN024","Starfoil Rare","1st Edition",0.56,164017,28593329,"Dark Angel"],
 ["SP18-EN025","Common","1st Edition",0.43,164019,91482773,"Gateway Dragon"],
 ["SP18-EN025","Starfoil Rare","1st Edition",0.4,164020,91482773,"Gateway Dragon"],
 ["SP18-EN026","Common","1st Edition",0.29,164022,27877771,"Sniffer Dragon"],
@@ -97,5 +97,5 @@
 ["SP18-EN049","Common","1st Edition",0.35,164054,53936268,"Personal Spoofing"],
 ["SP18-EN049","Starfoil Rare","1st Edition",0.49,164053,53936268,"Personal Spoofing"],
 ["SP18-EN050","Common","1st Edition",0.4,164055,27664101,"Link Restart"],
-["SP18-EN050","Starfoil Rare","1st Edition",0.12,164056,27664101,"Link Restart"]
+["SP18-EN050","Starfoil Rare","1st Edition",0.11,164056,27664101,"Link Restart"]
 ]

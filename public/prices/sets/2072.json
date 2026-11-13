@@ -14,12 +14,12 @@
 ["SDCL-EN013","Common","1st Edition",0.36,149317,98777036,"Tragoedia"],
 ["SDCL-EN014","Common","1st Edition",0.14,149318,423585,"Summoner Monk"],
 ["SDCL-EN015","Common","1st Edition",0.18,149319,85087012,"Card Trooper"],
-["SDCL-EN016","Common","1st Edition",1.33,149320,14943837,"Debris Dragon"],
-["SDCL-EN017","Common","1st Edition",0.22,149321,41386308,"Mathematician"],
+["SDCL-EN016","Common","1st Edition",1.34,149320,14943837,"Debris Dragon"],
+["SDCL-EN017","Common","1st Edition",0.23,149321,41386308,"Mathematician"],
 ["SDCL-EN018","Common","1st Edition",0.23,149323,28637168,"Crane Crane"],
 ["SDCL-EN019","Common","1st Edition",0.75,149324,31560081,"Magician of Faith"],
 ["SDCL-EN020","Common","1st Edition",1.23,149325,8487449,"Jester Confit"],
-["SDCL-EN021","Common","1st Edition",0.79,149326,67441435,"Glow-Up Bulb"],
+["SDCL-EN021","Common","1st Edition",0.85,149326,67441435,"Glow-Up Bulb"],
 ["SDCL-EN022","Common","1st Edition",0.26,149327,45452224,"Kinka-byo"],
 ["SDCL-EN023","Super Rare","1st Edition",0.21,149328,43839002,"Cynet Backdoor"],
 ["SDCL-EN024","Common","1st Edition",0.79,149329,54447022,"Soul Charge"],
@@ -40,6 +40,6 @@
 ["SDCL-EN039","Common","1st Edition",0.23,149344,83326048,"Dimensional Barrier"],
 ["SDCL-EN040","Common","1st Edition",0.12,149345,51099515,"Ghosts From the Past"],
 ["SDCL-EN041","Ultra Rare","1st Edition",0.23,149346,6622715,"Encode Talker"],
-["SDCL-EN042","Ultra Rare","1st Edition",0.27,149347,32617464,"Tri-Gate Wizard"],
+["SDCL-EN042","Ultra Rare","1st Edition",0.25,149347,32617464,"Tri-Gate Wizard"],
 ["SDCL-EN043","Super Rare","1st Edition",0.19,149348,79016563,"Binary Sorceress"]
 ]

@@ -58,7 +58,7 @@
 ["SDKS-EN029","Common","1st Edition",0.14,123782,46181000,"Frontline Base"],
 ["SDKS-EN029","Common","Unlimited",0.11,123782,46181000,"Frontline Base"],
 ["SDKS-EN030","Common","1st Edition",0.17,123783,39778366,"Union Scramble"],
-["SDKS-EN030","Common","Unlimited",0.1,123783,39778366,"Union Scramble"],
+["SDKS-EN030","Common","Unlimited",0.13,123783,39778366,"Union Scramble"],
 ["SDKS-EN031","Common","1st Edition",0.47,123784,57728570,"Crush Card Virus"],
 ["SDKS-EN031","Common","Unlimited",0.42,123784,57728570,"Crush Card Virus"],
 ["SDKS-EN032","Common","1st Edition",0.31,123785,14315573,"Negate Attack"],
@@ -86,5 +86,5 @@
 ["SDKS-EN043","Common","1st Edition",0.67,123796,2111707,"XY-Dragon Cannon"],
 ["SDKS-EN043","Common","Unlimited",0.83,123796,2111707,"XY-Dragon Cannon"],
 ["SDKS-EN044","Common","1st Edition",0.58,123797,99724761,"XZ-Tank Cannon"],
-["SDKS-EN044","Common","Unlimited",0.61,123797,99724761,"XZ-Tank Cannon"]
+["SDKS-EN044","Common","Unlimited",0.58,123797,99724761,"XZ-Tank Cannon"]
 ]
