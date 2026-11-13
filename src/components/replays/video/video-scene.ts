@@ -142,7 +142,8 @@ export function videoLayout(width: number): VideoLayout {
   return {
     scale: s,
     score: box(24, 20, 672, 84),
-    theirHand: box(64, 116, 592, 70),
+    // La mano del rival a 0,8 de la tuya (104 px), como en la mesa.
+    theirHand: box(64, 108, 592, 83),
     myHand: box(64, 1040, 592, 104),
     text: box(24, 1150, 672, 90),
     footer: box(24, 1244, 672, 28),
@@ -335,18 +336,19 @@ export function focusOf(action: MatAction, before: MatState, state: MatState, mi
 }
 
 /** Las mismas cartas de una mano en su franja: boca arriba lo que `look` conoce y `open` deja ver (o la que se muestra en esta jugada). */
-export function handSlots(ids: readonly string[], area: Rect, look: Look, open: (id: string) => boolean): SceneSlot[] {
+export function handSlots(ids: readonly string[], area: Rect, look: Look, open: (id: string) => boolean, top = false): SceneSlot[] {
   const rects = handRects(area, ids.length)
-  // El abanico de la mesa (`restTransform` de `PracticeHand`): 2,2° por carta desde el medio y las de los costados un poco más abajo (1,6 px por carta², en una de ~96 px de alto).
+  // El abanico de la mesa (`restTransform` de `PracticeHand`): 2,2° por carta desde el medio y las de los costados un poco más abajo (1,6 px por carta², en una de ~96 px de alto). La de arriba (`top`),
+  // espejada como `TheirHand`: las puntas suben.
   const middle = (ids.length - 1) / 2
-  const dip = area.h / 96
+  const dip = (area.h / 96) * (top ? -1 : 1)
   return ids.map((id, index) => {
     const face = open(id) ? look(id) : null
     const rect = rects[index]!
     return {
       rect: { ...rect, y: rect.y + Math.min(6, (index - middle) ** 2 * 1.6) * dip },
       ids: [id],
-      card: { id, art: face?.art ?? null, name: face?.name ?? '', faceDown: !face, sideways: false, upsideDown: false, counters: 0, materials: 0, tilt: ((index - middle) * FAN_DEGREES * Math.PI) / 180 },
+      card: { id, art: face?.art ?? null, name: face?.name ?? '', faceDown: !face, sideways: false, upsideDown: false, counters: 0, materials: 0, tilt: (((index - middle) * FAN_DEGREES * Math.PI) / 180) * (top ? -1 : 1) },
     }
   })
 }
@@ -370,7 +372,7 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
       fieldArt: state.field ? fieldArtUrl(state.field, realOf(replay, frame, side, state.field.id)) : null,
       half: halfOf(layout, rows),
       slots: sideSlots(state, layout, rows, side === 1, look, shown),
-      hand: handSlots(state.hand, side === 0 ? layout.myHand : layout.theirHand, look, (id) => (side === 0 && replay.view === 'mine') || id === shown),
+      hand: handSlots(state.hand, side === 0 ? layout.myHand : layout.theirHand, look, (id) => (side === 0 && replay.view === 'mine') || id === shown, side === 1),
     }
   }) as [SceneSide, SceneSide]
   // Un cambio de fase no resalta ninguna casilla: lo dice su cartel.

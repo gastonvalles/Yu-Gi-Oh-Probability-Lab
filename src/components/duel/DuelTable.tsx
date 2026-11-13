@@ -130,7 +130,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
   return (
     <div className={cx('grid gap-1.5', className)}>
       {showTheirs && hand !== undefined ? <TheirHand count={hand} align="start" medals={theirs.medals?.get('hand') ?? null} /> : null}
-      <div role="group" aria-label={t('duel.table.label')} data-phone={phoneStyle ? '' : undefined} className={cx(GRID, phoneStyle && 'max-sm:gap-0.75')} style={{ '--areas': rows.join(' '), ...phoneStyle } as CSSProperties}>
+      <div role="group" aria-label={t('duel.table.label')} data-phone={phoneStyle ? '' : undefined} className={GRID} style={{ '--areas': rows.join(' '), ...phoneStyle } as CSSProperties}>
         {showTheirs ? <SideCells side={theirs} owner="theirs" /> : null}
         {[0, 1].map((index) => (
           <SharedZone key={index} area={`emz${index + 1}`} index={index} mine={mine} theirs={theirs} />
@@ -194,8 +194,11 @@ export function TheirHand({
   medals,
   align = 'center',
   below = false,
+  label,
 }: {
   count: number
+  /** Lo que dice el lector de pantalla, si no es la mano del rival (el replay de un duelo: de quién es). */
+  label?: string
   /** Debajo del campo (la mano de abajo en el replay de un duelo): el abanico espejado, como la tuya en la mesa (el centro más alto, las puntas bajan) y colgado del borde de arriba. */
   below?: boolean
   /** Los medallones de lo que activó desde la mano (duelo automático, al resolver): sobre el abanico. */
@@ -272,7 +275,7 @@ export function TheirHand({
     <div ref={boxRef} data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} className="pointer-events-none relative isolate shrink-0" style={{ width, height: room }}>
       {/* Debajo de las cartas, como la caja de antes: el aro de lo que se señala (que la sube a z 6: las cartas van en z 7). */}
       <div data-pointed={pointed ? 'true' : undefined} className="pointer-events-auto absolute inset-y-0" style={fanBox} />
-      <div role={open ? 'group' : 'img'} aria-label={cards ? (cards.includes(null) ? (cards.some(Boolean) ? t('duel.hand.theirsPublic', { count: cards.length, cards: cards.flatMap((card) => (card ? [card.name] : [])).join(', ') }) : t('duel.hand.theirs', { count })) : t('duel.hand.theirsShown', { cards: cards.map((card) => card!.name).join(', ') })) : t('duel.hand.theirs', { count })} className="absolute inset-0 z-7">
+      <div role={open ? 'group' : 'img'} aria-label={label ?? (cards ? (cards.includes(null) ? (cards.some(Boolean) ? t('duel.hand.theirsPublic', { count: cards.length, cards: cards.flatMap((card) => (card ? [card.name] : [])).join(', ') }) : t('duel.hand.theirs', { count })) : t('duel.hand.theirsShown', { cards: cards.map((card) => card!.name).join(', ') })) : t('duel.hand.theirs', { count }))} className="absolute inset-0 z-7">
         {Array.from({ length: shown }, (_, index) => {
           // El espejo de la nuestra (Gastón, 2026-11-12): el centro es lo más cercano al campo y las puntas suben, abiertas hacia el rival.
           const raise = Math.abs(index - (shown - 1) / 2) ** 2 * THEIR_FAN_RISE

@@ -182,7 +182,7 @@ function SpeedMenu({ speed, onSpeed, tall = false }: { speed: ReplaySpeed; onSpe
             aria-checked={value === speed}
             data-initial-focus={value === speed ? '' : undefined}
             className={cx(
-              'flex items-center justify-between gap-4 rounded-control px-3 py-2 text-left text-body tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none',
+              'flex min-h-11 items-center justify-between gap-4 rounded-control px-3 py-2 text-left text-body tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none',
               value === speed ? 'bg-tint/10 font-semibold text-foreground' : 'text-muted hover:bg-tint/10 hover:text-foreground',
             )}
             onClick={() => {
@@ -320,7 +320,8 @@ export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playL
  */
 export const ReplayTransport = memo(function ReplayTransport({ total, cursor, playing, playLabel, speed, onTogglePlay, onRestart, onPrevious, onNext, onSpeed, className }: TransportProps) {
   return (
-    <div role="group" aria-label={t('practice.replay.controls')} className={cx('flex items-center gap-2', className)}>
+    // Todos de 44 px también con el mouse o un toque que el navegador no marca como grueso ([&_button]: los de anterior, siguiente, volver al principio y la velocidad).
+    <div role="group" aria-label={t('practice.replay.controls')} className={cx('flex items-center gap-2 [&_button]:min-h-11 [&_button]:min-w-11', className)}>
       <RestartButton cursor={cursor} onRestart={onRestart} />
       <span className="mx-auto flex items-center gap-2">
         <StepButtons total={total} cursor={cursor} playing={playing} playLabel={playLabel} onTogglePlay={onTogglePlay} onPrevious={onPrevious} onNext={onNext} />

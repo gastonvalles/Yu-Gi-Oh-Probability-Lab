@@ -59,8 +59,8 @@ describe('un enlace de replay sin nombres', () => {
     // Abierto antes de que lleguen los nombres: la jugada se ve con «Carta», y el renglón ya tiene su alto.
     const text = await screen.findByTestId('replay-step-text')
     expect(text).toHaveTextContent('Beto: Invocación Normal de Carta')
-    // Un solo renglón, cortado: lo que llegue después no lo alarga ni mueve los botones.
-    expect(screen.getByTestId('replay-step')).toHaveClass('truncate')
+    // Hasta dos renglones, con el alto de dos reservado: lo que llegue después no mueve el campo.
+    expect(text).toHaveClass('min-h-[2lh]', 'line-clamp-2')
     expect(fetchNames).toHaveBeenCalledTimes(1)
     expect(fetchNames.mock.calls[0]![0]).toContain(55144522)
 
