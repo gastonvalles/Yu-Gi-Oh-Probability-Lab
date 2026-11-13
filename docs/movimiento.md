@@ -6,7 +6,7 @@ Cómo se anima sin trabar la app (sobre todo la mesa, en un celular); la base, e
 
 Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas (para qué es cada una, en `app/motion.ts`): `--ease-out`, `--ease-in-out` y `--ease-snap`. Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out`). En el JS, sus espejos (`EASE_*`); en un `@keyframes`, el valor literal. Con rebote, sólo `--ease-out-back` y `--ease-rebote-*`.
 
-**El campo se mueve sólo a propósito** (una sacudida de impacto); sin querer, es un bug. **Lo que entra y sale barre o rebota desde su lado, nunca en diagonal** (`index.css`); con movimiento reducido, fundido.
+**El campo se mueve sólo a propósito** (la sacudida de un impacto, `app/field-impact.ts`, que se termina antes de medir la mesa); sin querer, es un bug. **Lo que entra y sale barre o rebota desde su lado, nunca en diagonal** (`index.css`); con movimiento reducido, fundido.
 
 ## La mesa: nada en el hilo principal
 
@@ -27,5 +27,5 @@ Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin
 
 - Lo que entra en tanda va con `stagger`; un `fixed` adentro de eso se corre: va por portal.
 - **Lo que se cierra también sale** (`app/use-presence.ts`). Trampas: `<Presence>` sola no anima (el hijo llama a `usePresence`, o pasa por `Modal` / `SideDrawer` con `isOpen={!useLeaving()}` y ata Escape, el scroll y el foco a `!leaving`); una `key` que cambia al cerrar, un `return null` antes del `Modal` o una entrada sin su fotograma en `EXITS` matan la salida (para esconder sin cerrar, `hidden`).
-- **La cadena en grande** (`ChainNotice.tsx`), sólo al encadenar: `translate`, `rotate`, `scale` y `opacity` (entra con `starting:`); al resolver se funde en 0,2 s y quedan los medallones (`ChainBadge`). Ritmo, `chainDwell`: 0,7 s por eslabón que entra y 0,9 s por cada uno que se resuelve (+1,6 s si se niega; sola, 1 s).
+- **La cadena en grande** (`ChainNotice.tsx`), sólo al encadenar: `translate`, `rotate`, `scale` y `opacity` (entra con `starting:`); al resolver se funde en 0,2 s y quedan los medallones (`ChainBadge`). Ritmo: `chainDwell`.
 - **Sin animar, a propósito:** las cubiertas del duelo, los carteles con temporizador (el turno, la moneda y el dado, los avisos), lo que despliega en el flujo (`InfoTip`, `MultiSelect`, `<details>`) y lo que cierra navegando.

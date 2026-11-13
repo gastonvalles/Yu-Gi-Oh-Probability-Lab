@@ -9,6 +9,7 @@ import { opaqueOfForeign } from '../../app/mat-control'
 import { SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type MenuPlace } from '../../app/mat-menu-order'
 import { isOpaqueId } from '../../app/mat-public'
 import { EASE_IN_OUT } from '../../app/motion'
+import { DROP_MS, dropFrames } from '../../app/card-weight'
 import {
   activeScales,
   allMatIds,
@@ -61,7 +62,8 @@ import { playSfx } from '../../app/sfx'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
-import { cardPose, useCardFlights } from '../../app/use-card-flights'
+import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
+import { arrivals, impactOn, shakeOf } from '../../app/field-impact'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
@@ -106,7 +108,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, StatTag, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel, tallyLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, SPOTLIGHT_TONE, landingDelay, Spotlight, SpotlightSwap, StatTag, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel, tallyLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -463,6 +465,8 @@ const MAT_CARD = [
   // Al cambiar de posición la carta se acuesta (o se para) pasándose un poco y volviendo; al pasar el mouse se eleva.
   CARD_TRANSITION,
   CARD_HOVER,
+  // La carta del menú, y la soltada que espera que se elija cómo sale, se levanta con peso (`card-weight.ts`: crece un 15 %); al jugarse cae (`DROP_FRAMES`).
+  'data-[selected=true]:-translate-y-1 data-[selected=true]:scale-115',
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
   // En el duelo automático no se arrastra (`still`): sólo se toca.
@@ -572,7 +576,8 @@ const strikeOf = (spec: StrikeSpec): Strike | null => (prefersReducedMotion() ? 
 interface MatFx {
   flash: { id: string; key: number; kind: SpotlightKind } | null
   stage: { ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null
-  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; key: number } | null
+  /** `dropped`: era la carta que esperaba levantada en esa casilla; cae ahí mismo (`dropFrames`) y su golpe espera a que toque. */
+  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; dropped: boolean; key: number } | null
   banner: { phase: MatPhase; turn: number | null; key: number } | null
   handFlash: number | null
 }
@@ -618,6 +623,7 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
   const effects = matEffects(replayMat(session.initial, session.actions, session.cursor - 1), action)
   const key = Date.now()
   const { fx } = previous
+  const dropped = 'id' in action && action.id === pendingId
 
   return {
     ...at,
@@ -633,7 +639,7 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
           : effects.showcase && session.replay
             ? { ...effects.showcase, step: session.cursor, key }
             : null,
-      landing: effects.landing ? { ...effects.landing, flies: effects.landing.flies && !('id' in action && action.id === pendingId), key } : fx.landing,
+      landing: effects.landing ? { ...effects.landing, flies: effects.landing.flies && !dropped, dropped, key } : fx.landing,
       banner: effects.banner ? { ...effects.banner, key } : fx.banner,
       handFlash: effects.hand ? key : fx.handFlash,
     },
@@ -1087,6 +1093,29 @@ function PracticeMatBody({
     setFieldNode(node)
   }, [])
 
+  // El impacto de una Invocación (`field-impact.ts`): el anillo desde la casilla y la sacudida del campo cuando la carta la toca. Por el DOM, sin dibujar la mesa de nuevo.
+  const landingKey = landing?.key
+  useEffect(() => {
+    if (!landing || landingKey === undefined) return
+    const cell = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(landing.spot, landing.index)}"]`) ?? null
+    impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped))
+    // Una vez por Invocación (su `key`).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [landingKey])
+
+  // Las del rival: la mesa no recibe sus jugadas, sólo ve su campo cambiar (`rivalFlights`): un monstruo que llega boca arriba a una zona, de a uno (un `sync` que trae varios no es un golpe).
+  const rivalState = duel?.rivalFlights?.state ?? null
+  const rivalBefore = useRef(rivalState)
+  useEffect(() => {
+    const before = rivalBefore.current
+    rivalBefore.current = rivalState
+    if (!before || !rivalState || before === rivalState) return
+    const [arrived, ...more] = arrivals(before, rivalState)
+    if (!arrived || more.length > 0 || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
+    const card = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)
+    impactOn(card?.closest('[data-rival-drop], [data-drop]') ?? null, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT))
+  }, [rivalState])
+
   // La vista 3D se agranda hasta ocupar el lugar que tiene (la inclinación le quita alto y la perspectiva, fondo): el campo con la mano del rival crece parejo desde su borde de abajo (que no se mueve, así la mano
   // y todo lo de abajo siguen en su lugar) hasta donde entra a lo ancho y hasta la barra de arriba. Se mide a tamaño natural y se le avisa al CSS con `--field-zoom`; no cambia el diseño (la grilla ni el scroll).
   useLayoutEffect(() => {
@@ -1297,7 +1326,8 @@ function PracticeMatBody({
   // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo): `artById`, de arriba.
   // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
   // dejaban la medida de cuando todavía volaban, y la próxima jugada arrancaba de ahí (desde el mazo, con una carta gigante y estirada).
-  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}:${pendingId ?? ''}`)
+  // La carta del menú se levanta (crece un 15 %): se vuelve a medir, así al jugarla sale volando desde donde se ve.
+  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}:${pendingId ?? ''}:${menu?.kind === 'card' ? menu.id : ''}`)
   // El rival tocó su deck o sumó una carta a su mano: su deck y su mano se barajan (lo ve quien mira).
   const rivalShuffle = duel?.rivalShuffle ?? 0
   useEffect(() => {
@@ -2529,7 +2559,7 @@ function PracticeMatBody({
         ) : null}
         {!shown && spot === 'emz' && scene ? scene.sharedZone(index) : null}
         <Presence>{scene?.medals?.get(drop) ? <ChainBadge medals={scene.medals.get(drop)!} /> : null}</Presence>
-        {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
+        {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} dropped={landing.dropped} /> : null}
       </div>
     )
   }
@@ -3150,6 +3180,8 @@ function PracticeMatBody({
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
           data-phone={phone ? '' : undefined}
+          // Lo que sacude un impacto (`field-impact.ts`): el campo entero, con la mano del rival; tu mano, no.
+          data-field=""
           // Con el campo del rival de un combo (`comboScene`), las cinco filas entran en el alto de la práctica.
           className={cx(!duel && 'min-[1101px]:my-auto', !duel && (hasRivalStrip ? RIVAL_STRIP_FIELD : comboScene ? 'min-[1101px]:[--cell:max(3.5rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-36.5rem)/5),12rem))]' : 'min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]'), "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] max-sm:gap-0.75 data-phone:gap-0.75 min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]',
             // Las áreas: en la práctica, escritas acá; en un duelo las arma la pantalla (`duel.areas`, por variable). Siete columnas en todos los anchos, también en el celular.
@@ -3802,6 +3834,16 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
 
   const cardRef = useRef<HTMLDivElement | null>(null)
   const previousPos = useRef(placed.pos)
+  const wasPending = useRef(pending)
+
+  // La soltada que esperaba levantada en su casilla, al jugarse ahí: la pausa en lo alto, cae y se asienta (`dropFrames`; el impacto espera a que toque, `DROP_HIT_MS`).
+  useEffect(() => {
+    const dropped = wasPending.current && !pending
+    wasPending.current = pending
+    const card = cardRef.current
+
+    if (dropped && card && typeof card.animate === 'function' && !prefersReducedMotion()) cancelWhenDone(card.animate(dropFrames(4), { duration: DROP_MS }))
+  }, [pending])
 
   useEffect(() => {
     const wasFaceDown = previousPos.current === 'set'

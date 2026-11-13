@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 
+import { HITSTOP_MS } from '../../app/card-weight'
+import { ringAt, shakeField, shakeOf } from '../../app/field-impact'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { cx } from '../ui/cx'
 import { fxVars } from './MatFx'
@@ -384,13 +386,17 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
 
     const reach = Math.min(LUNGE_PX, len * LUNGE_SHARE)
     const at = nudger(attacker, false)
+    // Al conectar, la pausa del golpe (hitstop, `HITSTOP_MS`): se queda clavado 3 cuadros y recién ahí vuelve.
+    const total = 2 * IMPACT_MS + HITSTOP_MS
+    const hit = at(Math.cos(ang) * reach, Math.sin(ang) * reach)
     const lunge = attacker.animate(
       [
         { translate: at(0, 0), easing: EASE_IN_OUT },
-        { translate: at(Math.cos(ang) * reach, Math.sin(ang) * reach), offset: 0.5, easing: EASE_IN_OUT },
+        { translate: hit, offset: IMPACT_MS / total },
+        { translate: hit, offset: (IMPACT_MS + HITSTOP_MS) / total, easing: EASE_IN_OUT },
         { translate: at(0, 0) },
       ],
-      { duration: 2 * IMPACT_MS },
+      { duration: total },
     )
 
     return () => lunge.cancel()
@@ -400,10 +406,19 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
   const { target } = strike
 
   useEffect(() => {
-    const shake = target ? sacudir(target, 'strike', IMPACT_MS) : null
+    const shake = target ? sacudir(target, 'strike', IMPACT_MS + HITSTOP_MS) : null
 
     return () => shake?.cancel()
   }, [target])
+
+  // El impacto en la mesa (`field-impact.ts`): el anillo de energía donde conecta y, pasada la pausa del golpe, la sacudida del campo (fuerte si es directo, leve contra una carta).
+  const { bx, by } = strike
+  useEffect(() => {
+    const direct = !target || target.hasAttribute('data-lp')
+
+    ringAt(bx, by, IMPACT_MS)
+    shakeField(attacker.closest<HTMLElement>('[data-field]'), shakeOf({ attack: direct ? 'direct' : 'card' }), IMPACT_MS + HITSTOP_MS)
+  }, [attacker, target, bx, by])
 
   return createPortal(
     <div aria-hidden="true" data-fx="strike" className="pointer-events-none fixed inset-0 z-[150]" style={fxVars('red')}>
@@ -419,7 +434,8 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
         {SPARKS.map(([x, y]) => (
           <span
             key={`${x}:${y}`}
-            className="absolute -ml-2 -mt-2 size-4 animate-fx-spark bg-[radial-gradient(circle,#fff_20%,rgb(var(--fx-rgb)/0.8)_40%,transparent_70%)] opacity-0 motion-reduce:hidden"
+            // Con «Livianos», menos destellos a la vez: sin chispas.
+            className="absolute -ml-2 -mt-2 size-4 animate-fx-spark bg-[radial-gradient(circle,#fff_20%,rgb(var(--fx-rgb)/0.8)_40%,transparent_70%)] opacity-0 motion-reduce:hidden fx-lite:hidden"
             style={{ ...delayed, '--dx': `${x}rem`, '--dy': `${y}rem` } as CSSProperties}
           />
         ))}

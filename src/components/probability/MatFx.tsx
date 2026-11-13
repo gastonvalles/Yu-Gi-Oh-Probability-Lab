@@ -7,6 +7,7 @@ import { printedBadge, statShift } from '../../app/field-stats'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
+import { DROP_HIT_MS } from '../../app/card-weight'
 import { EXIT_MS, useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
@@ -379,24 +380,28 @@ const SPARKS = [
   [-2.4, -1.35],
 ] as const
 
+/** Cuándo toca la carta su casilla, en ms desde la jugada: al final de su vuelo (`LANDING_AT`), al caer la que esperaba levantada ahí (`DROP_HIT_MS`) o ya. */
+export const landingDelay = (flies: boolean, dropped: boolean) => (flies ? Math.round(FLIGHT_MS * LANDING_AT) : dropped ? DROP_HIT_MS : 0)
+
 /**
  * Una carta que cae en una zona de monstruo: un fogonazo, el aro lima del golpe que se abre, otro del color de cómo llega (Normal dorado,
  * Especial celeste, Fusión violeta, Sincronía blanca, Xyz azul, Enlace verde agua) y chispas, cuando la carta, que viene volando, toca la zona (`LANDING_AT` del vuelo).
  */
-export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolean }) {
+export function LandingBurst({ tone, flies, dropped = false }: { tone: LandingTone; flies: boolean; /** La carta esperaba levantada ahí y cae (`dropFrames`): el golpe, cuando toca. */ dropped?: boolean }) {
   // El retraso va en línea en cada pieza: una variable en el token de la animación se resolvería en la raíz, no acá.
-  const delay = (extra = 0): CSSProperties => ({ animationDelay: `${(flies ? Math.round(FLIGHT_MS * LANDING_AT) : 0) + extra}ms` })
+  const delay = (extra = 0): CSSProperties => ({ animationDelay: `${landingDelay(flies, dropped) + extra}ms` })
 
   return (
     <span aria-hidden="true" data-fx="landing" data-tone={tone} className="pointer-events-none absolute inset-0 z-4 motion-reduce:hidden" style={fxVars(LANDING_TONE[tone])}>
       <span className="absolute inset-0 animate-fx-flash bg-[radial-gradient(circle,rgb(255_255_255/0.95),rgb(var(--fx-rgb)/0.75)_35%,transparent_72%)]" style={delay()} />
       {/* El golpe: un aro lima que se abre desde la casilla cuando la carta la toca, y detrás otro del color de cómo llegó. */}
       <span className="absolute inset-0 animate-fx-shock border-[3px] border-info bg-[radial-gradient(closest-side,transparent_60%,rgb(var(--info-rgb)/0.4))] opacity-0" style={delay()} />
-      <span className="absolute inset-0 animate-fx-shock border-2 opacity-0 border-[color:rgb(var(--fx-rgb))] bg-[radial-gradient(closest-side,transparent_60%,rgb(var(--fx-rgb)/0.4))]" style={delay(110)} />
+      {/* Con «Livianos», menos destellos a la vez: sin el segundo aro ni las chispas. */}
+      <span className="absolute inset-0 animate-fx-shock border-2 opacity-0 border-[color:rgb(var(--fx-rgb))] bg-[radial-gradient(closest-side,transparent_60%,rgb(var(--fx-rgb)/0.4))] fx-lite:hidden" style={delay(110)} />
       {SPARKS.map(([x, y]) => (
         <span
           key={`${x}:${y}`}
-          className="absolute left-1/2 top-1/2 -ml-2 -mt-2 size-4 animate-fx-spark bg-[radial-gradient(circle,#fff_20%,rgb(var(--fx-rgb)/0.8)_40%,transparent_70%)] opacity-0"
+          className="absolute left-1/2 top-1/2 -ml-2 -mt-2 size-4 animate-fx-spark bg-[radial-gradient(circle,#fff_20%,rgb(var(--fx-rgb)/0.8)_40%,transparent_70%)] opacity-0 fx-lite:hidden"
           style={{ ...delay(), '--dx': `${x}rem`, '--dy': `${y}rem` } as CSSProperties}
         />
       ))}
