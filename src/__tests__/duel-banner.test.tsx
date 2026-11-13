@@ -160,7 +160,11 @@ describe('el final del duelo', () => {
     expect(within(dialog).getByRole('status')).toHaveTextContent('Te quedaste sin puntos de vida.')
     // El campo se ve: ni velo que tape todo ni hoja opaca; tampoco el marcador de vidas.
     expect(dialog.querySelector('.bg-card-background, .animate-sheet-up')).toBeNull()
-    expect([...dialog.querySelectorAll('span')].some((n) => n.className.includes('inset-0') && /\bbg-background\//.test(n.className))).toBe(false)
+    expect([...dialog.children].some((n) => n.className.includes('inset-0') && /\bbg-background\//.test(n.className))).toBe(false)
+    // TI-249: el bloque es una banda de lado a lado, opaca y recta («un fondo horizontal con la X arriba a la derecha»), con la ✕ en su esquina y los botones en un renglón.
+    expect(block.querySelector('[data-result-band]')).toHaveClass('inset-0', 'bg-background/95')
+    expect(within(dialog).getByRole('button', { name: 'Ver el campo' })).toHaveClass('absolute', 'right-1', 'top-1')
+    expect(container.querySelector('[data-result-block] .grid-cols-2')).toHaveClass('whitespace-nowrap')
     expect(dialog.querySelector('[data-score]')).toBeNull()
     expect(dialog).not.toHaveTextContent(/\d+\s*a\s*\d+/)
     // Tres botones: dos en la fila y el tercero (la principal) de lado a lado.
