@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-3-contadores-de-carta",
+      "date": "2026-11-13",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Las cartas que cuentan algo muestran su número",
+        "novedades": [
+          "En el duelo automático, las cartas que llevan una cuenta la muestran: un número chico arriba a la derecha de la carta, que sube a medida que pasa lo que cuenta. Lo ven los dos jugadores.",
+          "Angelechy Shatranga cuenta los efectos de monstruo que activa el rival en el turno. Al llegar a 5, el número pasa a ámbar: el rival ya no puede activar otro.",
+          "Nibiru cuenta las Invocaciones del rival en el turno, sobre la carta en tu mano. A partir de 5, ámbar: ya se puede activar."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Cuando el rival invoca una carta suya en tu campo (un Kaiju), ahora se ve con su imagen y su nombre.",
+          "Deshacer una jugada ya no puede dejar la mesa distinta de como estaba."
+        ],
+        "ojo": [
+          "Por ahora cuentan esas dos cartas. Nibiru en la mano lo ve sólo quien la tiene.",
+          "En el celular, la ficha de la carta todavía no dice qué está contando."
+        ]
+      },
+      "en": {
+        "title": "Cards that count something show their number",
+        "novedades": [
+          "In the automatic duel, cards that keep a count show it: a small number at the top right of the card, going up as the thing it counts happens. Both players see it.",
+          "Angelechy Shatranga counts the monster effects the opponent activates during the turn. At 5 the number turns amber: the opponent can't activate another.",
+          "Nibiru counts the opponent's Summons during the turn, on the card in your hand. From 5 on, amber: it can be activated."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "When the opponent Summons one of their cards to your field (a Kaiju), it now shows with its image and its name.",
+          "Undoing a play can no longer leave the table different from how it was."
+        ],
+        "ojo": [
+          "For now those two cards count. Nibiru in the hand is seen only by whoever holds it.",
+          "On the phone, the card sheet doesn't yet say what it is counting."
+        ]
+      }
+    },
+    {
       "id": "2026-11-13-2-declarar-nombre-copias-carteles",
       "date": "2026-11-13",
       "tags": [
