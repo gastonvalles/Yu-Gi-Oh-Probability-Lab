@@ -160,31 +160,8 @@ export function buildDeckImportPreview(options: DeckImportBuildOptions & { text:
     parsedEntries,
     invalidLines,
     source: resolveDeckImportSource(options.source, 'text'),
-    resolver: (entry, importedDeck) => {
-      const matchedCard = cardIndex.get(normalizeImportedCardName(entry.name))
-
-      if (!matchedCard) {
-        return { type: 'missing', entry }
-      }
-
-      const nextDeckBuilder = appendResolvedEntryCopies({
-        entry,
-        importedDeck,
-        matchedCard,
-        deckFormat,
-      })
-
-      return {
-        type: 'resolved',
-        importedDeck: nextDeckBuilder.deckBuilder,
-        resolvedEntry: {
-          ...entry,
-          appliedCount: nextDeckBuilder.appliedCount,
-          card: matchedCard,
-        },
-        conflicts: nextDeckBuilder.conflicts,
-      }
-    },
+    deckFormat,
+    find: (entry) => cardIndex.get(normalizeImportedCardName(entry.name)),
     deckName,
   })
 }
@@ -213,31 +190,8 @@ export function buildDeckImportPreviewFromYdk(
     parsedEntries,
     invalidLines: [],
     source: resolveDeckImportSource(options.source, 'ydk'),
-    resolver: (entry, importedDeck) => {
-      const matchedCard = findCardByImportedName(cardsById, entry.name)
-
-      if (!matchedCard) {
-        return { type: 'missing', entry }
-      }
-
-      const nextDeckBuilder = appendResolvedEntryCopies({
-        entry,
-        importedDeck,
-        matchedCard,
-        deckFormat,
-      })
-
-      return {
-        type: 'resolved',
-        importedDeck: nextDeckBuilder.deckBuilder,
-        resolvedEntry: {
-          ...entry,
-          appliedCount: nextDeckBuilder.appliedCount,
-          card: matchedCard,
-        },
-        conflicts: nextDeckBuilder.conflicts,
-      }
-    },
+    deckFormat,
+    find: (entry) => findCardByImportedName(cardsById, entry.name),
     deckName,
   })
 }
@@ -358,17 +312,9 @@ function buildDeckImportPreviewFromResolvedEntries(options: {
   deckName: string
   invalidLines: ImportedDeckInvalidLine[]
   parsedEntries: ImportedDeckEntry[]
-  resolver: (
-    entry: ImportedDeckEntry,
-    importedDeck: DeckBuilderState,
-  ) =>
-    | { type: 'missing'; entry: ImportedDeckEntry }
-    | {
-        type: 'resolved'
-        importedDeck: DeckBuilderState
-        resolvedEntry: ResolvedImportedDeckEntry
-        conflicts: DeckImportConflict[]
-      }
+  deckFormat: DeckFormat
+  /** La carta que la entrada nombra (por nombre en el texto, por id en el YDK), o nada si no está en el catálogo. */
+  find: (entry: ImportedDeckEntry) => ApiCardSearchResult | null | undefined
   source: DeckImportSource
 }): DeckImportPreview {
   const resolvedEntries: ResolvedImportedDeckEntry[] = []
@@ -377,15 +323,17 @@ function buildDeckImportPreviewFromResolvedEntries(options: {
   let importedDeck = createEmptyImportedDeck(options.deckName)
 
   for (const entry of options.parsedEntries) {
-    const resolution = options.resolver(entry, importedDeck)
+    const matchedCard = options.find(entry)
 
-    if (resolution.type === 'missing') {
-      missingEntries.push(resolution.entry)
+    if (!matchedCard) {
+      missingEntries.push(entry)
       continue
     }
 
-    importedDeck = resolution.importedDeck
-    resolvedEntries.push(resolution.resolvedEntry)
+    const resolution = appendResolvedEntryCopies({ entry, importedDeck, matchedCard, deckFormat: options.deckFormat })
+
+    importedDeck = resolution.deckBuilder
+    resolvedEntries.push({ ...entry, appliedCount: resolution.appliedCount, card: matchedCard })
 
     for (const conflict of resolution.conflicts) {
       appendDeckImportConflict(conflictMap, conflict, conflict.reason)
@@ -413,13 +361,7 @@ function finalizeDeckImportPreview(options: {
   importedDeck: DeckBuilderState
 }): DeckImportPreview {
   return {
-    source: options.source,
-    parsedEntries: options.parsedEntries,
-    invalidLines: options.invalidLines,
-    resolvedEntries: options.resolvedEntries,
-    missingEntries: options.missingEntries,
-    conflicts: options.conflicts,
-    importedDeck: options.importedDeck,
+    ...options,
     requestedTotals: buildDeckZoneTotalsFromEntries(options.parsedEntries),
     importedTotals: buildDeckZoneTotalsFromDeck(options.importedDeck),
     requestedCardCount: options.parsedEntries.reduce((total, entry) => total + entry.count, 0),
