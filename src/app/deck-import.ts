@@ -6,11 +6,8 @@ import { classifyCard, normalizeCardNameForLookup } from './classification-engin
 import { getClassificationOverrides } from './classification-overrides'
 import { addSearchResultToZone, getAddSearchResultIssue } from './deck-builder'
 import { parseDuelDeck } from './duel-deck'
-import type { DeckBuilderState, DeckZone, PortableConfig } from './model'
-import { createInitialState } from './model'
+import { createInitialState, DECK_ZONES, type DeckBuilderState, type DeckZone, type PortableConfig } from './model'
 import { formatInteger, isRecord, normalizeSearchText } from './utils'
-
-const DECK_ZONES: DeckZone[] = ['main', 'extra', 'side']
 
 type DeckImportSourceKind = 'json' | 'text' | 'txt' | 'ydk'
 

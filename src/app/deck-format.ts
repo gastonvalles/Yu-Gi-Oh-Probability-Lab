@@ -4,7 +4,7 @@ import type { ApiCardSearchResult } from '../ygoprodeck'
 import { copyLimitOf, currentStatus, upcomingChange } from './banlists'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from './genesys-format'
 import { EDISON_FORMAT_LABEL, getEdisonCardCopyLimit, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
-import type { DeckBuilderState, DeckZone } from './model'
+import { DECK_ZONES, type DeckBuilderState } from './model'
 import { formatInteger } from './utils'
 
 const MAX_COPIES_PER_CARD = 3
@@ -119,9 +119,8 @@ export function buildDeckFormatIssues(deckBuilder: DeckBuilderState, format: Dec
   }
 
   const countsByName = new Map<string, { copies: number; card: ApiCardReference; name: string }>()
-  const zones: DeckZone[] = ['main', 'extra', 'side']
 
-  for (const zone of zones) {
+  for (const zone of DECK_ZONES) {
     for (const card of deckBuilder[zone]) {
       const normalizedName = normalizeCardName(card.name)
       const existingEntry = countsByName.get(normalizedName)
@@ -195,7 +194,7 @@ export function buildUpcomingLimitNotes(deckBuilder: DeckBuilderState, format: D
   const notes: UpcomingLimitNote[] = []
   let date = ''
 
-  for (const zone of ['main', 'extra', 'side'] as const) {
+  for (const zone of DECK_ZONES) {
     for (const card of deckBuilder[zone]) {
       const key = normalizeCardName(card.name)
       const change = seen.has(key) ? null : upcomingChange(format, card.apiCard.ygoprodeckId)

@@ -4,7 +4,7 @@ import { toPortableDeckBuilder } from './app-state-codec'
 import { canvasToJpegBlob, downloadBlob } from './deck-image-export-download'
 import { renderDeckAsCanvas } from './deck-image-export-render'
 import { buildKdeDecklist } from './kde-decklist'
-import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
+import { DECK_ZONES, type DeckBuilderState, type DeckCardInstance, type DeckZone } from './model'
 import type { DeckFormat } from '../types'
 
 /** Qué archivos bajar: el usuario tilda los que quiere. */
@@ -123,7 +123,7 @@ const ZONE_TITLES: Record<DeckZone, string> = { main: 'Main Deck', extra: 'Extra
 
 /** "Main Deck (40)" y debajo "3 Ash Blossom & Joyous Spring": el formato que la importación de texto vuelve a leer. */
 export function buildDecklistText(deckBuilder: DeckBuilderState): string {
-  const sections = (['main', 'extra', 'side'] as const)
+  const sections = DECK_ZONES
     .filter((zone) => deckBuilder[zone].length > 0)
     .map((zone) => {
       const counts = new Map<string, number>()
