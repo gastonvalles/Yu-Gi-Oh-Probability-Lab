@@ -79,6 +79,27 @@ describe('el replay de un duelo', () => {
     expect(replay.cards['55144522']).toBe('Carta 55144522')
   })
 
+  it('una carta que le doy al rival desde la mano (un Kaiju) se ve en su campo; una boca abajo del campo, no', () => {
+    const { opaque } = openPublic(mine).sender
+    const given = buildDuelReplay({
+      ...input,
+      mine: { initial: mine, actions: [{ type: 'give', id: h3 }, { type: 'place', id: h1, zone: 'mz', index: 1, pos: 'set' }, { type: 'give', id: h1 }] },
+      theirs: {
+        initial: theirs,
+        acts: [
+          { action: { type: 'take', id: `f.${h3}`, zone: 'mz', index: 0, pos: 'atk' }, reveal: {} },
+          { action: { type: 'take', id: `f.${h1}`, zone: 'mz', index: 1, pos: 'set' }, reveal: {} },
+        ],
+      },
+      order: ['mine', 'theirs', 'mine', 'mine', 'theirs'],
+    })
+    const end = duelReplayAt(given, given.steps.length)
+
+    expect(end.states[1].mz[0]?.id).toBe(`f.${opaque[h3]}`)
+    expect(end.known[0][opaque[h3]!]).toBe(h3)
+    expect(end.known[0][opaque[h1]!]).toBeUndefined()
+  })
+
   it('vista pública: ninguna carta sin mostrar lleva su id real; con «mi mano», la mano y lo boca abajo sí, el deck no', () => {
     const json = JSON.stringify(replayEnvelope(replay))
     const shown = new Set(Object.values(replay.sides[0].reveal).concat(replay.steps.flatMap((step) => Object.values(step[2] ?? {}))))
