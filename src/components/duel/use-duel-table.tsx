@@ -156,7 +156,13 @@ const NOTICE_MS = 1400
  * Lo que el rival avanza en su turno, para verlo sin mirar su campo: cada fase que pasa (con su nombre) y, cuando llega a su End Phase y empieza el tuyo, el cartel
  * "Tu turno". Lo que ya había cuando se abrió la pantalla no se avisa, ni lo que se deshace sin cambiar de fase. `phase`: la de su mesa (undefined: no se avisa nada).
  */
-export function useRivalNotice(phase: MatPhase | undefined, turn: 'mine' | 'theirs', rival: string, /** El turno del duelo (1 el primero): el primero no es un pase, aunque la mesa arranque como si fuera del rival. */ turnNumber: number): DuelMatLink['notice'] {
+export function useRivalNotice(
+  phase: MatPhase | undefined,
+  turn: 'mine' | 'theirs',
+  rival: string,
+  /** El turno del duelo (1 el primero): el primero no es un pase, aunque la mesa arranque como si fuera del rival. */ turnNumber: number,
+  /** Lo más que se queda «Tu turno» (el automático, hasta tu primera fase: `TURN_NOTICE_MS`). */ yourTurnMs = NOTICE_MS,
+): DuelMatLink['notice'] {
   const seen = useRef({ phase, turn })
   const [shown, setShown] = useState<DuelMatLink['notice']>(undefined)
 
@@ -188,9 +194,9 @@ export function useRivalNotice(phase: MatPhase | undefined, turn: 'mine' | 'thei
   useEffect(() => {
     if (!shown) return
 
-    const id = setTimeout(() => setShown(undefined), NOTICE_MS)
+    const id = setTimeout(() => setShown(undefined), shown.label ? yourTurnMs : NOTICE_MS)
     return () => clearTimeout(id)
-  }, [shown])
+  }, [shown, yourTurnMs])
 
   return shown
 }

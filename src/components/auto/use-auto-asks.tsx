@@ -205,6 +205,8 @@ const passes = (actions: readonly MatAction[]) => actions.reduce((count, action)
 // Menos que lo que la banda se queda quieta (`PHASE_BAND_HOLD_MS`, 600 ms): la fase siguiente le cambia el texto antes de que empiece a salir (si no, se va y vuelve).
 const PHASE_READ_MS = 500
 const DRAW_IN_MS = 250
+/** Lo más que se queda «Tu turno» (en Solo y por enlace): hasta tu primera fase, que llega detrás de «Cambio de turno», tu Draw Phase y tu robo. */
+export const TURN_NOTICE_MS = TURN_BAND_MS + 3 * PHASE_READ_MS
 /** Lo que espera una jugada de un turno que pasa solo, desde la anterior (`before`; detrás de un pase, también «Cambio de turno»). */
 const quietWait = (action: MatAction, before: MatAction | undefined) =>
   (isPass(before) ? TURN_BAND_MS : 0) + (action.type === 'draw' ? DRAW_IN_MS : before?.type === 'draw' ? PHASE_READ_MS - DRAW_IN_MS : PHASE_READ_MS)
@@ -395,7 +397,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // abajo; esto es la red): si se fuera antes, el lector de pantalla volvería a decir la fase vieja de tu mesa.
   useEffect(() => {
     if (!notice) return
-    const timer = window.setTimeout(() => setNotice((current) => (current === notice ? undefined : current)), notice.label ? TURN_BAND_MS + 3 * PHASE_READ_MS : RIVAL_PHASE_MS)
+    const timer = window.setTimeout(() => setNotice((current) => (current === notice ? undefined : current)), notice.label ? TURN_NOTICE_MS : RIVAL_PHASE_MS)
 
     return () => window.clearTimeout(timer)
   }, [notice])
@@ -429,9 +431,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       return () => window.clearTimeout(timer)
     }
     if (paced.cursor >= Math.min(limit, chainNext)) return
-    // El arranque de tu turno detrás de «Tu turno» (`rivalPhases`): tu robo cuando ya entró el cartel de tu Draw Phase y cada fase con el suyo leído (`quietWait`).
+    // El arranque de tu turno detrás de «Tu turno» (en Solo y por enlace: el pase del rival está en `order`): tu robo cuando ya entró el cartel de tu Draw Phase y cada fase con el suyo
+    // leído (`quietWait`). Por enlace, así lo ve también el rival: tu mesa le avisa cada fase cuando se muestra (`told`).
     const next = paced.actions[paced.cursor]!
-    const theirs = rivalPhases ? (theirsBefore[paced.cursor] ?? 0) : 0
+    const theirs = theirsBefore[paced.cursor] ?? 0
     const from = theirs > 0 ? theirsAt[theirs - 1]! : 0
     const opening = theirs > 0 && isPass(snap.theirsActs[theirs - 1]?.action) && opensTurn(paced.actions.slice(from, paced.cursor + 1))
     const wait = opening ? quietWait(next, paced.cursor > from ? paced.actions[paced.cursor - 1] : snap.theirsActs[theirs - 1]!.action) : Math.max(STEP_MS, impactAt - Date.now())
