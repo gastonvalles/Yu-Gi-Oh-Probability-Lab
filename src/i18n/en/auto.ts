@@ -326,7 +326,6 @@ export const auto: Translated<typeof es> = {
   'auto.lane.stuck': "Automatic mode can't answer this rules engine question yet.",
 
   // The big chain (`ChainStage`): the line at the bottom, while building and while resolving ("Ash Blossom: No effect by Called by the Grave"), and each link's state.
-  'auto.chain.title': 'Chain',
   'auto.chain.order': 'Resolves from the last to the first',
   'auto.chain.say': '{card}: {what}',
   'auto.chain.state.chained': 'Waiting',

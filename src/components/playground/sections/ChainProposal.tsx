@@ -78,7 +78,7 @@ function ChainStageSample() {
           Igual a Master Duel (Gastón: «debemos clonar esto»), todo dibujado por nosotros, sólo al encadenar: cada activación entra grande y derecha con un destello amarillo y cae
           inclinada a su lugar (la última adelante, abajo a la izquierda, a −8°; la anterior arriba a la derecha, a +5°; las de antes, más chicas y más arriba; desde la quinta se van hacia
           arriba). Cada carta entera con su halo blanco y atada por dos esquinas; entre carta y carta, una cadena de metal (sombra, cuerpo y brillo) que cuelga en curva por delante. El
-          número, enorme, blanco con contorno y resplandor celestes, de siete segmentos, igual para los dos; el campo de atrás baja y se azula. Con dos o más, «CADENA» destella detrás. El
+          número, enorme, blanco con contorno y resplandor celestes, de siete segmentos, igual para los dos; el campo de atrás baja y se azula. El
           nombre va sólo en la carta sin imagen; «Se resuelve del último al primero», sólo para el lector de pantalla. Al empezar a resolverse la escena y el velo se van con un fundido de
           0,2 s y no vuelven: quedan los medallones sobre la mesa (la muestra de la mesa, en Duelo). Con «¿Respondés?» abierto se achica hacia arriba (el número no queda bajo el cartel);
           con una pregunta que no es responder (elegir casilla o cartas, sí o no) se corre y el campo se ve entero. Ritmo (<Tag>chainDwell</Tag>): 0,7 s por eslabón que entra y 0,9 s por cada uno que se resuelve (tres, 4,8 s; sola, 1 s). Sólo <Tag>translate</Tag>, <Tag>rotate</Tag>,{' '}

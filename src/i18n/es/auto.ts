@@ -347,7 +347,6 @@ export const auto = {
   'auto.lane.stuck': 'El automático todavía no sabe contestar esta pregunta del núcleo.',
 
   // La cadena en grande (`ChainStage`): la línea de abajo, armando y resolviendo («Ash Blossom: Sin efecto por Called by the Grave»), y el estado de cada eslabón.
-  'auto.chain.title': 'Cadena',
   'auto.chain.order': 'Se resuelve del último al primero',
   'auto.chain.say': '{card}: {what}',
   'auto.chain.state.chained': 'En espera',

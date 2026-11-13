@@ -11,14 +11,14 @@ import { chainTimeline, type VideoSpeed } from './video-timeline'
 
 /**
  * La cadena en el video de un duelo, como la muestra el reproductor (`DuelReplayScreen` con `ChainStage`): mientras se arma, la escena sobre el campo (el velo que baja todo el cuadro,
- * cada carta que entra grande y cae inclinada a su lugar con su estallido, su número en bloques y sus esquinas atadas, la cadena colgando entre carta y carta y «CADENA» con dos o más);
+ * cada carta que entra grande y cae inclinada a su lugar con su estallido, su número en bloques y sus esquinas atadas, la cadena colgando entre carta y carta);
  * al empezar a resolverse, la escena se va con un fundido. Las medidas, los lugares y las curvas salen de `ChainStage` (`LAYOUT` del celular, sus clases y sus tiempos) y de la mesa
  * (`fieldRect`); los colores, de `--color-chain-*`; el ritmo, de `chainTimeline`. Sólo se dibuja en el lienzo; sin cadena guardada no hay nada (el video sigue con la carta grande).
  */
 
 /** Los tiempos de `ChainStage` (sus clases): la carta viaja 350 ms (`duration-350`) y la nueva espera 100 (`delay-100`); la cadena entre cartas entra 400 ms después (`delay-400`, pasada la línea de energía) en 200; el
- * velo, la salida y lo que se apaga, 200 (`duration-200`); «CADENA», 300 después de 100; el estallido y los destellos, `animate-fx-flash` (560); el campo baja de más `animate-chain-veil` (700). */
-export const STAGE_MS = { move: 350, newest: 100, bondDelay: 400, fade: 200, wordDelay: 100, word: 300, flash: 560, dim: 700 } as const
+ * velo, la salida y lo que se apaga, 200 (`duration-200`); el estallido y los destellos, `animate-fx-flash` (560); el campo baja de más `animate-chain-veil` (700). */
+export const STAGE_MS = { move: 350, newest: 100, bondDelay: 400, fade: 200, flash: 560, dim: 700 } as const
 
 /** Dónde queda una carta de la escena respecto de su lugar sin correr: cuánto se corre (en fracciones de su ancho y de su alto), cuánto gira (radianes), su escala y su opacidad. */
 export interface StagePose {
@@ -421,7 +421,6 @@ export function drawStage(ctx: Ctx, episode: StageEpisode, now: number, geo: Sta
   const changed = episode.mounts[count - 1]!
   const hidden = episode.over !== null && now >= episode.over
   const leave = episode.over === null ? 0 : easeOut(clamp((now - episode.over) / ms(CHAIN_LEAVE_MS)))
-  const u = geo.unit
 
   // El velo sobre todo el cuadro (entra y se va con un fundido) y, mientras entra un eslabón, el campo baja de más.
   faded(ctx, 0.65 * easeOut(clamp((now - episode.start) / ms(STAGE_MS.fade))) * (1 - leave), () => {
@@ -458,25 +457,6 @@ export function drawStage(ctx: Ctx, episode: StageEpisode, now: number, geo: Sta
     const fading = (now - changed) / ms(STAGE_MS.fade)
     if (fading < 1) for (const bond of bondsOf(count - 1)) faded(ctx, 1 - easeOut(fading), () => drawBond(ctx, bond, colors, broken))
     ctx.restore()
-
-    // «CADENA», con dos o más: al medio, por delante; aparece cuando la carta se asienta.
-    if (count > 1) {
-      const e = easeOut(clamp((now - changed - ms(STAGE_MS.wordDelay)) / ms(STAGE_MS.word)))
-      const x = geo.box.x + geo.box.w / 2
-      const y = geo.box.y + geo.box.h * 0.4 + 15 * u
-      faded(ctx, e, () => {
-        ctx.translate(x, y)
-        ctx.scale(mix(0.75, 1, e), mix(0.75, 1, e))
-        ctx.font = `italic 800 ${24 * u}px ${FONT}`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.shadowColor = colors.glow
-        ctx.shadowBlur = 8 * u
-        ctx.shadowOffsetY = 2 * u
-        ctx.fillStyle = '#fff'
-        ctx.fillText(t('auto.chain.title').toUpperCase(), 0, 0)
-      })
-    }
   })
 }
 
