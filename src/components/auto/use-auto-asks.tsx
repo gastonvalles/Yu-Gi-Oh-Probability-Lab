@@ -15,7 +15,7 @@ import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { turnReasons } from '../../app/auto/no-plays'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, type Allowed } from '../../app/auto/phase-stops'
-import { splitDesc, type Seat } from '../../app/auto/protocol'
+import { LOCATION, splitDesc, type Seat } from '../../app/auto/protocol'
 import { useAutoPrefs } from '../../app/auto-prefs'
 import { useEndReveal, type LethalHit } from '../../app/end-reveal'
 import { useHeldValue } from '../../app/life-effects'
@@ -948,8 +948,20 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     return targets.length > 0 ? { targets, onPick: (zone: MatSpot, index: number) => gesture({ kind: 'zone', side: 'theirs', zone, index }) } : null
   }, [shown, gesture])
   /** El visor de una pila del rival (información pública): su Cementerio, su Destierro o lo boca arriba de su Extra. Repasando, su lado está vacío. */
-  const [rivalPileOpen, setRivalPile] = useState<'gy' | 'banished' | 'extra' | null>(null)
+  const [rivalPileOpen, setRivalPile] = useState<'gy' | 'banished' | 'extra' | 'hand' | null>(null)
   const rivalPile = reviewing ? null : rivalPileOpen
+  // Lo que un efecto te mostró del rival (su mano, lo colocado: `WireAct.seen`), cuando la mesa llega a esa jugada: cara arriba en el visor de su lado (`'hand'`), con la carta del
+  // efecto arriba, hasta que lo cierres (su abanico lo pierde al barajar, como en el núcleo). Si la pregunta que sigue elige entre su mano, no: la bandeja y su abanico ya las muestran.
+  const seenAt = useMemo(() => snap.theirsActs.findLastIndex((wire, i) => i < theirsShown && wire.seen !== undefined), [snap.theirsActs, theirsShown])
+  const [revealedAt, setRevealedAt] = useState(seenAt)
+  const revealed = snap.theirsActs[revealedAt]?.seen
+  const picksRivalHand = Object.values(snap.ask?.ask ?? {}).some((value) => Array.isArray(value) && value.some((card: { controller?: number; location?: number }) => card?.controller === 1 - seat && card.location === LOCATION.HAND))
+
+  if (revealedAt !== seenAt) {
+    setRevealedAt(seenAt)
+    if (seenAt > revealedAt && !reviewing && !picksRivalHand) setRivalPile('hand')
+  }
+  if (rivalPileOpen === 'hand' && (!revealed || choosing)) setRivalPile(null)
   const opponent = useMemo<DuelSideView>(
     () => ({
       state: theirs,
@@ -1439,31 +1451,37 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const rivalTargeted = useMemo(() => new Set(theirs.targeted), [theirs.targeted])
   const rivalViewerHidden = choosing || frozen || ended || Boolean(snap.fault)
   const rivalActing = acting.theirs
-  const rivalViewer = useMemo(
-    () => (
+  const rivalViewer = useMemo(() => {
+    // Lo que te mostró un efecto va con el código que tenía al mostrarse (`revealed`); lo demás, sólo lo público (`rivalPeekOf`).
+    const shownCode = (id: string) => (rivalPile === 'hand' && revealed ? (revealed.codes[revealed.ids.indexOf(id)] ?? 0) : 0)
+    const peekOf = (id: string): CardPeek => (shownCode(id) ? { drawId: drawIdOf(shownCode(id)) } : rivalPeekOf(id))
+
+    return (
       <PileViewer
         pile={rivalPile}
         // Eligiendo en la mesa (o con la mesa tapada por el final) se esconde sin cerrarse, como el tuyo.
         hidden={rivalViewerHidden}
-        ids={rivalPile ? (rivalPile === 'extra' ? theirs.extraUp : theirs[rivalPile]) : []}
+        ids={rivalPile === 'hand' ? (revealed?.ids ?? []) : rivalPile ? (rivalPile === 'extra' ? theirs.extraUp : theirs[rivalPile]) : []}
+        {...(rivalPile === 'hand' ? { title: t('auto.revealed.title'), ...(revealed?.by ? { kicker: nameOf(null, revealed.by) } : {}) } : {})}
         info={(id) => {
-          const peek = rivalPeekOf(id)
-          const open = 'drawId' in peek
+          const code = shownCode(id)
+          const open = code !== 0 || 'drawId' in rivalPeekOf(id)
 
-          return { name: open ? nameOf({ side: 'theirs', id }) : t('duel.mark.rivalCard'), art: open ? artOf({ side: 'theirs', id }) : null, faceDown: !open, faceUp: rivalPile === 'extra' }
+          const ref = code ? null : { side: 'theirs' as const, id }
+
+          return { name: open ? nameOf(ref, code) : t('duel.mark.rivalCard'), art: open ? artOf(ref, code) : null, faceDown: !open, faceUp: rivalPile === 'extra' }
         }}
         targeted={rivalTargeted}
         glow={(id) => (rivalActing.has(id) ? 'act' : null)}
         onPick={(id, rect) => {
-          if (!desktop) showRival(rivalPeekOf(id), rect)
+          if (!desktop) showRival(peekOf(id), rect)
         }}
-        onPeek={(id) => lockDock(rivalPeekOf(id))}
-        onHover={(id) => hoverDock(rivalPeekOf(id))}
+        onPeek={(id) => lockDock(peekOf(id))}
+        onHover={(id) => hoverDock(peekOf(id))}
         onClose={() => setRivalPile(null)}
       />
-    ),
-    [rivalPile, rivalViewerHidden, theirs, rivalPeekOf, nameOf, artOf, rivalTargeted, rivalActing, desktop, showRival, lockDock, hoverDock],
-  )
+    )
+  }, [rivalPile, rivalViewerHidden, theirs, revealed, rivalPeekOf, nameOf, artOf, rivalTargeted, rivalActing, desktop, showRival, lockDock, hoverDock])
   return {
     rivalViewer,
     lifeHeld: lifeHeld || reveal.holding,

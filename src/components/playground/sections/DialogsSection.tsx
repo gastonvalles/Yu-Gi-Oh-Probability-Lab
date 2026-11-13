@@ -147,16 +147,20 @@ const SAMPLE_DECK = [...SAMPLE_MAIN, ...[5318639, 53129443, 27204311, 83764718, 
 // Los monstruos del Extra Deck de la muestra: los únicos que pueden volver al Extra.
 const SAMPLE_EXTRA = new Set([TALKER, pileCard(38342335)])
 
-type PileSample = 'plain' | 'two' | 'none' | 'search' | 'batch' | 'strip'
+type PileSample = 'plain' | 'two' | 'none' | 'search' | 'batch' | 'strip' | 'revealed'
 
-/** Un estado del visor por muestra: qué pila, qué cartas, cuáles llevan la mira y si arranca eligiendo (y con cuáles); `strip`, la tira de la mesa del duelo (el deck del automático: por nombre y sin elegir varias). */
-const PILE_SAMPLES: Record<PileSample, { pile: MatPile; ids: string[]; targeted?: string[]; start?: string[]; strip?: true }> = {
+/**
+ * Un estado del visor por muestra: qué pila, qué cartas, cuáles llevan la mira y si arranca eligiendo (y con cuáles); `strip`, la tira de la mesa del duelo (el deck del automático: por nombre y sin elegir varias);
+ * `revealed`, la mano del rival que te mostró un efecto (el título y la carta del efecto arriba, sin elegir varias).
+ */
+const PILE_SAMPLES: Record<PileSample, { pile: MatPile; ids: string[]; targeted?: string[]; start?: string[]; strip?: true; revealed?: { title: string; kicker: string } }> = {
   plain: { pile: 'gy', ids: SAMPLE_GY, targeted: [pileCard(83764718)] },
   two: { pile: 'gy', ids: SAMPLE_GY, targeted: [ASH], start: [TALKER, ASH] },
   none: { pile: 'gy', ids: SAMPLE_GY, start: [] },
   search: { pile: 'deck', ids: SAMPLE_MAIN, start: [] },
   batch: { pile: 'gy', ids: SAMPLE_GY, start: [TALKER, ASH, OGRE] },
   strip: { pile: 'deck', ids: SAMPLE_DECK, strip: true },
+  revealed: { pile: 'hand', ids: [ASH, TALKER, OGRE, pileCard(83764718)], revealed: { title: t('auto.revealed.title'), kicker: 'Mind Haxorz' } },
 }
 
 /** Lo que dice una opción que no admiten todas las elegidas, como lo va a decir la mesa: hasta tres nombres; desde cuatro, cuántas. */
@@ -452,6 +456,12 @@ export function DialogsSection() {
         </Button>
       </Specimen>
 
+      <Specimen title="Cartas reveladas" note={<>El duelo automático: lo que un efecto te mostró del rival (su mano con Mind Haxorz, Confiscation o Dragged Down into the Grave; lo colocado), cara arriba y con la carta del efecto arriba. Se abre solo cuando la mesa llega a esa jugada y se cierra tocando afuera, con la X o Escape; si la pregunta que sigue elige entre su mano, no se abre (la bandeja ya las muestra). Archivo: <Tag>auto/use-auto-asks.tsx</Tag></>}>
+        <Button size="sm" onClick={() => setPileSample('revealed')}>
+          Abrir las reveladas
+        </Button>
+      </Specimen>
+
       <Specimen title="Menú de varias cartas" note={<>«Elegir jugada» le pasa las elegidas a la mesa y ella abre el menú del lote: pegado al botón en escritorio, la hoja de abajo en el celular. Lo que no admiten todas va apagado y dice por qué (hasta tres nombres; desde cuatro, cuántas). Las jugadas son de muestra.</>}>
         <Button size="sm" onClick={() => setPileSample('batch')}>
           Abrir con tres elegidas
@@ -466,12 +476,13 @@ export function DialogsSection() {
           <PileViewer
             pile={pileShown?.pile ?? null}
             ids={pileShown?.strip ? [...pileShown.ids].sort((a, b) => nameOf(a).localeCompare(nameOf(b))) : (pileShown?.ids ?? [])}
-            kicker={pileShown?.strip ? t('practice.dialog.byName') : undefined}
+            kicker={pileShown?.revealed?.kicker ?? (pileShown?.strip ? t('practice.dialog.byName') : undefined)}
+            {...(pileShown?.revealed ? { title: pileShown.revealed.title } : {})}
             info={(id) => ({ name: nameOf(id), art: artOf(id) })}
             targeted={new Set(pileShown?.targeted)}
             onPick={(id, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: nameOf(id), rect, items: cardItems(), card: id })}
             many={
-              pileShown?.strip
+              pileShown?.strip || pileShown?.revealed
                 ? undefined
                 : {
                     label: () => t('practice.many.choosePlay'),
