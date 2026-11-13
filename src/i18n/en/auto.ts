@@ -128,8 +128,6 @@ export const auto: Translated<typeof es> = {
   // The engine's yes/no question, in the middle of the mat.
   'auto.ask.effect': 'Activate the effect?',
   'auto.ask.effectOf': 'Activate the effect of "{name}"?',
-  'auto.ask.effectN': 'Apply effect {n} of "{name}"?',
-  'auto.effect.number': 'Effect {n}',
   'auto.play.numbered': '{label} {n}',
   'auto.ask.kicker': 'Trigger effect',
   'auto.ask.afterEvent': 'After the {event}',
@@ -160,6 +158,10 @@ export const auto: Translated<typeof es> = {
   'auto.picker.copies': '{name}, {count} copies',
   'auto.picker.search': 'Search by name',
   'auto.picker.noMatches': 'No cards match “{query}”.',
+  'auto.picker.searchAny': 'Search any card by name',
+  'auto.picker.typeName': 'Type the name of the card you want to declare.',
+  'auto.picker.catalogLoading': 'Searching all cards…',
+  'auto.picker.catalogError': 'Couldn’t load the card catalog: pick one from the list or try again later.',
   // Where each card is: its group's heading (and, lowercased, «…, in your hand» for screen readers) and the short chip over the card.
   'auto.picker.place.mine.hand': 'Your hand',
   'auto.picker.place.mine.deck': 'Your Deck',

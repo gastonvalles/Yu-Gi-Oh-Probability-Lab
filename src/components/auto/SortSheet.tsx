@@ -59,7 +59,7 @@ export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hi
         </>
       }
     >
-      <PickGrid label={title} cards={cards} chosen={order} multi onToggle={toggle} max={cards.length} className={TRAY} />
+      <PickGrid label={title} cards={cards} chosen={order} multi onToggle={toggle} className={TRAY} />
     </AutoPanel>
   )
 }

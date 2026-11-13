@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import wasmUrl from 'ocgcore-wasm/lib/ocgcore.sync.wasm?url'
-import { preloadedReaders, type DuelData } from './auto-data'
+import { httpSource, preloadedReaders, type DuelData } from './auto-data'
 import { createAutoHost, type AutoHost } from './core-host'
 import { parseAutoCommand, type AutoEvent } from './protocol'
 
@@ -33,7 +33,8 @@ self.onmessage = (message: MessageEvent<unknown>) => {
           return {}
         },
       },
-      ...preloadedReaders(data as WorkerData, post),
+      // La carta que se declara y no está en el duelo, de la misma fuente que las demás (`/auto-data`).
+      ...preloadedReaders(data as WorkerData, post, (code) => httpSource().cards([code]).then((rows) => rows[0] ?? null)),
       emit: post,
     })
     return

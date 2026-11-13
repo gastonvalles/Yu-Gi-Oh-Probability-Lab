@@ -163,8 +163,8 @@ export function AutoSection() {
 
       <PickerSample title="Elegir cartas · de 1 a 2, cancelable" note="CardPicker con min 1 y max 2, de lugares distintos (cada una dice de dónde es) y una que todavía no tiene arte (el esqueleto quieto). La elegida, con el marco celeste que gira (el de la mano) y su número de orden; Mayús+clic, el tramo; nunca más de dos. «Cancelar» y Escape, porque la pregunta se puede cancelar. Flechas, Inicio y Fin recorren las cartas; Espacio elige." min={1} max={2} cancelable onAnswer={setAnswer} />
       <PickerSample title="Elegir cartas · una sola" note="Con max 1 el primer toque contesta, sin «Listo» (como en la mesa). No se puede cancelar: sin X ni pie." min={1} max={1} cancelable={false} onAnswer={setAnswer} />
-      <PickerSample title="Elegir varias · copias juntas" note="M-03: un solo cartel; las copias de la misma carta en el mismo lugar van en una, con «×3»: cada toque suma la próxima copia y lleva los números de orden de las elegidas (lleno, el toque suelta la última). «2 de 3» a la derecha del título y una sola principal, que se prende al completar." min={3} max={3} cancelable copies onAnswer={setAnswer} />
-      <PickerSample title="Declarar una carta · con buscador" note="Con 13 cartas o más (declarar una carta ofrece el deck entero y lo visto), un buscador por nombre arriba de la grilla; sin coincidencias, lo dice. Un toque declara." min={1} max={1} cancelable={false} many onAnswer={setAnswer} />
+      <PickerSample title="Elegir varias · cada copia aparte" note="M-03: un solo cartel; eligiendo varias, cada copia de la misma carta es una carta aparte (sin «×3»), con su número de orden: se eligen dos o tres de la misma y tocar una elegida la suelta a ella sola. Eligiendo una, las copias van juntas con «×3». «2 de 3» a la derecha del título y una sola principal, que se prende al completar." min={3} max={3} cancelable copies onAnswer={setAnswer} />
+      <PickerSample title="Declarar una carta · con buscador" note="Siempre con buscador y en filas (miniatura + nombre entero, en una lista que se desliza: el nombre es lo que decide): lo que se vio y el deck propio, a un toque; escribiendo, además, cualquier carta del catálogo (probá «mirror»). Sin coincidencias, lo dice; mientras baja el catálogo o si no baja, una línea chica. Un toque declara." min={1} max={1} cancelable={false} many onAnswer={setAnswer} />
 
       <BandSample max={2} onAnswer={setAnswer} />
       <BandSample max={1} onAnswer={setAnswer} />
@@ -317,7 +317,7 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     { label: t('practice.menu.set'), onSelect: reply(t('practice.menu.set')) },
     { label: t('practice.menu.specialSummon'), onSelect: reply(t('practice.menu.specialSummon')) },
     { label: t('practice.menu.specialSummon'), onSelect: reply(t('practice.menu.specialSummon')) },
-    { label: t('practice.menu.activateEffect'), onSelect: () => {}, children: [1, 2].map((n) => ({ label: t('auto.effect.number', { n }), onSelect: reply(t('auto.effect.number', { n })) })) },
+    { label: t('practice.menu.activateEffect'), onSelect: () => {}, children: ['Special Summon this card from your hand', 'Add 1 "Theorealize" Spell/Trap from your Deck to your hand'].map((label) => ({ label, onSelect: reply(label) })) },
   ]
   const phases: MenuItem[] = PHASES.map((phase, index) => ({ label: phase.name, current: index === 2, disabled: index < 2 || index === 4, onSelect: reply(phase.name) }))
   const card = { ...sampleDeckCard(14558127), cardType: 'Effect Monster', atk: '0', def: '1800', description: 'Texto de muestra del efecto, recortado a tres renglones: «Ver carta» abre el texto entero con sus números, su arte y sus impresiones.' }
@@ -548,7 +548,19 @@ function PickerSample({ title, note, min, max, cancelable, many = false, copies 
         Abrir la hoja
       </Button>
       <Presence>
-        {open ? <CardPicker title={many ? 'Declará el nombre de una carta' : 'Elegí qué agregar a tu mano'} kicker={many ? 'Prohibition' : 'Branded Fusion'} cards={cards} min={min} max={max} onPick={(keys) => close(keys.join(', '))} onCancel={cancelable ? () => close('cancelada') : undefined} /> : null}
+        {open ? (
+          <CardPicker
+            title={many ? 'Declará el nombre de una carta' : 'Elegí qué agregar a tu mano'}
+            kicker={many ? 'Prohibition' : 'Branded Fusion'}
+            cards={cards}
+            min={min}
+            max={max}
+            onPick={(keys) => close(keys.join(', '))}
+            onCancel={cancelable ? () => close('cancelada') : undefined}
+            // Al declarar, el buscador encuentra además cualquiera del catálogo (acá, una de muestra).
+            {...(many ? { more: { status: 'ready' as const, find: (query: string) => ('mirror force'.includes(query.trim().toLowerCase()) ? [{ key: 'code:44095762', name: 'Mirror Force', art: art(44095762) }] : []) } } : {})}
+          />
+        ) : null}
       </Presence>
     </Specimen>
   )

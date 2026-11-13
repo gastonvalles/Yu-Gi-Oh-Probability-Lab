@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 
 import type { ArtChoice } from '../../app/use-card-art-options'
+import { useWheelRow } from '../../app/use-wheel-row'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
@@ -34,26 +35,7 @@ export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, 
   const grab = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(null)
   const single = arts.length < 2
 
-  useEffect(() => {
-    const list = listRef.current
-
-    if (!list || direction !== 'row') return
-
-    // Nativo y no passive (el onWheel de React lo es): hace falta frenar el scroll vertical de la página sólo mientras la fila todavía se puede mover.
-    const onWheel = (event: WheelEvent) => {
-      const max = list.scrollWidth - list.clientWidth
-      const next = Math.min(max, Math.max(0, list.scrollLeft + event.deltaY))
-
-      if (max <= 0 || Math.abs(event.deltaY) < Math.abs(event.deltaX) || next === list.scrollLeft) return
-
-      event.preventDefault()
-      list.scrollLeft = next
-    }
-
-    list.addEventListener('wheel', onWheel, { passive: false })
-
-    return () => list.removeEventListener('wheel', onWheel)
-  }, [direction, single])
+  useWheelRow(listRef, direction === 'row' && !single)
 
   if (single) {
     return null

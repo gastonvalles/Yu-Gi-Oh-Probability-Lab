@@ -132,11 +132,8 @@ export const auto = {
 
   // La pregunta de sí o no del núcleo, en la mesa: corta y sin el nombre de la carta (la dice su arte). Arriba, chico, qué pasó justo antes, sin nombres.
   'auto.ask.effect': '¿Activás el efecto?',
-  // Como Master Duel: la carta, en la frase. Un sí o no del texto de una carta (`strN`, sólo en inglés) la nombra por su número.
+  // Como Master Duel: la carta, en la frase. Un sí o no del texto de una carta y el rótulo de una opción o de un efecto van con su `strN`, en inglés (como el texto de la carta), nunca con un número.
   'auto.ask.effectOf': '¿Activás el efecto de «{name}»?',
-  'auto.ask.effectN': '¿Aplicás el efecto {n} de «{name}»?',
-  // El rótulo de un efecto de la carta: el `strN` viene sólo en inglés, así que en español va su número.
-  'auto.effect.number': 'Efecto {n}',
   // Dos jugadas del mismo nombre en una ficha (los dos procedimientos de invocación de una carta): se numeran.
   'auto.play.numbered': '{label} {n}',
   'auto.ask.kicker': 'Efecto que se dispara',
@@ -171,6 +168,11 @@ export const auto = {
   // Con muchas cartas (las que se pueden declarar), un buscador por nombre arriba de la grilla.
   'auto.picker.search': 'Buscar por nombre',
   'auto.picker.noMatches': 'No hay cartas con «{query}».',
+  // Declarar el nombre de una carta: el buscador encuentra cualquiera (el catálogo del armador), además de las que se vieron.
+  'auto.picker.searchAny': 'Buscá cualquier carta por su nombre',
+  'auto.picker.typeName': 'Escribí el nombre de la carta que querés declarar.',
+  'auto.picker.catalogLoading': 'Buscando en todas las cartas…',
+  'auto.picker.catalogError': 'No se pudo cargar el catálogo de cartas: elegí una de la lista o probá más tarde.',
   // De dónde es cada carta: el encabezado de su grupo (y, con minúscula, «…, en tu mano» para el lector de pantalla) y el chip corto sobre la carta.
   'auto.picker.place.mine.hand': 'Tu mano',
   'auto.picker.place.mine.deck': 'Tu Deck',

@@ -130,7 +130,11 @@ describe('el aviso de «Deshacer»', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Nibiru/ }))
     const sheet = screen.getByRole('region', { name: 'Nibiru' })
 
-    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Efecto 2', 'Efecto 3'])
+    // Un botón por efecto, con el texto de la carta: nunca un número suelto («Efecto 2»).
+    const labels = within(sheet).getAllByRole('menuitem').map((item) => item.textContent ?? '')
+    expect(labels).toHaveLength(2)
+    expect(new Set(labels).size).toBe(2)
+    expect(labels.some((label) => /\d\s*$/.test(label))).toBe(false)
     fireEvent.click(within(sheet).getByRole('button', { name: 'Cerrar' }))
     expect(screen.queryByRole('region', { name: 'Nibiru' })).toBeNull()
     expect(fake.answers).toEqual([])

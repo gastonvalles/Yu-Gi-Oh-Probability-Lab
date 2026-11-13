@@ -1,11 +1,11 @@
-import { getLocale, t, type MessageKey } from '../../i18n'
+import { t, type MessageKey } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { nowStat, type PickStat } from '../field-stats'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
 import { spotOf, type Adapter, type AutoOverlay, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
 import type { AskWhyView } from './ask-why'
 import { passivePolicy } from './policies'
-import { LOCATION as L, POSITION as P, parseAnswer, splitDesc, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
+import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
 
 /**
  * Duelos automáticos · las preguntas del núcleo en la mesa de siempre (§2–§4 del diseño de F2b). Puro: sin React, sin DOM y sin el
@@ -206,6 +206,8 @@ export type AskGesture =
   | { kind: 'pick'; index: number }
   | { kind: 'zone'; side: Side; zone: MatSpot; index: number }
   | { kind: 'option'; value: number }
+  /** Declarar cualquier carta por su código (`announce_card`; el núcleo juzga el filtro y, si no vale, vuelve a preguntar). */
+  | { kind: 'announce'; code: number }
   | { kind: 'done' }
   | { kind: 'cancel' }
 
@@ -366,11 +368,11 @@ function surfaceOf(cards: readonly AskCard[]): { surface: CardPick['surface']; p
 /**
  * El orden en que se muestran las candidatas de una lista aparte (índices de `cards`: la respuesta sigue siendo la del núcleo). Las que están en un deck, el tuyo o el del rival, van por
  * nombre y en los lugares que ocupaban: el núcleo las manda en el orden del deck y verlo regalaría qué se roba primero (el visor del deck de `PracticeMat` también va por nombre). Las
- * que sólo se nombran por código (las que se pueden declarar), también.
+ * que se pueden declarar quedan como las manda el anfitrión: lo que se vio, primero.
  */
 export function listOrder(cards: readonly AskCard[], nameOf: (card: AskCard) => string): number[] {
   const order = cards.map((_, index) => index)
-  const slots = order.filter((index) => cards[index]!.pile === 'deck' || cards[index]!.place === 'none')
+  const slots = order.filter((index) => cards[index]!.pile === 'deck')
   const byName = [...slots].sort((a, b) => nameOf(cards[a]!).localeCompare(nameOf(cards[b]!)) || a - b)
 
   slots.forEach((slot, rank) => {
@@ -552,7 +554,7 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
               label,
               ...(at ? { at } : {}),
               children: indices.map((index) => ({
-                label: effectText(ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) ?? null, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
+                label: ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
                 answer: answer(index),
                 effect: effect(index),
                 ...intoOf(cards[index]!),
@@ -690,17 +692,11 @@ export function respondOffer(view: AskView, chain: readonly ChainLink[]): Respon
 }
 
 /**
- * El rótulo de un efecto de una carta (su `strN`, que el `.cdb` trae sólo en inglés): en inglés, tal cual; en español, su número («Efecto 2»: `str1` es el 1). Sin rótulo, null.
- * ponytail: el número es el del texto (`strN`), que por costumbre de los scripts sigue el orden de los efectos de la carta; un `strN` de una pregunta suelta puede no ser un efecto.
+ * El sí o no a secas (`select_yesno`): el texto de la carta (`effectLabel`, su `strN`), sin texto, «¿Lo hacés?». Como el rótulo de una opción o de un efecto, va en inglés también en
+ * español (el `.cdb` sólo lo trae así, como los nombres y textos de las cartas: `docs/i18n.md`): un número («Efecto 4») no le dice nada a nadie, y el `strN` de una opción ni siquiera es un efecto.
  */
-export function effectText(label: string | null, description: string): string | null {
-  return label && getLocale() === 'es' ? t('auto.effect.number', { n: splitDesc(description).n + 1 }) : label
-}
-
-/** El sí o no a secas (`select_yesno`): el texto de la carta (`effectLabel`) en inglés, o su número y su carta en español; sin texto, «¿Lo hacés?». */
-export function yesNoText(label: string | null, description: string, name: string | null): string {
-  if (!label) return t('auto.ask.fallback')
-  return getLocale() === 'es' && name ? t('auto.ask.effectN', { n: splitDesc(description).n + 1, name }) : label
+export function yesNoText(label: string | null): string {
+  return label ?? t('auto.ask.fallback')
 }
 
 /** Lo que dice la pregunta de un efecto (`select_effectyn`): con la carta, «¿Activás el efecto de «X»?». */
@@ -780,7 +776,7 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
     case 'select_option':
       base.options = ask.options.map((description, value) => {
         const system = SYSTEM_OPTIONS[description as keyof typeof SYSTEM_OPTIONS]
-        const label = effectText(ctx.effectLabel?.(0, description) ?? null, description) || (system ? t(system) : null)
+        const label = ctx.effectLabel?.(0, description) || (system ? t(system) : null)
 
         return { value, description, ...(label ? { label } : {}) }
       })
@@ -818,10 +814,10 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
     case 'sort_chain':
       base.cards = cardsOf(ask.cards)
       break
-    // Declarar una carta: una de las que ofrece el anfitrión, por código (no están en la mesa). Sin ninguna (un anfitrión de antes), no hay respuesta segura.
+    // Declarar una carta: una de las que ofrece el anfitrión, por código (no están en la mesa), o cualquier otra por su nombre (`announce`). Sin la lista (un anfitrión de antes), no hay respuesta segura.
     case 'announce_card':
       base.cards = (ask.cards ?? []).map((code) => ({ ref: null, code, place: 'none' }))
-      if (base.cards.length === 0) auto(null, 'none')
+      if (!ask.cards) auto(null, 'none')
       break
     case 'select_counter':
       base.cards = cardsOf(ask.cards, (card) => card.count)
@@ -1174,6 +1170,9 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
       // principal, y hasta tocarla se puede soltar una (Gastón, 2026-11-12: elegir la última no le daba tiempo de revisar).
       return now.done && now.max === 1 && now.min >= 1 && now.eligible.every((i) => now.chosen.includes(i)) ? answer(cardAnswer(ask, now)) : after
     }
+
+    case 'announce':
+      return ask.type === 'announce_card' && Number.isInteger(gesture.code) && gesture.code > 0 ? answer({ type: ask.type, code: gesture.code }) : same
 
     case 'zone': {
       const target = state.base.targets.find((item) => item.side === gesture.side && item.zone === gesture.zone && item.index === gesture.index)

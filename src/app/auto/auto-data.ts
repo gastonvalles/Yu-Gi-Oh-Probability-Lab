@@ -335,11 +335,22 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
  * no tienen; el anfitrión lo anota en `hotScripts`) o una carta (una `fault` de tipo `script` por código, sin cortar el duelo: un cierre
  * que quedó corto).
  */
-export function preloadedReaders(data: Pick<DuelData, 'cards' | 'scripts'>, emit: (event: Extract<AutoEvent, { t: 'fault' }>) => void) {
+export function preloadedReaders(data: Pick<DuelData, 'cards' | 'scripts'>, emit: (event: Extract<AutoEvent, { t: 'fault' }>) => void, fetchRow?: (code: number) => Promise<CardRow | null>) {
   const cards = new Map(data.cards.map((card) => [card.code, card]))
   const missed = new Set<number>()
 
   return {
+    // Una carta que no está en el duelo y se declara (`announce_card`): su fila, de la fuente, antes de que el núcleo la lea. Si no llega, el núcleo la rechaza y vuelve a preguntar.
+    ...(fetchRow
+      ? {
+          fetchCard: async (code: number) => {
+            if (cards.has(code)) return
+            const row = await fetchRow(code).catch(() => null)
+
+            if (row?.id === code) cards.set(code, cardData(row))
+          },
+        }
+      : {}),
     cardReader: (code: number) => {
       const card = cards.get(code)
 

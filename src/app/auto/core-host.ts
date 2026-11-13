@@ -65,6 +65,8 @@ export interface HostOptions {
   cardReader: (code: number) => OcgCardData | null
   /** `constant.lua`, `utility.lua` y sus bibliotecas, y `c<código>.lua`. `null` si no existe (una ficha no tiene script: es normal). */
   scriptReader: (name: string) => string | null
+  /** Deja leer una carta que no está en el duelo (la que se declara, `announce_card`): sin esto, sólo valen las precargadas. */
+  fetchCard?: (code: number) => Promise<void>
   emit: (event: AutoEvent) => void
   /** Para pruebas: cada mensaje del núcleo tal como llega, antes de filtrarlo (el oráculo de la información oculta lo usa). */
   tap?: (message: OcgMessage) => void
@@ -293,26 +295,28 @@ export function createAutoHost(options: HostOptions): AutoHost {
   let started = false
   let ended = false
   /**
-   * Las cartas que cada asiento conoce: su deck (la lista que armó) y lo que vio en el duelo (los eventos que le llegaron, ya filtrados). De ahí salen las que puede
-   * declarar (`announce_card`): nunca el deck, la mano ni el Extra boca abajo del otro, que en el duelo por enlace viajarían al invitado. Se rearma con cada re-simulación.
+   * Lo que cada asiento vio en el duelo, en el orden en que lo vio: los eventos que le llegaron (ya filtrados) y la mano del otro que un efecto deja a la vista (`stats`, sin mensaje).
+   * Con su deck (la lista que armó), de ahí salen las que puede declarar (`announce_card`): nunca el deck, la mano ni el Extra boca abajo del otro, que en el duelo por enlace viajarían
+   * al invitado. Se rearma con cada re-simulación.
    */
   let known: [Set<number>, Set<number>] = [new Set(), new Set()]
 
   const fault = (kind: FaultKind, message: string, cards?: number[]) => emit({ t: 'fault', kind, message: clip(message), ...(cards ? { cards } : {}) })
 
-  /** Las que `seat` puede declarar: las que conoce y cumplen el filtro (`cardMatchesOpcode`: la regla del núcleo; un arte alternativo no vale, su original sí). */
+  /** Las que `seat` puede declarar: las que vio (primero) y las de su deck que cumplen el filtro (`cardMatchesOpcode`: la regla del núcleo; un arte alternativo no vale, su original sí). */
   function declarable(seat: Seat, opcodes: readonly string[]): number[] {
     const filter = opcodes.map(BigInt)
     const codes = new Set<number>()
+    const deck = setup ? [...setup.decks[seat]!.main, ...setup.decks[seat]!.extra] : []
 
-    for (const code of known[seat]) {
+    for (const code of new Set([...known[seat], ...deck])) {
       const card = options.cardReader(code)
       const original = card?.alias ? options.cardReader(card.alias) : null
 
       for (const named of [card, original]) if (named && cardMatchesOpcode(named, filter)) codes.add(named.code)
     }
 
-    return [...codes].sort((a, b) => a - b)
+    return [...codes]
   }
 
   function free() {
@@ -343,7 +347,12 @@ export function createAutoHost(options: HostOptions): AutoHost {
       lib.duelQueryLocation(handle, { flags: HAND_FLAGS, controller, location: OcgLocation.HAND }).forEach((card, sequence) => {        if (card?.code && card.isPublic) cards.push({ code: card.code, controller, location: OcgLocation.HAND, sequence, position: card.position ?? 0, attack: card.attack ?? 0, defense: card.defense ?? 0, level: card.level ?? 0 })
       })
     }
-    for (const seat of [0, 1] as const) emit({ t: 'stats', seat, cards: statsFor(seat, cards) })
+    for (const seat of [0, 1] as const) {
+      const seen = statsFor(seat, cards)
+
+      for (const card of seen) known[seat].add(card.code)
+      emit({ t: 'stats', seat, cards: seen })
+    }
   }
 
   /** Corre el núcleo hasta la próxima pregunta o el fin, reparte lo que contó y pregunta. Devuelve si el núcleo rechazó la última respuesta. */
@@ -481,7 +490,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
       return
     }
 
-    known = [0, 1].map((team) => new Set([...command.decks[team]!.main, ...command.decks[team]!.extra])) as typeof known
+    known = [new Set(), new Set()]
     emit({ t: 'loading', done: 0, total: codes.length })
     const lib = await createCore({ sync: true, ...options.core })
     const team = (player: CreateCommand['players'][number]) => ({ startingLP: player.lp, startingDrawCount: player.hand, drawCountPerTurn: player.draw })
@@ -533,7 +542,15 @@ export function createAutoHost(options: HostOptions): AutoHost {
     started = true
     emit({ t: 'loading', done: codes.length, total: codes.length })
     run(null)
-    for (const answer of replay) give(answer)
+    for (const answer of replay) {
+      await readable(answer)
+      give(answer)
+    }
+  }
+
+  /** La carta declarada, legible antes de contestar (también re-simulando: la misma fila, la misma respuesta aceptada). */
+  async function readable(answer: CoreAnswer) {
+    if (answer.type === 'announce_card') await options.fetchCard?.(answer.code)
   }
 
   return {
@@ -554,7 +571,10 @@ export function createAutoHost(options: HostOptions): AutoHost {
           break
         // Una respuesta vieja (dos toques, una reconexión) se descarta en `give`: no es la de la pregunta pendiente.
         case 'answer':
-          if (pending && command.askId === pending.askId) give(command.answer)
+          if (pending && command.askId === pending.askId) {
+            await readable(command.answer)
+            give(command.answer)
+          }
           break
         case 'rewind':
           // Más allá de lo jugado no hay a dónde volver: callarlo dejaría a quien lo pidió esperando la re-emisión para siempre.

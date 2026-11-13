@@ -8,6 +8,7 @@ import { localTransport, type AutoHost } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
 import { passivePolicy, randomLegalPolicy, type CardPicker, type Policy } from '../app/auto/policies'
 import { splitDesc } from '../app/auto/protocol'
+import { t } from '../i18n'
 import type { ApiCardReference } from '../types'
 import { codeOfId, compare, readMat, readReal } from './support/core-compare'
 import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
@@ -183,7 +184,7 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
     expect(tally.undos).toBe(pool.length)
   })
 
-  it('una opción dice qué hace (el texto que nombra su `desc`): Radiant Typhoon Manifestation ofrece «Efecto 4» (el texto de la carta sólo viene en inglés)', async () => {
+  it('una opción dice qué hace (el texto que nombra su `desc`, en inglés también en español: antes, «Efecto 4»): Radiant Typhoon Manifestation ofrece «Search 1 "Mystical Space Typhoon"»', async () => {
     const MANIFESTATION = 94103142
     const MST = 5318639
     const { filler } = await source.manifest()
@@ -207,7 +208,36 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
     }
 
     expect(pending.ask).toEqual({ type: 'select_option', player: 0, options: [String((BigInt(MANIFESTATION) << 20n) | 3n)] })
-    expect(askView(openAsk(pending, { queries: session.adapter!, prefs: { chainMode: 'ask', placeMode: 'auto' }, effectLabel })).options?.options.map((option) => option.label)).toEqual(['Efecto 4'])
+    expect(askView(openAsk(pending, { queries: session.adapter!, prefs: { chainMode: 'ask', placeMode: 'auto' }, effectLabel })).options?.options.map((option) => option.label)).toEqual(['Search 1 "Mystical Space Typhoon"'])
+    session.destroy()
+  })
+
+  it('Medius the Pure (Elfnote / Ars Magna): «A la mano» y su `str4` («Special Summon it»), nunca «Efecto 4»', async () => {
+    const MEDIUS = 97556336
+    const PATRON = 23829452
+    const { filler } = await source.manifest()
+    const deck: DeckList = { main: [[MEDIUS, 1], [PATRON, 2], ...filler.slice(0, 37).map((code) => [code, 1] as const)] }
+    const session = createAutoSession({ loader, deck, seed: 1, hand: [MEDIUS], transport: localTransport({ wasmBinary: wasm }) })
+    let snapshot = await settled(session)
+
+    // Invocarlo de forma normal, activar su efecto, elegir el Power Patron: el núcleo pregunta cómo («A la mano» o su `str4`).
+    for (let n = 0; n < 30 && snapshot.status === 'ready' && snapshot.ask!.ask.type !== 'select_option'; n += 1) {
+      const { ask } = snapshot.ask!
+      const summon = ask.type === 'select_idlecmd' ? ask.summons.findIndex((card) => card.code === MEDIUS) : -1
+
+      session.answer(summon >= 0 ? { type: 'select_idlecmd', action: 0, index: summon } : ask.type === 'select_effectyn' ? { type: 'select_effectyn', yes: true } : passivePolicy()(ask))
+      snapshot = await settled(session)
+    }
+    const pending = snapshot.ask!
+    const effectLabel = (_: number, description: string) => {
+      const { code, n } = splitDesc(description)
+
+      return snapshot.texts[code]?.[n] || null
+    }
+    const labels = askView(openAsk(pending, { queries: session.adapter!, prefs: { chainMode: 'ask', placeMode: 'auto' }, effectLabel })).options?.options.map((option) => option.label)
+
+    expect(pending.ask.type).toBe('select_option')
+    expect(labels).toEqual([t('practice.menu.toHand'), 'Special Summon it'])
     session.destroy()
   })
 
