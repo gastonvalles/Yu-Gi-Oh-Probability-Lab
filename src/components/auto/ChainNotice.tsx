@@ -474,8 +474,8 @@ export function ChainStage({
         </svg>
         {/* Una por eslabón (su `key`): la animación corre al montarse. */}
         {energy ? <EnergyLine key={`energy-${rows.length}`} from={energy[0]} to={energy[1]} /> : null}
-        {/* La chispa donde la línea toca la carta nueva, cuando llega. */}
-        {energy ? <Flipbook key={`spark-${rows.length}`} book={SPARK} delay={ENERGY_REACH_MS} center className="absolute z-6 aspect-square w-1/4" style={{ left: `${(energy[1][0] / 300) * 100}%`, top: `${(energy[1][1] / 400) * 100}%` }} /> : null}
+        {/* La chispa donde la línea toca la carta nueva, cuando llega: la misma para toda la cadena (cada eslabón la corre de nuevo, `play`), sin montar otra imagen. */}
+        {energy ? <Flipbook play={rows.length} book={SPARK} delay={ENERGY_REACH_MS} center className="absolute z-6 aspect-square w-1/4" style={{ left: `${(energy[1][0] / 300) * 100}%`, top: `${(energy[1][1] / 400) * 100}%` }} /> : null}
         {rows.map((link, index) => {
           const at = pose(index)
           // La que acaba de entrar: adelante y más grande, con su destello alrededor y en su número.
