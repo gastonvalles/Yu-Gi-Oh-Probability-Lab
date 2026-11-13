@@ -214,7 +214,8 @@ describe('AttackFx', () => {
       expect(target.animate).toHaveBeenCalledTimes(1)
       const [frames, options] = vi.mocked(target.animate).mock.calls[0]!
       expect(frames).toHaveLength(5)
-      expect(options).toEqual({ id: 'strike', duration: 360, delay: 300, easing: EASE_OUT })
+      // Espera al impacto (300 ms) y a la pausa del golpe (50 ms).
+      expect(options).toEqual({ id: 'strike', duration: 360, delay: 350, easing: EASE_OUT })
 
       view.unmount()
       expect(cancel).toHaveBeenCalledTimes(1)
@@ -258,17 +259,18 @@ describe('AttackFx', () => {
   })
 
   describe('el atacante embiste', () => {
-    it('se adelanta hasta 28 px y vuelve en 2 × el impacto, con la curva de ida y vuelta; al desmontarse se corta', () => {
+    it('se adelanta hasta 28 px, se queda clavado la pausa del golpe y vuelve, con la curva de ida y vuelta; al desmontarse se corta', () => {
       const { attacker, attackerCancel } = withAnimations()
       const view = render(<AttackFx strike={strike({ attacker, len: 200, ang: 0 })} onDone={() => {}} />)
 
       expect(attacker.animate).toHaveBeenCalledTimes(1)
       const [frames, options] = vi.mocked(attacker.animate).mock.calls[0]!
-      expect(options).toEqual({ duration: 600 })
-      // 18 % de 200 px son 36: el tope de 28 px manda. Llega a la espada a mitad (offset 0,5, al impacto de 300 ms) y vuelve a 0.
+      expect(options).toEqual({ duration: 650 })
+      // 18 % de 200 px son 36: el tope de 28 px manda. Llega a la espada al impacto (300 ms), se queda quieto 50 ms (el hitstop) y vuelve a 0.
       expect(frames).toEqual([
         { translate: '0px 0px', easing: EASE_IN_OUT },
-        { translate: '28px 0px', offset: 0.5, easing: EASE_IN_OUT },
+        { translate: '28px 0px', offset: 300 / 650 },
+        { translate: '28px 0px', offset: 350 / 650, easing: EASE_IN_OUT },
         { translate: '0px 0px' },
       ])
 
@@ -282,7 +284,7 @@ describe('AttackFx', () => {
       render(<AttackFx strike={strike({ attacker, len: 50, ang: Math.PI / 2 })} onDone={() => {}} />)
       const [frames] = vi.mocked(attacker.animate).mock.calls[0]!
       // 18 % de 50 px son 9 px; el ángulo de π/2 los manda hacia abajo (+y), y el coseno casi cero no deja basura en x.
-      expect(frames).toContainEqual(expect.objectContaining({ translate: '0px 9px', offset: 0.5 }))
+      expect(frames).toContainEqual(expect.objectContaining({ translate: '0px 9px', offset: 300 / 650 }))
     })
 
     it('pidiendo menos movimiento el atacante no se mueve', () => {

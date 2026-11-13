@@ -28,7 +28,7 @@ describe('el impacto en la mesa (field-impact)', () => {
 
     shakeField(field, 'strong', 120)
     const [frames, options] = animate.mock.calls[0] as unknown as [Keyframe[], KeyframeAnimationOptions]
-    expect(frames.every((frame) => Object.keys(frame).join() === 'translate')).toBe(true)
+    expect(frames.every((frame) => Object.keys(frame).filter((key) => key !== 'easing').join() === 'translate')).toBe(true)
     expect(Math.max(...frames.flatMap((frame) => String(frame.translate).split(' ').map((px) => Math.abs(parseFloat(px)))))).toBe(5)
     expect([frames[0]!.translate, frames.at(-1)!.translate]).toEqual(['0px 0px', '0px 0px'])
     expect(options).toMatchObject({ delay: 120, id: 'field-shake' })

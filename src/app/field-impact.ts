@@ -1,4 +1,4 @@
-import { EASE_OUT, cancelWhenDone, prefersReducedMotion } from './motion'
+import { EASE_IN_OUT, EASE_OUT, cancelWhenDone, prefersReducedMotion } from './motion'
 import type { LandingTone } from './mat-effects'
 import type { MatState } from './practice-mat'
 
@@ -43,7 +43,8 @@ export function shakeField(field: HTMLElement | null, shake: Shake, delay = 0): 
 
   for (const running of field.getAnimations()) if (running.id === SHAKE_ID) running.cancel()
   const { path, ms } = SHAKES[shake]
-  const animation = cancelWhenDone(field.animate(path.map(([x, y]) => ({ translate: `${x}px ${y}px` })), { id: SHAKE_ID, duration: ms, delay, easing: EASE_OUT }))
+  // Cada vaivén con su curva (de ida y vuelta): una sola curva para toda la sacudida apretaba los golpes grandes en los primeros cuadros. La amortiguación es la amplitud que baja.
+  const animation = cancelWhenDone(field.animate(path.map(([x, y]) => ({ translate: `${x}px ${y}px`, easing: EASE_IN_OUT })), { id: SHAKE_ID, duration: ms, delay }))
   const done = () => delete field.dataset.shaking
 
   field.dataset.shaking = ''
