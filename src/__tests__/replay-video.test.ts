@@ -8,10 +8,11 @@ import { muxMp4 } from '../components/replays/video/mp4-mux'
 import { lifeMs, lifeOf, overlaysOf } from '../components/replays/video/video-fx'
 import { placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { phoneDuelLayout } from '../components/probability/compact-field'
-import { artUrls, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
+import { drawBanner } from '../components/replays/video/video-draw'
+import { artUrls, fieldRect, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
 import { FPS, frameDurations, frameOf, INTRO_MS, OUTRO_MS, STEP_MS, VIDEO_PACE, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
-import { fakeAssets } from './support/video-fakes'
+import { fakeAssets, fakeCtx } from './support/video-fakes'
 
 // Un duelo chico (como el de `duel-replay.test.ts`): invoco, coloco, activo y paso; el rival roba, invoca y me ataca.
 const deck = Array.from({ length: 20 }, (_, i) => `card-${14558127 + (i % 7) * 1000}-${Math.floor(i / 7) + 1}`)
@@ -59,7 +60,9 @@ describe('el diseño del cuadro', () => {
     expect(first.x).toBeCloseTo(720 - (end.x + end.w))
     expect(first.y).toBeGreaterThan(layout.theirHand.y + layout.theirHand.h)
     expect(end.y + end.h).toBeLessThan(layout.myHand.y)
-    expect(layout.myHand.y + layout.myHand.h).toBeLessThan(layout.text.y)
+    // Con lo que bajan las puntas del abanico (1/16 del alto), tu mano no pisa el texto ni la del rival las vidas.
+    expect(layout.myHand.y + (layout.myHand.h * 17) / 16).toBeLessThan(layout.text.y)
+    expect(layout.theirHand.y - layout.theirHand.h / 16).toBeGreaterThanOrEqual(layout.score.y + layout.score.h - 0.01)
     expect(layout.footer.y + layout.footer.h).toBeLessThanOrEqual(1280)
     expect(videoLayout(1080).cellAt(4, 6)).toEqual({ x: expect.closeTo(end.x * 1.5, 6), y: expect.closeTo(end.y * 1.5, 6), w: expect.closeTo(end.w * 1.5, 6), h: expect.closeTo(end.h * 1.5, 6) })
   })
@@ -67,8 +70,11 @@ describe('el diseño del cuadro', () => {
   it('el campo es la mesa del celular (`phoneDuelLayout` a 390 px) escalada: siete columnas, casillas con forma de carta, las pilas a los costados del ancho de su columna', () => {
     const layout = videoLayout(720)
     const phone = phoneDuelLayout(PHONE_WIDTH, 844, { tilted: false, bar: 0, bottom: 0 })
-    const k = 720 / PHONE_WIDTH
-    expect(layout.unit).toBeCloseTo(k)
+    const k = layout.unit
+    // Angostado para que la carta de tu mano mida 1,53 casillas de ancho, como en la mesa a 369×800 (y la del rival, 0,8 de la tuya).
+    expect(k).toBeLessThan(720 / PHONE_WIDTH)
+    expect((layout.myHand.h * 59) / 86 / (phone.cell * k)).toBeCloseTo(1.53)
+    expect(layout.theirHand.h / layout.myHand.h).toBeCloseTo(0.8)
     // Las del centro: el ancho de la casilla y el alto de la fila (una carta), a 3 px; el campo, del ancho del de la mesa y centrado.
     const center = [1, 2, 3, 4, 5].map((col) => layout.cellAt(0, col))
     for (const rect of center) expect([rect.w / k, rect.h / k]).toEqual([expect.closeTo(phone.cell, 6), expect.closeTo(phone.row, 6)])
@@ -89,6 +95,18 @@ describe('el diseño del cuadro', () => {
     expect([pileAt(0, 'gy'), pileAt(0, 'extra'), pileAt(0, 'deck'), pileAt(0, 'banished')]).toEqual([layout.cellAt(3, 6), layout.cellAt(4, 0), layout.cellAt(4, 6), layout.cellAt(2, 6)])
     // Siete columnas por cinco filas, menos las tres de las fases del medio.
     expect(last.cells).toHaveLength(32)
+  })
+
+  it('el cierre va sobre la franja del texto (no tapa cómo quedó el campo); el título, sobre el medio de la mesa', () => {
+    const rects: number[][] = []
+    const ctx = new Proxy(fakeCtx(), { get: (target, key) => (key === 'roundRect' ? (...args: number[]) => rects.push(args) : Reflect.get(target, key)) })
+    drawBanner(ctx, last, { title: 'Ana vs Beto', subtitle: 'Ganó Beto' }, fakeAssets, 1, true)
+    drawBanner(ctx, last, { title: 'Ana vs Beto', subtitle: '' }, fakeAssets)
+    const { text } = last.layout
+    const field = fieldRect(last.cells)
+    expect(rects[0]!.slice(0, 4)).toEqual([text.x, text.y, text.w, text.h])
+    expect(rects[0]![1]).toBeGreaterThan(last.layout.myHand.y + last.layout.myHand.h)
+    expect(rects[1]![1]! + rects[1]![3]!).toBeLessThan(field.y + field.h)
   })
 
   it('las cartas de la mano entran en su franja: separadas si son pocas, encimadas si son muchas', () => {

@@ -4,7 +4,7 @@ import { replayChainSteps, type DuelReplay, type ReplaySide } from '../../../app
 import { EASE_OUT, bezierEase, easeInOut } from '../../../app/motion'
 import { t } from '../../../i18n'
 import { BOND_TRIM, BURST_RAYS, CELL, CHAIN_LEAVE_MS, chainFeed, CORNER_TIES, DIGIT_STEP, LAYOUT, SAG, SHOWN, SIDE_LEFT, glyphCells, hangingLinks } from '../../auto/ChainNotice'
-import { drawCard, FONT, type ChainColors, type Ctx, type VideoAssets } from './video-draw'
+import { canvasOf, drawCard, FONT, type ChainColors, type Ctx, type VideoAssets } from './video-draw'
 import { keyed, type Overlay } from './video-fx'
 import { artOfId, cellsOf, fieldRect, placeRect, type Rect, type VideoLayout } from './video-scene'
 import { chainTimeline, type VideoSpeed } from './video-timeline'
@@ -27,15 +27,29 @@ export interface StagePose {
   rotate: number
   scale: number
   opacity: number
+  /** Su inclinación 3D quieta (`chain-tilt-*`): `rotateX` y `rotateY`, en radianes. */
+  tiltX: number
+  tiltY: number
 }
 
-const amount = (value: string) => (value === 'full' ? 1 : value.includes('/') ? Number(value.split('/')[0]) / Number(value.split('/')[1]) : Number(value))
+/** `chain-tilt-*` de `index.css` (`perspective(56rem) rotateX rotateY`, en grados): la carta de adelante y las de atrás; las `-flip`, con `rotateY` al revés. */
+export const CHAIN_TILT = { front: [10, -7], back: [-8, 6] } as const
+const TILT_PERSPECTIVE = 56 * 16
+
+const amount =(value: string) => (value === 'full' ? 1 : value.includes('/') ? Number(value.split('/')[0]) / Number(value.split('/')[1]) : Number(value))
 
 /** Las clases de Tailwind de un lugar de `LAYOUT` (`-translate-x-2/5 translate-y-1/2 -rotate-8 scale-140`…) como números: la escena del video se mueve con las mismas. */
 export function poseOfClasses(classes: string): StagePose {
-  const pose: StagePose = { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1 }
+  const pose: StagePose = { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1, tiltX: 0, tiltY: 0 }
   for (const token of classes.split(/\s+/)) {
-    const match = /^(-?)(translate-x|translate-y|rotate|scale|opacity)-([\d/]+|full)$/.exec(token)
+    const tilt = /^chain-tilt-(front|back)(-flip)?$/.exec(token)
+    if (tilt) {
+      const [x, y] = CHAIN_TILT[tilt[1] as 'front' | 'back']
+      pose.tiltX = (x * Math.PI) / 180
+      pose.tiltY = ((tilt[2] ? -y : y) * Math.PI) / 180
+      continue
+    }
+    const match =/^(-?)(translate-x|translate-y|rotate|scale|opacity)-([\d/]+|full)$/.exec(token)
     if (!match) continue
     const value = (match[1] ? -1 : 1) * amount(match[3]!)
     if (match[2] === 'translate-x') pose.x = value
@@ -54,7 +68,50 @@ export const BACK_POSE = poseOfClasses('-translate-y-full scale-50 opacity-0')
 const mix = (a: number, b: number, e: number) => a + (b - a) * e
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const easeOut = bezierEase(EASE_OUT)
-const mixPose = (a: StagePose, b: StagePose, e: number): StagePose => ({ x: mix(a.x, b.x, e), y: mix(a.y, b.y, e), rotate: mix(a.rotate, b.rotate, e), scale: mix(a.scale, b.scale, e), opacity: mix(a.opacity, b.opacity, e) })
+const mixPose = (a: StagePose, b: StagePose, e: number): StagePose => ({ x: mix(a.x, b.x, e), y: mix(a.y, b.y, e), rotate: mix(a.rotate, b.rotate, e), scale: mix(a.scale, b.scale, e), opacity: mix(a.opacity, b.opacity, e), tiltX: mix(a.tiltX, b.tiltX, e), tiltY: mix(a.tiltY, b.tiltY, e) })
+
+/** Dónde cae el punto (`x`, `y`, desde el centro de la carta) con `perspective(p) rotateX(ax) rotateY(ay)`, como lo dibuja el navegador. */
+export function tiltPoint(x: number, y: number, ax: number, ay: number, p: number): [number, number] {
+  const z = -x * Math.sin(ay)
+  const depth = y * Math.sin(ax) + z * Math.cos(ax)
+  const k = 1 / (1 - depth / p)
+  return [x * Math.cos(ay) * k, (y * Math.cos(ax) - z * Math.sin(ax)) * k]
+}
+
+let scratch: ReturnType<typeof canvasOf> | undefined
+/** Tiras verticales del dibujo inclinado: cada una va a la proyección de sus esquinas (con 16, la diferencia con la proyección de verdad no llega a un px). */
+const TILT_STRIPS = 16
+
+/**
+ * Pinta `paint` (en las unidades de la carta, centrada en 0, dentro de `w` × `h`) con la inclinación de `pose`: en un lienzo aparte a `res` px por unidad y de ahí en tiras, porque el lienzo 2D
+ * no tiene perspectiva. Sin lienzos (las pruebas) o sin inclinación, derecho.
+ */
+function drawTilted(ctx: Ctx, pose: StagePose, w: number, h: number, res: number, perspective: number, paint: (target: Ctx) => void) {
+  if (scratch === undefined) scratch = canvasOf(1, 1)
+  if (!scratch || (pose.tiltX === 0 && pose.tiltY === 0)) return paint(ctx)
+  const sw = Math.ceil(w * res)
+  const sh = Math.ceil(h * res)
+  const { canvas, ctx: off } = scratch
+  if (canvas.width < sw || canvas.height < sh) Object.assign(canvas, { width: Math.max(canvas.width, sw), height: Math.max(canvas.height, sh) })
+  off.setTransform(1, 0, 0, 1, 0, 0)
+  off.clearRect(0, 0, sw + 1, sh + 1)
+  off.setTransform(res, 0, 0, res, (w * res) / 2, (h * res) / 2)
+  paint(off)
+  const at = (sx: number, sy: number) => tiltPoint(sx / res - w / 2, sy / res - h / 2, pose.tiltX, pose.tiltY, perspective)
+  for (let i = 0; i < TILT_STRIPS; i += 1) {
+    const x0 = Math.floor((i * sw) / TILT_STRIPS)
+    const x1 = Math.min(sw, Math.floor(((i + 1) * sw) / TILT_STRIPS) + 1)
+    const [ax, ay] = at(x0, 0)
+    const [bx, by] = at(x1, 0)
+    const [cx, cy] = at(x0, sh)
+    const a = (bx - ax) / (x1 - x0)
+    const b = (by - ay) / (x1 - x0)
+    ctx.save()
+    ctx.transform(a, b, (cx - ax) / sh, (cy - ay) / sh, ax - a * x0, ay - b * x0)
+    ctx.drawImage(canvas, x0, 0, x1 - x0, sh, x0, 0, x1 - x0, sh)
+    ctx.restore()
+  }
+}
 /** `animate-fx-flash`: crece desde la mitad, se ve entero al 28 % y se apaga agrandándose. */
 const flashAt = (p: number) => ({ scale: keyed(p, [[0, 0.5], [0.28, 1.05], [1, 1.5]]), alpha: keyed(p, [[0, 0], [0.28, 1], [1, 0]]) })
 /** `banner-veil`: entra, se queda y se va. */
@@ -282,41 +339,45 @@ function drawStageCard(ctx: Ctx, row: ChainRow, pose: StagePose, geo: StageGeome
         })
         ctx.restore()
       })
-    // El halo blanco (`shadow-chain-halo`): dos resplandores y la línea de 2 px. El desenfoque del lienzo no escala con la carta: va por la escala.
-    for (const [blur, alpha] of [[32, 0.18], [14, 0.6]] as const) {
-      ctx.save()
-      ctx.shadowColor = `rgb(255 255 255 / ${alpha})`
-      ctx.shadowBlur = blur * u * pose.scale
-      ctx.fillStyle = assets.theme.raised
-      ctx.fillRect(-w / 2, -h / 2, w, h)
-      ctx.restore()
-    }
-    drawCard(ctx, { x: 0, y: 0, w, h, angle: 0 }, { id: String(row.number), art: face.art, name: face.name, faceDown: false, sideways: false, upsideDown: false, counters: 0, materials: 0 }, assets, geo.scale)
-    faded(ctx, 0.9, () => {
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2 * u
-      ctx.strokeRect(-w / 2 - u, -h / 2 - u, w + 2 * u, h + 2 * u)
-    })
-    // El destello amarillo alrededor (`-inset-2 border-4`).
-    if (born !== null && born < 1)
-      flashing(ctx, born, 0, 0, () => {
-        ctx.strokeStyle = colors.flash
-        ctx.lineWidth = 4 * u
-        ctx.strokeRect(-w / 2 - 6 * u, -h / 2 - 6 * u, w + 12 * u, h + 12 * u)
+    // Lo demás va con la inclinación 3D de la carta (en la mesa son sus hijos): con aire para el halo, el número que sobresale y las ataduras.
+    const margin = w / 4 + 32 * u
+    drawTilted(ctx, pose, w + 2 * margin, h + 2 * margin, pose.scale, TILT_PERSPECTIVE * u, (g) => {
+      // El halo blanco (`shadow-chain-halo`): dos resplandores y la línea de 2 px. El desenfoque del lienzo no escala con la carta: va por la escala.
+      for (const [blur, alpha] of [[32, 0.18], [14, 0.6]] as const) {
+        g.save()
+        g.shadowColor = `rgb(255 255 255 / ${alpha})`
+        g.shadowBlur = blur * u * pose.scale
+        g.fillStyle = assets.theme.raised
+        g.fillRect(-w / 2, -h / 2, w, h)
+        g.restore()
+      }
+      drawCard(g, { x: 0, y: 0, w, h, angle: 0 }, { id: String(row.number), art: face.art, name: face.name, faceDown: false, sideways: false, upsideDown: false, counters: 0, materials: 0 }, assets, geo.scale)
+      faded(g, 0.9, () => {
+        g.strokeStyle = '#fff'
+        g.lineWidth = 2 * u
+        g.strokeRect(-w / 2 - u, -h / 2 - u, w + 2 * u, h + 2 * u)
       })
-    // Las esquinas atadas con cadena (en el `viewBox` de la carta, 100 × 146).
-    ctx.save()
-    ctx.translate(-w / 2, -h / 2)
-    ctx.scale(w / 100, h / 146)
-    for (const [from, to] of CORNER_TIES) drawLinks(ctx, hangingLinks(from, to, 2, 7.5), colors, 0.7)
-    ctx.restore()
-    // El número: la mitad del alto de la carta, pisando la esquina de abajo del lado de afuera (corrido un tercio de su tamaño).
-    const nh = h / 2
-    const nw = (nh * (DIGIT_STEP * String(row.number).length + 14)) / (5 * CELL + 24)
-    const nx = side === 'left' ? -w / 2 - nw / 3 : w / 2 + nw / 3 - nw
-    const ny = h / 2 - nh + nh / 3
-    drawNumber(ctx, row.number, nx, ny, nh, colors, false)
-    if (born !== null && born < 1) flashing(ctx, born, nx + nw / 2, ny + nh / 2, () => drawNumber(ctx, row.number, nx, ny, nh, colors, true))
+      // El destello amarillo alrededor (`-inset-2 border-4`).
+      if (born !== null && born < 1)
+        flashing(g, born, 0, 0, () => {
+          g.strokeStyle = colors.flash
+          g.lineWidth = 4 * u
+          g.strokeRect(-w / 2 - 6 * u, -h / 2 - 6 * u, w + 12 * u, h + 12 * u)
+        })
+      // Las esquinas atadas con cadena (en el `viewBox` de la carta, 100 × 146).
+      g.save()
+      g.translate(-w / 2, -h / 2)
+      g.scale(w / 100, h / 146)
+      for (const [from, to] of CORNER_TIES) drawLinks(g, hangingLinks(from, to, 2, 7.5), colors, 0.7)
+      g.restore()
+      // El número: la mitad del alto de la carta, pisando la esquina de abajo del lado de afuera (corrido un tercio de su tamaño).
+      const nh = h / 2
+      const nw = (nh * (DIGIT_STEP * String(row.number).length + 14)) / (5 * CELL + 24)
+      const nx = side === 'left' ? -w / 2 - nw / 3 : w / 2 + nw / 3 - nw
+      const ny = h / 2 - nh + nh / 3
+      drawNumber(g, row.number, nx, ny, nh, colors, false)
+      if (born !== null && born < 1) flashing(g, born, nx + nw / 2, ny + nh / 2, () => drawNumber(g, row.number, nx, ny, nh, colors, true))
+    })
   })
 }
 
@@ -381,7 +442,8 @@ export function drawStage(ctx: Ctx, episode: StageEpisode, now: number, geo: Sta
       const depth = count - 1 - index
       const newest = index === count - 1
       const to = stagePoseOf(depth, count)
-      const pose = newest ? mixPose(START_POSE, to, easeInOut(clamp((now - episode.mounts[index]! - ms(STAGE_MS.newest)) / ms(STAGE_MS.move)))) : mixPose(stagePoseOf(depth - 1, count - 1), to, easeInOut(clamp((now - changed) / ms(STAGE_MS.move))))
+      // La nueva entra ya inclinada (`starting:` no toca su `transform`).
+      const pose = newest ? mixPose({ ...START_POSE, tiltX: to.tiltX, tiltY: to.tiltY }, to, easeInOut(clamp((now - episode.mounts[index]! - ms(STAGE_MS.newest)) / ms(STAGE_MS.move)))) : mixPose(stagePoseOf(depth - 1, count - 1), to, easeInOut(clamp((now - changed) / ms(STAGE_MS.move))))
       const born = newest && !hidden ? (now - episode.mounts[index]!) / ms(STAGE_MS.flash) : null
       if (pose.opacity > 0) drawStageCard(ctx, episode.rows[index]!, pose, geo, sideOf(depth, mirror), born, assets, look)
     }
@@ -526,7 +588,7 @@ export function drawMedal(ctx: Ctx, track: MedalTrack, now: number, layout: Vide
     if (onAt(track.voided, now)?.on) {
       ctx.lineWidth = 3.5
       ctx.lineCap = 'round'
-      ctx.strokeStyle = assets.theme.danger
+      ctx.strokeStyle = assets.theme.strike
       ctx.beginPath()
       ctx.moveTo(9, 31)
       ctx.lineTo(31, 9)

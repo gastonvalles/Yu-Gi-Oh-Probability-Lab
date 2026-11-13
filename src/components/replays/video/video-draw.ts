@@ -30,6 +30,8 @@ export interface VideoTheme {
   soft: string
   fieldLine: string
   danger: string
+  /** El tachado rojo de un medallón negado (`stroke-danger` de `ChainBadge`, más fuerte que `danger`, que es el del texto). */
+  strike: string
   success: string
   /** Los mismos, como «r g b» para `rgb(r g b / alfa)`. */
   primaryRgb: string
@@ -75,6 +77,7 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     soft: v('--text-soft'),
     fieldLine: v('--field-line'),
     danger: v('--danger-soft'),
+    strike: v('--danger'),
     success: v('--success-soft'),
     primaryRgb: v('--primary-rgb'),
     backgroundRgb: v('--background-rgb'),
@@ -138,7 +141,7 @@ function roundRect(ctx: Ctx, r: Rect, radius: number) {
 const rgba = (rgb: string | undefined, alpha: number) => `rgb(${rgb ?? '255 255 255'} / ${alpha})`
 
 /** Un lienzo aparte del tamaño dado (sin DOM, si se puede); null donde no hay lienzos (las pruebas). */
-function canvasOf(w: number, h: number): { canvas: CanvasImageSource; ctx: Ctx } | null {
+export function canvasOf(w: number, h: number): { canvas: HTMLCanvasElement | OffscreenCanvas; ctx: Ctx } | null {
   const canvas = typeof OffscreenCanvas === 'undefined' ? (typeof document === 'undefined' ? null : Object.assign(document.createElement('canvas'), { width: w, height: h })) : new OffscreenCanvas(w, h)
   const ctx = canvas?.getContext('2d') as Ctx | null | undefined
   return canvas && ctx ? { canvas, ctx } : null
@@ -740,13 +743,17 @@ export function drawFlight(ctx: Ctx, flight: Flight, ms: number, assets: VideoAs
   drawCard(ctx, { ...pose, w: pose.w * Math.abs(turn) }, turn > 0 ? motion.fromCard : motion.card, assets, s, lift)
 }
 
-/** El título o el cierre: una placa sobre el medio de la mesa, con los nombres o el resultado (`alpha`: mientras aparece o se va). */
-export function drawBanner(ctx: Ctx, scene: Scene, banner: { title: string; subtitle: string }, assets: VideoAssets, alpha = 1) {
+/**
+ * El título o el cierre: una placa con los nombres o el resultado (`alpha`: mientras aparece o se va). El título, sobre el medio de la mesa (todavía vacía); el cierre (`closing`), sobre la
+ * franja del texto de la jugada, así no tapa cómo quedó el campo.
+ */
+export function drawBanner(ctx: Ctx, scene: Scene, banner: { title: string; subtitle: string }, assets: VideoAssets, alpha = 1, closing = false) {
   const { theme } = assets
   const s = scene.layout.scale
   const middle = scene.layout.cellAt(scene.layout.middle, 1)
-  const r = { x: 40 * s, y: middle.y - 40 * s, w: scene.width - 80 * s, h: middle.h + 80 * s }
-  ctx.globalAlpha = 0.94 * alpha
+  const r = closing ? scene.layout.text : { x: 40 * s, y: middle.y - 40 * s, w: scene.width - 80 * s, h: middle.h + 80 * s }
+  // El cierre, opaco: debajo está el texto de la última jugada, que no se lee a medias.
+  ctx.globalAlpha = (closing ? 1 : 0.94) * alpha
   ctx.fillStyle = theme.card
   roundRect(ctx, r, 24 * s)
   ctx.fill()

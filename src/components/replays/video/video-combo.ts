@@ -17,11 +17,15 @@ import { artOfId, cellsOf, duelRows, explainOf, fieldArtUrl, focusOf, halfOf, ha
 
 type Combo = SavedCombo | SharedCombo
 
-/** El lienzo del combo: el del duelo; con la «Mano del rival» del simulador, su franja más baja y más chica, para que su rótulo entre debajo del título. */
+/**
+ * El lienzo del combo: el del duelo; con la «Mano del rival» del simulador, su franja más baja y más chica, para que su rótulo entre debajo del título (y las puntas de su abanico, que
+ * bajan 1/16 de su alto, no toquen el campo).
+ */
 export function comboLayout(width: number, rival: boolean): VideoLayout {
   const layout = videoLayout(width)
   const s = layout.scale
-  return rival ? { ...layout, theirHand: { x: 64 * s, y: 130 * s, w: 592 * s, h: 62 * s } } : layout
+  const h = ((layout.cellAt(0, 1).y - 6 * layout.unit - 130 * s) * 16) / 17
+  return rival ? { ...layout, theirHand: { x: 64 * s, y: 130 * s, w: 592 * s, h } } : layout
 }
 
 /**

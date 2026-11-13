@@ -113,12 +113,12 @@ describe('la cadena en grande', () => {
         <ChainStage rows={rows} current={2} />
       </Provider>,
     )
-    // Se está yendo: sólo opacidad, y sin el oscurecido de entrar ni «CADENA».
+    // Se está yendo: sólo opacidad, y sin el oscurecido de entrar; «CADENA» se va con el fundido de la escena (como en el video), no de golpe.
     expect(document.querySelector('[data-chain-stage]')).toHaveAttribute('data-leaving')
     expect(document.querySelector('[data-chain-stage]')).toHaveClass('opacity-0', 'duration-200', 'motion-reduce:transition-opacity')
     expect(veil()).toHaveClass('opacity-0', 'duration-200')
     expect(document.querySelector('[data-chain-dim]')).toBeNull()
-    expect(document.querySelector('[data-chain-word]')).toBeNull()
+    expect(document.querySelector('[data-chain-stage] [data-chain-word]')).not.toHaveClass('opacity-0')
     expect(CHAIN_LEAVE_MS).toBeGreaterThanOrEqual(150)
     expect(CHAIN_LEAVE_MS).toBeLessThanOrEqual(200)
     act(() => vi.advanceTimersByTime(CHAIN_LEAVE_MS))
@@ -265,7 +265,8 @@ describe('la cadena en grande', () => {
     expect(bonds()).toEqual([])
     expect(veil()).toHaveClass('opacity-0')
     expect(document.querySelector('[data-chain-dim]')).toBeNull()
-    expect(document.querySelector('[data-chain-word]')).toBeNull()
+    // «CADENA», con su fundido (no de golpe).
+    expect(document.querySelector('[data-chain-word]')).toHaveClass('opacity-0', 'transition-[opacity,scale]')
     expect(screen.getByRole('status')).toHaveClass('sr-only')
   })
 

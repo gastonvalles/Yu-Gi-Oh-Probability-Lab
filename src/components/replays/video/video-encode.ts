@@ -223,7 +223,7 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
       if (index === 0) live.push(...dealOverlays(scene, assets, speed), titleOverlay((target, alpha) => drawBanner(target, shown, plan.intro, assets, alpha), 0, durations[0]! + TITLE_FADE_MS, TITLE_FADE_MS, false))
       if (outro && plan.outro) {
         const banner = plan.outro
-        live.push(titleOverlay((target, alpha) => drawBanner(target, shown, banner, assets, alpha), start, durations[index]!, TITLE_FADE_MS, true))
+        live.push(titleOverlay((target, alpha) => drawBanner(target, shown, banner, assets, alpha, true), start, durations[index]!, TITLE_FADE_MS, true))
       }
       const moving = flights.length > 0 ? { keys: movingKeys(flights.map((flight) => flight.motion)), before: before! } : undefined
       const landed = Math.max(0, ...flights.map((flight) => flight.delay + flight.duration))
