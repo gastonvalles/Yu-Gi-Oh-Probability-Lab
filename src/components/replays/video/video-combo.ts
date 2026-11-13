@@ -80,7 +80,7 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
   const shown = action?.type === 'reveal' ? action.id : null
   const rows = duelRows(0)
   const mine: SceneSide = {
-    ...emptySide(handSlots(state.hand, layout.myHand, look, () => true)),
+    ...emptySide(handSlots(state.hand, layout.myHand, look, () => true, false, state.targeted)),
     slots: sideSlots(state, layout, rows, false, look, shown),
     fieldArt: state.field && !isForeignId(state.field.id) ? fieldArtUrl(state.field, isRivalId(state.field.id) ? rivalCardOf(state.field.id) : state.field.id) : null,
     half: halfOf(layout, rows),
@@ -91,7 +91,7 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
         const theirLook = comboTheirLook(names, opponent.known)
         const field = opponent.state.field
         return {
-          ...emptySide(handSlots(opponent.state.hand, layout.theirHand, theirLook, () => false, true)),
+          ...emptySide(handSlots(opponent.state.hand, layout.theirHand, theirLook, () => false, true, opponent.state.targeted)),
           slots: sideSlots(opponent.state, layout, duelRows(1), true, theirLook, null),
           fieldArt: field ? fieldArtUrl(field, isToken(field.id) ? null : comboTheirReal(field.id, opponent.known)) : null,
           half: halfOf(layout, duelRows(1)),

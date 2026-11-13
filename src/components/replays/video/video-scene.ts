@@ -44,6 +44,8 @@ export interface SceneCard {
   dim?: boolean
   /** Su giro en el abanico de la mano (radianes), como `fanAngle` de la mesa. */
   tilt?: number
+  /** Marcada como objetivo (`MatState.targeted`): lleva la mira de la mesa (`drawTargetMark`). */
+  targeted?: boolean
 }
 
 export interface SceneSlot {
@@ -338,12 +340,14 @@ export function sideSlots(state: MatState, layout: VideoLayout, rows: Rows, top:
       upsideDown: top,
       counters: placed?.counters ?? 0,
       materials: placed?.materials.length ?? 0,
+      ...(state.targeted.includes(id) ? { targeted: true } : {}),
     }
   }
   const zone = (placed: Placed | null, rect: Rect, monster = false): SceneSlot =>
     placed ? { rect, card: card(placed.id, placed, true, monster), ids: [placed.id, ...placed.materials] } : { rect, ids: [] }
   const pile = (name: MatPile, ids: readonly string[], faceUp: (id: string) => boolean): SceneSlot => {
-    const last = name === 'deck' ? ids[0] : ids.at(-1)
+    // Arriba, la marcada como objetivo si hay una (como la mesa); si no, la de arriba.
+    const last = ids.filter((id) => state.targeted.includes(id)).at(-1) ?? (name === 'deck' ? ids[0] : ids.at(-1))
     return {
       rect: pileRect(name),
       pile: name,
@@ -401,7 +405,7 @@ export function focusOf(action: MatAction, before: MatState, state: MatState, mi
 }
 
 /** Las mismas cartas de una mano en su franja: boca arriba lo que `look` conoce y `open` deja ver (o la que se muestra en esta jugada). */
-export function handSlots(ids: readonly string[], area: Rect, look: Look, open: (id: string) => boolean, top = false): SceneSlot[] {
+export function handSlots(ids: readonly string[], area: Rect, look: Look, open: (id: string) => boolean, top = false, targeted: readonly string[] = []): SceneSlot[] {
   const rects = handRects(area, ids.length)
   // El abanico de la mesa (`restTransform` de `PracticeHand`): 2,2° por carta desde el medio y las de los costados un poco más abajo (1,6 px por carta², en una de ~96 px de alto). La de arriba (`top`),
   // espejada como `TheirHand`: las puntas suben.
@@ -413,7 +417,7 @@ export function handSlots(ids: readonly string[], area: Rect, look: Look, open: 
     return {
       rect: { ...rect, y: rect.y + Math.min(6, (index - middle) ** 2 * 1.6) * dip },
       ids: [id],
-      card: { id, art: face?.art ?? null, name: face?.name ?? '', faceDown: !face, sideways: false, upsideDown: false, counters: 0, materials: 0, tilt: (((index - middle) * FAN_DEGREES * Math.PI) / 180) * (top ? -1 : 1) },
+      card: { id, art: face?.art ?? null, name: face?.name ?? '', faceDown: !face, sideways: false, upsideDown: false, counters: 0, materials: 0, tilt: (((index - middle) * FAN_DEGREES * Math.PI) / 180) * (top ? -1 : 1), ...(targeted.includes(id) ? { targeted: true } : {}) },
     }
   })
 }
@@ -437,7 +441,7 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
       fieldArt: state.field ? fieldArtUrl(state.field, realOf(replay, frame, side, state.field.id)) : null,
       half: halfOf(layout, rows),
       slots: sideSlots(state, layout, rows, side === 1, look, shown),
-      hand: handSlots(state.hand, side === 0 ? layout.myHand : layout.theirHand, look, (id) => (side === 0 && replay.view === 'mine') || id === shown, side === 1),
+      hand: handSlots(state.hand, side === 0 ? layout.myHand : layout.theirHand, look, (id) => (side === 0 && replay.view === 'mine') || id === shown, side === 1, state.targeted),
     }
   }) as [SceneSide, SceneSide]
   // Un cambio de fase no resalta ninguna casilla: lo dice su cartel.
