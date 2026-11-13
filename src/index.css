@@ -1994,34 +1994,12 @@
   --ease-rebote-marcado: linear(0, 1.8 38%, 0.9 70%, 1);
   --ease-rebote-suave: linear(0, 1.4 40%, 0.96 72%, 1);
 
-  /* El brillo que recorre el borde del botón principal: una cuña de luz quieta que gira (`rotate`) y se apaga entre pasada y pasada. */
-  --animate-feel-sheen: feel-sheen 4.2s linear infinite;
   /* El anillo de impacto al estampar una carta y el destello aditivo que lo acompaña (sólo con «Efectos completos»). */
   --animate-feel-ring: feel-ring 340ms var(--ease-out) both;
   --animate-feel-flash: feel-flash 260ms var(--ease-out) both;
   /* El número de la cadena que golpea la pantalla: entra grande y se clava con pasada. */
   --animate-feel-hit: feel-hit 220ms var(--ease-out-back) both;
 
-  @keyframes feel-sheen {
-    0% {
-      rotate: 0deg;
-      opacity: 0;
-    }
-    8% {
-      opacity: 1;
-    }
-    40% {
-      opacity: 1;
-    }
-    50% {
-      rotate: 360deg;
-      opacity: 0;
-    }
-    100% {
-      rotate: 360deg;
-      opacity: 0;
-    }
-  }
   @keyframes feel-ring {
     from {
       scale: 0.5;
@@ -2061,67 +2039,29 @@
 }
 
 /*
- * El botón con rebote: al apretarlo se achica al 90 % en 50 ms y al soltarlo vuelve pasando por 108 % (o 104 %, `--feel-rebote`). Sólo `scale`: no mueve lo de al lado. Lleva sus
- * transiciones de color porque reemplaza la lista de `Button`. Con movimiento reducido no rebota.
+ * El botón con rebote (todo `Button`, `IconButton` y `TileButton`): al apretarlo se achica a `--feel-hundido` (90 %) en 50 ms y al soltarlo vuelve pasando por 108 % (la pasada es
+ * proporcional: con 96 %, 103 %). Sólo `scale` (compositor): la caja no cambia de tamaño y no corre lo de al lado. Apagado (`disabled`, `aria-disabled`) no rebota; con movimiento
+ * reducido, tampoco. Lleva las transiciones de color de los botones porque reemplaza su lista.
  */
 @utility feel-press {
-  /* `:is(button, a)` le suma especificidad: con la de una utilidad sola, la `transition-[…]` de `Button` le ganaba por el orden de la hoja y `scale` no transicionaba. */
+  /* `:is(button, a)` le suma especificidad: con la de una utilidad sola, una `transition-[…]` del botón le ganaba por el orden de la hoja y `scale` no transicionaba. */
   &:is(button, a) {
     transition:
       scale 280ms var(--feel-rebote, var(--ease-rebote-marcado)),
+      opacity 150ms var(--ease-out),
       background-color 150ms var(--ease-out),
+      border-color 150ms var(--ease-out),
       color 150ms var(--ease-out),
-      box-shadow 150ms var(--ease-out),
-      transform 150ms var(--ease-out);
+      box-shadow 150ms var(--ease-out);
   }
-  &:is(button, a):active:not(:disabled) {
-    scale: 0.9;
+  &:is(button, a):active:not(:disabled, [aria-disabled='true']) {
+    scale: var(--feel-hundido, 0.9);
     transition-duration: 50ms;
     transition-timing-function: var(--ease-out);
   }
   @media (prefers-reduced-motion: reduce) {
-    &:is(button, a):active:not(:disabled) {
+    &:is(button, a):active:not(:disabled, [aria-disabled='true']) {
       scale: none;
-    }
-  }
-}
-
-/*
- * El brillo en reposo del botón principal: `::before` es una cuña de luz (degradé quieto) que gira detrás de `::after`, que repite el fondo del botón 1,5 px hacia adentro:
- * sólo se ve la luz que pasa por el borde. Una capa compuesta por botón; con movimiento reducido, nada.
- */
-@utility feel-sheen {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    z-index: -2;
-    top: 50%;
-    left: 50%;
-    width: 160%;
-    aspect-ratio: 1;
-    translate: -50% -50%;
-    background: conic-gradient(from 0deg, transparent 0 72%, rgb(255 255 255 / 0.85) 86%, transparent 100%);
-    animation: var(--animate-feel-sheen);
-    pointer-events: none;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    inset: 1.5px;
-    border-radius: inherit;
-    background-color: inherit;
-    pointer-events: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    &::before {
-      animation: none;
-      opacity: 0;
     }
   }
 }

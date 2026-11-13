@@ -12,8 +12,9 @@ interface ShineFrameProps {
 }
 
 /**
- * El marco de la acción principal de una pantalla (la «Jugar ahora» de la portada, verde lleno): un hilo lima que le da la vuelta al botón y, de a ratos, un brillo blanco que lo barre. Es lo único que se
- * mueve de la portada, así que se distingue (Von Restorff); va en **un solo botón por pantalla**.
+ * El marco de la acción principal de una pantalla (la «Jugar ahora» de la portada, verde lleno): el brillo en reposo de «Impacto Ligero», un hilo dorado (`fx-destello`) que le da la vuelta al botón
+ * y, de a ratos, un brillo blanco que lo barre (con «Efectos: Livianos», sólo el hilo). Es lo único que se mueve de la portada, así que se distingue (Von Restorff); va en **un solo botón por pantalla**:
+ * «Jugar ahora» (Inicio y Jugar) y «Jugar» de Solo; no en los menús ni en la mesa del duelo, que ya tienen sus brillos (la jugada).
  *
  * - **Rendimiento:** las dos capas sólo mueven `transform`/`translate` (el hilo es un degradé cónico grande que gira, `animate-spin`; el brillo, una barra que cruza con `animate-shine`):
  *   corren en el compositor, sin repintar y sin JavaScript. Con `active` en false no se dibuja ninguna.
@@ -28,10 +29,10 @@ export function ShineFrame({ active = true, className, children }: ShineFramePro
       {active ? (
         <>
           <span aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-[inherit] motion-reduce:hidden">
-            <span className="absolute -inset-[150%] animate-spin bg-[conic-gradient(from_0deg,transparent_0_58%,var(--color-info)_100%)] [animation-duration:3.6s] [animation-timing-function:linear]" />
+            <span className="absolute -inset-[150%] animate-spin bg-[conic-gradient(from_0deg,transparent_0_58%,var(--color-fx-destello)_100%)] [animation-duration:3.6s] [animation-timing-function:linear]" />
           </span>
           {children}
-          <span aria-hidden="true" className="pointer-events-none absolute inset-0.5 overflow-hidden rounded-[calc(var(--radius-control)-2px)] motion-reduce:hidden">
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0.5 overflow-hidden rounded-[calc(var(--radius-control)-2px)] motion-reduce:hidden fx-lite:hidden">
             <span className="absolute inset-y-0 left-0 w-1/3 -skew-x-12 animate-shine bg-linear-to-r from-transparent via-white/35 to-transparent" />
           </span>
         </>
