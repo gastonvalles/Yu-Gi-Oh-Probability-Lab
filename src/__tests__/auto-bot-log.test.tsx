@@ -7,7 +7,7 @@ import type { BotNote, SessionAnswer } from '../app/auto/auto-session'
 import { writeHandtrapConfig } from '../app/handtraps'
 import { BotLog, botTurns } from '../components/auto/BotLog'
 import { applyLocale } from '../i18n'
-import { core, lane, renderAuto } from './support/auto-screen-harness'
+import { core, renderAuto } from './support/auto-screen-harness'
 import { openOptions } from './support/mat-menu'
 
 // «Qué hizo el bot y por qué»: la lista por turno (con sus estados), y la hoja desde el final y desde «Opciones del duelo».
@@ -114,6 +114,6 @@ describe('Qué hizo el bot y por qué', () => {
 
     fireEvent.click(within(sheet).getByRole('button', { name: 'Usé Ash Blossom & Joyous Spring en respuesta a Terraforming.' }))
     expect(screen.queryByRole('dialog', { name: 'Qué hizo el bot y por qué' })).toBeNull()
-    expect(lane()).toHaveTextContent('Repasás tus jugadas')
+    expect(screen.getByRole('button', { name: 'Volver al duelo' })).toBeInTheDocument()
   })
 })

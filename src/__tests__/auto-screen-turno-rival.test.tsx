@@ -36,7 +36,8 @@ function frame() {
     rival: [...new Set(rival)].sort().join(','),
     kuriboh: document.querySelector(`[data-card-id="${KURIBOH}"]`) ? 'campo' : '',
     life: screen.getAllByRole('group', { name: /^Puntos de vida de Vos/ })[0]!.getAttribute('aria-label')!.replace(/\D+/g, ''),
-    turn: screen.getByTestId('auto-turn').textContent ?? '',
+    // De quién es el turno: el borde grueso de la chapa (no hay texto del turno hasta 1100 px).
+    turn: document.querySelector('[data-lp][data-active="true"]')?.getAttribute('data-lp') ?? '',
     attack: screen.queryByText(/te ataca directo/) ? 'ataque' : '',
     hand: rivalHand ? within(rivalHand).queryAllByRole('button').map((button) => button.getAttribute('aria-label') ?? '').join(',') : '',
   }
@@ -114,9 +115,9 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     expect(attack <= hit && hit < end).toBe(true)
     // Tus vidas no bajan antes del ataque; el marcador dice «Turno de Rival · 2» desde «Turno de Rival» hasta «Tu turno», y «Tu turno · 3» con su cartel.
     expect(line.filter((item) => item.ms < attack).map((item) => item.life)).toEqual(line.filter((item) => item.ms < attack).map(() => '8000'))
-    expect(new Set(line.filter((item) => item.ms < rivalTurn).map((item) => item.turn))).toEqual(new Set(['Tu turno · 1']))
-    expect(new Set(line.filter((item) => item.ms >= rivalTurn && item.ms < back).map((item) => item.turn))).toEqual(new Set(['Turno de Rival · 2']))
-    expect(line.find((item) => item.ms === back)!.turn).toBe('Tu turno · 3')
+    expect(new Set(line.filter((item) => item.ms < rivalTurn).map((item) => item.turn))).toEqual(new Set(['mine']))
+    expect(new Set(line.filter((item) => item.ms >= rivalTurn && item.ms < back).map((item) => item.turn))).toEqual(new Set(['theirs']))
+    expect(line.find((item) => item.ms === back)!.turn).toBe('mine')
     // Su mano boca arriba va con su mesa: Raigeki e Inpachi están en su mano hasta que los juega.
     expect(line.filter((item) => item.ms < raigeki).every((item) => item.hand.includes('#12580477'))).toBe(true)
     expect(line.filter((item) => item.ms < inpachi).every((item) => item.hand.includes('#5464695'))).toBe(true)
@@ -148,8 +149,8 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
 
     // Después de «Tu turno», tu SP y tu M1 pasan solas, cada una con su cartel (no encima de «Tu turno»).
     expect(line.map((item) => item.banner).filter((banner, i, all) => banner !== '' && banner !== all[i - 1])).toEqual(['End Phase', 'Turno de Rival', 'Rival · Standby Phase', 'Rival · Main Phase 1', 'Rival · End Phase', 'Tu turno', 'Standby Phase', 'Main Phase 1'])
-    expect(new Set(line.filter((item) => item.ms >= rivalTurn && item.ms < back).map((item) => item.turn))).toEqual(new Set(['Turno de Rival · 2']))
-    expect(cards(back).turn).toBe('Tu turno · 3')
+    expect(new Set(line.filter((item) => item.ms >= rivalTurn && item.ms < back).map((item) => item.turn))).toEqual(new Set(['theirs']))
+    expect(cards(back).turn).toBe('mine')
     expect(back - rivalTurn).toBeLessThanOrEqual(5_000)
   })
 
@@ -162,7 +163,7 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     })
     // Con los temporizadores de mentira cada paso de la mesa es un `act`: se avanza de a poco, como en el navegador.
     for (let ms = 0; ms < 3_000; ms += TICK) advance(TICK)
-    expect(frame()).toMatchObject({ banner: 'Rival · Main Phase 1', turn: 'Turno de Rival · 2', life: '8000' })
+    expect(frame()).toMatchObject({ banner: 'Rival · Main Phase 1', turn: 'theirs', life: '8000' })
     fireEvent.pointerDown(hand(), { button: 0, pointerId: 1 })
     const seen = new Set<string>()
 
@@ -171,6 +172,6 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
       seen.add(frame().banner)
     }
     expect([...seen].filter((banner) => banner.startsWith('Rival') && banner !== 'Rival · Main Phase 1')).toEqual([])
-    expect(frame()).toMatchObject({ rival: INPACHI, kuriboh: '', life: '6150', turn: 'Tu turno · 3' })
+    expect(frame()).toMatchObject({ rival: INPACHI, kuriboh: '', life: '6150', turn: 'mine' })
   })
 })

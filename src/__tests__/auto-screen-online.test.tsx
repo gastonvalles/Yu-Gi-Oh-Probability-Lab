@@ -282,8 +282,8 @@ describe('auto-screen-online · la mesa', () => {
     act(() => vi.advanceTimersByTime(THINKING_CANCEL_MS + 10))
     expect(lane()).toHaveTextContent('El núcleo está resolviendo…')
     expect(within(lane()!).queryByRole('button', { name: 'Cancelar' })).toBeNull()
-    // El núcleo dice que el turno es del asiento 0 (Ana).
-    expect(screen.getByText(/^Turno de Ana · \d+$/)).toBeInTheDocument()
+    // El núcleo dice que el turno es del asiento 0 (Ana): el borde grueso va en su chapa (hasta 1100 px no hay texto del turno).
+    expect(document.querySelector('[data-lp="theirs"]')).toHaveAttribute('data-active', 'true')
   })
 
   it('el anfitrión: pasado el plazo, «Cancelar» corta lo que el núcleo piensa', () => {
@@ -674,8 +674,13 @@ describe('auto-screen-online · deshacer', () => {
     }
     core(() => link.set({ undo: { ...UNDO, done: 1, mine: false } }))
     core(() => link.set({ undo: { ...UNDO, done: 2, mine: true } }))
-    expect(screen.getByText('Beto volvió atrás su última jugada.')).toBeInTheDocument()
-    expect(screen.getByText('Volviste atrás tu última jugada.')).toBeInTheDocument()
+    // El registro vive en el chat (la línea sobre el campo ya no existe).
+    fireEvent.click(screen.getByRole('button', { name: /^Chat/ }))
+    const chat = within(screen.getByRole('dialog'))
+
+    expect(chat.getByText('Beto volvió atrás su última jugada.')).toBeInTheDocument()
+    expect(chat.getByText('Volviste atrás tu última jugada.')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
 
     core(() => link.set({ undo: { ...UNDO, peer: false } }))
     expect(undoButton()).toBeDisabled()
