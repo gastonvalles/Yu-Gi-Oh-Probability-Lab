@@ -5,7 +5,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 ## 1. Idea general
 
 - **Plano y sin brillos de adorno;** las excepciones son la mesa (regla 9) y el foil de rareza (`RarityFoil`, sólo en la carta grande: dice la rareza).
-- **Carbón con matiz frío** y los colores del EVA-01: superficies de carbón y velos violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre foto, el negro sí). Segunda paleta, Índigo (la de antes), a elección en el ☰ (`PaletteSwitcher`; `:root[data-palette]` en `index.css`, tras Carbón); no la siguen la imagen exportada, `theme-color`, `foil.css` ni los colores por tipo.
+- **Carbón con matiz frío:** superficies de carbón y velos violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre una foto, el negro sí). Segunda paleta, Índigo (la de antes), a elección en el ☰ (`PaletteSwitcher`; `:root[data-palette]` en `index.css`, tras Carbón); no la siguen la imagen exportada, `theme-color`, `foil.css` ni los colores por tipo.
 - **Dos niveles de caja, no tres:** lienzo → tarjeta (`Card`) y nada más; adentro, espacio y líneas finas (`border-t border-border-subtle`). Un aviso dentro de una tarjeta es un fondo teñido sin borde.
 - **Cada dato se dice una sola vez:** el resumen de una sección sólo se ve plegada.
 - **Los porcentajes son anillos** (`ProgressRing` un valor, `SegmentedRing` un reparto); no hay barras de progreso. Las vidas: la chapa `LifeBadge` en todo duelo; `LifeTile`, sólo catálogo.
@@ -19,12 +19,12 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 | `success` | bien / listo, sólo en estadísticas y estados |
 | `warning` | ojo / a medio hacer («Mejorable») |
 | `danger` | mal / destructivo |
-| `info` (verde) | lo elegido y el énfasis, la navegación, el rival, la build B y los hipervínculos (`textLink`) |
+| `info` (lima) | lo elegido y el énfasis, la navegación, el rival, la build B y los hipervínculos (`textLink`) |
 | `neutral` | sin énfasis: un número o una etiqueta de adorno |
 
-**Quién lleva qué color.** Violeta primario y verde secundario (lo elegido, el hover y el foco); verde agua, naranja y rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en verde y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste (`--playable-rgb`), lo que puede atacar suma la espada (`AttackMark`), el tuyo que ataca mientras elegís a quién lleva el aro rojo del ataque (`aim`) y lo que se activa o resuelve, ámbar con la luz que gira (`card-glow.ts`); todo quieto, sin brillo en la mesa manual ni los replays.
+**Quién lleva qué color.** El violeta es el primario y la lima, la secundaria (lo elegido, el hover y el foco de lo que se toca); menta, naranja y rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en lima y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste (`--playable-rgb`), lo que puede atacar suma la espada (`AttackMark`), el tuyo que ataca mientras elegís a quién lleva el aro rojo del ataque (`aim`) y lo que se activa o resuelve, ámbar con la luz que gira (`card-glow.ts`); todo quieto, sin brillo en la mesa manual ni los replays.
 
-**Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): por eso el verde lleno es `success-solid` y el verde claro queda para texto, anillos y puntos; lo elegido y lo del rival van en violeta (sobre el verde, el texto es carbón). Excepción: «Qué es» de una regla, lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en verde (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
+**Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): por eso el verde lleno es `success-solid` y el verde claro queda para texto, anillos y puntos; lo elegido y lo del rival van en violeta (sobre la lima, el texto es carbón). Excepción: «Qué es» de una regla, lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en lima (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
 
 **El violeta es de lo tuyo, no de todo:** roles y grupos (`deck-groups.ts`), zonas del deck y tiers (`meta-format.ts`) llevan su color (`color-variety.test.ts`); el tipo de carta, el de su marco; lo que lleva texto va en su tono profundo y el texto, siempre blanco (`app/card-frame.ts`; el Péndulo, partido en dos).
 
@@ -39,8 +39,8 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 
 Los de `ui/` (los estilos sueltos de las superficies, en `ui/surfaces.ts`; los títulos, en `ui/typography.ts`), el detalle y la carta grande en `card-detail/`, la mesa en `probability/` y «Jugar solo automático» en `auto/`. Lo que no dice su comentario:
 
-- **Todo título pasa por `Heading`; todo hipervínculo, por `textLink`** (verde, un solo estilo: `link-rules.test.ts`).
-- **Un botón sólo ícono** va sin fondo y se enciende en verde (`icon-buttons.test.tsx`). En la mesa, todo lo que se toca es `IconButton tone="tile"` (`TileButton`) y el violeta lleno, sólo el texto. `MatBarActions` es la barra de toda mesa: salir, deshacer y el ⋯ (`MatMoreMenu`; lo prendido, en su interruptor).
+- **Todo título pasa por `Heading`; todo hipervínculo, por `textLink`** (lima, un solo estilo: `link-rules.test.ts`).
+- **Un botón sólo ícono** va sin fondo y se enciende en lima (`icon-buttons.test.tsx`). En la mesa, todo lo que se toca es `IconButton tone="tile"` (`TileButton`) y el violeta lleno, sólo el texto. `MatBarActions` es la barra de toda mesa: salir, deshacer y el ⋯ (`MatMoreMenu`; lo prendido, en su interruptor).
 - **Todo diálogo es `Modal`** (tamaños, regla 10); una confirmación, `ConfirmDialog`, con el texto como la muestra «Confirmación».
 - **Toda hoja de abajo del celular es `BottomSheet`** (la cadena, las preguntas, el visor de pila), opaca de borde a borde (regla 11): una sola a la vez (`SheetHost`; en el automático gana la pregunta, luego la ficha, luego el visor; lo tapado vuelve con «‹»), se arrastra y lo que se decide va en su pie. Si la mesa la sabe, la pregunta dice arriba la fase y el turno (`PromptTurnContext`). En escritorio, todo cartel, diálogo y visor de la mesa se arrastra por la cabeza (`useDraggableOffset`).
 - **`Switch disabled`:** el porqué va en el texto de al lado.
@@ -55,7 +55,7 @@ Las reglas 1 a 4 las revisa `button-rules.test.ts` en el código de los componen
 
 1. **Una principal por grupo** (`primary`): dos llenas juntas compiten. Si dos grupos compiten, uno baja a `secondary`; con opciones de igual valor (Moneda / Dado) no hay principal.
 2. **Lo que descarta o vuelve, al lado de una principal, es `tertiary`** (sin caja): Cancelar, Volver, Cerrar. `secondary` es para una alternativa que de verdad hace algo o para acciones de igual peso. Un disparador que borra va con `color="danger"`; el que lo confirma, `primary` + `danger`.
-3. **La principal va al final** del pie de un diálogo, de una barra o de una fila alineada a la derecha («Cancelar · Guardar»); en los menús del duelo, verde (`PANEL_LIME`).
+3. **La principal va al final** del pie de un diálogo, de una barra o de una fila alineada a la derecha («Cancelar · Guardar»); en los menús del duelo, lima (`PANEL_LIME`).
 4. **El texto dice qué hace:** un verbo en infinitivo (en inglés, imperativo), siempre el mismo para la misma acción (Borrar, no Eliminar; Elegir, no Seleccionar). La principal nombra el objeto si la pantalla no lo dice y **nunca es un «Sí», «No», «Aceptar», «OK», «Continuar» o «Confirmar» a secas**: la de una confirmación repite la acción. Sólo los estados se salvan: «Estoy listo», «Listo», «Entendido».
 5. **«Salir» es una X** (`CloseButton` con `aria-label` «Salir»), nunca un botón con la palabra. **«Estoy listo» es verde** (`color="success"`). El Side Deck de un Match se llama **Sidedeck** en los dos idiomas.
 6. **Un botón apagado que explica** (`disabledFocusable`): se ve apagado pero se enfoca y su clic marca lo que falta («Crear regla» de una regla incompleta), recién después de ese intento.

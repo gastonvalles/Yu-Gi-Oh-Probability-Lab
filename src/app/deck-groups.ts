@@ -40,7 +40,7 @@ interface ParsedStoredGroupKey {
 
 const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
   // Los roles son categorías: cada uno con su color (trece tonos del violeta no se distinguen). El Starter, el rol que más se mira, lleva el lila de marca; el rojo queda para lo que sale mal. Ningún rol lleva un verde cerca del menta del éxito (153°) ni de la lima (75°): el Extender es rosa y el Payoff fucsia; el Recovery, un verde más amarillo.
-  starter: { color: '#bcaaf5', rgb: '188 170 245' },
+  starter: { color: '#b69dff', rgb: '182 157 255' },
   extender: { color: '#ff5cb6', rgb: '255 92 182' },
   enabler: { color: '#14b8a6', rgb: '20 184 166' },
   handtrap: { color: '#3b82f6', rgb: '59 130 246' },

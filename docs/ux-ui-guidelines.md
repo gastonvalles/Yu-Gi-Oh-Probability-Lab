@@ -7,7 +7,7 @@ Cómo se lee un pedido de diseño y cómo se decide una mejora visual. Las regla
 
 - Si falta algo importante, se pregunta lo mínimo o se asume y se declara la suposición en una línea.
 - Una captura sin texto es una **referencia**, no una especificación: se toma lo que sirve y se adapta a la estética propia
-  (carbón, violeta y verde del EVA-01, Lexend Deca). Nunca un clon de otra app.
+  (carbón, violeta y lima, Lexend Deca). Nunca un clon de otra app.
 - «Esta vista necesita revisión» pide una **crítica completa** (estados, celular, accesibilidad), no un retoque.
 - El contexto: duelistas que arman y miden su deck, muchas veces desde el celular (390–440 px) y en un torneo. Tono directo,
   en voseo, sin jerga de marketing.
