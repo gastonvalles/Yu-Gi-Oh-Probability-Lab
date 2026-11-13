@@ -391,7 +391,10 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       const a = pool[d % pool.length]!
       const other = (d * 7 + 3) % pool.length
       const b = rival !== 'random' ? handtraps : pool[other === d % pool.length ? (other + 1) % pool.length : other]!
-      const { events, host, result } = await playOne(d, a, b, true)
+      // El oráculo consulta el núcleo entre respuestas (`visible`) y consultarlo cambia el duelo (una pista de Solfachord Happiness vence un turno antes):
+      // los duelos que se re-simulan (deshacer, la misma semilla) van sin él, así se comparan dos corridas que el núcleo vio igual.
+      const resimulated = d % 5 === 0 || d < 3
+      const { events, host, result } = await playOne(d, a, b, !resimulated)
 
       tally.duels += 1
       tally.ends[result.end] = (tally.ends[result.end] ?? 0) + 1
