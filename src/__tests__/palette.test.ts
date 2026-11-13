@@ -10,7 +10,8 @@ const CSS = readFileSync(path.join(process.cwd(), 'src', 'index.css'), 'utf8')
 const BLOCK = (head: string) => new RegExp(`${head} \\{([\\s\\S]*?)\\n  \\}`).exec(CSS)?.[1] ?? ''
 const declarations = (block: string) => new Map([...block.matchAll(/^\s+(--[\w-]+):\s*([^;]+);/gm)].map((match) => [match[1]!, match[2]!.trim()]))
 const CARBON = declarations(BLOCK(':root'))
-const INDIGO = declarations(BLOCK(":root\\[data-palette='indigo'\\]"))
+// Los fondos del remolino del duelo (`--image-remolino-*`, del @theme) también cambian con la paleta: los vigila `remolino.test.ts`.
+const INDIGO = new Map([...declarations(BLOCK(":root\\[data-palette='indigo'\\]"))].filter(([name]) => !name.startsWith('--image-remolino-')))
 
 /** Los valores de la paleta de justo antes de `85dc26c0` (`git show 85dc26c0 -- src/index.css`, las líneas que salen). */
 const BEFORE_85DC26C0: Record<string, string> = {

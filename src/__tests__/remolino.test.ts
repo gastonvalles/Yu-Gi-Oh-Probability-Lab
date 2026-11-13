@@ -26,4 +26,15 @@ describe('el remolino de fondo del duelo', () => {
       expect(statSync(path.join(SRC, url!)).size).toBeLessThanOrEqual(64 * 1024)
     }
   })
+
+  it('con data-palette="indigo" los dos tokens apuntan al remolino de Índigo (violeta y ámbar sobre el índigo), también de ~60 KB', () => {
+    const block = css.slice(css.indexOf("  :root[data-palette='indigo'] {"))
+
+    for (const size of ['movil', 'escritorio']) {
+      const url = block.match(new RegExp(`--image-remolino-${size}: url\\('\\./(assets/duelo/remolino-medio-${size}-indigo\\.avif)'\\);`))?.[1]
+
+      expect(url).toBeDefined()
+      expect(statSync(path.join(SRC, url!)).size).toBeLessThanOrEqual(64 * 1024)
+    }
+  })
 })
