@@ -129,7 +129,7 @@ function GroupFlyout({ group, top, activeKey, onSelect, onClose }: { group: NavG
       ref={panel}
       role="menu"
       aria-label={group.label}
-      className="fixed z-150 grid w-64 animate-pop gap-1 rounded-card border border-nav-raised bg-nav p-2 shadow-overlay motion-reduce:animate-none"
+      className="fixed z-150 grid w-64 origin-top-left animate-menu-in gap-1 rounded-card border border-nav-raised bg-nav p-2 shadow-overlay motion-reduce:animate-none"
       style={{ left: SIDEBAR_PX.collapsed + 8, top: Math.max(8, Math.min(top, window.innerHeight - 56 - group.items.length * 46)) }}
     >
       <p className={cx(NAV_OVERLINE, 'm-0 px-3 pb-1 pt-1')}>{group.label}</p>

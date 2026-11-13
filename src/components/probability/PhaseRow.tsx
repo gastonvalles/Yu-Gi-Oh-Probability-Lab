@@ -42,7 +42,7 @@ export function PhaseRow({ anchor, items, onClose }: { anchor: DOMRect | null; i
   const rootRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const openedAtRef = useRef(0)
-  const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
+  const [position, setPosition] = useState<{ left: number; top: number; transformOrigin: string } | null>(null)
   const open = anchor !== null && items.length > 0
 
   useEscapeKey(onClose, open)
@@ -63,7 +63,8 @@ export function PhaseRow({ anchor, items, onClose }: { anchor: DOMRect | null; i
     const left = Math.min(Math.max(anchor.left + anchor.width / 2 - width / 2, margin), Math.max(margin, window.innerWidth - width - margin))
     const above = anchor.top - height - 6
 
-    setPosition({ left, top: above >= margin ? above : Math.min(anchor.bottom + 6, Math.max(margin, window.innerHeight - height - margin)) })
+    // Se abre desde el botón: arriba de él crece desde abajo y, si no entra, desde arriba.
+    setPosition(above >= margin ? { left, top: above, transformOrigin: 'bottom' } : { left, top: Math.min(anchor.bottom + 6, Math.max(margin, window.innerHeight - height - margin)), transformOrigin: 'top' })
   }, [anchor])
 
   if (!open || typeof document === 'undefined') return null
@@ -92,7 +93,7 @@ export function PhaseRow({ anchor, items, onClose }: { anchor: DOMRect | null; i
           // `surface.floating`, opaco (sin desenfoque).
           'rounded-panel border border-border bg-card-background shadow-overlay',
           // Con el mismo margen de 8 px a los dos lados de la ventana (a 320 px las seis fases no entran a 56 px y se angostan).
-          'absolute grid max-w-[calc(100vw-1rem)] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-2 pb-2 pt-1.5 animate-dialog-enter motion-reduce:animate-none',
+          'absolute grid max-w-[calc(100vw-1rem)] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-2 pb-2 pt-1.5 animate-menu-in motion-reduce:animate-none',
           "[grid-template-areas:'title_cancel'_'row_row'] min-[1101px]:[grid-template-areas:'title_.'_'row_cancel']",
           position ? 'visible' : 'invisible',
         )}
