@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -39,8 +38,7 @@ interface MatPromptProps {
  *   lo de abajo se toca y la pregunta sigue pendiente; la flecha del asa lo reabre. Con el dedo, arrastrar la fila de arriba hacia abajo lo minimiza y arrastrar el asa hacia arriba lo abre (`useSwipeFold`).
  *   Con el mouse, la fila de arriba (o el asa) lo lleva a cualquier lado y ahí queda para las preguntas que siguen; doble clic, a su lugar (`useDraggableOffset`).
  * - **En el celular, la hoja de abajo estándar** (`BottomSheet`, Gastón 2026-11-02: «no aparece como debería sino como un cartel en el medio de la pantalla»): la fila de arriba es su título y lo que se
- *   decide va en su pie, siempre a la vista; bajada (arrastrándola, tocando su asa o con Escape) queda la tira con la pregunta corta y los botones. Con la hoja de la cadena abierta va en su pie
- *   (`SheetHost`): una sola hoja.
+ *   decide va en su pie, siempre a la vista; bajada (arrastrándola, tocando su asa o con Escape) queda la tira con la pregunta corta y los botones.
  * Siempre abre entero: sólo lo minimiza la persona. Minimizado es de esta decisión (quien lo usa le da una `key` por decisión: las repreguntas de la misma lo actualizan en el lugar y una nueva abre entera).
  * Lleva `data-minimized` minimizado (en el celular, `data-lowered`). Contestado, sale (va dentro de un `Presence`).
  */
@@ -50,7 +48,6 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
   const host = useSheetHost()
   // En un marco del catálogo (`SheetHost phone`), como en el celular en cualquier ancho.
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
-  const slot = host?.slot ?? null
   const [minimized, setFold] = useState(false)
   // Con el mouse o el lápiz, la cabeza lo lleva a otro lado (también el asa): una posición para todas las preguntas.
   const move = useDraggableOffset(matCardPositionKey('prompt'), ref, desktop)
@@ -62,7 +59,7 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
     const target = minimized && desktop ? '[data-prompt-show]' : focus
 
     if (target) ref.current?.querySelector<HTMLElement>(target)?.focus({ preventScroll: true })
-  }, [minimized, focus, desktop, slot])
+  }, [minimized, focus, desktop])
 
   const attrs = { role, 'aria-labelledby': labelledBy, 'data-prompt': kind, ...(row ? { 'data-prompt-row': '' } : {}) }
   // La cabeza: lo que es y la pregunta (sin fase ni turno: cada dato, una vez). Bajada en el celular no se repite: queda la tira con la pregunta corta.
@@ -91,15 +88,6 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
           {children}
         </div>
       </div>
-    )
-  ) : slot ? (
-    // En el pie de la hoja de la cadena: debajo de la pila, tras una línea fina; lo que se explica arriba y lo que se decide abajo.
-    createPortal(
-      <div ref={ref} {...attrs} className="grid gap-3 border-t border-border-subtle px-4 pb-3 pt-3 text-body text-foreground motion-safe:animate-sheet-in">
-        {top}
-        {children}
-      </div>,
-      slot,
     )
   ) : (
     <BottomSheet
