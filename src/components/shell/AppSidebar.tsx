@@ -4,7 +4,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { PaletteSwitcher } from '../ui/PaletteSwitcher'
+import { EffectsSwitcher, PaletteSwitcher } from '../ui/PaletteSwitcher'
 import { MiniGuide } from './MiniGuide'
 import { AppBrand } from './AppBrand'
 import { mascotsNavItem, searchNavItem, type NavGroup } from './nav-model'
@@ -25,12 +25,13 @@ interface AppSidebarProps {
   className?: string
 }
 
-/** Abajo del todo del menú (y del cajón del celular): el idioma y los colores. Las mascotas van arriba de esto, como una preferencia más (abren su modal). */
+/** Abajo del todo del menú (y del cajón del celular): el idioma, los colores y los efectos. Las mascotas van arriba de esto, como una preferencia más (abren su modal). */
 export function MenuTools({ className }: { className?: string }) {
   return (
     <div className={cx('flex flex-wrap items-center justify-between gap-2', className)}>
       <LanguageSwitcher />
       <PaletteSwitcher />
+      <EffectsSwitcher />
     </div>
   )
 }
@@ -85,7 +86,12 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
             ) : null}
             <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="shrink-0 pb-3" />
             {/* Las preferencias, bajo una sola línea: las mascotas (una fila como las de los destinos, que se queda en la columna de íconos al contraer) y el idioma. */}
-            {withNavbar ? null : (
+            {withNavbar ? (
+              // Con barra de arriba, los efectos van acá: en la barra no entran (aplastaban la marca y el buscador). Contraído, se desvanecen como el idioma.
+              <div className="shrink-0 border-t border-nav-raised pb-3 pt-2 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none">
+                <EffectsSwitcher />
+              </div>
+            ) : (
             <div className="shrink-0 border-t border-nav-raised pb-3 pt-2">
               <NavButton item={mascotsNavItem()} active={false} onSelect={onSelect} />
               {/* Contraído, el idioma se desvanece y no se puede tocar ni enfocar; el renglón conserva su alto. */}

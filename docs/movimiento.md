@@ -1,10 +1,12 @@
 # Movimiento
 
-Cómo se anima sin trabar la app (sobre todo la mesa, en un celular). La regla de base está en `CLAUDE.md` («Estilos»): sólo `transform`/`translate`/`opacity`, todo con `motion-reduce:`.
+Cómo se anima sin trabar la app (sobre todo la mesa, en un celular); la base, en `CLAUDE.md`.
 
 ## Curvas
 
-Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas: `--ease-out` para lo que entra o se queda, `--ease-in-out` para lo que viaja (vuelos, barajado, ataque) y `--ease-snap` para lo que arranca ya en movimiento (pops, lo que suelta un gesto, la moneda, las placas del duelo). Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out`). En el JS, `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts`; en un `@keyframes`, el valor literal.
+Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas (para qué es cada una, en `app/motion.ts`): `--ease-out`, `--ease-in-out` y `--ease-snap`. Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles (`ease-in-out`). En el JS, `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts`; en un `@keyframes`, el valor literal. Con rebote, sólo `--ease-out-back` y `--ease-rebote-*`.
+
+**El campo se mueve sólo a propósito** (una sacudida de impacto); sin querer, es un bug. **Lo que entra y sale, con barrido o rebote;** con movimiento reducido, fundido.
 
 ## La mesa: nada en el hilo principal
 

@@ -8,7 +8,7 @@ type IconButtonSize = 'sm' | 'md' | 'lg'
 /**
  * Los botones que son sólo un ícono no llevan fondo y son siempre blancos: el aviso de que se pueden tocar es que el ícono se pone lima
  * al pasar el mouse, y lima se queda mientras el botón está seleccionado (`aria-pressed`, `aria-selected` o `data-active`); un poco menos
- * de opacidad al apretar; el foco lleva el aro de siempre. El tono sólo cambia el tamaño y la forma:
+ * de opacidad al apretar, y rebota como todo botón (`feel-press`); el foco lleva el aro de siempre. El tono sólo cambia el tamaño y la forma:
  * raised: el de las barras de herramientas (por defecto) · close: la X de los encabezados · ghost: el de las zonas del deck (papelera, ordenar) ·
  * flat: el grande de la práctica · outline: redondo con borde, que también se enciende en lima (cambiar A y B en Comparar) · tile: el de la mesa (el + y la fase del campo, la fila de abajo
  * del duelo), en una caja oscura de 44 px con un borde fino que se vuelve lima si está prendido (`aria-pressed`, `data-active`: la fase en tu turno); apagado, el ícono o la sigla en lila (se sigue leyendo).
@@ -24,7 +24,7 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const BASE =
-  'inline-flex shrink-0 items-center justify-center p-0 transition-[opacity,color,border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus [&_svg]:block'
+  'feel-press inline-flex shrink-0 items-center justify-center p-0 focus-visible:outline-none focus-visible:shadow-focus [&_svg]:block'
 
 /** Lo común de los que van sin fondo: ícono blanco que se pone lima al pasar el mouse o al estar seleccionado, más tenue al apretar o si está deshabilitado. */
 const BARE =
@@ -59,8 +59,8 @@ const toneStyle = variants({
         TILE_BOX,
         'text-white hover:text-info aria-expanded:text-info aria-pressed:border-info aria-pressed:text-info data-[active=true]:border-info data-[active=true]:text-info active:opacity-70 disabled:pointer-events-none disabled:text-muted',
       ),
-      primary: 'rounded-full bg-primary text-primary-foreground hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
-      play: 'rounded-full bg-primary text-white hover:brightness-110 active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
+      primary: 'rounded-full bg-primary text-primary-foreground hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
+      play: 'rounded-full bg-primary text-white hover:brightness-110 disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
       swatch: 'rounded-full active:opacity-70 disabled:pointer-events-none disabled:opacity-40 aria-pressed:shadow-focus',
     },
   },
@@ -81,7 +81,7 @@ export function TileButton({ label, children, className, type = 'button', ...pro
     <button
       type={type}
       className={cx(
-        'group grid min-w-14 cursor-pointer justify-items-center gap-1 rounded-control border-0 bg-transparent p-0 text-white outline-none transition-colors focus-visible:shadow-focus hover:not-aria-disabled:text-info aria-pressed:text-info aria-[current=true]:text-info aria-disabled:cursor-default aria-disabled:text-muted active:opacity-70 disabled:pointer-events-none disabled:opacity-40',
+        'feel-press group grid min-w-14 cursor-pointer justify-items-center gap-1 rounded-control border-0 bg-transparent p-0 text-white outline-none focus-visible:shadow-focus hover:not-aria-disabled:text-info aria-pressed:text-info aria-[current=true]:text-info aria-disabled:cursor-default aria-disabled:text-muted active:opacity-70 disabled:pointer-events-none disabled:opacity-40',
         className,
       )}
       {...props}

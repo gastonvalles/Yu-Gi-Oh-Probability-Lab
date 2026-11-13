@@ -1,6 +1,49 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-5-botones-con-rebote",
+      "date": "2026-11-13",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Botones con rebote y un ajuste para los efectos",
+        "novedades": [
+          "Los botones de toda la app responden al toque: se hunden un poco y vuelven con un rebote corto.",
+          "En el menú hay un ajuste nuevo, «Efectos»: «Completos» o «Livianos». Con «Livianos» hay menos destellos, sin perder velocidad de respuesta."
+        ],
+        "comoSeUsa": [
+          "Abrí el menú y buscá «Efectos», debajo de «Colores».",
+          "Elegí «Livianos» si tu celular va justo; queda guardado."
+        ],
+        "arreglos": [
+          "El brillo de «Jugar ahora» pasa a dorado."
+        ],
+        "ojo": [
+          "Si tu dispositivo tiene activado «reducir movimiento», los botones no rebotan.",
+          "En la computadora, el ajuste se ve con el menú lateral abierto."
+        ]
+      },
+      "en": {
+        "title": "Buttons with a bounce and a setting for effects",
+        "novedades": [
+          "Buttons across the app respond to the tap: they press in a little and come back with a short bounce.",
+          "The menu has a new setting, «Effects»: «Full» or «Light». With «Light» there are fewer flashes, at the same response speed."
+        ],
+        "comoSeUsa": [
+          "Open the menu and look for «Effects», below «Colors».",
+          "Pick «Light» if your phone struggles; it stays saved."
+        ],
+        "arreglos": [
+          "The shine on «Play now» turns gold."
+        ],
+        "ojo": [
+          "If your device has «reduce motion» on, the buttons don't bounce.",
+          "On the computer, the setting shows with the side menu open."
+        ]
+      }
+    },
+    {
       "id": "2026-11-13-4-replay-y-video-campo-del-duelo",
       "date": "2026-11-13",
       "tags": [

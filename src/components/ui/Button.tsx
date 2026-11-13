@@ -75,7 +75,8 @@ const COLORS = { primary: FILLED, secondary: QUIET, tertiary: GHOST, onBrand: ON
 const ICON_SIZE: Record<ButtonSize, number> = { sm: 16, md: 18, lg: 20 }
 
 const buttonStyle = variants({
-  base: 'inline-flex max-w-full shrink-0 items-center justify-center gap-2 font-semibold leading-tight transition-[background-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
+  // El rebote al tocar (`feel-press`, «Impacto Ligero»): 90 % → 108 % → 100 %. Los grandes se hunden menos (la pasada es proporcional): en uno ancho, 8 % serían 12 px de cada lado.
+  base: 'feel-press inline-flex max-w-full shrink-0 items-center justify-center gap-2 font-semibold leading-tight focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
   variants: {
     size: {
       sm: 'min-h-9 rounded-control px-4 py-1.5 text-body pointer-coarse:min-h-11',
@@ -105,7 +106,7 @@ export function Button({
     <button
       type={type}
       aria-disabled={disabledFocusable || undefined}
-      className={cx(buttonStyle({ size }, COLORS[variant][color]), fullWidth && 'w-full', disabledFocusable && 'opacity-40 focus-visible:opacity-100', className)}
+      className={cx(buttonStyle({ size }, COLORS[variant][color]), fullWidth ? 'w-full [--feel-hundido:0.96]' : size === 'lg' && '[--feel-hundido:0.94]', disabledFocusable && 'opacity-40 focus-visible:opacity-100', className)}
       {...props}
     >
       {icon ? <Icon name={icon} size={iconSize} className="shrink-0" /> : null}

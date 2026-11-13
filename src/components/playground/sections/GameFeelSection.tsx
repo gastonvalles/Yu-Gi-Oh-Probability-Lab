@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type C
 import { flushSync } from 'react-dom'
 
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, cancelWhenDone } from '../../../app/motion'
+import { setEffects, useEffects } from '../../../app/effects'
 import { useMediaQuery } from '../../../app/use-media-query'
 import { PANEL_LIME } from '../../auto/AutoPanel'
 import { CardArt } from '../../CardArt'
@@ -9,6 +10,7 @@ import { Button } from '../../ui/Button'
 import { Callout } from '../../ui/Callout'
 import { Heading } from '../../ui/Heading'
 import { Segmented } from '../../ui/Segmented'
+import { ShineFrame } from '../../ui/ShineFrame'
 import { Switch } from '../../ui/Switch'
 import { cx } from '../../ui/cx'
 import { supportText } from '../../ui/typography'
@@ -48,7 +50,8 @@ const HAND = ['89631139', '46986414', '57554544', '14558127', '23434538']
 
 export function GameFeelSamples() {
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)')
-  const [effects, setEffects] = useState<'full' | 'lite'>('full')
+  // El ajuste de verdad (☰ «Efectos», `app/effects.ts`): cambiarlo acá lo cambia en toda la app.
+  const effects = useEffects()
   const [shakeOn, setShakeOn] = useState(true)
   const [bounce, setBounce] = useState<'soft' | 'hard'>('hard')
   const full = effects === 'full'
@@ -64,12 +67,12 @@ export function GameFeelSamples() {
           </Heading>
           <p className={cx(supportText, 'max-w-prose')}>
             «Impacto Ligero»: botones y cartas con peso, la cadena, flipbooks y cortes, para tocar y decidir antes de llevar nada a las pantallas. Todo con DOM y CSS en el compositor, sin
-            librerías. Los colores son los de la casa; sólo la cadena va en blanco y celeste. Archivos: <Tag>playground/sections/GameFeelSection.tsx</Tag> y el bloque «Impacto Ligero» de{' '}
+            librerías. Los efectos van con sus tres colores (dorado, cian y rojo, los del documento: <Tag>fx-destello</Tag>, <Tag>fx-energia</Tag> y <Tag>fx-impacto</Tag>); la cadena, en blanco y celeste. El rebote de los botones ya es de todo <Tag>Button</Tag>. Archivos: <Tag>playground/sections/GameFeelSection.tsx</Tag> y el bloque «Impacto Ligero» de{' '}
             <Tag>index.css</Tag>
           </p>
         </div>
 
-        <Specimen title="Perillas (valen para todo)" layout="column" note="«Livianos» es el interruptor de calidad del documento: menos destellos a la vez, sin sacudida ni mezcla aditiva, y la misma velocidad de respuesta.">
+        <Specimen title="Perillas (valen para todo)" layout="column" note="«Efectos» es el ajuste de verdad del ☰ (se guarda): «Livianos» es el interruptor de calidad del documento, menos destellos a la vez, sin sacudida ni mezcla aditiva, y la misma velocidad de respuesta.">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <Knob label="Efectos">
               <Segmented label="Efectos" size="sm" value={effects} onChange={setEffects} options={[{ value: 'full', label: 'Completos' }, { value: 'lite', label: 'Livianos' }]} />
@@ -209,37 +212,37 @@ function CurvesSample() {
 // ——— 2. El botón con rebote ———
 
 function PressSample() {
-  const { full } = useFeel()
-
   return (
     <Specimen
       title="2 · El botón con rebote"
       layout="column"
       note={
         <>
-          Al apretar se achica al 90 % en 50 ms; al soltar vuelve pasando por 108 % (o 104 % con «Rebote suave») en 280 ms. Sólo <Tag>scale</Tag>: no corre lo de al lado. El principal
-          lleva en reposo una luz que recorre su borde (una cuña quieta que gira detrás del fondo: una capa compuesta; con «livianos», no). Utilidades: <Tag>feel-press</Tag> y{' '}
-          <Tag>feel-sheen</Tag>, aplicables a <Tag>Button</Tag> con <Tag>className</Tag>.
+          Ya es de todo <Tag>Button</Tag>, <Tag>IconButton</Tag> y <Tag>TileButton</Tag> (<Tag>feel-press</Tag>): al apretar se achica al 90 % en 50 ms; al soltar vuelve pasando por 108 % (o
+          104 % con «Rebote suave») en 280 ms. Sólo <Tag>scale</Tag>: no corre lo de al lado. Los grandes se hunden 94 % y los de ancho completo 96 % (la pasada es proporcional); apagados,
+          no rebotan. El brillo en reposo es <Tag>ShineFrame</Tag>, sólo en la acción principal de una pantalla (con «livianos», sin el barrido).
         </>
       }
     >
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="primary" size="lg" icon="play" className={cx('feel-press', full && 'feel-sheen')}>
-          Duelo
-        </Button>
-        <Button variant="primary" className={cx('feel-press', PANEL_LIME)}>
+        <ShineFrame>
+          <Button variant="primary" color="success" size="lg" icon="play">
+            Duelo
+          </Button>
+        </ShineFrame>
+        <Button variant="primary" className={PANEL_LIME}>
           Invocar
         </Button>
-        <Button variant="secondary" icon="layers" className="feel-press">
+        <Button variant="secondary" icon="layers">
           Ver mazo
         </Button>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 border-t border-border-subtle pt-3">
-        <span className="text-micro text-soft">Hoy (para comparar):</span>
-        <Button variant="primary" size="lg" icon="play">
-          Duelo
+        <Button variant="secondary" disabled>
+          Apagado
         </Button>
       </div>
+      <Button variant="primary" fullWidth icon="check">
+        De ancho completo
+      </Button>
     </Specimen>
   )
 }
@@ -512,14 +515,14 @@ function WeightSample() {
   )
 }
 
-/** El golpe en la casilla: el anillo lima (siempre) y el destello aditivo (sólo con «Efectos completos»), capas quietas que sólo cambian escala y opacidad. */
+/** El golpe en la casilla: el anillo cian de energía (siempre) y el destello dorado aditivo (sólo con «Efectos completos»), capas quietas que sólo cambian escala y opacidad. */
 function Impact({ onDone }: { onDone: () => void }) {
   const { full } = useFeel()
 
   return (
     <>
-      <span aria-hidden onAnimationEnd={onDone} className="pointer-events-none absolute inset-0 m-auto size-20 rounded-full border-2 border-info animate-feel-ring motion-reduce:hidden" />
-      {full ? <span aria-hidden className="pointer-events-none absolute inset-0 m-auto size-28 rounded-full bg-radial from-white/90 to-transparent to-70% mix-blend-plus-lighter animate-feel-flash motion-reduce:hidden" /> : null}
+      <span aria-hidden onAnimationEnd={onDone} className="pointer-events-none absolute inset-0 m-auto size-20 rounded-full border-2 border-fx-energia animate-feel-ring motion-reduce:hidden" />
+      {full ? <span aria-hidden className="pointer-events-none absolute inset-0 m-auto size-28 rounded-full bg-radial from-fx-destello/90 to-transparent to-70% mix-blend-plus-lighter animate-feel-flash motion-reduce:hidden" /> : null}
     </>
   )
 }
@@ -586,7 +589,7 @@ function ChainSample() {
       }
     >
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="primary" icon="link" className="feel-press" onClick={chain}>
+        <Button size="sm" variant="primary" icon="link" onClick={chain}>
           {links.length >= CHAIN_SPOTS.length ? 'Volver a empezar' : `Encadenar (${links.length + 1})`}
         </Button>
       </div>
@@ -638,7 +641,7 @@ const SPARK_FRAMES = 10
 const SLASH_FRAMES = 10
 const BURST_FRAMES = 12
 
-/** Chispa: un núcleo blanco y ocho rayos lima que se abren y se apagan. */
+/** Chispa: un núcleo blanco y ocho rayos dorados que se abren y se apagan. */
 const drawSpark: Draw = (index, frames) => {
   const p = index / (frames - 1)
   const grow = Math.min(1, (index + 1) / 3)
@@ -659,7 +662,7 @@ const drawSpark: Draw = (index, frames) => {
             strokeWidth={3.5 * (1 - p) + 0.5}
             strokeLinecap="round"
             opacity={1 - p * p}
-            className="stroke-info"
+            className="stroke-fx-destello"
           />
         )
       })}
@@ -673,7 +676,7 @@ const drawSlash: Draw = (index, frames) => {
   const [ax, ay, bx, by] = [8, 56, 56, 8]
   const segment = (x1: number, y1: number, x2: number, y2: number, width: number, opacity = 1, key = 'a') => (
     <g key={key} opacity={opacity}>
-      <line x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={width * 2.6} strokeLinecap="round" opacity={0.35} className="stroke-info" />
+      <line x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={width * 2.6} strokeLinecap="round" opacity={0.35} className="stroke-fx-energia" />
       <line x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={width} strokeLinecap="round" className="stroke-white" />
     </g>
   )
@@ -694,7 +697,7 @@ const drawSlash: Draw = (index, frames) => {
   )
 }
 
-/** Carta que estalla: late, destella en blanco y se parte en seis trozos que salen girando, con un anillo lima. */
+/** Carta que estalla: late, destella en blanco y se parte en seis trozos que salen girando, con un anillo rojo de impacto. */
 const drawBurst: Draw = (index, frames) => {
   const [x, y, w, h] = [20, 15, 24, 34]
   if (index < 2) {
@@ -712,7 +715,7 @@ const drawBurst: Draw = (index, frames) => {
   const q = (index - 2) / (frames - 3)
   return (
     <>
-      {q < 1 ? <circle cx={32} cy={32} r={18 + 16 * q} strokeWidth={2 * (1 - q) + 0.5} fill="none" opacity={(1 - q) * 0.7} className="stroke-info" /> : null}
+      {q < 1 ? <circle cx={32} cy={32} r={18 + 16 * q} strokeWidth={2 * (1 - q) + 0.5} fill="none" opacity={(1 - q) * 0.7} className="stroke-fx-impacto" /> : null}
       {Array.from({ length: 6 }, (_, shard) => {
         const col = shard % 2
         const row = Math.floor(shard / 2)
@@ -731,7 +734,7 @@ const drawBurst: Draw = (index, frames) => {
             strokeWidth={1}
             opacity={1 - q * q}
             transform={`translate(${dx} ${dy}) rotate(${(shard % 2 ? 1 : -1) * 100 * q} ${cx0} ${cy0})`}
-            className="fill-primary stroke-info"
+            className="fill-primary stroke-fx-impacto"
           />
         )
       })}
@@ -826,7 +829,7 @@ function FlipbookSample() {
 
 // ——— 6. Transición de pantalla ———
 
-type Swap = 'horizontal' | 'diagonal' | 'slash'
+type Swap = 'horizontal' | 'slash'
 
 function FakeScreen({ which }: { which: number }) {
   return which === 0 ? (
@@ -910,9 +913,7 @@ function ScreenSample() {
       return
     }
     const timing = { duration: 220, easing: entryEase(feel), fill: 'forwards' } as const
-    const away = kind === 'horizontal' ? '-100% 0' : '-100% -100%'
-    const enter = kind === 'horizontal' ? '100% 0' : '100% 100%'
-    finish([from.animate([{ translate: '0 0' }, { translate: away }], timing), to.animate([{ translate: enter }, { translate: '0 0' }], timing)])
+    finish([from.animate([{ translate: '0 0' }, { translate: '-100% 0' }], timing), to.animate([{ translate: '100% 0' }, { translate: '0 0' }], timing)])
   }
 
   return (
@@ -921,19 +922,17 @@ function ScreenSample() {
       layout="column"
       note={
         <>
-          Dos pantallas falsas. Los barridos (220 ms, <Tag>--ease-out-back</Tag>; con «Rebote suave», sin pasada) reemplazan al fundido; el corte diagonal dibuja una línea en 90 ms y abre la
-          pantalla en dos mitades (copias recortadas con un <Tag>clip-path</Tag> quieto que se corren con <Tag>translate</Tag>). Con movimiento reducido, un fundido de 150 ms.
+          Dos pantallas falsas. El barrido (220 ms, <Tag>--ease-out-back</Tag>; con «Rebote suave», sin pasada) reemplaza al fundido; el corte diagonal dibuja una línea en 90 ms y abre la
+          pantalla en dos mitades (copias recortadas con un <Tag>clip-path</Tag> quieto que se corren con <Tag>translate</Tag>). Con movimiento reducido, un fundido de 150 ms. El barrido
+          diagonal salió: a Gastón no le gustó.
         </>
       }
     >
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="secondary" className="feel-press" onClick={() => go('horizontal')}>
+        <Button size="sm" variant="secondary" onClick={() => go('horizontal')}>
           Barrido horizontal
         </Button>
-        <Button size="sm" variant="secondary" className="feel-press" onClick={() => go('diagonal')}>
-          Barrido diagonal
-        </Button>
-        <Button size="sm" variant="secondary" className="feel-press" onClick={() => go('slash')}>
+        <Button size="sm" variant="secondary" onClick={() => go('slash')}>
           Corte diagonal
         </Button>
       </div>
@@ -951,7 +950,7 @@ function ScreenSample() {
             <div ref={(element) => void (halves.current[1] = element)} className="absolute inset-0 [clip-path:polygon(100%_0,100%_100%,0_100%)]">
               <FakeScreen which={cut.screen} />
             </div>
-            <div ref={bar} aria-hidden style={{ width: cut.length, rotate: `${cut.angle}deg` }} className="pointer-events-none absolute bottom-0 left-0 h-1 origin-left bg-white shadow-[0_0_14px_3px_rgb(var(--info-rgb)/0.8)]" />
+            <div ref={bar} aria-hidden style={{ width: cut.length, rotate: `${cut.angle}deg` }} className="pointer-events-none absolute bottom-0 left-0 h-1 origin-left bg-white shadow-[0_0_14px_3px_var(--color-fx-energia)]" />
             {feel.full ? <div ref={flash} aria-hidden className="pointer-events-none absolute inset-0 bg-white opacity-0 mix-blend-plus-lighter" /> : null}
           </>
         ) : null}
@@ -1001,17 +1000,18 @@ function LayersSample() {
 
   return (
     <Specimen
-      title="7 · Irrupción en capas"
+      title="7 · Irrupción en capas (beta)"
       layout="column"
       note={
         <>
-          Una ilustración en tres capas (fondo de bandas violetas, el arte recortado en un paralelogramo y los cortes lima adelante) que entra con <Tag>--ease-out-back</Tag>, cada capa con su
+          <strong>Beta: falta definir cuándo se muestra la imagen grande de una carta y de dónde sale</strong> (qué jugada la merece y qué arte se usa); hasta entonces no va a las pantallas.
+          Una ilustración en tres capas (fondo de bandas violetas, el arte recortado en un paralelogramo y los cortes cian adelante) que entra con <Tag>--ease-out-back</Tag>, cada capa con su
           retraso, y un destello aditivo (<Tag>mix-blend-plus-lighter</Tag> quieto; sólo cambia la opacidad, y con «livianos» no está). Mové el puntero encima: cada capa se corre según su
           profundidad (el parallax).
         </>
       }
     >
-      <Button size="sm" variant="primary" icon="play" className="feel-press justify-self-start" onClick={burst}>
+      <Button size="sm" variant="primary" icon="play" className="justify-self-start" onClick={burst}>
         Irrumpir
       </Button>
       <div onPointerMove={follow} onPointerLeave={rest} className="relative mx-auto h-56 w-full max-w-md overflow-hidden bg-background">
@@ -1027,8 +1027,8 @@ function LayersSample() {
         </div>
         <div ref={(element) => void (layers.current[2] = element)} className="pointer-events-none absolute -inset-4">
           <svg viewBox="0 0 100 60" preserveAspectRatio="none" className="block h-full w-full" aria-hidden>
-            <line x1={4} y1={58} x2={30} y2={2} strokeWidth={1.4} className="stroke-info" vectorEffect="non-scaling-stroke" />
-            <line x1={70} y1={58} x2={96} y2={2} strokeWidth={1.4} className="stroke-info" vectorEffect="non-scaling-stroke" />
+            <line x1={4} y1={58} x2={30} y2={2} strokeWidth={1.4} className="stroke-fx-energia" vectorEffect="non-scaling-stroke" />
+            <line x1={70} y1={58} x2={96} y2={2} strokeWidth={1.4} className="stroke-fx-energia" vectorEffect="non-scaling-stroke" />
             <line x1={10} y1={58} x2={36} y2={2} strokeWidth={0.6} className="stroke-white" vectorEffect="non-scaling-stroke" />
           </svg>
         </div>
