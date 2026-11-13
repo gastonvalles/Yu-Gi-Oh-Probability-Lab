@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { DUST, LANDING_AT, LIFT_PX, dustFrames, liftAt, liftGlossFrames, liftPathFrames, liftShadowFrames, liftTiltFrames } from '../app/card-lift'
+import { DUST, HOLD_FROM, HOLD_TO, LANDING_AT, LIFT_PX, dustFrames, liftAt, liftGlossFrames, liftPathFrames, liftShadowFrames, liftTiltFrames } from '../app/card-lift'
 
 // El vuelo en 3D va entero en el compositor: sus cuadros sólo animan `transform`/`translate`/`scale`/`opacity` (nada de sombra, `filter`, color ni variables).
 const COMPOSITOR = new Set(['offset', 'transform', 'translate', 'scale', 'rotate', 'opacity'])
@@ -49,6 +49,19 @@ describe('el vuelo en 3D de una carta (`card-lift.ts`)', () => {
     expect(liftTiltFrames(true, ' rotate(4deg)').at(-1)!.transform).toBe('perspective(600px) rotateX(0deg) rotateY(0deg) rotate(0deg) rotate(4deg)')
     expect(Math.max(...liftTiltFrames().map((frame) => Number(/rotateX\(([\d.]+)deg\)/.exec(String(frame.transform))![1])))).toBeCloseTo(32, 0)
     expect(liftTiltFrames(false).every((frame) => String(frame.transform).includes('rotateX(0deg)'))).toBe(true)
+  })
+
+  it('en lo más alto se queda quieta 3 cuadros (la pausa del estampado) antes de caer, y sigue tocando su casilla en `LANDING_AT`', () => {
+    const path = liftPathFrames({ x: -240, y: 120, scale: 1 })
+    const at = (offset: number) => path.find((frame) => frame.offset === offset)?.transform
+    const tilt = (offset: number) => liftTiltFrames().find((frame) => frame.offset === offset)?.transform
+
+    expect(HOLD_TO - HOLD_FROM).toBeCloseTo(50 / 480, 3)
+    expect(at(HOLD_FROM)).toBeDefined()
+    expect(at(HOLD_TO)).toBe(at(HOLD_FROM))
+    expect(tilt(HOLD_TO)).toBe(tilt(HOLD_FROM))
+    expect(path.filter((frame) => frame.offset! > HOLD_FROM && frame.offset! < HOLD_TO).every((frame) => frame.transform === at(HOLD_FROM))).toBe(true)
+    expect(at(LANDING_AT)).toBe('translate(0px, 0px) scale(1)')
   })
 
   it('quieta, sin brillo ni sombra; el polvo se apaga solo', () => {

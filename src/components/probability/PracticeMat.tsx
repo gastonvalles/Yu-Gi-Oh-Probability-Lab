@@ -62,7 +62,8 @@ import { playSfx } from '../../app/sfx'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
-import { cardPose, useCardFlights } from '../../app/use-card-flights'
+import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
+import { arrivals, impactOn, shakeOf } from '../../app/field-impact'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
@@ -107,7 +108,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, SPOTLIGHT_TONE, Spotlight, SpotlightSwap, StatTag, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel, tallyLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, SPOTLIGHT_TONE, landingDelay, Spotlight, SpotlightSwap, StatTag, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel, tallyLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -575,7 +576,8 @@ const strikeOf = (spec: StrikeSpec): Strike | null => (prefersReducedMotion() ? 
 interface MatFx {
   flash: { id: string; key: number; kind: SpotlightKind } | null
   stage: { ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null
-  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; key: number } | null
+  /** `dropped`: era la carta que esperaba levantada en esa casilla; cae ahí mismo (`dropFrames`) y su golpe espera a que toque. */
+  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; dropped: boolean; key: number } | null
   banner: { phase: MatPhase; turn: number | null; key: number } | null
   handFlash: number | null
 }
@@ -621,6 +623,7 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
   const effects = matEffects(replayMat(session.initial, session.actions, session.cursor - 1), action)
   const key = Date.now()
   const { fx } = previous
+  const dropped = 'id' in action && action.id === pendingId
 
   return {
     ...at,
@@ -636,7 +639,7 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
           : effects.showcase && session.replay
             ? { ...effects.showcase, step: session.cursor, key }
             : null,
-      landing: effects.landing ? { ...effects.landing, flies: effects.landing.flies && !('id' in action && action.id === pendingId), key } : fx.landing,
+      landing: effects.landing ? { ...effects.landing, flies: effects.landing.flies && !dropped, dropped, key } : fx.landing,
       banner: effects.banner ? { ...effects.banner, key } : fx.banner,
       handFlash: effects.hand ? key : fx.handFlash,
     },
@@ -1089,6 +1092,29 @@ function PracticeMatBody({
     fieldRef.current = node
     setFieldNode(node)
   }, [])
+
+  // El impacto de una Invocación (`field-impact.ts`): el anillo desde la casilla y la sacudida del campo cuando la carta la toca. Por el DOM, sin dibujar la mesa de nuevo.
+  const landingKey = landing?.key
+  useEffect(() => {
+    if (!landing || landingKey === undefined) return
+    const cell = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(landing.spot, landing.index)}"]`) ?? null
+    impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped))
+    // Una vez por Invocación (su `key`).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [landingKey])
+
+  // Las del rival: la mesa no recibe sus jugadas, sólo ve su campo cambiar (`rivalFlights`): un monstruo que llega boca arriba a una zona, de a uno (un `sync` que trae varios no es un golpe).
+  const rivalState = duel?.rivalFlights?.state ?? null
+  const rivalBefore = useRef(rivalState)
+  useEffect(() => {
+    const before = rivalBefore.current
+    rivalBefore.current = rivalState
+    if (!before || !rivalState || before === rivalState) return
+    const [arrived, ...more] = arrivals(before, rivalState)
+    if (!arrived || more.length > 0 || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
+    const card = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)
+    impactOn(card?.closest('[data-rival-drop], [data-drop]') ?? null, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT))
+  }, [rivalState])
 
   // La vista 3D se agranda hasta ocupar el lugar que tiene (la inclinación le quita alto y la perspectiva, fondo): el campo con la mano del rival crece parejo desde su borde de abajo (que no se mueve, así la mano
   // y todo lo de abajo siguen en su lugar) hasta donde entra a lo ancho y hasta la barra de arriba. Se mide a tamaño natural y se le avisa al CSS con `--field-zoom`; no cambia el diseño (la grilla ni el scroll).
@@ -2533,7 +2559,7 @@ function PracticeMatBody({
         ) : null}
         {!shown && spot === 'emz' && scene ? scene.sharedZone(index) : null}
         <Presence>{scene?.medals?.get(drop) ? <ChainBadge medals={scene.medals.get(drop)!} /> : null}</Presence>
-        {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
+        {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} dropped={landing.dropped} /> : null}
       </div>
     )
   }

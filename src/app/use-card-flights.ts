@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 
 import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
 import { DUST, DUST_MS, LANDING_AT, LIFT_FADE_MS, LIFT_LIMIT, LIFT_MIN_CARDS, LIFT_PX, dustFrames, liftAt, liftGlossFrames, liftPathFrames, liftShadowFrames, liftTiltFrames, type Spot } from './card-lift'
 import { cardImageSrc } from './card-image-source'
+import { settleShake } from './field-impact'
 import { EASE_IN_OUT, EASE_OUT, UI_ANIMATION_MS, cancelWhenDone, easeInOut, prefersReducedMotion } from './motion'
 import { allMatIds, locateCard, type MatState } from './practice-mat'
 
@@ -881,6 +882,8 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       return
     }
 
+    // La sacudida de un impacto (`field-impact.ts`) que siga corriendo se termina: si no, todo se mediría corrido unos px.
+    settleShake(root)
     // Los vuelos que siguen en el aire se apartan para medir cada carta en su lugar y no donde va pasando: antes, dónde va cada una y su reloj.
     const inAir = [...flightsRef.current].filter(([, flight]) => flight.animation.playState === 'running').map(([id, flight]) => ({ id, flight, startTime: flight.animation.startTime, seen: poseOf(flight) }))
     flightsRef.current = new Map()
@@ -1071,6 +1074,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       const snapshot = previousRef.current
 
       if (!snapshot) return
+      settleShake(root)
 
       const cards = new Map<string, Snapshot>()
 

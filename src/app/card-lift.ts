@@ -1,4 +1,5 @@
-import { EASE_OUT, EASE_SNAP, bezierEase, easeInOut } from './motion'
+import { HITSTOP_MS } from './card-weight'
+import { EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from './motion'
 
 /**
  * El vuelo en 3D de una carta a la vista que cambia de zona (`useCardFlights`): se levanta de la mesa, se inclina y cae con un golpe. Son cuadros ya horneados (como `dealFrames`),
@@ -46,8 +47,24 @@ const out = bezierEase(EASE_OUT)
 const n = (value: number) => Math.round(value * 1000) / 1000
 const clamp = (value: number) => Math.min(1, Math.max(0, value))
 
-/** Los momentos de los cuadros (de 0 a 1), con el del toque (`LANDING_AT`) entre ellos. */
-const TIMES = [...new Set([...Array.from({ length: SAMPLES + 1 }, (_, index) => index / SAMPLES), LANDING_AT])].sort((a, b) => a - b)
+/**
+ * La pausa del estampado (hitstop, `HITSTOP_MS`): en lo más alto la carta se queda quieta 3 cuadros antes de caer, sin alargar el vuelo (sube y cae un poco más rápido). Es una pausa,
+ * no una curva: va entre `HOLD_FROM` y `HOLD_TO`, centrada en la mitad del aire, y los dos bordes son cuadros del vuelo.
+ */
+const HOLD = HITSTOP_MS / (UI_ANIMATION_MS * 2)
+export const HOLD_FROM = n((LANDING_AT - HOLD) / 2)
+export const HOLD_TO = n(HOLD_FROM + HOLD)
+
+/** Los momentos de los cuadros (de 0 a 1), con el del toque (`LANDING_AT`) y los de la pausa entre ellos. */
+const TIMES = [...new Set([...Array.from({ length: SAMPLES + 1 }, (_, index) => index / SAMPLES), LANDING_AT, HOLD_FROM, HOLD_TO])].sort((a, b) => a - b)
+
+/** Cuánto del aire va hecho a ese momento (0 a 1): llega a la mitad en `HOLD_FROM`, se queda ahí hasta `HOLD_TO` y completa al tocar (`LANDING_AT`). */
+function airAt(time: number): number {
+  if (time <= HOLD_FROM) return (0.5 * time) / HOLD_FROM
+  if (time <= HOLD_TO) return 0.5
+
+  return clamp(0.5 + (0.5 * (time - HOLD_TO)) / (LANDING_AT - HOLD_TO))
+}
 
 /** Una pose de lo que vuela: su corrimiento (px) y su escala. */
 export interface Spot {
@@ -63,7 +80,7 @@ const REST: Spot = { x: 0, y: 0, scale: 1 }
  * cae rápido: el golpe) y cuánto más grande se ve (al levantarse, y el aplastón del toque).
  */
 export function liftAt(time: number): { done: number; lift: number; grow: number } {
-  const air = clamp(time / LANDING_AT)
+  const air = airAt(time)
   const lift = 4 * air * (1 - air)
   const settle = clamp((time - LANDING_AT) / (1 - LANDING_AT))
   const squash = 1 - (1 - SQUASH) * Math.sin(Math.PI * snap(settle))
@@ -87,7 +104,7 @@ export function liftPathFrames(from: Spot, to: Spot = REST, rise = LIFT_PX, suff
  */
 export function liftTiltFrames(pitch = true, suffix = ''): Keyframe[] {
   return TIMES.map((time) => {
-    const air = clamp(time / LANDING_AT)
+    const air = airAt(time)
     // El giro de costado va un poco adelantado: arranca girando y se endereza para caer.
     const turn = Math.sin(Math.PI * air) * (1 - 0.4 * air)
 
