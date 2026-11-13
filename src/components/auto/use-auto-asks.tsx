@@ -209,16 +209,16 @@ const DRAW_IN_MS = 250
 const quietWait = (action: MatAction, before: MatAction | undefined) =>
   (isPass(before) ? TURN_BAND_MS : 0) + (action.type === 'draw' ? DRAW_IN_MS : before?.type === 'draw' ? PHASE_READ_MS - DRAW_IN_MS : PHASE_READ_MS)
 /**
- * El turno del rival en el que va `index` llegó entero (hasta el pase que te lo devuelve) y no tiene jugadas hasta su End Phase: sólo sus fases y su robo (lo de su End Phase, como descartar
- * por tener más de 6 cartas, no lo hace un turno con jugadas: el pasivo, desde su tercer turno, descarta en cada uno).
+ * El turno del rival en el que va `index`, hasta donde llegó, no tiene jugadas antes de su End Phase: sólo sus fases y su robo (lo de su End Phase, como descartar por tener más de 6
+ * cartas, no cuenta: el pasivo, desde su tercer turno, descarta en cada uno). Cada tanda nueva del núcleo lo vuelve a mirar: si llega una jugada, el turno se cuenta como siempre.
  */
 function quietTurn(acts: AutoSnapshot['theirsActs'], index: number) {
   const start = acts.findLastIndex((wire, at) => at < index && isPass(wire.action)) + 1
   const end = acts.findIndex((wire, at) => at >= index && isPass(wire.action))
-  const turn = acts.slice(start, end).map(({ action }) => action)
+  const turn = acts.slice(start, end < 0 ? acts.length : end).map(({ action }) => action)
   const ends = turn.findIndex((action) => action.type === 'phase' && action.phase === 'end')
 
-  return end >= 0 && turn.slice(0, ends < 0 ? turn.length : ends).every((action) => action.type === 'phase' || action.type === 'draw')
+  return turn.slice(0, ends < 0 ? turn.length : ends).every((action) => action.type === 'phase' || action.type === 'draw')
 }
 /** Lo que pasa solo al empezar tu turno, hasta tu Main Phase 1 (donde el núcleo frena): tu robo y tus fases. */
 const opensTurn = (actions: readonly MatAction[]) =>
@@ -391,10 +391,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const [notice, setNotice] = useState<DuelMatLink['notice']>(undefined)
   const theirsNext = rivalPhases && theirsShown < snap.theirsActs.length && theirsShown < theirsUpTo(paced.cursor, paced.actions)
 
-  // Se va solo (con menos movimiento queda quieto ese rato); sólo el que se ve: el siguiente pudo salir en el mismo instante.
+  // Se va solo (con menos movimiento queda quieto ese rato); sólo el que se ve: el siguiente pudo salir en el mismo instante. «Tu turno» se queda hasta tu primera fase (la saca el ritmo de
+  // abajo; esto es la red): si se fuera antes, el lector de pantalla volvería a decir la fase vieja de tu mesa.
   useEffect(() => {
     if (!notice) return
-    const timer = window.setTimeout(() => setNotice((current) => (current === notice ? undefined : current)), RIVAL_PHASE_MS)
+    const timer = window.setTimeout(() => setNotice((current) => (current === notice ? undefined : current)), notice.label ? TURN_BAND_MS + 3 * PHASE_READ_MS : RIVAL_PHASE_MS)
 
     return () => window.clearTimeout(timer)
   }, [notice])
@@ -405,19 +406,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       if (snap.replaying || chainDue) return
       const index = theirsShown
       const action = snap.theirsActs[index]!.action
-      const beforeOf = (of: number) => {
-        const at = theirsAt[of]! + of
-
-        return at === 0 ? undefined : snap.order[at - 1] === 'theirs' ? snap.theirsActs[of - 1]?.action : paced.actions[theirsAt[of]! - 1]
-      }
-      const before = beforeOf(index)
+      const at = theirsAt[index]! + index
+      const before = at === 0 ? undefined : snap.order[at - 1] === 'theirs' ? snap.theirsActs[index - 1]?.action : paced.actions[theirsAt[index]! - 1]
       const banner = action.type === 'phase' && !(action.phase === 'main2' && snap.theirsActs[index + 1]?.action.type === 'phase')
-      // Su robo detrás de «Cambio de turno» y la fase que lo sigue van siempre con su cartel leído (también con un bot que juega); el resto, sólo en un turno sin jugadas.
-      const turnDraw = (of: number) => snap.theirsActs[of]?.action.type === 'draw' && isPass(beforeOf(of))
       const wait =
         action.type === 'phase' && !banner
           ? 0
-          : turnDraw(index) || (action.type === 'phase' && before === snap.theirsActs[index - 1]?.action && turnDraw(index - 1)) || quietTurn(snap.theirsActs, index)
+          : quietTurn(snap.theirsActs, index)
             ? quietWait(action, before)
             : action.type === 'phase'
               ? RIVAL_PHASE_MS
@@ -440,7 +435,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     const from = theirs > 0 ? theirsAt[theirs - 1]! : 0
     const opening = theirs > 0 && isPass(snap.theirsActs[theirs - 1]?.action) && opensTurn(paced.actions.slice(from, paced.cursor + 1))
     const wait = opening ? quietWait(next, paced.cursor > from ? paced.actions[paced.cursor - 1] : snap.theirsActs[theirs - 1]!.action) : Math.max(STEP_MS, impactAt - Date.now())
-    const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), wait)
+    const timer = window.setTimeout(() => {
+      setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current))
+      // Tu primera fase después de «Tu turno» lo reemplaza (en la banda, la más nueva ya gana; acá, en lo que se dice).
+      if (opening && next.type === 'phase') setNotice(undefined)
+    }, wait)
 
     return () => window.clearTimeout(timer)
   }, [paced, limit, reviewing, chainNext, chainDue, impactAt, theirsNext, theirsShown, theirsAt, theirsBefore, rivalPhases, snap.theirsActs, snap.order, snap.replaying, rivalName])
