@@ -65,10 +65,10 @@ export const ON_ART_TAG = `${ON_ART} group-data-[window]/panel:bg-background`
 /**
  * La fila de abajo: un renglón, la principal al final (a la derecha); en la ventana, todo a la derecha y pegada al borde de abajo (`mt-auto`: estirada, el aire queda entre el contenido y ella). Con
  * el dedo, la esquina de estirar (36 px) va a la derecha de los botones, no debajo: sin un renglón vacío al pie.
- * Si no entran en un renglón, sube lo de la izquierda («Seguir en modo manual», «No activar») y la principal queda siempre abajo a la derecha: se acomodan de derecha a izquierda y de abajo hacia
- * arriba (`flex-row-reverse` + `flex-wrap-reverse`; en el código y para el teclado, el orden de siempre).
+ * Si no entran en un renglón, bajan de renglón: la principal (la última) queda siempre abajo a la derecha. Lo que sobra a la izquierda («Seguir en modo manual») sube a su propio renglón con una
+ * consulta a la ventana (`@container`), en `AskPrompt`.
  */
-export const WRAP_RIGHT = 'group-data-[auto-panel=floating]/panel:flex-row-reverse group-data-[auto-panel=floating]/panel:flex-wrap-reverse group-data-[auto-panel=floating]/panel:justify-start'
+const WRAP_RIGHT = 'group-data-[auto-panel=floating]/panel:flex-wrap group-data-[auto-panel=floating]/panel:justify-end'
 const ACTIONS = `flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap group-data-[auto-panel=floating]/panel:mt-auto ${WRAP_RIGHT} group-data-[auto-panel=floating]/panel:pointer-coarse:pr-7`
 
 /**
@@ -331,7 +331,7 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
       ) : (
         <>
           {/* La pregunta entera en hasta dos renglones (nunca «…» en uno: Gastón, 2026-11-12); entera, también en su `title`. */}
-          <h2 id={titleId} title={label} className="m-0 line-clamp-2 min-w-0 flex-1 py-1 text-body font-semibold leading-snug">
+          <h2 id={titleId} title={label} className={cx('m-0 min-w-0 flex-1 py-1 text-body font-semibold leading-snug', desk ? 'line-clamp-2' : 'line-clamp-3')}>
             {label}
           </h2>
           {aside ? <span className="ml-2 flex shrink-0">{aside}</span> : null}

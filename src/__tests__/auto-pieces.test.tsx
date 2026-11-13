@@ -486,8 +486,8 @@ describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
     expect(group).toHaveClass('@container')
     expect(group.className).toContain('[--desk-card:clamp(4rem,min(calc(100cqw_-_1.5rem),var(--fit-h)),var(--card-cap))]')
     expect(group.className).toContain('[--fit-h:calc((var(--win-h,')
-    // Los botones a su ancho y a la derecha (B-04); si no entran, sube lo de la izquierda y la principal queda abajo a la derecha (nunca se cortan por el borde).
-    expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:flex-row-reverse', 'group-data-[auto-panel=floating]/panel:flex-wrap-reverse', 'group-data-[auto-panel=floating]/panel:justify-start')
+    // Los botones a su ancho y a la derecha (B-04); si no entran, bajan de renglón y la principal (la última) queda abajo a la derecha (nunca se cortan por el borde).
+    expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:justify-end', 'group-data-[auto-panel=floating]/panel:flex-wrap')
     expect(group.querySelector('.gap-3')).toBeNull()
   })
 
