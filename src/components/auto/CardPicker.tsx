@@ -120,6 +120,11 @@ interface PickGridProps {
   apart?: boolean
   /** Verla en grande sin elegirla: toque largo, clic derecho o la tecla de menú (Mayús+F10) sobre la carta (`contextmenu`). Un toque normal sigue eligiendo. */
   onInspect?: (key: string) => void
+  /**
+   * Una fila por carta, con la miniatura y el nombre entero (hasta dos renglones), en una lista que se desliza hacia abajo: al declarar un nombre, el nombre es lo que decide (tres «Mirror
+   * Force…» son la misma carta chiquita). Sin `className`: la lista tiene su propio alto.
+   */
+  rows?: boolean
 }
 
 /**
@@ -128,7 +133,7 @@ interface PickGridProps {
  * Las que dicen de dónde son (`from`) van por lugar, la mano propia primero, cada una con su chip: dos copias iguales de la mano y del Deck nunca se ven iguales. Eligiendo una sola, las copias de
  * la misma carta en el mismo lugar van en una, con «×3» (`copyGroups`, `copyToToggle`); eligiendo varias (`multi` o `apart`), cada copia es una carta, con su número de orden.
  */
-export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, apart = false, onInspect }: PickGridProps) {
+export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, apart = false, onInspect, rows = false }: PickGridProps) {
   const [active, setActive] = useState(0)
   // La bandeja se desliza de costado: con el mouse, también con la rueda vertical.
   const row = useRef<HTMLDivElement>(null)
@@ -183,7 +188,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
         aria-disabled={off || undefined}
         aria-label={where}
         title={multi ? t('practice.many.range') : undefined}
-        className={cx('group @container relative grid min-w-0 content-start gap-1 rounded-none outline-none focus-visible:shadow-focus', off ? 'cursor-default opacity-40' : 'cursor-pointer')}
+        className={cx('group @container relative grid min-w-0 gap-1 rounded-none outline-none focus-visible:shadow-focus', rows ? 'min-h-11 grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-x-2 hover:bg-tint/10' : 'content-start', off ? 'cursor-default opacity-40' : 'cursor-pointer')}
         onClick={(event) => {
           setActive(index)
           const key = target(copies)
@@ -224,8 +229,8 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
           ) : null}
         </span>
         {/* En un renglón (el alto es de la carta) y entero al pasar el mouse. En la ventana de escritorio no va: lo dice la imagen (y el nombre accesible). */}
-        <span aria-hidden="true" data-pick-name="" title={card.name} className="grid min-w-0 group-data-[window]/panel:hidden">
-          <span className="truncate text-micro text-foreground">{card.name}</span>
+        <span aria-hidden="true" data-pick-name="" title={card.name} className={cx('grid min-w-0', !rows && 'group-data-[window]/panel:hidden')}>
+          <span className={rows ? 'line-clamp-2 text-body text-foreground' : 'truncate text-micro text-foreground'}>{card.name}</span>
           {card.place && !tabs && !card.from ? <span className="truncate text-micro text-muted">{card.place}</span> : null}
         </span>
       </div>
@@ -238,7 +243,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
       role="listbox"
       aria-label={label}
       aria-multiselectable={multi || undefined}
-      className={cx('grid gap-2', TRAY_N[Math.min(groups.length, TRAY_N.length) - 1], className)}
+      className={cx(rows ? 'grid max-h-[min(40dvh,18rem)] content-start gap-1 overflow-y-auto overscroll-contain' : 'grid gap-2', !rows && TRAY_N[Math.min(groups.length, TRAY_N.length) - 1], className)}
       onKeyDown={onKeyDown}
     >
       {groups.map(option)}
@@ -472,7 +477,7 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
       <div className="grid gap-2">
         {searchable ? <SearchField label={t('auto.picker.search')} placeholder={t(more ? 'auto.picker.searchAny' : 'auto.picker.search')} value={query} onChange={setQuery} /> : null}
         {shown.length > 0 ? (
-          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={open} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} apart={apart} className={TRAY} {...(onInspect ? { onInspect } : {})} />
+          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={open} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} apart={apart} {...(more ? { rows: true } : { className: TRAY })} {...(onInspect ? { onInspect } : {})} />
         ) : moreNote === null ? (
           <p className="m-0 text-body text-muted">{needle ? t('auto.picker.noMatches', { query: query.trim() }) : t('auto.picker.typeName')}</p>
         ) : null}
