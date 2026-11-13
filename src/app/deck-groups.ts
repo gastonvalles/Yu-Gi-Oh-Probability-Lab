@@ -1,5 +1,6 @@
 import { t } from '../i18n'
 import type { CardEntry, CardOrigin, CardRole, GroupKey } from '../types'
+import { isRecord } from './utils'
 
 type DeckGroupKind = 'origin' | 'role'
 
@@ -410,8 +411,4 @@ export function cardMatchesGroup(card: CardEntry, groupKey: GroupKey): boolean {
 
 function matchesOriginGroup(origin: CardOrigin | null, groupKey: CardOrigin): boolean {
   return origin === groupKey
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
