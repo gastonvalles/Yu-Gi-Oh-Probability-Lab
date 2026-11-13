@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
-import { duelReplayAt, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
+import type { ChainStep } from '../../app/auto/chain-feed'
+import { medalsOf } from '../../app/card-glow'
+import { duelReplayAt, replayChainSteps, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
 import { matEffects } from '../../app/mat-effects'
 import { isToken } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
+import { ChainStage, chainDwell, chainFeed, outcomeLabel, stepsUpTo } from '../auto/ChainNotice'
 import { artOfDrawId } from '../duel/duel-art'
 import { DuelTable, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { LifeBadge } from '../duel/LifeScore'
@@ -69,13 +72,39 @@ interface Activation {
 
 /**
  * La carta grande al avanzar un paso (reproducir o «Siguiente») que activa algo, con la misma regla que la mesa (`matEffects`: activar, o una Mágica o Trampa que pasa boca arriba); saltar no la
- * muestra. La cadena y los medallones no entran: el replay no los trae.
+ * muestra. Con la cadena guardada (el duelo automático), no: la dice la escena de la cadena.
  */
 function activationAt(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>[2], from: number, to: number): Activation | null {
-  const step = to === from + 1 ? replay.steps[to - 1] : undefined
+  const step = to === from + 1 && !replay.chain ? replay.steps[to - 1] : undefined
   const spotlight = step ? matEffects(duelReplayAt(replay, from, shots).states[step[0]], step[1]).spotlight : undefined
 
   return step && spotlight?.kind === 'activate' ? { key: to, side: step[0], id: spotlight.id } : null
+}
+
+/** Los mensajes de la cadena que se muestran: los de la jugada `at` (desde `from`, los que ya se veían antes de ella), de a uno hasta `seen`. */
+interface ChainShown {
+  at: number
+  from: number
+  seen: number
+}
+
+/** Hasta dónde se muestra la cadena después de `seen` mensajes: el siguiente y los que no se dejan ver solos (`chainDwell` 0: un resuelto, el final), como en vivo. */
+function nextShown(steps: readonly ChainStep[], seen: number, due: number): number {
+  let next = Math.min(seen + 1, due)
+
+  while (next < due && chainDwell(steps, next - 1) === 0) next += 1
+  return next
+}
+
+/**
+ * La cadena al avanzar un paso (reproducir o «Siguiente»): sus mensajes de esa jugada, de a uno con el ritmo de la mesa (`chainDwell`), como en el repaso de «Jugar solo». Saltar
+ * no la muestra (null).
+ */
+function chainAt(steps: readonly ChainStep[], from: number, to: number): ChainShown | null {
+  if (to !== from + 1 || steps.length === 0) return null
+  const before = stepsUpTo(steps, from)
+
+  return { at: to, from: before, seen: nextShown(steps, before, stepsUpTo(steps, to)) }
 }
 
 export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, backLabel = t('meta.duels.back') }: DuelReplayScreenProps) {
@@ -86,6 +115,10 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   const [flipped, setFlipped] = useState(false)
   const [banner, setBanner] = useState<PhaseCue | null>(null)
   const [activation, setActivation] = useState<Activation | null>(null)
+  const [chain, setChain] = useState<ChainShown | null>(null)
+  const bottom: ReplaySide = flipped ? 1 : 0
+  const top: ReplaySide = flipped ? 0 : 1
+  const chainSteps = useMemo(() => replayChainSteps(replay, bottom), [replay, bottom])
   // Llegó compartido: aunque se guarde (y deje de serlo), la franja de arriba sigue en su lugar.
   const [wasShared] = useState(Boolean(shared))
   // Una sola pasada: las fotos para saltar y la marca de cada jugada (su color, si cambia de fase, si empieza un turno).
@@ -127,23 +160,32 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     [replay, shots],
   )
 
-  // Lo que se anuncia al avanzar de a un paso: la banda de la fase y la carta grande de lo que se activa.
+  // Lo que se anuncia al avanzar de a un paso: la banda de la fase, la carta grande de lo que se activa y la cadena.
   const announce = useCallback(
     (from: number, to: number) => {
       setBanner(bannerAt(replay, from, to))
       setActivation(activationAt(replay, shots, from, to))
+      setChain(chainAt(chainSteps, from, to))
     },
-    [replay, shots],
+    [replay, shots, chainSteps],
   )
   useEffect(() => {
     if (!activation) return
     const timer = window.setTimeout(() => setActivation(null), ACTIVATION_MS)
     return () => window.clearTimeout(timer)
   }, [activation])
-
-  // Reproducir: una jugada cada `STEP_MS` (según la velocidad) hasta el final.
+  // La cadena de la jugada, de a un mensaje con su tiempo (según la velocidad).
+  const chainDue = chain ? stepsUpTo(chainSteps, chain.at) : 0
+  const chainPending = chain !== null && chain.seen < chainDue
   useEffect(() => {
-    if (!playing) return
+    if (!chain || chain.seen >= chainDue) return
+    const timer = window.setTimeout(() => setChain((current) => (current === chain ? { ...chain, seen: nextShown(chainSteps, chain.seen, chainDue) } : current)), chainDwell(chainSteps, chain.seen - 1) / speed)
+    return () => window.clearTimeout(timer)
+  }, [chain, chainDue, chainSteps, speed])
+
+  // Reproducir: una jugada cada `STEP_MS` (según la velocidad) hasta el final; la cadena de una jugada se cuenta entera antes de la siguiente.
+  useEffect(() => {
+    if (!playing || chainPending) return
     if (cursor >= total) {
       setPlaying(false)
       return
@@ -153,19 +195,35 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       announce(cursor, cursor + 1)
     }, STEP_MS / speed)
     return () => window.clearTimeout(timer)
-  }, [playing, cursor, total, speed, replay, announce])
+  }, [playing, chainPending, cursor, total, speed, replay, announce])
   const jump = (at: number) => {
     setPlaying(false)
     setBanner(null)
     setActivation(null)
+    setChain(null)
     setCursor(at)
   }
+  // Lo que se ve de la cadena: la escena mientras se arma (y su salida, si terminó en esta jugada) y los medallones al resolver, en el lado donde se activó cada eslabón.
+  const feed = useMemo(() => (chain ? chainFeed(chainSteps, chain.seen) : null), [chain, chainSteps])
+  const medals = useMemo(() => medalsOf(feed), [feed])
+  const chainStage = feed && chain && !(feed.done && chain.seen === chain.from) ? feed : null
+  const chainRows = useMemo(
+    () =>
+      (chainStage?.rows ?? []).map((row) => ({
+        number: row.number,
+        mine: row.mine,
+        name: replay.cards[String(row.code)] ?? t('practice.card.unknown'),
+        art: row.code ? artOfDrawId(`card-${row.code}-1`) : null,
+        state: row.state,
+        ...(row.by ? { by: row.by } : {}),
+        ...(row.outcome ? { outcome: outcomeLabel(row.outcome) } : {}),
+      })),
+    [chainStage, replay],
+  )
 
-  const bottom: ReplaySide = flipped ? 1 : 0
-  const top: ReplaySide = flipped ? 0 : 1
   const view = (side: ReplaySide): DuelSideView => ({ state: frame.states[side], artOf: (id) => artOfDrawId(isToken(id) ? id : realOf(replay, frame, side, id)), handCount: frame.states[side].hand.length })
-  const bottomView = view(bottom)
-  const topView = view(top)
+  const bottomView = { ...view(bottom), medals: medals.mine }
+  const topView = { ...view(top), medals: medals.theirs }
   // Con «mi mano», la de quien grabó boca arriba (abajo; dada vuelta la mesa, de dorso como la del rival).
   const openHand = replay.view === 'mine' && bottom === 0 ? frame.states[0].hand.map((id) => ({ name: cardName(replay, frame, 0)(id), art: bottomView.artOf(id) })) : undefined
   const playLabel = playing ? t('practice.mat.pause') : cursor >= total ? t('practice.mat.watchAgain') : t('practice.mat.play')
@@ -229,7 +287,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
           <div className="relative flex flex-col items-center" style={{ gap: field.gap }}>
             {desktop ? <div className="absolute left-full top-0 z-20 ml-3">{badge(top, 'top')}</div> : null}
             <TheirHandSize value={field.top}>
-              <TheirHand count={topView.handCount ?? 0} label={t('meta.duels.hand', { name: names[top], count: topView.handCount ?? 0 })} />
+              <TheirHand count={topView.handCount ?? 0} medals={topView.medals.get('hand') ?? null} label={t('meta.duels.hand', { name: names[top], count: topView.handCount ?? 0 })} />
             </TheirHandSize>
             <div style={field.box}>
               <DuelTable mine={bottomView} theirs={{ ...topView, handCount: undefined }} turn={frame.turn === bottom ? 'mine' : 'theirs'} centerPhase phoneStyle={field.phone}>
@@ -243,10 +301,16 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
                     className="absolute inset-0 z-[120]"
                   />
                 ) : null}
+                {/* La cadena en grande, sobre el campo como en el duelo (`ChainStage`: su velo tapa la pantalla). */}
+                {chainStage ? (
+                  <div data-testid="replay-chain" className="pointer-events-none absolute inset-0 z-[125] flex items-center justify-center">
+                    <ChainStage key={chainStage.key} rows={chainRows} current={chainStage.current} done={chainStage.done} />
+                  </div>
+                ) : null}
               </DuelTable>
             </div>
             <TheirHandSize value={field.bottom}>
-              <TheirHand below count={bottomView.handCount ?? 0} label={openHand ? t('meta.duels.handShown', { name: names[bottom], cards: openHand.map((card) => card.name).join(', ') }) : t('meta.duels.hand', { name: names[bottom], count: bottomView.handCount ?? 0 })} {...(openHand ? { cards: openHand } : {})} />
+              <TheirHand below count={bottomView.handCount ?? 0} medals={bottomView.medals.get('hand') ?? null} label={openHand ? t('meta.duels.handShown', { name: names[bottom], cards: openHand.map((card) => card.name).join(', ') }) : t('meta.duels.hand', { name: names[bottom], count: bottomView.handCount ?? 0 })} {...(openHand ? { cards: openHand } : {})} />
             </TheirHandSize>
             {desktop ? <div className="absolute bottom-0 right-full z-20 mr-3">{badge(bottom, 'bottom')}</div> : null}
           </div>

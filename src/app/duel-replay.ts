@@ -1,4 +1,4 @@
-import type { ChainOutcome, ChainStepKind } from './auto/chain-feed'
+import type { ChainOutcome, ChainStep, ChainStepKind } from './auto/chain-feed'
 import { duelTurnNumber } from './duel-turn'
 import { encodeAct, mapActionIds, openPublic, type WireAct } from './mat-public'
 import { matReducer, type MatAction, type MatState, type Placed } from './practice-mat'
@@ -179,6 +179,18 @@ export interface ReplayFrame {
   /** De quién es el turno y cuál es (contado con las dos mesas, como en el duelo). */
   turn: ReplaySide
   turnNumber: number
+}
+
+/**
+ * La cadena del replay como la leen la escena y los medallones (`chainFeed`, `medalsOf`), desde el lado que va abajo (`bottom`: «mine»): `at` en jugadas del replay. Sin el id de
+ * las cartas (`card: null`): la escena va por passcode y los medallones por lugar.
+ */
+export function replayChainSteps(replay: DuelReplay, bottom: ReplaySide): ChainStep[] {
+  const sideOf = (side: ReplaySide) => (side === bottom ? 'mine' : 'theirs')
+
+  return (replay.chain ?? []).map(({ link, ...item }) =>
+    link ? { ...item, link: { card: null, code: link.code, mine: link.side === bottom, ...(link.place ? { place: { side: sideOf(link.place[0]), location: link.place[1], sequence: link.place[2] } } : {}) } } : item,
+  )
 }
 
 /** Cada cuántas jugadas se guarda una foto para saltar sin aplicar todo desde el principio. */

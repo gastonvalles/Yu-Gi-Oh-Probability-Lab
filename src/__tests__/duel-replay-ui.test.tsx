@@ -167,6 +167,57 @@ describe('la pantalla del replay de un duelo', () => {
     }
   })
 
+  it('con la cadena guardada (duelo automático): la escena de la cadena en vez de la carta grande, eslabón por eslabón al ritmo de la mesa, y al resolver los medallones donde se activó cada uno; saltar no la muestra', () => {
+    vi.useFakeTimers()
+    const replay = buildDuelReplay({
+      mode: 'solo-auto',
+      view: 'public',
+      players: ['Ana', 'Beto'],
+      starter: 0,
+      mine: { initial: mine, actions: [{ type: 'activate', id: h0 }] },
+      theirs: { initial: createMatState(Array.from({ length: 20 }, (_, i) => `c${i + 1}`), [], 5), acts: [{ action: { type: 'phase', phase: 'standby' }, reveal: {} }] },
+      order: ['mine', 'theirs'],
+      life: [{ at: 0, lp: [8000, 8000] }],
+      nameOf: (code) => (code === 55144522 ? 'Pot of Greed' : 'Ash Blossom'),
+      chain: [
+        { at: 1, kind: 'chain', index: 0, link: { code: 14558127, side: 0, place: [0, 8, 0] } },
+        { at: 1, kind: 'chain', index: 1, link: { code: 55144522, side: 1, place: [1, 4, 2] } },
+        { at: 1, kind: 'solving', index: 1 },
+        { at: 1, kind: 'solved', index: 1 },
+        { at: 1, kind: 'solving', index: 0 },
+        { at: 1, kind: 'solved', index: 0 },
+        { at: 1, kind: 'end', index: -1 },
+      ],
+    })
+    const card = (n: number) => document.querySelector(`[data-chain-card="${n}"]`)
+
+    try {
+      render(<DuelReplayScreen replay={replay} onClose={() => {}} actions={[]} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      // El CL1 entra solo; la carta grande de la mesa no sale.
+      expect(screen.getByTestId('replay-chain')).toBeInTheDocument()
+      expect(card(1)).toHaveAccessibleName(/Ash Blossom/)
+      expect(card(2)).toBeNull()
+      expect(document.querySelector('[data-kind="activate"][data-activation]')).toBeNull()
+      act(() => vi.advanceTimersByTime(700))
+      expect(card(2)).toHaveAccessibleName(/Pot of Greed/)
+      // Se resuelve el CL2: los medallones, el del CL1 en la Zona de Mágicas de abajo y el del CL2 en la Zona de Monstruos de arriba.
+      act(() => vi.advanceTimersByTime(700))
+      expect(document.querySelector('[data-chain-medal="1"]')).not.toBeNull()
+      expect(document.querySelector('[data-chain-medal="2"]')).not.toBeNull()
+      act(() => vi.advanceTimersByTime(900))
+      expect(document.querySelector('[data-chain-medal="2"]')).toBeNull()
+      // Saltar: ni escena ni medallones.
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      fireEvent.keyDown(screen.getByRole('slider', { name: 'Línea de tiempo del replay' }), { key: 'ArrowRight' })
+      expect(screen.queryByTestId('replay-chain')).toBeNull()
+      expect(document.querySelector('[data-chain-medal]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('con «mi mano», la de quien grabó se ve; compartido, ofrece guardarlo', () => {
     const onSave = vi.fn()
     const replay = replayOf('mine')
