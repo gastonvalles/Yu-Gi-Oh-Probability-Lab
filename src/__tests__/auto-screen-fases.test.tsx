@@ -7,6 +7,7 @@ import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { setAutoPref } from '../app/auto-prefs'
 import type { MatAction, MatPhase } from '../app/practice-mat'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
+import { TURN_BAND_MS } from '../components/duel/PhaseBand'
 import { fakeSession, loc, pos, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, hand, handCard, lane, phaseButton, renderAuto } from './support/auto-screen-harness'
 import { tap } from './support/practice-mat-harness'
@@ -235,26 +236,27 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(band()).toHaveAttribute('data-turn')
     expect(band()).toHaveAttribute('data-side', 'theirs')
     expect(document.querySelector('[data-fx="phase-pulse"]')).toBeNull()
-    // Su robo va con «Turno de Rival», sin cartel propio.
-    act(() => vi.advanceTimersByTime(0))
+    // Su turno sin jugadas pasa ligero: cada cambio del lector y de la banda, en orden, con cuántas cartas tenés y si el botón de fases está apagado.
     const seen: string[] = []
     const bands: string[] = []
-    for (let i = 0; i < 4; i += 1) {
-      act(() => vi.advanceTimersByTime(1100))
-      seen.push(rivalBanner() ?? '')
-      bands.push(`${band()?.getAttribute('data-side')} ${band()?.textContent}`)
-      // Tu turno (tu robo, el botón de fases) no empieza debajo de los carteles del rival: lo tuyo no tapa su End Phase.
-      if (i < 3) {
-        expect(cards()).toBe(before)
-        expect(phaseButton()).toBeDisabled()
-      }
+    const mine: { band: string; cards: number; off: boolean }[] = []
+    for (let ms = 0; ms < 6_000; ms += 50) {
+      act(() => vi.advanceTimersByTime(50))
+      const now = `${band()?.getAttribute('data-side')} ${band()?.textContent}`
+
+      if (rivalBanner() && rivalBanner() !== seen.at(-1)) seen.push(rivalBanner()!)
+      if (band() && now !== bands.at(-1)) bands.push(now)
+      mine.push({ band: bands.at(-1) ?? '', cards: cards(), off: phaseButton().hasAttribute('disabled') })
     }
     expect(seen).toEqual(['Rival · Standby Phase', 'Rival · Main Phase 1', 'Rival · End Phase', 'Tu turno'])
-    // Las suyas en lima (la Standby entra cuando se va «Cambio de turno», que dura más que su cartel) y «Tu turno» vuelve a cambiar el turno, en violeta (después, tu Draw Phase).
-    expect(bands).toEqual(['theirs Cambio de turno', 'theirs Main Phase 1', 'theirs End Phase', 'mine Cambio de turno'])
-    step()
-    expect(cards()).toBe(before + 1)
-    act(() => vi.advanceTimersByTime(1100))
+    // Las suyas en lima, desde su Draw Phase (detrás de «Cambio de turno»), y «Tu turno» vuelve a cambiar el turno, en violeta, con tu Draw Phase detrás.
+    expect(bands).toEqual(['theirs Cambio de turno', 'theirs Draw Phase', 'theirs Standby Phase', 'theirs Main Phase 1', 'theirs End Phase', 'mine Cambio de turno', 'mine Draw Phase'])
+    // Tu turno (tu robo, el botón de fases) no empieza debajo de los carteles del rival, y tu robo llega con tu Draw Phase a la vista, no antes.
+    const yours = mine.findIndex((item) => item.band === 'mine Draw Phase')
+
+    expect(mine.slice(0, yours).every((item) => item.cards === before && item.off)).toBe(true)
+    expect(mine.at(-1)!.cards).toBe(before + 1)
+    act(() => vi.advanceTimersByTime(TURN_BAND_MS + 3 * 500))
     expect(rivalBanner()).toBeNull()
   })
 
@@ -264,8 +266,8 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     rivalTurn(fake)
     step()
     step()
-    act(() => vi.advanceTimersByTime(0))
-    act(() => vi.advanceTimersByTime(1100))
+    // Detrás de «Cambio de turno», su robo y su Standby Phase (de a poco: cada paso de la mesa es un `act`).
+    for (let ms = 0; ms < TURN_BAND_MS + 500 + 50; ms += 50) act(() => vi.advanceTimersByTime(50))
     expect(rivalBanner()).toBe('Rival · Standby Phase')
     fireEvent.pointerDown(hand())
     const seen = new Set<string>()
