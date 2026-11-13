@@ -66,6 +66,7 @@ export function filmSession(film: RivalTurnFilm): AutoSession & { answers: CoreA
       chainSteps: film.chainSteps.slice(0, chain),
       lifeSteps: film.lifeSteps.slice(0, life),
       handShuffles: [],
+      tallySteps: [],
       mine: replayMat(film.initial.mine, mineActions),
       theirs: replayMat(film.initial.theirs, theirsActs.map((wire) => wire.action)),
       overlay,

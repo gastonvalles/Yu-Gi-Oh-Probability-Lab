@@ -121,6 +121,8 @@ export interface AdapterOutput {
   lp: { at: number; lp: [number, number] }[]
   /** Las manos que barajó el núcleo (`shuffle_hand`, lo ordena un efecto), con cuántas jugadas de la tanda (`order`) había: la mesa las baraja a la vista. No es una jugada (ni Pasos ni replay). */
   hands: { at: number; mine: boolean }[]
+  /** Lo que cuentan las cartas cada vez que cambia, con cuántas jugadas de la tanda (`order`) había: la mesa muestra el de la jugada a la que llegó. */
+  tally: { at: number; tally: Tally }[]
 }
 
 /** Un ataque del rival en el espejo: su lugar en `theirs` (`index`), cuántas jugadas de tu mesa había antes (`at`, donde la mesa lo cuenta) y quién ataca a qué (sin `target`, directo). */
@@ -1062,7 +1064,9 @@ export function createAdapter(options: AdapterOptions): Adapter {
   function tallied(event: WireEvent) {
     const tally = tallyStep(overlay.tally, event, tallyContext)
 
-    if (tally !== overlay.tally) overlay = { ...overlay, tally }
+    if (tally === overlay.tally) return
+    overlay = { ...overlay, tally }
+    out.tally.push({ at: out.order.length, tally })
   }
 
   function stats(cards: Extract<AutoEvent, { t: 'stats' }>['cards']) {
@@ -1094,7 +1098,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       return overlay
     },
     apply(event) {
-      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [], lp: [], hands: [] }
+      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [], lp: [], hands: [], tally: [] }
       fromDeck = [null, null]
       openedNow = new Set()
 

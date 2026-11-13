@@ -306,9 +306,10 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
 function TallySample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
   const [count, setCount] = useState(2)
   const sides = useMemo(() => {
-    const tally = (id: string): ReadonlyMap<string, TallyView> => new Map([[id, { count, limit: 5, counts: 'effects' as const }]])
+    // La Mágica boca arriba de cada lado hace de Shatranga.
+    const tally = (side: DuelSideView): ReadonlyMap<string, TallyView> => new Map(side.state.st.flatMap((placed) => (placed && placed.pos !== 'set' ? [[placed.id, { count, limit: 5, counts: 'effects' as const }]] : [])))
 
-    return { mine: { ...duel.mine, tallies: tally('card-53129443-1') }, theirs: { ...duel.theirs, tallies: tally('card-53129443-2') } }
+    return { mine: { ...duel.mine, tallies: tally(duel.mine) }, theirs: { ...duel.theirs, tallies: tally(duel.theirs) } }
   }, [duel, count])
 
   return (

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
-import { NO_TALLIES, talliesOf } from '../../app/auto/tally'
+import { NO_TALLIES, NO_TALLY, talliesOf } from '../../app/auto/tally'
 import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
 import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { comboExtrasFromAuto } from '../../app/auto/auto-replay'
@@ -832,13 +832,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     theirs: reviewing ? NO_FIELD_STATS : fieldStatsOf(theirsState, (id) => nowStat(snap.overlay.stats.theirs[id], theirCard(id)), shownStats.theirs),
   }
   if (fieldStats.mine !== shownStats.mine || fieldStats.theirs !== shownStats.theirs) setShownStats(fieldStats)
-  // Lo que cuentan las cartas (`tally.ts`), estable por valor como el ATK/DEF: se pone al día cuando la mesa terminó de contar la tanda (nunca antes que la activación que lo sube). Repasando, nada.
+  // Lo que cuentan las cartas (`tally.ts`), estable por valor como el ATK/DEF: el de la jugada a la que llegó la mesa (`tallySteps`, como las vidas), así sube con la activación que se ve. Repasando, nada.
   const [shownTallies, setShownTallies] = useState(() => ({ mine: NO_TALLIES, theirs: NO_TALLIES }))
+  const shownTally = caughtUp ? snap.overlay.tally : (snap.tallySteps.findLast((item) => item.at <= shownAt)?.tally ?? NO_TALLY)
   const tallies = reviewing
     ? { mine: NO_TALLIES, theirs: NO_TALLIES }
-    : settled
-      ? { mine: talliesOf(snap.overlay.tally, 'mine', state, (id) => codeOf({ side: 'mine', id }), true, shownTallies.mine), theirs: talliesOf(snap.overlay.tally, 'theirs', theirsState, (id) => codeOf({ side: 'theirs', id }), false, shownTallies.theirs) }
-      : shownTallies
+    : { mine: talliesOf(shownTally, 'mine', state, (id) => codeOf({ side: 'mine', id }), true, shownTallies.mine), theirs: talliesOf(shownTally, 'theirs', theirsState, (id) => codeOf({ side: 'theirs', id }), false, shownTallies.theirs) }
   if (tallies.mine !== shownTallies.mine || tallies.theirs !== shownTallies.theirs) setShownTallies(tallies)
   const myInitial = snap.initial
   const myNormal = snap.overlay.normal[seat]

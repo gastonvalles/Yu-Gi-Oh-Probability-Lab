@@ -106,6 +106,20 @@ describe('lo que cuentan las cartas, con los eventos públicos', () => {
     expect(both[1]!.overlay.tally.turn.summons).toEqual({ mine: 0, theirs: 1 })
   })
 
+  it('cada cambio sale con su lugar en la tanda (`at`, contado en `order`): la mesa muestra el de la jugada a la que llegó', () => {
+    const adapter = make(0)
+
+    adapter.apply({ t: 'events', seat: 0, n: 0, events: [{ type: 'new_turn', player: 1 }, draw(0, SHATRANGA), move(SHATRANGA, at(0, L.HAND, 0, 10), at(0, L.SZONE, 2))] })
+    const out = adapter.apply({ t: 'events', seat: 0, n: 0, events: [draw(1, 111), chaining(111, at(1, L.HAND, 0, 10)), chaining(111, at(1, L.HAND, 0, 10))] })
+
+    // El robo y cada activación son una jugada; el número sube después de la suya.
+    expect(out.order).toEqual(['theirs', 'theirs', 'theirs'])
+    expect(out.tally.map((step) => [step.at, step.tally.turn.effects.theirs])).toEqual([
+      [2, 1],
+      [3, 2],
+    ])
+  })
+
   it('sin nada que contar, el mismo objeto (la mesa no se redibuja)', () => {
     const adapter = make(0)
     const before = adapter.overlay.tally

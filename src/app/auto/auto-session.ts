@@ -3,6 +3,7 @@ import { DEFAULT_RIVAL_EXTRA } from '../handtraps'
 import type { WireAct } from '../mat-public'
 import { createMatState, type MatAction, type MatState } from '../practice-mat'
 import { copyIds, createAdapter, type Adapter, type AutoOverlay } from './adapter'
+import type { Tally } from './tally'
 import { DataUnavailableError, type DataLoader, type DuelData } from './auto-data'
 import type { ChainStep } from './chain-feed'
 import type { WorkerData } from './core-host.worker'
@@ -106,6 +107,8 @@ export interface AutoSnapshot {
   lifeSteps: readonly { at: number; lp: readonly [number, number] }[]
   /** Las manos que barajó un efecto desde `initial` (`mine`: la tuya), con `at` contado en `order` (`adapter.apply().hands`): la mesa las baraja a la vista cuando llega ahí; no son jugadas. */
   handShuffles: readonly { at: number; mine: boolean }[]
+  /** Lo que cuentan las cartas (`tally.ts`) cada vez que cambia, con `at` contado en `order` (`adapter.apply().tally`): la mesa muestra el de la jugada a la que llegó, no el del final de la tanda. */
+  tallySteps: readonly { at: number; tally: Tally }[]
   /** Tu mesa y el espejo de la del rival al final de la última tanda (= `initial` + todas las jugadas). */
   mine: MatState
   theirs: MatState
@@ -326,6 +329,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     chainSteps: [],
     lifeSteps: [],
     handShuffles: [],
+    tallySteps: [],
     mine: blank.mine,
     theirs: blank.theirs.state,
     overlay: blank.overlay,
@@ -421,7 +425,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       }),
     )
     history = []
-    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], order: [], chainSteps: [], lifeSteps: [{ at: 0, lp: [...adapters[me]!.overlay.lp] }], handShuffles: [], unmapped: [], playStarts: [], ...view() }, false)
+    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], order: [], chainSteps: [], lifeSteps: [{ at: 0, lp: [...adapters[me]!.overlay.lp] }], handShuffles: [], tallySteps: [], unmapped: [], playStarts: [], ...view() }, false)
   }
 
   /** Un anfitrión nuevo (otro Worker): arma el duelo con las primeras `to` respuestas ya dadas. Lo que mande el anterior ya no se escucha. */
@@ -479,6 +483,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         ...(out.unmapped.length > 0 ? { unmapped: snapshot.unmapped.concat(out.unmapped) } : {}),
         ...(out.lp.length > 0 ? { lifeSteps: snapshot.lifeSteps.concat(out.lp.map((step) => ({ at: step.at + snapshot.order.length, lp: step.lp }))) } : {}),
         ...(out.hands.length > 0 ? { handShuffles: snapshot.handShuffles.concat(out.hands.map((step) => ({ ...step, at: step.at + snapshot.order.length }))) } : {}),
+        ...(out.tally.length > 0 ? { tallySteps: snapshot.tallySteps.concat(out.tally.map((step) => ({ ...step, at: step.at + snapshot.order.length }))) } : {}),
       },
       !snapshot.replaying,
     )
