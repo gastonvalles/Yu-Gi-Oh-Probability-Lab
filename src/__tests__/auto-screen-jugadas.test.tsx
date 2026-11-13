@@ -54,8 +54,8 @@ describe('auto-screen · las jugadas', () => {
     const sheet = screen.getByRole('region', { name: 'Nibiru' })
     const effects = within(sheet).getAllByRole('menuitem')
 
-    // Cada efecto, un botón de la ficha con el número de su texto (en español), sin «Activar efecto» que abra otra lista ni un «Más».
-    expect(effects.map((effect) => effect.textContent)).toEqual(['Efecto 2', 'Efecto 3'])
+    // Cada efecto, un botón de la ficha con su texto (el strN, en inglés; nunca un número), sin «Activar efecto» que abra otra lista ni un «Más».
+    expect(effects.map((effect) => effect.textContent)).toEqual(['Summon a Token', 'Destroy a monster'])
     expect(within(sheet).queryByRole('menuitem', { name: /Activar efecto|Más/ })).toBeNull()
     expect(screen.queryByRole('dialog', { name: 'Activar efecto' })).toBeNull()
     fireEvent.click(effects[1]!)

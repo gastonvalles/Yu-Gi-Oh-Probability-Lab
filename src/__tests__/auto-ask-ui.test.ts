@@ -1,6 +1,6 @@
 import { applyLocale, loadLocale, t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, distinctLabels, effectAskText, effectText, itemsInto, listOrder, namesList, openAsk, optionsTitle, pickStatsOf, pickTitle, placeLabel, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type CardPick, type AskContext, type AskGesture, type AskOptionsView, type AskQueries, type AskState, type AskView } from '../app/auto/ask-ui'
+import { askView, distinctLabels, effectAskText, itemsInto, listOrder, namesList, openAsk, optionsTitle, pickStatsOf, pickTitle, placeLabel, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type CardPick, type AskContext, type AskGesture, type AskOptionsView, type AskQueries, type AskState, type AskView } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
@@ -242,10 +242,10 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     // Brilla lo que se invoca de forma especial (también por Péndulo) y lo que se activa (la Mágica, la Trampa colocada, los efectos del cementerio, la escala); lo que sólo se invoca de forma
     // normal, se coloca o cambia de posición, no.
     expect(view.respond).toEqual(['card-500-1', 'card-960-1', 'card-900-1', 'card-950-1', 'card-400-1', 'card-300-1'].map(mine))
-    // La frase de cada efecto la pone la pantalla (la costura); nunca queda vacía. En español, el `strN` (sólo en inglés) va por su número.
+    // La frase de cada efecto la pone la pantalla (la costura); nunca queda vacía ni es un número: el `strN` (sólo en inglés) va tal cual.
     const named = askView(open(ASKS[1]!, ctx(MESA, { effectLabel: (code, description) => (description === stringId(400, 1) ? `${code}:1` : '') })))
 
-    expect(named.items.get('card-400-1')![0]!.children!.map((child) => child.label)).toEqual(['Efecto 2', t('practice.menu.activateEffect')])
+    expect(named.items.get('card-400-1')![0]!.children!.map((child) => child.label)).toEqual(['400:1', t('practice.menu.activateEffect')])
     // Sin texto, la escala de un Péndulo dice «Activar como escala» también entre otros efectos.
     const pendulum = { ...(ASKS[1] as Extract<CoreAsk, { type: 'select_idlecmd' }>), activates: [act(300, L.HAND, 2, stringId(300, 0)), act(300, L.HAND, 2, '1160')] }
 
@@ -444,7 +444,7 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
       count: 1,
       options: [
         { value: 0, description: stringId(400, 0) },
-        { value: 1, description: stringId(400, 1), label: 'Efecto 2' },
+        { value: 1, description: stringId(400, 1), label: 'Destroy a monster' },
         { value: 2, description: '573', label: t('practice.menu.toHand') },
       ],
       chosen: [],
@@ -843,11 +843,19 @@ describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qu�
     expect(effectAskText(prompt, null).text).toBe(t('auto.ask.effect'))
   })
 
-  it('el sí o no de una carta: en español, por su número (el `strN` es inglés); sin texto, «¿Lo hacés?»', () => {
-    expect(yesNoText('Tribute 1 monster?', stringId(400, 2), 'Kagari')).toBe('¿Aplicás el efecto 3 de «Kagari»?')
-    expect(yesNoText(null, '31', null)).toBe(t('auto.ask.fallback'))
-    expect(effectText('Destroy a monster', stringId(400, 0))).toBe('Efecto 1')
-    expect(effectText(null, stringId(400, 0))).toBeNull()
+  it('el sí o no de una carta: su texto (el `strN`, en inglés también en español), nunca un número; sin texto, «¿Lo hacés?»', () => {
+    expect(yesNoText('Tribute 1 monster?')).toBe('Tribute 1 monster?')
+    expect(yesNoText(null)).toBe(t('auto.ask.fallback'))
+  })
+
+  it('una opción (`select_option`) dice su cadena, también en español; sin cadena, ningún número (la de la carta la nombra la pantalla: «Activar efecto»)', () => {
+    // Medius the Pure (97556336): «A la mano» (texto del sistema) y su `str4`, que en español decía «Efecto 4».
+    const labels: Record<string, string> = { [stringId(97556336, 3)]: 'Special Summon it' }
+    const view = (descriptions: string[]) => askView(open({ type: 'select_option', player: 0, options: descriptions }, { ...ctx(MESA), effectLabel: (_code, description) => labels[description] ?? null })).options!.options
+    const shown = view([stringId(97556336, 3), stringId(97556336, 4)])
+
+    expect(shown.map((option) => option.label)).toEqual(['Special Summon it', undefined])
+    expect(shown.some((option) => /\d/.test(option.label ?? ''))).toBe(false)
   })
 
   it('la casilla es de un renglón, sin nombrar la carta (ya está levantada en tu mano); con varias, cuántas', () => {
@@ -872,8 +880,7 @@ describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qu�
   it('en inglés: el texto de la carta tal cual y las frases de Master Duel', async () => {
     await loadLocale('en')
     applyLocale('en')
-    expect(effectText('Destroy a monster', stringId(400, 0))).toBe('Destroy a monster')
-    expect(yesNoText('Tribute 1 monster?', stringId(400, 2), 'Kagari')).toBe('Tribute 1 monster?')
+    expect(yesNoText('Tribute 1 monster?')).toBe('Tribute 1 monster?')
     expect(respondTitle(offer(2), 'Ash Blossom & Joyous Spring')).toBe('"Ash Blossom & Joyous Spring" was activated. Respond?')
     expect(zoneTitle(zone())).toBe('Choose a zone')
   })

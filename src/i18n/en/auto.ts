@@ -128,8 +128,6 @@ export const auto: Translated<typeof es> = {
   // The engine's yes/no question, in the middle of the mat.
   'auto.ask.effect': 'Activate the effect?',
   'auto.ask.effectOf': 'Activate the effect of "{name}"?',
-  'auto.ask.effectN': 'Apply effect {n} of "{name}"?',
-  'auto.effect.number': 'Effect {n}',
   'auto.play.numbered': '{label} {n}',
   'auto.ask.kicker': 'Trigger effect',
   'auto.ask.afterEvent': 'After the {event}',

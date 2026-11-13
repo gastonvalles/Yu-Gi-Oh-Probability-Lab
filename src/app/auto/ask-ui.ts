@@ -1,11 +1,11 @@
-import { getLocale, t, type MessageKey } from '../../i18n'
+import { t, type MessageKey } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { nowStat, type PickStat } from '../field-stats'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
 import { spotOf, type Adapter, type AutoOverlay, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
 import type { AskWhyView } from './ask-why'
 import { passivePolicy } from './policies'
-import { LOCATION as L, POSITION as P, parseAnswer, splitDesc, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
+import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
 
 /**
  * Duelos automáticos · las preguntas del núcleo en la mesa de siempre (§2–§4 del diseño de F2b). Puro: sin React, sin DOM y sin el
@@ -554,7 +554,7 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
               label,
               ...(at ? { at } : {}),
               children: indices.map((index) => ({
-                label: effectText(ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) ?? null, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
+                label: ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
                 answer: answer(index),
                 effect: effect(index),
                 ...intoOf(cards[index]!),
@@ -692,17 +692,11 @@ export function respondOffer(view: AskView, chain: readonly ChainLink[]): Respon
 }
 
 /**
- * El rótulo de un efecto de una carta (su `strN`, que el `.cdb` trae sólo en inglés): en inglés, tal cual; en español, su número («Efecto 2»: `str1` es el 1). Sin rótulo, null.
- * ponytail: el número es el del texto (`strN`), que por costumbre de los scripts sigue el orden de los efectos de la carta; un `strN` de una pregunta suelta puede no ser un efecto.
+ * El sí o no a secas (`select_yesno`): el texto de la carta (`effectLabel`, su `strN`), sin texto, «¿Lo hacés?». Como el rótulo de una opción o de un efecto, va en inglés también en
+ * español (el `.cdb` sólo lo trae así, como los nombres y textos de las cartas: `docs/i18n.md`): un número («Efecto 4») no le dice nada a nadie, y el `strN` de una opción ni siquiera es un efecto.
  */
-export function effectText(label: string | null, description: string): string | null {
-  return label && getLocale() === 'es' ? t('auto.effect.number', { n: splitDesc(description).n + 1 }) : label
-}
-
-/** El sí o no a secas (`select_yesno`): el texto de la carta (`effectLabel`) en inglés, o su número y su carta en español; sin texto, «¿Lo hacés?». */
-export function yesNoText(label: string | null, description: string, name: string | null): string {
-  if (!label) return t('auto.ask.fallback')
-  return getLocale() === 'es' && name ? t('auto.ask.effectN', { n: splitDesc(description).n + 1, name }) : label
+export function yesNoText(label: string | null): string {
+  return label ?? t('auto.ask.fallback')
 }
 
 /** Lo que dice la pregunta de un efecto (`select_effectyn`): con la carta, «¿Activás el efecto de «X»?». */
@@ -782,7 +776,7 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
     case 'select_option':
       base.options = ask.options.map((description, value) => {
         const system = SYSTEM_OPTIONS[description as keyof typeof SYSTEM_OPTIONS]
-        const label = effectText(ctx.effectLabel?.(0, description) ?? null, description) || (system ? t(system) : null)
+        const label = ctx.effectLabel?.(0, description) || (system ? t(system) : null)
 
         return { value, description, ...(label ? { label } : {}) }
       })

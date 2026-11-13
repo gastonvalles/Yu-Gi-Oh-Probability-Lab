@@ -317,7 +317,7 @@ function FamilySample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     { label: t('practice.menu.set'), onSelect: reply(t('practice.menu.set')) },
     { label: t('practice.menu.specialSummon'), onSelect: reply(t('practice.menu.specialSummon')) },
     { label: t('practice.menu.specialSummon'), onSelect: reply(t('practice.menu.specialSummon')) },
-    { label: t('practice.menu.activateEffect'), onSelect: () => {}, children: [1, 2].map((n) => ({ label: t('auto.effect.number', { n }), onSelect: reply(t('auto.effect.number', { n })) })) },
+    { label: t('practice.menu.activateEffect'), onSelect: () => {}, children: ['Special Summon this card from your hand', 'Add 1 "Theorealize" Spell/Trap from your Deck to your hand'].map((label) => ({ label, onSelect: reply(label) })) },
   ]
   const phases: MenuItem[] = PHASES.map((phase, index) => ({ label: phase.name, current: index === 2, disabled: index < 2 || index === 4, onSelect: reply(phase.name) }))
   const card = { ...sampleDeckCard(14558127), cardType: 'Effect Monster', atk: '0', def: '1800', description: 'Texto de muestra del efecto, recortado a tres renglones: «Ver carta» abre el texto entero con sus números, su arte y sus impresiones.' }

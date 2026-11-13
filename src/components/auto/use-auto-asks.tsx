@@ -1444,7 +1444,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       <AskPrompt
         key={askId ?? 0}
         // Un sí o no a secas dice su pregunta (el texto de su `desc`) cuando la tiene; el de un efecto, «¿Activás el efecto?» con qué pasó y su lugar (`effectAsk`): la carta, por su arte.
-        text={effectAsk?.text ?? yesNoText(effectLabel(0, prompt.description), prompt.description, knownName(splitDesc(prompt.description).code))}
+        text={effectAsk?.text ?? yesNoText(effectLabel(0, prompt.description))}
         {...(promptCard ? { card: { name: nameOf(promptCard.ref, promptCard.code), art: artOf(promptCard.ref, promptCard.code) } } : {})}
         // Tocar la carta la abre en grande (como la de la ficha); en escritorio ya está en el detalle de la izquierda.
         {...(promptCard?.code && !desktop ? { onInspect: () => setRivalCard({ drawId: drawIdOf(promptCard.code), rect: new DOMRect(window.innerWidth / 2, window.innerHeight / 2, 0, 0) }) } : {})}

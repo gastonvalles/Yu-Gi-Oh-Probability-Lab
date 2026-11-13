@@ -22,14 +22,14 @@ const MIXED: CoreAsk = { type: 'select_card', player: 0, can_cancel: true, min: 
 const MIXED_DECK: CoreAsk = { type: 'select_card', player: 0, can_cancel: true, min: 1, max: 2, selects: [pos(102, L.DECK, 0, 8), pos(101, L.DECK, 1, 8), pos(400, L.GRAVE, 0, 5)] }
 
 describe('auto-screen · las hojas', () => {
-  it('option: una hoja con lo que hace cada opción (un texto de la carta, por su número en español; sin texto, «Activar efecto») y la carta que pregunta arriba; tocar una contesta con su índice', () => {
+  it('option: una hoja con lo que hace cada opción (el texto de la carta, en inglés también en español y nunca un número; sin texto, «Activar efecto») y la carta que pregunta arriba; tocar una contesta con su índice', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(OPTION))
     const sheet = screen.getByRole('dialog', { name: 'Elegí una opción' })
     expect(sheet.parentElement!.querySelector('.animate-nav-scrim')).toBeNull()
 
-    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Efecto 3', 'A la mano', 'Al cementerio', 'Activar efecto'])
+    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Destroy a monster', 'A la mano', 'Al cementerio', 'Activar efecto'])
     expect(sheet).toHaveTextContent('Nibiru')
     fireEvent.click(within(sheet).getAllByRole('menuitem')[2]!)
     expect(fake.answers).toEqual([{ type: 'select_option', index: 2 }])
@@ -133,7 +133,7 @@ describe('auto-screen · las hojas', () => {
     expect(fake.answers).toEqual([{ type: 'select_yesno', yes: true }])
     expect(dispatches).toBe(0)
     core(() => fake.ask({ ...YESNO, description: stringId(400, 1) }))
-    expect(document.querySelector<HTMLElement>('[data-prompt]')!).toHaveTextContent(/¿Aplicás el efecto 2 de «Nibiru/)
+    expect(document.querySelector<HTMLElement>('[data-prompt]')!).toHaveTextContent('Summon a Token')
   })
 
   it('effectyn: la pregunta, con el nombre de la carta, con su lugar en la pestaña, la carta brilla en su pila y «No activar» contesta que no', () => {
