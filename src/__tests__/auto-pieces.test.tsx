@@ -1013,9 +1013,9 @@ describe('la carta del menú se toca (sin «Ver carta» visible)', () => {
     expect(buttons.slice(0, -1).some((button) => button.className.includes('bg-info!'))).toBe(false)
   })
 
-  it('la principal de cada cartel (sí/no, responder, elegir cartas, ordenar) lleva el lima de los menús y su apagado liso', () => {
+  it('la principal de cada cartel (sí/no, responder, elegir cartas, ordenar) lleva el lima de los menús y su apagado sin relleno (el borde lima tenue, del mismo alto)', () => {
     render(<AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
-    expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveClass('bg-info!', 'text-info-foreground!', 'disabled:bg-surface-raised!', 'disabled:opacity-100!')
+    expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveClass('bg-info!', 'text-info-foreground!', 'border', 'disabled:bg-transparent!', 'disabled:border-info/40!', 'disabled:opacity-100!')
     expect(screen.getByRole('button', { name: 'No activar' })).not.toHaveClass('bg-info!')
   })
 

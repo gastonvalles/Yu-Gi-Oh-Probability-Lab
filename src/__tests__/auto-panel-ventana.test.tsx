@@ -236,6 +236,21 @@ describe('«Menús flotantes» (Opciones) en el celular', () => {
     expect(win()).toHaveAttribute('data-auto-panel', 'docked')
   })
 
+  it('lleva la pregunta en la barra (hasta dos renglones), el lugar sobre el arte (`data-window`) y, si lo guardado deja el contenido cortado, al abrir crece hasta su contenido (sin guardarlo)', () => {
+    desktop = false
+    setMatMenus('floating')
+    // Lo que mide su contenido sin alto propio: 300 px (jsdom no mide).
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return this.matches('[data-prompt]') ? Number.parseFloat(this.style.height) || 300 : 0 } })
+    localStorage.setItem(sizeKey(phoneKey(autoWindowKey('ask'))), JSON.stringify({ width: 369, height: 260 }))
+    ask()
+
+    expect(win()).toHaveAttribute('data-window')
+    expect(within(bar()).getByRole('heading', { name: '¿Activás el efecto?' })).toHaveClass('line-clamp-2')
+    expect(screen.getAllByRole('heading')).toHaveLength(1)
+    expect(sizeOf(win())).toEqual({ width: 369, height: 300 })
+    expect(saved(sizeKey(phoneKey(autoWindowKey('ask'))))).toEqual({ width: 369, height: 260 })
+  })
+
   it('en escritorio el dedo también la lleva (una pantalla táctil), como el mouse y el lápiz', () => {
     ask()
     pull(bar(), -100, -300, finger)
