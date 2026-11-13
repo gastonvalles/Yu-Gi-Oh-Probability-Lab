@@ -77,6 +77,9 @@ describe('la cadena en grande', () => {
     expect(document.querySelectorAll('[data-chain-burst]')).toHaveLength(1)
     expect(cards()[2]!.querySelector('[data-chain-burst]')).toHaveClass('-z-1', 'animate-fx-flash', 'motion-reduce:hidden')
     expect(veil()).toHaveClass('opacity-100', 'pointer-events-none', 'bg-chain-veil/65')
+    // TI-249: el velo oscurece toda la pantalla (no sólo el rectángulo del campo).
+    expect(veil()).toHaveClass('fixed', 'inset-0')
+    expect(document.querySelector('[data-chain-dim]')).toHaveClass('fixed', 'inset-0')
     // «Se resuelve del último al primero», sin línea a la vista (tapaba el Deck y el Extra del rival): en el status oculto.
     expect(screen.getByRole('status')).toHaveTextContent(/^Se resuelve del último al primero$/)
     expect(screen.getByRole('status')).toHaveClass('sr-only')
