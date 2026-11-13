@@ -61,11 +61,11 @@ describe('«Tu deck de antes»: la máquina de estados', () => {
     expect(planDeckChange(empty, after, 'edit', null, NOW)).toEqual({ copy: null, session: { v: 1, lastChangeAt: NOW } })
   })
 
-  it('lee sólo la versión que conoce y migra los roles viejos', () => {
+  it('lee sólo la versión que conoce; un rol que ya no existe se descarta sin romper', () => {
     expect(parseDeckBefore({ v: 2, savedAt: 'x', main: [], extra: [], side: [] })).toBeNull()
 
     const [card] = copies(1, 'Vieja', 1, [])
-    const parsed = parseDeckBefore({ v: 1, deckName: 'D', savedAt: '2026-10-22T00:00:00.000Z', main: [{ ...card, roles: ['removal'] }], extra: [], side: [] })
+    const parsed = parseDeckBefore({ v: 1, deckName: 'D', savedAt: '2026-10-22T00:00:00.000Z', main: [{ ...card, roles: ['removal', 'boardbreaker'] }], extra: [], side: [] })
 
     expect(parsed?.main[0]?.roles).toEqual(['boardbreaker'])
     expect(parsed?.counts).toEqual({ main: 1, extra: 0, side: 0 })
