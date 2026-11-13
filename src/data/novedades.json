@@ -1,6 +1,53 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-7-replay-video-cadena",
+      "date": "2026-11-12",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El replay y el video con la cadena, y la tableta como el celular",
+        "novedades": [
+          "En el replay de un duelo vuelve la cadena: la carta en grande con su número de eslabón y, al resolverse, un medallón donde se activó cada uno.",
+          "Las cartas del replay vuelan de un lugar a otro en vez de aparecer de golpe.",
+          "El video que descargás de un duelo usa el mismo campo que la mesa (pilas a los costados, casillas con forma de carta) y muestra la cadena y los medallones.",
+          "En el menú de ataque o defensa, cada opción es la carta misma: parada para atacar, acostada para defender o con el dorso.",
+          "En los menús del duelo, mantené apretada una carta (o clic derecho) y se ve en grande; la ventana recuerda el tamaño que le diste.",
+          "En la tableta, el duelo usa la misma mesa que el celular: chapas con las vidas, botones abajo y avisos arriba."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "El cartel de fase ya no parpadea al cambiar de fase.",
+          "El registro de jugadas ya no aparece como cartel sobre el campo: se lee en el chat."
+        ],
+        "ojo": [
+          "La cadena sale en los replays y videos de los duelos que grabes desde ahora; los de antes no la tienen guardada.",
+          "El video de un combo no lleva cadena."
+        ]
+      },
+      "en": {
+        "title": "The replay and the video with the chain, and the tablet like the phone",
+        "novedades": [
+          "A duel replay brings the chain back: the big card with its link number and, as it resolves, a medallion where each link was activated.",
+          "Cards in the replay fly from one place to another instead of popping in.",
+          "The video you download from a duel uses the same field as the table (piles on the sides, card-shaped slots) and shows the chain and the medallions.",
+          "In the attack or defense menu, each option is the card itself: upright to attack, sideways to defend, or face down.",
+          "In duel menus, press and hold a card (or right-click) to see it large; the window remembers the size you gave it.",
+          "On the tablet, the duel uses the same table as the phone: badges with the life points, buttons at the bottom and notices at the top."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "The phase banner no longer flickers when the phase changes.",
+          "The play log no longer shows up as a banner over the field: you read it in the chat."
+        ],
+        "ojo": [
+          "The chain shows in replays and videos of duels you record from now on; older ones did not save it.",
+          "A combo video has no chain."
+        ]
+      }
+    },
+    {
       "id": "2026-11-12-6-colores-menus-replay",
       "date": "2026-11-12",
       "tags": [
