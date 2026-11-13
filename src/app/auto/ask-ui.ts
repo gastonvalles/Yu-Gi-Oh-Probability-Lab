@@ -486,18 +486,13 @@ export function itemsInto(items: readonly AskItem[], into: Into): AskItem[] {
 }
 
 /**
- * Dos botones de una misma ficha nunca llevan el mismo texto. Una carta con dos procedimientos de invocación (una de Sincronía con el suyo propio) llega del núcleo como la misma carta dos veces
- * en `special_summons`, sin nada que diga cuál es cuál: se numeran («Invocación Especial 1», «… 2»), como los efectos, y no se inventa una diferencia. La misma jugada con la misma respuesta
- * repetida es una sola.
+ * Dos botones de una misma ficha nunca llevan el mismo texto, y una jugada es un solo botón. Una carta con dos procedimientos de invocación (Black-Winged Assault Dragon: su Sincronía y el suyo
+ * propio) llega del núcleo como la misma carta, en el mismo lugar, dos veces en `special_summons`: el índice no elige el procedimiento (con el núcleo real, contestar con la segunda lleva a la
+ * misma Sincronía; con dos que se pueden, pregunta él), así que va un solo botón que contesta con la primera. Sin respuesta (ítems ya armados), los del mismo texto se numeran.
  */
 export function distinctLabels<T extends { label: string; answer?: unknown }>(items: readonly T[]): T[] {
   const seenPlay = new Set<string>()
-  const unique = items.filter((item) => {
-    if (item.answer === undefined) return true
-    const key = `${item.label}|${JSON.stringify(item.answer)}`
-
-    return seenPlay.has(key) ? false : (seenPlay.add(key), true)
-  })
+  const unique = items.filter((item) => item.answer === undefined || (seenPlay.has(item.label) ? false : (seenPlay.add(item.label), true)))
   const counts = new Map<string, number>()
 
   for (const item of unique) counts.set(item.label, (counts.get(item.label) ?? 0) + 1)
