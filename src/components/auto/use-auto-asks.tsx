@@ -395,9 +395,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // (`PracticeMat.duel.onBanding`, lo dice la banda), no se pregunta nada, tocar la mesa no salta y la jugada que sigue (de los dos lados) espera; las fases y los robos, no.
   const [banding, setBanding] = useState(false)
   const theirsNext = rivalPhases && theirsShown < snap.theirsActs.length && theirsShown < theirsUpTo(paced.cursor, paced.actions)
-  // La jugada que sigue espera al cartel; una fase o un robo no (ni vuelven a contar su espera cuando el cartel cambia).
+  // La jugada que sigue espera al cartel; una fase o un robo no (ni vuelven a contar su espera cuando el cartel cambia), ni lo de un turno del rival sin jugadas (su descarte de la End
+  // Phase va al ritmo de los carteles, `quietWait`).
   const upNext = theirsNext ? snap.theirsActs[theirsShown]?.action : paced.actions[paced.cursor]
-  const waitsBand = banding && upNext !== undefined && upNext.type !== 'phase' && upNext.type !== 'draw'
+  const waitsBand = banding && upNext !== undefined && upNext.type !== 'phase' && upNext.type !== 'draw' && !(theirsNext && quietTurn(snap.theirsActs, theirsShown))
 
   // Se va solo (con menos movimiento queda quieto ese rato); sólo el que se ve: el siguiente pudo salir en el mismo instante. «Tu turno» se queda hasta tu primera fase (la saca el ritmo de
   // abajo; esto es la red): si se fuera antes, el lector de pantalla volvería a decir la fase vieja de tu mesa.

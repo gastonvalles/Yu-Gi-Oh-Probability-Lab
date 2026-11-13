@@ -25,7 +25,7 @@ export const TURN_BAND_HOLD_MS = 1000
 export const TURN_BAND_MS = 1250
 /**
  * Lo que espera, quieta, tu End Phase en un duelo antes de entrar (el pase llega ~250 ms después): entra si dura este rato sin que llegue otra. Las demás no esperan: quien las manda les da su
- * tiempo (el automático cuenta un turno que pasa solo con cada cartel leído, `quietWait` de `use-auto-asks.tsx`); las jugadas, sí la esperan (`onBusy`).
+ * tiempo (el automático cuenta un turno que pasa solo con cada cartel leído, `quietWait` de `use-auto-asks.tsx`); las jugadas, sí la esperan (`onIdle`).
  */
 export const PHASE_BAND_SETTLE_MS = 400
 
@@ -92,9 +92,9 @@ const fromSide = (fromLeft: boolean, leaving: boolean) =>
  * de quien empieza (1250 ms), y después, una detrás de la otra, la banda de la fase más nueva (la Draw Phase, o la que ya llegó mientras tanto). Tu End Phase en un duelo (`settle`) espera
  * `PHASE_BAND_SETTLE_MS`: si pasa el turno, no sale. Se ubica sola en la fila `p2` de la grilla del campo (va adentro de él, debajo de la cadena y de las preguntas, que son otra capa), no ataja
  * toques y lleva su propio reloj, así que quien la monta puede sacar `cue` cuando quiera. Con movimiento reducido, sólo aparece y se va. Sólo `translate` y `opacity`.
- * `onBusy`: si hay un cartel en curso (a la vista, o tu End Phase esperando para entrar) y con qué `cue`, cada vez que cambia; es lo que lee el automático para no dejar jugar mientras tanto.
+ * `onIdle`: ya no hay cartel en curso (ni a la vista ni tu End Phase esperando para entrar) con este `cue`; el automático no deja jugar hasta oírlo de la fase de ahora.
  */
-export function PhaseBand({ cue, hold = false, onBusy }: { cue: PhaseCue | null; hold?: boolean; onBusy?: (busy: boolean, cue: PhaseCue | null) => void }) {
+export function PhaseBand({ cue, hold = false, onIdle }: { cue: PhaseCue | null; hold?: boolean; onIdle?: (cue: PhaseCue | null) => void }) {
   const [shown, setShown] = useState<PhaseCue | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [turn, setTurn] = useState<PhaseCue | null>(null)
@@ -170,8 +170,8 @@ export function PhaseBand({ cue, hold = false, onBusy }: { cue: PhaseCue | null;
   // Antes de pintar: quien espera a la banda no ve ni un cuadro sin ella.
   const busy = turn !== null || shown !== null || pending !== null
   useLayoutEffect(() => {
-    onBusy?.(busy, cue)
-  }, [busy, cue, onBusy])
+    if (!busy) onIdle?.(cue)
+  }, [busy, cue, onIdle])
 
   const gone = (out: boolean, done: () => void) => (event: TransitionEvent<HTMLDivElement>) => {
     if (out && event.target === event.currentTarget && event.propertyName === 'opacity') done()
