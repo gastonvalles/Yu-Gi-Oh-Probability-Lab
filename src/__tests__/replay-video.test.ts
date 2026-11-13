@@ -8,10 +8,11 @@ import { muxMp4 } from '../components/replays/video/mp4-mux'
 import { lifeMs, lifeOf, overlaysOf } from '../components/replays/video/video-fx'
 import { placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { phoneDuelLayout } from '../components/probability/compact-field'
-import { artUrls, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
+import { drawBanner } from '../components/replays/video/video-draw'
+import { artUrls, fieldRect, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
 import { FPS, frameDurations, frameOf, INTRO_MS, OUTRO_MS, STEP_MS, VIDEO_PACE, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
-import { fakeAssets } from './support/video-fakes'
+import { fakeAssets, fakeCtx } from './support/video-fakes'
 
 // Un duelo chico (como el de `duel-replay.test.ts`): invoco, coloco, activo y paso; el rival roba, invoca y me ataca.
 const deck = Array.from({ length: 20 }, (_, i) => `card-${14558127 + (i % 7) * 1000}-${Math.floor(i / 7) + 1}`)
@@ -94,6 +95,18 @@ describe('el diseño del cuadro', () => {
     expect([pileAt(0, 'gy'), pileAt(0, 'extra'), pileAt(0, 'deck'), pileAt(0, 'banished')]).toEqual([layout.cellAt(3, 6), layout.cellAt(4, 0), layout.cellAt(4, 6), layout.cellAt(2, 6)])
     // Siete columnas por cinco filas, menos las tres de las fases del medio.
     expect(last.cells).toHaveLength(32)
+  })
+
+  it('el cierre va sobre la franja del texto (no tapa cómo quedó el campo); el título, sobre el medio de la mesa', () => {
+    const rects: number[][] = []
+    const ctx = new Proxy(fakeCtx(), { get: (target, key) => (key === 'roundRect' ? (...args: number[]) => rects.push(args) : Reflect.get(target, key)) })
+    drawBanner(ctx, last, { title: 'Ana vs Beto', subtitle: 'Ganó Beto' }, fakeAssets, 1, true)
+    drawBanner(ctx, last, { title: 'Ana vs Beto', subtitle: '' }, fakeAssets)
+    const { text } = last.layout
+    const field = fieldRect(last.cells)
+    expect(rects[0]!.slice(0, 4)).toEqual([text.x, text.y, text.w, text.h])
+    expect(rects[0]![1]).toBeGreaterThan(last.layout.myHand.y + last.layout.myHand.h)
+    expect(rects[1]![1]! + rects[1]![3]!).toBeLessThan(field.y + field.h)
   })
 
   it('las cartas de la mano entran en su franja: separadas si son pocas, encimadas si son muchas', () => {
