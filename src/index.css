@@ -1653,7 +1653,7 @@
     --info: #67cb3a;
     --info-rgb: 103 203 58;
     /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
-    --success-soft: #7cefb9;
+    --success-soft: #80ecd6;
     --warning-soft: #ffc56b;
     --danger-soft: #ff6b6e;
     /* El rojo de un arco (un anillo de un problema, la cola de «sin salida»): el `danger` de la paleta no llega a 3:1 contra la pista. */
@@ -1666,11 +1666,11 @@
     /* El Extra Deck y los monstruos Sincro y Enlace: el azul de siempre (las zonas del deck son categorías y se distinguen por color). */
     --handtrap: #3b82f6;
     --handtrap-rgb: 59 130 246;
-    /* Bien / listo: un verde frío (~153°) que se separa del verde del EVA-01 (101°); siempre con ícono o texto. */
-    --success: #2ee08f;
-    --success-rgb: 46 224 143;
-    /* El verde de un botón lleno con texto blanco (5,33:1; el blanco sobre el verde claro no se lee). */
-    --success-solid: #167a4c;
+    /* Bien / listo: un verde agua (~166°) que se separa del verde del EVA-01 (101°); siempre con ícono o texto. */
+    --success: #2edcb4;
+    --success-rgb: 46 220 180;
+    /* El verde de un botón lleno con texto blanco (5,24:1; el blanco sobre el verde claro no se lee). */
+    --success-solid: #137a64;
     /* Ojo / a medio hacer: el naranja del EVA-01 (~37°), lejos del verde y del violeta (el violeta es de lo tuyo). */
     --warning: #f5a524;
     --warning-rgb: 245 165 36;
