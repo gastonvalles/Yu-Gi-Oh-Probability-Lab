@@ -192,24 +192,21 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     }
   })
 
-  it('una carta con dos procedimientos de invocación (la misma dos veces en special_summons) no lleva dos botones con el mismo texto: se numeran, sin inventar cuál es cuál', () => {
+  it('una carta con dos procedimientos de invocación (la misma dos veces en special_summons, como Black-Winged Assault Dragon) es un solo botón «Invocación Especial» que contesta con la primera', () => {
     const idle = ASKS[1] as Extract<CoreAsk, { type: 'select_idlecmd' }>
     const view = askView(open({ ...idle, special_summons: [loc(500, L.EXTRA, 0), loc(500, L.EXTRA, 0), loc(960, L.SZONE, 0)] }, ctx(MESA)))
     const sums = view.items.get('card-500-1')!.map((item) => [item.label, item.answer])
 
-    expect(sums).toEqual([
-      [t('auto.play.numbered', { label: t('practice.menu.specialSummon'), n: 1 }), { type: 'select_idlecmd', action: 1, index: 0 }],
-      [t('auto.play.numbered', { label: t('practice.menu.specialSummon'), n: 2 }), { type: 'select_idlecmd', action: 1, index: 1 }],
-    ])
+    expect(sums).toEqual([[t('practice.menu.specialSummon'), { type: 'select_idlecmd', action: 1, index: 0 }]])
     // Una sola vez, sin número.
     expect(askView(open(idle, ctx(MESA))).items.get('card-500-1')!.map((item) => item.label)).toEqual([t('practice.menu.specialSummon')])
   })
 
-  it('distinctLabels: la misma jugada con la misma respuesta es una sola; dos con respuestas distintas se numeran en su orden; las que no se repiten, intactas', () => {
+  it('distinctLabels: la misma jugada es un solo botón, con la primera respuesta (aunque la otra tenga otro índice); sin respuesta, se numeran; las que no se repiten, intactas', () => {
     const play = (label: string, index?: number) => ({ label, ...(index === undefined ? {} : { answer: { type: 'select_idlecmd', action: 1, index } }) })
 
     expect(distinctLabels([play('A', 0), play('A', 0), play('B', 1)] as never).map((item) => item.label)).toEqual(['A', 'B'])
-    expect(distinctLabels([play('A', 0), play('B', 1), play('A', 2)] as never).map((item) => item.label)).toEqual(['A 1', 'B', 'A 2'])
+    expect(distinctLabels([play('A', 0), play('B', 1), play('A', 2)] as never).map((item) => [item.label, (item as { answer: { index: number } }).answer.index])).toEqual([['A', 0], ['B', 1]])
     expect(distinctLabels([play('A'), play('A')]).map((item) => item.label)).toEqual(['A 1', 'A 2'])
   })
 

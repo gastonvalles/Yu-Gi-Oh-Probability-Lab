@@ -159,46 +159,17 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
   const desk = floating && !phoneWindow
   const saved = useContext(LayerBackContext)
   const [minimized, setMinimized] = useState(false)
-  // La ventana se lleva de la barra y se estira del borde y la esquina; posición y tamaño, por tipo (`autoWindowKey`). En la mesa se centra con su `translate`: el corrimiento va en `--drag-x/y`.
-  const move = useDraggableOffset(phoneWindow ? onPhone(autoWindowKey(kind)) : autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, phoneWindow ? WINDOW_MIN_PHONE : WINDOW_MIN, true, true)
-  // Minimizar y abrir sin saltos: baja hasta la tira y recién ahí se minimiza; abierto, sube desde la tira. En el marco del catálogo (en el flujo, sin apoyarse abajo), como siempre.
-  const fold = useFoldMotion(ref, minimized)
-  const dragged = useRef(0)
-  // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; soltada cerca, vuelve deslizándose. Minimizado, la tira hacia arriba lo abre.
-  const follow = (dy: number | null) => {
-    if (ref.current) ref.current.style.translate = dy === null ? '' : `${desktop && !slot ? '-50%' : '0'} ${dy}px`
-    if (dy === null) fold.settle(dragged.current)
-    dragged.current = dy ?? 0
-  }
-  // Lo que queda a la vista minimizado: la tira del celular (44 px y su aire) o, en la ventana, la barra y la fila de botones. Si queda corrida unos px, la tira se acomoda sola.
-  const minimize = (from = 0) => (inline ? setMinimized(true) : fold.fold(() => setMinimized(true), (panel) => panel.offsetHeight - (floating ? 44 + (actions ? 52 : 0) : 52), from))
-  const restore = () => (inline ? setMinimized(false) : fold.raise(() => setMinimized(false)))
-  const dismissible = Boolean(onDismiss) && !leaving
-  const openedAt = useRef(0)
-
-  useEscapeKey(() => (onDismiss ? onDismiss() : minimize()), (dismissible || escape) && !minimized && !leaving)
-  useFocusTrap(ref, dismissible && !minimized && !inline)
-
-  // Al abrir (y al reabrirlo), el foco va a lo que se decide; minimizado, a la tira que lo sube. Sin desplazar la página.
-  useEffect(() => {
-    const target = minimized ? '[data-panel-show]' : (focus ?? '[data-panel-grip], [data-window-bar]')
-
-    ref.current?.querySelector<HTMLElement>(target)?.focus({ preventScroll: true })
-  }, [minimized, focus, slot])
-
-  // Lo que lo cierra tocando afuera: el toque fantasma del celular (el clic que sigue al dedo que abrió la ficha) no cuenta.
-  useEffect(() => {
-    openedAt.current = performance.now()
-  }, [])
-
   // El techo: el borde de abajo de la línea (el del campo); sin línea, la mitad de la pantalla. Opciones (`tall`): en escritorio, el borde de arriba de la columna de la mesa; en el celular, la
-  // mitad. En la ventana de escritorio, además, el ancho de fábrica (`--window-w`) y el de la carta de tu mano (`--hand-card`). Se mide al abrir y al cambiar el tamaño de la ventana.
+  // mitad. En la ventana de escritorio, además, el ancho de fábrica (`--window-w`) y el de la carta de tu mano (`--hand-card`). Se mide al abrir y al cambiar el tamaño de la ventana, antes de
+  // que `useDraggableOffset` acote el lugar y el tamaño guardados (la ventana del celular los acota a su marco, que se mide acá).
   useLayoutEffect(() => {
     const root = ref.current
 
     if (!root || slot || inline) return
+    // La ventana del celular escribe el techo y el piso en su marco (`frame`, que los hereda a ella): con ellos el marco es lo que la ventana puede ocupar.
+    const holder = phoneWindow && root.parentElement ? root.parentElement : root
     const set = (name: string, value: string) => {
-      if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value)
+      if (holder.style.getPropertyValue(name) !== value) holder.style.setProperty(name, value)
     }
     const place = () => {
       const line = document.querySelector('[data-duel-line]')
@@ -248,6 +219,37 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
   }, [slot, inline, minimized, tall, desk, phoneWindow, floating])
+  // La ventana se lleva de la barra y se estira del borde y la esquina; posición y tamaño, por tipo (`autoWindowKey`). En la mesa se centra con su `translate`: el corrimiento va en `--drag-x/y`.
+  const move = useDraggableOffset(phoneWindow ? onPhone(autoWindowKey(kind)) : autoWindowKey(inline ? 'playground' : kind), ref, floating, !inline, phoneWindow ? WINDOW_MIN_PHONE : WINDOW_MIN, true, true)
+  // Minimizar y abrir sin saltos: baja hasta la tira y recién ahí se minimiza; abierto, sube desde la tira. En el marco del catálogo (en el flujo, sin apoyarse abajo), como siempre.
+  const fold = useFoldMotion(ref, minimized)
+  const dragged = useRef(0)
+  // Con el dedo, la franja de arriba sigue al dedo hacia abajo (corriendo su `translate`, sin redibujar) y, soltada lejos, lo minimiza; soltada cerca, vuelve deslizándose. Minimizado, la tira hacia arriba lo abre.
+  const follow = (dy: number | null) => {
+    if (ref.current) ref.current.style.translate = dy === null ? '' : `${desktop && !slot ? '-50%' : '0'} ${dy}px`
+    if (dy === null) fold.settle(dragged.current)
+    dragged.current = dy ?? 0
+  }
+  // Lo que queda a la vista minimizado: la tira del celular (44 px y su aire) o, en la ventana, la barra y la fila de botones. Si queda corrida unos px, la tira se acomoda sola.
+  const minimize = (from = 0) => (inline ? setMinimized(true) : fold.fold(() => setMinimized(true), (panel) => panel.offsetHeight - (floating ? 44 + (actions ? 52 : 0) : 52), from))
+  const restore = () => (inline ? setMinimized(false) : fold.raise(() => setMinimized(false)))
+  const dismissible = Boolean(onDismiss) && !leaving
+  const openedAt = useRef(0)
+
+  useEscapeKey(() => (onDismiss ? onDismiss() : minimize()), (dismissible || escape) && !minimized && !leaving)
+  useFocusTrap(ref, dismissible && !minimized && !inline)
+
+  // Al abrir (y al reabrirlo), el foco va a lo que se decide; minimizado, a la tira que lo sube. Sin desplazar la página.
+  useEffect(() => {
+    const target = minimized ? '[data-panel-show]' : (focus ?? '[data-panel-grip], [data-window-bar]')
+
+    ref.current?.querySelector<HTMLElement>(target)?.focus({ preventScroll: true })
+  }, [minimized, focus, slot])
+
+  // Lo que lo cierra tocando afuera: el toque fantasma del celular (el clic que sigue al dedo que abrió la ficha) no cuenta.
+  useEffect(() => {
+    openedAt.current = performance.now()
+  }, [])
 
   const attrs = {
     role,
@@ -389,7 +391,8 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
   // Lo de arriba del cuerpo: en escritorio, sólo si hay algo más que el título (que ya está en la barra, con el contador). Con poco alto bajo el campo (la ficha sin el panel de detalle) se
   // desliza él: los botones de abajo quedan enteros y con su aire.
   // En la ventana, centrado sobre la carta («Efecto de X» en una línea chica, entera).
-  const lead = floating ? (back || top || head ? <div className="min-h-0 min-w-0 shrink-0 overflow-y-auto overscroll-contain *:justify-items-center *:text-center">{heading}</div> : null) : (
+  // Con la ventana más baja que su contenido (un tamaño guardado chico, el mínimo), cede esto (se desliza) y no los botones, que quedan enteros al pie.
+  const lead = floating ? (back || top || head ? <div className="min-h-0 min-w-0 overflow-y-auto overscroll-contain *:justify-items-center *:text-center">{heading}</div> : null) : (
     <div className="flex min-w-0 shrink-0 items-start gap-2">
       {heading}
       {aside}
@@ -464,15 +467,18 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
     </div>
   )
 
+  // La ventana del celular va en un marco del techo (`--panel-ceiling`) al piso (`--panel-floor`: tu chapa y la botonera) que la recorta: `useDraggableOffset` acota a él el lugar y el tamaño
+  // (arrastrada o con un tamaño guardado nunca pasa del piso ni tapa la chapa, como pasaba con la pantalla entera de área).
+  const frame = phoneWindow ? <div className="pointer-events-none fixed inset-x-0 top-[var(--panel-ceiling,50dvh)] bottom-[var(--panel-floor,0px)] z-[130] overflow-hidden">{view}</div> : view
   const content =
     onDismiss && !slot && !inline ? (
       <>
         {/* Tocar afuera cierra (no en la tira: ahí la mesa sigue viva). */}
         {minimized ? null : <div aria-hidden="true" className="fixed inset-0 z-[129]" onClick={() => performance.now() - openedAt.current >= GHOST_CLICK_MS && onDismiss()} />}
-        {view}
+        {frame}
       </>
     ) : (
-      view
+      frame
     )
 
   return usePresence(!leaving, inline ? content : typeof document === 'undefined' ? null : createPortal(content, slot ?? document.body), () => [ref.current])
@@ -591,9 +597,10 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
   }, [])
 
   // En la ventana de escritorio el nombre va en la barra (el de acá queda para nombrar la ficha). Estirada la ventana, la miniatura crece con su alto (`--win-h`, menos la barra, las jugadas y el
-  // aire: 8,5 rem) hasta 7 rem y sin pasar un tercio del ancho; de fábrica, 2,75 rem.
+  // aire: 8,5 rem; con el «‹ Extra · 9» del celular arriba y la barra en dos renglones, 11,75 rem: si no, el alto de la carta empujaba los botones fuera del marco) hasta 7 rem y sin pasar un
+  // tercio del ancho; de fábrica, 2,75 rem.
   const head = (
-    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2 group-data-[window]/panel:grid-cols-[min(7rem,33cqw,max(2.75rem,calc((var(--win-h,0px)_-_8.5rem)*421/614)))_minmax(0,1fr)]">
+    <div className={cx('grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2', crumb ? 'group-data-[window]/panel:grid-cols-[min(7rem,33cqw,max(2.75rem,calc((var(--win-h,0px)_-_11.75rem)*421/614)))_minmax(0,1fr)]' : 'group-data-[window]/panel:grid-cols-[min(7rem,33cqw,max(2.75rem,calc((var(--win-h,0px)_-_8.5rem)*421/614)))_minmax(0,1fr)]')}>
       <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden bg-input">
         {back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} {...(frame ? { frame } : {})} className="block h-full w-full object-cover" />}
         {/* La carta se toca: la abre en grande, con su detalle (sin botón «Ver carta»; con el panel de detalle a la vista, la mesa no pasa `onInspect`). */}
