@@ -10,7 +10,7 @@ import type { DuelConnect } from '../app/use-duel'
 import { DuelScreen } from '../components/duel/DuelScreen'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
-import { createDuelHarness, asSocket, cardsById, closeMore, effectMonster, fakeRooms, hasSave, mainIds, monsters, render, rulesDialog, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
+import { createDuelHarness, asDesktop, asSocket, cardsById, closeMore, effectMonster, fakeRooms, hasSave, mainIds, monsters, render, rulesDialog, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
 
 // La pantalla del duelo arma dos mesas completas por prueba: sola cada una tarda un par de segundos, pero con toda la suite corriendo a la vez alguna pasaba los 5 s de siempre (la de «atacar» fallaba una de cada tantas corridas).
 vi.setConfig({ testTimeout: 20_000 })
@@ -353,6 +353,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('un Match se elige al crear la sala y las dos pantallas muestran el marcador en la mesa', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
@@ -936,6 +938,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('dos jugadores: uno crea, el otro pega el enlace, cada uno reparte su mano y se ven los puntos de vida del otro', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
     createRoom(host)
@@ -1017,6 +1021,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('atacar: el rival ve el cartel del ataque y la espada cruza la mesa (directo, o a la carta tuya que atacó) y lo que se ve no revela nada más', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     // El aviso se va solo a los pocos segundos: se controla el reloj de los temporizadores (lo demás sigue igual).
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const host = render(<DuelScreen {...screenProps({ cardsById: monsters })} />)

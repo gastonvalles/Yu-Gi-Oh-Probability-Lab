@@ -846,6 +846,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('Deshacer le pide permiso al rival: él ve un aviso sobre la línea del registro (no un diálogo que tapa la mesa) para permitirlo o no, y quien pidió espera con Deshacer apagado y la jugada sigue hasta que se lo permitan', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)

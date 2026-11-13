@@ -26,8 +26,8 @@ La de la práctica (`PracticeMat` con la prop `duel`), con el campo del rival es
 
 ### En un celular
 
-- El campo de siete columnas, con geometría fija bajo 640 px (`phoneDuelLayout`): sale del tamaño de la pantalla y nada lo mueve. Filas con forma de carta (bajan hasta cuadradas si no entra) entre las dos manos, sin línea en el medio (los avisos, bajo la barra; sin botones, se deslizan para sacarlos); la del rival, tu mano espejada a 0,8. La fase, en `p2` en todos los anchos.
-- Hasta 1100 px no hay barra de abajo: las vidas van en el marcador de arriba (`LifeScore`), y las salidas y problemas de la mano de apertura, en una píldora (`RulesPill`) que nunca flota sobre el campo ni se abre sola.
+- El campo de siete columnas, con geometría fija hasta 1100 px (`matDuelLayout`): sale del tamaño de la pantalla y nada lo mueve. Filas con forma de carta (bajan hasta cuadradas si no entra) entre las dos manos, sin línea en el medio (los avisos, bajo la barra; sin botones, se deslizan para sacarlos); la del rival, tu mano espejada a 0,8. La fase, en `p2` en todos los anchos.
+- Hasta 1100 px: tu chapa (`LifeBadge`) abajo, la del rival en la barra, y las salidas y problemas de la mano de apertura, en una píldora (`RulesPill`) que nunca flota sobre el campo ni se abre sola.
 
 ### Visor de pilas
 

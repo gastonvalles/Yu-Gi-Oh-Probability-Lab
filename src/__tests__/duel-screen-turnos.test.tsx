@@ -58,6 +58,8 @@ afterEach(() => {
 
 describe('la pantalla del duelo', () => {
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
     createRoom(host)
@@ -165,6 +167,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('rendirse: pide confirmación, termina el duelo para los dos y la revancha de los dos vuelve a la sala con todo de cero', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const { host, guest } = startDuel()
     openTable(host, guest)
 
@@ -511,6 +515,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('las fases y el turno: los dos ven en qué fase va quien juega, cada fase cruza el campo en una banda del color de quien juega (sin turno ni nombre) y, al terminar el turno, "Tu turno" para el lector', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const { host, guest } = startDuel()
     openTable(host, guest)
 
@@ -863,6 +869,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('el registro del duelo: lo escrito, el comienzo de cada turno y lo que hizo cada uno van en orden en el chat, y la línea sobre el campo muestra lo último que se jugó (no lo escrito: eso le llega como un mensaje) y lo abre', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)
 
