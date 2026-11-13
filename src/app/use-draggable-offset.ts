@@ -146,9 +146,11 @@ interface Stretch {
  * (`sizeKey`), acotado al mínimo y a la pantalla, se escribe en `width`/`height` del cartel (sin redibujar React) y la esquina de arriba a la izquierda no se mueve al estirarlo. Doble clic, a su lugar y
  * a su tamaño de siempre. `touch`: también con el dedo (la barra y la esquina de una ventana que flota: «Menús flotantes»); sin esto el dedo sigue lo suyo (`touchOr`).
  */
-export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean, vars = false, minSize?: Size, touch = false) {
+export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean, vars = false, minSize?: Size, touch = false, fit = false) {
   const stored = useRef<FabPosition | null>(null)
   const sized = useRef<Size | null>(null)
+  // `fit`: al aparecer, un alto guardado más chico que su contenido (cartas cortadas, botones fuera) crece hasta él; no se guarda (achicarla de nuevo sigue valiendo hasta la próxima).
+  const fitting = useRef(fit)
   const stretching = useRef<Stretch | null>(null)
   // Lo que tiene puesto el cartel ahora (y en cuál: al minimizarse, el asa es otro elemento).
   const applied = useRef<{ element: HTMLElement | null; offset: FabPosition }>({ element: null, offset: ZERO })
@@ -239,6 +241,11 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
     }
     const { x, y } = stored.current!
 
+    if (minSize && fitting.current && sized.current) {
+      fitting.current = false
+      paint(element, null)
+      sized.current = { ...sized.current, height: Math.max(sized.current.height, element.offsetHeight) }
+    }
     if (minSize) paint(element, sized.current ? clampSize(sized.current, minSize, visibleArea(element)) : null)
     // En su lugar no hay nada que acotar (ni que medir: sin una lectura de más por cada vez que se dibuja).
     write(x || y ? clampOffset(stored.current!, natural(element), visibleArea(element)) : ZERO)
@@ -281,6 +288,7 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
       loaded.current = storageKey
       stored.current = readOffset(storageKey)
       sized.current = minSize ? readSize(storageKey) : null
+      fitting.current = fit
     }
     seen.current = ref.current
     reclamp()

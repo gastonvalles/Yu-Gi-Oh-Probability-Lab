@@ -97,7 +97,7 @@ describe('auto-screen · elegir', () => {
     expect(fake.answers).toEqual([{ type: 'select_tribute', indices: [0] }])
   })
 
-  it('sum: sólo se ofrece lo que todavía suma; la que completa contesta sola', () => {
+  it('sum: sólo se ofrece lo que todavía suma; la que completa sólo enciende «Listo» (no contesta sola)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(SUM))
@@ -105,6 +105,8 @@ describe('auto-screen · elegir', () => {
     // 3 + nada no llega a 4 exacto y 3 + 4 se pasa: la de 3 no se ofrece.
     expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow-kind', 'can')
     tap(screen.getByRole('button', { name: 'Maxx C' }))
+    expect(fake.answers).toEqual([])
+    fireEvent.click(within(status()).getByRole('button', { name: 'Listo' }))
     expect(fake.answers).toEqual([{ type: 'select_sum', indices: [0] }])
   })
 
@@ -207,7 +209,7 @@ describe('auto-screen · elegir', () => {
     expect(fake.answers).toEqual([{ type: 'select_position', position: 4 }])
   })
 
-  it('una suma en una lista corta (la banda): la cuenta la lleva el núcleo (lo que no suma va apagado) y la que completa contesta sola', () => {
+  it('una suma en una lista corta (la banda): la cuenta la lleva el núcleo (lo que no suma va apagado); la que completa enciende la principal, que contesta', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(SUM_LIST))
@@ -218,6 +220,14 @@ describe('auto-screen · elegir', () => {
     fireEvent.click(ash)
     expect(fake.answers).toEqual([])
     fireEvent.click(within(sheet).getByRole('option', { name: /Nibiru/ }))
+    expect(fake.answers).toEqual([])
+    // Soltarla la apaga; elegirla de nuevo la enciende.
+    const primary = () => within(sheet).getAllByRole('button').at(-1)!
+    expect(primary()).toBeEnabled()
+    fireEvent.click(within(sheet).getByRole('option', { name: /Nibiru/ }))
+    expect(primary()).toBeDisabled()
+    fireEvent.click(within(sheet).getByRole('option', { name: /Nibiru/ }))
+    fireEvent.click(primary())
     expect(fake.answers).toEqual([{ type: 'select_sum', indices: [0] }])
     expect(dispatches).toBe(0)
   })

@@ -478,7 +478,7 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(step(open(ASKS[17]!, ctx(MESA)), { kind: 'option', value: 0 }).answer).toBeUndefined()
   })
 
-  it('elegir cartas: con `max = 1` el primer toque contesta; si no, al llegar al tope o con «Listo»; cancelar sólo si se puede; tocar otra carta no hace nada', () => {
+  it('elegir cartas: con `max = 1` el primer toque contesta; si no, sólo «Listo» (nunca al llegar al tope); cancelar sólo si se puede; tocar otra carta no hace nada', () => {
     const one = open({ ...(ASKS[5] as Extract<CoreAsk, { type: 'select_card' }>), min: 1, max: 1 }, ctx(MESA))
 
     expect(askView(one).cardPick).toMatchObject({ surface: 'mat', eligible: [0, 1, 2], chosen: [], done: false })
@@ -491,7 +491,15 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
 
     expect(askView(first.state).cardPick).toMatchObject({ chosen: [0], done: true, count: { now: 1, need: 2 } })
     expect(step(first.state, { kind: 'done' }).answer).toEqual({ type: 'select_card', indices: [0] })
-    expect(tap(two, { kind: 'card', ref: mine('card-100-1') }, { kind: 'card', ref: mine('card-200-1') }).answer).toEqual({ type: 'select_card', indices: [0, 1] })
+    // Eligiendo varias nunca contesta sola: llegar al tope sólo deja «Listo» encendido; soltar una lo deja como estaba (Gastón, 2026-11-12).
+    const full = tap(two, { kind: 'card', ref: mine('card-100-1') }, { kind: 'card', ref: mine('card-200-1') })
+
+    expect(full.answer).toBeUndefined()
+    expect(askView(full.state).cardPick).toMatchObject({ chosen: [0, 1], done: true })
+    expect(askView(step(full.state, { kind: 'pick', index: 1 }).state).cardPick).toMatchObject({ chosen: [0] })
+    expect(step(full.state, { kind: 'done' }).answer).toEqual({ type: 'select_card', indices: [0, 1] })
+    // Una sola que se puede saltear (`min = 0`) tiene «Listo»: tampoco contesta sola.
+    expect(step(open({ ...(ASKS[5] as Extract<CoreAsk, { type: 'select_card' }>), min: 0, max: 1 }, ctx(MESA)), { kind: 'pick', index: 0 }).answer).toBeUndefined()
     // Tocar una elegida la suelta.
     expect(askView(tap(two, { kind: 'pick', index: 0 }, { kind: 'pick', index: 0 }).state).cardPick?.chosen).toEqual([])
     expect(step(two, { kind: 'cancel' }).answer).toEqual({ type: 'select_card', indices: null })
@@ -547,7 +555,8 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
   it('Sacrificios: cuenta lo que vale cada uno («2 de 2») y contesta al completar; uno que vale 2 deja «Listo» sin pasar de `max` cartas', () => {
     const state = open(ASKS[9]!, ctx(MESA))
 
-    expect(tap(state, { kind: 'pick', index: 0 }, { kind: 'pick', index: 1 }).answer).toEqual({ type: 'select_tribute', indices: [0, 1] })
+    expect(tap(state, { kind: 'pick', index: 0 }, { kind: 'pick', index: 1 }).answer).toBeUndefined()
+    expect(tap(state, { kind: 'pick', index: 0 }, { kind: 'pick', index: 1 }, { kind: 'done' }).answer).toEqual({ type: 'select_tribute', indices: [0, 1] })
     const double = tap(state, { kind: 'pick', index: 2 }).state
 
     expect(askView(double).cardPick).toMatchObject({ count: { now: 2, need: 2 }, done: true, eligible: [2, 0, 1] })
@@ -565,14 +574,16 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(start.eligible).toEqual([0, 2])
     expect(step(state, { kind: 'pick', index: 3 })).toEqual({ state })
     expect(step(state, { kind: 'pick', index: 4 })).toEqual({ state })
-    expect(tap(state, { kind: 'pick', index: 0 }, { kind: 'pick', index: 2 }).answer).toEqual({ type: 'select_sum', indices: [0, 2] })
+    expect(tap(state, { kind: 'pick', index: 0 }, { kind: 'pick', index: 2 }).answer).toBeUndefined()
+    expect(tap(state, { kind: 'pick', index: 0 }, { kind: 'pick', index: 2 }, { kind: 'done' }).answer).toEqual({ type: 'select_sum', indices: [0, 2] })
 
     const ritual = open({ type: 'select_sum', player: 0, select_max: 1, amount: 8, min: 0, max: 0, selects_must: [], selects: [{ ...loc(200, L.MZONE, 0), amount: 4 }, { ...loc(201, L.MZONE, 1), amount: 6 }, { ...loc(100, L.HAND, 0), amount: 1 }] }, ctx(MESA))
     const six = tap(ritual, { kind: 'pick', index: 1 }).state
 
     // 6: falta; con la de 4 cierra (10, y sin la de 4 quedan 6 < 8); con la de 1 no: 7 no llega y, sumando la de 4, la de 1 sobra.
     expect(askView(six).cardPick).toMatchObject({ done: false, atLeast: true, eligible: [1, 0] })
-    expect(step(six, { kind: 'pick', index: 0 }).answer).toEqual({ type: 'select_sum', indices: [1, 0] })
+    expect(step(six, { kind: 'pick', index: 0 }).answer).toBeUndefined()
+    expect(tap(six, { kind: 'pick', index: 0 }, { kind: 'done' }).answer).toEqual({ type: 'select_sum', indices: [1, 0] })
   })
 
   it('una suma con muchas candidatas (30 de nivel 1) se arma enseguida, exacta y «al menos»', () => {
