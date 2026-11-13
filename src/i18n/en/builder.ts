@@ -131,8 +131,6 @@ export const builder: Translated<typeof es> = {
   'builder.condition.unitCopies': 'Copies',
   'builder.condition.unitNames': 'Distinct names',
 
-  'builder.requirementKind.include': 'At least',
-  'builder.requirementKind.exclude': 'Without',
 
   'builder.cardType.monster': 'Monster',
   'builder.cardType.spell': 'Spell',
