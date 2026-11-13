@@ -5,11 +5,11 @@ import { describeMatAction, isForeignId, isToken, matReducer, type MatState } fr
 import { comboCardIds, type SavedCombo } from '../../../app/saved-combos'
 import { t } from '../../../i18n'
 import { passcodeOfDrawId } from '../../duel/duel-art'
-import { artOfId, cellsOf, explainOf, fieldArtUrl, focusOf, halfOf, handSlots, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, type Look, type Rect, type Scene, type SceneSide, type VideoLayout } from './video-scene'
+import { artOfId, cellsOf, explainOf, fieldArtUrl, fieldGrid, focusOf, halfOf, handSlots, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, type Look, type Rect, type Scene, type SceneSide, type VideoLayout } from './video-scene'
 
 /**
- * El video de un combo de la práctica: es de un solo jugador, así que va **tu campo grande** (las Zonas Extra arriba, tus monstruos, tus Mágicas y Trampas y tus
- * pilas, como la mitad de abajo de la mesa del celular) y tu mano abajo, boca arriba (el combo es tuyo y la mesa te la muestra). Arriba, el nombre del combo y el del deck en
+ * El video de un combo de la práctica: es de un solo jugador, así que va **tu campo** (las Zonas Extra arriba, tus monstruos y tus Mágicas y Trampas, con las pilas a
+ * los costados: la mitad de abajo de la mesa del celular) y tu mano abajo, boca arriba (el combo es tuyo y la mesa te la muestra). Arriba, el nombre del combo y el del deck en
  * vez de vidas y turno (un combo no los tiene). Si se grabó con el simulador de handtraps, su «Mano del rival» va arriba del campo, boca arriba como en la mesa, y las que ya usó,
  * atenuadas. Lo demás (las transiciones, el aro ámbar, la jugada en texto, la marca) es lo del video del duelo. Puro.
  */
@@ -20,15 +20,13 @@ type Combo = SavedCombo | SharedCombo
 /** El lienzo del combo: con la mano del rival del simulador, el campo baja para dejarle su franja. */
 export function comboLayout(width: number, rival: boolean): VideoLayout {
   const s = width / BASE_W
-  const cell = 124 * s
-  const gap = 10 * s
-  const x0 = (width - (5 * cell + 4 * gap)) / 2
   // El campo sube hasta abajo del título (o de la mano del rival): lo que queda abajo de tu mano es la franja que explica la jugada.
   const top = rival ? 266 : 150
-  const y0 = top * s
   const box = (x: number, y: number, w: number, h: number): Rect => ({ x: x * s, y: y * s, w: w * s, h: h * s })
-  // La fila 0 es la del medio de la mesa (las Zonas Extra); después, tus monstruos, tus Mágicas y Trampas y tus pilas.
-  const handTop = top + 4 * 124 + 3 * 10 + 34
+  // La fila 0 es la del medio de la mesa (las Zonas Extra y tu Banish); después, tus monstruos y tus Mágicas y Trampas, con las pilas a los costados.
+  const grid = fieldGrid(width, top * s)
+  const last = grid.cellAt(2, 1)
+  const handTop = (last.y + last.h) / s + 34
   const textTop = handTop + 180 + 34
   return {
     scale: s,
@@ -37,8 +35,7 @@ export function comboLayout(width: number, rival: boolean): VideoLayout {
     myHand: box(40, handTop, 640, 180),
     text: box(24, textTop, 672, 1236 - textTop),
     footer: box(24, 1244, 672, 28),
-    cell,
-    cellAt: (row, col) => ({ x: x0 + col * (cell + gap), y: y0 + row * (cell + gap), w: cell, h: cell }),
+    ...grid,
     middle: 0,
   }
 }
@@ -78,7 +75,7 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
   const layout = comboLayout(width, (combo.initial.rival?.hand.length ?? 0) > 0)
   const action = cursor > 0 ? combo.actions[cursor - 1] : undefined
   const shown = action?.type === 'reveal' ? action.id : null
-  const rows = { piles: 3, st: 2, mz: 1 }
+  const rows = { mz: 1, st: 2 }
   const mine: SceneSide = {
     ...emptySide(handSlots(state.hand, layout.myHand, look, () => true)),
     slots: sideSlots(state, layout, rows, false, look, shown),
@@ -110,7 +107,7 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
     explain: action && before && effects ? explainOf(before, action, effects, nameOf) : null,
     focus,
     footer: VIDEO_FOOTER(),
-    cells: cellsOf(layout, 4),
+    cells: cellsOf(layout, 3, false),
     heading: { title: combo.name, subtitle: combo.deckName },
     ...(rival && rival.hand.length > 0 ? { caption: { text: t('handtraps.strip.label'), rect: { x: layout.theirHand.x, y: layout.theirHand.y - 26 * layout.scale, w: layout.theirHand.w, h: 20 * layout.scale } } } : {}),
     layout,

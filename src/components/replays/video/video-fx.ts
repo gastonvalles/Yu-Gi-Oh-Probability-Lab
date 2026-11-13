@@ -191,9 +191,11 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const name = PHASES.find((phase) => phase.id === effects.banner!.phase)?.name ?? effects.banner.phase
     const passed = effects.banner.turn !== null
     const side = (actor === 0) !== passed ? 0 : 1
-    const k = after.layout.cell / 55
-    if (passed) out.push(bannerOverlay(t('duel.phase.turnChange'), side, field, theme, k, at(0), speed, false, true))
-    out.push(bannerOverlay(name, side, field, theme, k, at(passed ? MESA.turnBanner : 0), speed))
+    const k = after.layout.unit
+    const middle = after.layout.cellAt(after.layout.middle, 1)
+    const row = { ...field, y: middle.y, h: middle.h }
+    if (passed) out.push(bannerOverlay(t('duel.phase.turnChange'), side, row, theme, k, at(0), speed, false, true))
+    out.push(bannerOverlay(name, side, row, theme, k, at(passed ? MESA.turnBanner : 0), speed))
   }
 
   // Una carta entró a tu mano: la mano se enmarca un instante en celeste (`fx-zone` de la mesa; la del rival, no).
@@ -356,11 +358,12 @@ function landingOverlay(cell: Rect, tone: string, s: number, start: number, spee
 }
 
 /** Los tiempos de la banda de la mesa (`PhaseBand`): entra 200 ms desde el costado de quien juega, el nombre llega 100 ms después, se queda hasta los 600 ms y sale en otros 200 por el otro lado. */
-const BAND = { in: 200, hold: 600, out: 200, textAt: 100, h: 52, font: 24, ms: MESA.banner }
-/** La de «Cambio de turno»: una vez y media más alta y con la frase más grande; entra en 250, se queda hasta los 1000 y sale en 250. */
-const TURN_BAND = { in: 250, hold: 1000, out: 250, textAt: 100, h: 80, font: 33, ms: MESA.turnBanner }
+// En px del celular: 52 de alto (`h-13`), el nombre de 24 (`text-title`, `tracking-wide`) y llega desde 32 px (`translate-x-8`).
+const BAND = { in: 200, hold: 600, out: 200, textAt: 100, h: 52, font: 24, tracking: 0.025, from: 32, ms: MESA.banner }
+/** La de «Cambio de turno»: más alta (`h-20`), la frase de 33 (`text-stat`, `tracking-tighter`) que llega desde 48 px (`translate-x-12`); entra en 250, se queda hasta los 1000 y sale en 250. */
+const TURN_BAND = { in: 250, hold: 1000, out: 250, textAt: 100, h: 80, font: 33, tracking: -0.05, from: 48, ms: MESA.turnBanner }
 
-/** `k`: cuánto se agranda la mesa en el video (la casilla del video sobre la de 55 px del celular). */
+/** `field`: el ancho del campo y la fila del medio (la banda va centrada en ella, `p2`); `k`: px del video por px del celular (`layout.unit`). */
 function bannerOverlay(name: string, side: 0 | 1, field: Rect, theme: VideoAssets['theme'], k: number, start: number, speed: VideoSpeed, resumed = false, turn = false): Overlay {
   const band = turn ? TURN_BAND : BAND
   const h = band.h * k
@@ -406,10 +409,16 @@ function bannerOverlay(name: string, side: 0 | 1, field: Rect, theme: VideoAsset
       ctx.globalAlpha = alpha * text
       ctx.fillStyle = ink
       ctx.font = `italic 800 ${band.font * k}px ${FONT}`
-      ctx.letterSpacing = `${0.6 * k}px`
+      ctx.letterSpacing = `${band.tracking * band.font * k}px`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(name.toUpperCase(), field.x + field.w / 2 + dx - dir * 32 * k * (1 - text), cy + k, field.w * 0.72)
+      if (turn) {
+        // `text-shadow-lg text-shadow-white/35`: el resplandor claro de la frase.
+        ctx.shadowColor = 'rgb(255 255 255 / 0.35)'
+        ctx.shadowBlur = 8 * k
+        ctx.shadowOffsetY = 4 * k
+      }
+      ctx.fillText(name.toUpperCase(), field.x + field.w / 2 + dx - dir * band.from * k * (1 - text), cy + k, field.w * 0.72)
       ctx.letterSpacing = '0px'
       ctx.restore()
     },

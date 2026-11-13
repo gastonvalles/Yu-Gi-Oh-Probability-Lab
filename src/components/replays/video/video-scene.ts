@@ -7,12 +7,13 @@ import { KIND_KEY, ORIGIN_KEY, routeOf } from '../../../app/mat-step-text'
 import { isToken, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
 import { artOfDrawId, passcodeOfDrawId } from '../../duel/duel-art'
+import { phoneDuelLayout } from '../../probability/compact-field'
 import type { FxTone } from '../../probability/practice-styles'
 import { cardName, playerName, realOf, stepText } from '../duel-replay-text'
 
 /**
- * Qué se dibuja en un cuadro del video de un replay, sin dibujar nada: dónde va cada casilla (en un lienzo vertical 9:16, la mesa compacta del celular: las pilas del rival arriba,
- * espejadas, y las tuyas abajo, como en `DuelTable`) y qué carta hay en cada una, de qué lado se ve y qué hay que resaltar. Puro: `video-draw.ts` lo pinta. Las casillas de un
+ * Qué se dibuja en un cuadro del video de un replay, sin dibujar nada: dónde va cada casilla (en un lienzo vertical 9:16, la mesa del celular de `phoneDuelLayout`: siete columnas, las
+ * pilas a los costados, el rival arriba y espejado, como en `DuelTable`) y qué carta hay en cada una, de qué lado se ve y qué hay que resaltar. Puro: `video-draw.ts` lo pinta. Las casillas de un
  * lado (`sideSlots`) y la mano (`handSlots`) las usa también el video de un combo (`video-combo.ts`), que es de un solo jugador.
  */
 
@@ -117,39 +118,70 @@ export interface Scene {
 
 export interface VideoLayout {
   scale: number
+  /** Cuántos px del lienzo mide un px del celular de referencia (`PHONE_WIDTH`): la banda de fase y lo que copia medidas de la mesa del celular. */
+  unit: number
   score: Rect
   theirHand: Rect
   myHand: Rect
   text: Rect
   footer: Rect
+  /** El ancho de una casilla del centro. */
   cell: number
-  /** La casilla de la fila `row` (0 = la de arriba, la de las pilas del rival) y la columna `col` (0 = izquierda). */
+  /**
+   * La casilla de la fila `row` (0 = la de arriba) y la columna `col` (0 a 6), como la grilla de `DuelTable`: las del centro (1 a 5) con forma de carta (el alto de la fila); las de los costados
+   * (0 y 6, las pilas y la Zona de campo), de una carta del ancho de su columna, centradas en la fila.
+   */
   cellAt: (row: number, col: number) => Rect
-  /** La fila del medio (las Zonas Extra): ahí va el título y el cierre. */
+  /** La fila del medio (el Banish de cada uno a su costado, las Zonas Extra y la caja de la fase): ahí van el título, el cierre y la banda de fase. */
   middle: number
+}
+
+/** El celular de referencia: el campo del video es el de la mesa a 390 px (`phoneDuelLayout`, con filas del alto de una carta), escalado al ancho del lienzo. */
+export const PHONE_WIDTH = 390
+const PHONE = phoneDuelLayout(PHONE_WIDTH, 844, { tilted: false, bar: 0, bottom: 0 })
+/** El hueco entre casillas (`max-sm:gap-0.75`) y el ancho de una columna de los costados (0,6857 de una del centro). */
+const PHONE_GAP = 3
+const SIDE_COLUMN = 0.6857
+/** Una carta: 421 × 614. */
+const CARD_ASPECT = 614 / 421
+
+/** La grilla de siete columnas de la mesa del celular, centrada a lo ancho de `width` y con el borde de arriba de su primera fila en `top`. */
+export function fieldGrid(width: number, top: number): Pick<VideoLayout, 'unit' | 'cell' | 'cellAt'> {
+  const unit = width / PHONE_WIDTH
+  const cell = PHONE.cell * unit
+  const row = PHONE.row * unit
+  const gap = PHONE_GAP * unit
+  const side = cell * SIDE_COLUMN
+  const x0 = (width - PHONE.fieldWidth * unit) / 2
+  const xOf = (col: number) => x0 + (col === 0 ? 0 : side + gap + (col - 1) * (cell + gap))
+  return {
+    unit,
+    cell,
+    cellAt: (r, col) => {
+      const y = top + r * (row + gap)
+      if (col > 0 && col < 6) return { x: xOf(col), y, w: cell, h: row }
+      const h = side * CARD_ASPECT
+      return { x: xOf(col), y: y + (row - h) / 2, w: side, h }
+    },
+  }
 }
 
 /** El diseño del lienzo: medidas en el de referencia (720×1280) por la escala. Un alto distinto de 16:9 deja aire abajo o lo recorta: el video es siempre 9:16. */
 export function videoLayout(width: number): VideoLayout {
   const s = width / BASE_W
-  const cell = 112 * s
-  const gap = 8 * s
-  const fieldW = 5 * cell + 4 * gap
-  const x0 = (width - fieldW) / 2
-  const y0 = 196 * s
   const box = (x: number, y: number, w: number, h: number): Rect => ({ x: x * s, y: y * s, w: w * s, h: h * s })
 
+  // Las cinco filas de la mesa (793 px a 720) entre la mano del rival y la tuya, que cuelga 8 px debajo del campo.
   return {
     scale: s,
     score: box(24, 20, 672, 84),
     // La mano del rival a 0,8 de la tuya (104 px), como en la mesa.
     theirHand: box(64, 108, 592, 83),
-    myHand: box(64, 1040, 592, 104),
-    text: box(24, 1150, 672, 90),
+    myHand: box(64, 1000, 592, 104),
+    text: box(24, 1120, 672, 120),
     footer: box(24, 1244, 672, 28),
-    cell,
-    cellAt: (row, col) => ({ x: x0 + col * (cell + gap), y: y0 + row * (cell + gap), w: cell, h: cell }),
-    middle: 3,
+    ...fieldGrid(width, 196 * s),
+    middle: 2,
   }
 }
 
@@ -162,11 +194,13 @@ export function fieldRect(cells: readonly Rect[]): Rect {
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }
 }
 
-/** La mitad del campo de un lado: de su fila de monstruos a la de sus pilas, de punta a punta (`FIELD_HALF` de la mesa). */
-export function halfOf(layout: VideoLayout, rows: { piles: number; mz: number }): Rect {
-  const top = layout.cellAt(Math.min(rows.piles, rows.mz), 0)
-  const bottom = layout.cellAt(Math.max(rows.piles, rows.mz), 4)
-  return { x: top.x, y: top.y, w: bottom.x + bottom.w - top.x, h: bottom.y + bottom.h - top.y }
+/** La mitad del campo de un lado: su fila de monstruos y la de sus Mágicas y Trampas, de punta a punta (`FIELD_HALF` de la mesa). */
+export function halfOf(layout: VideoLayout, rows: Rows): Rect {
+  const top = layout.cellAt(Math.min(rows.st, rows.mz), 1)
+  const bottom = layout.cellAt(Math.max(rows.st, rows.mz), 1)
+  const left = layout.cellAt(rows.mz, 0).x
+  const right = layout.cellAt(rows.mz, 6)
+  return { x: left, y: top.y, w: right.x + right.w - left, h: bottom.y + bottom.h - top.y }
 }
 
 /** El arte recortado de la Magia de Campo boca arriba (`real`: su id real), por el proxy a 512 px, como `fieldArtSrc` de la mesa; null boca abajo o si no se sabe cuál es. */
@@ -201,17 +235,20 @@ export function explainOf(before: MatState, action: MatAction, effects: MatEffec
   }
 }
 
-/** Las casillas de `rows` filas de 5, sin las tres de la fila del medio que no son Zonas Extra (columnas 0, 2 y 4). */
-export const cellsOf = (layout: VideoLayout, rows: number) =>
-  Array.from({ length: rows * 5 }, (_, index) => [Math.floor(index / 5), index % 5] as const)
-    .filter(([row, col]) => !(row === layout.middle && col % 2 === 0))
+/**
+ * Las casillas de `rows` filas de 7, como `DuelTable`: en la fila del medio no son casillas las de las fases (columnas 1, 3 y 5) y, con un solo jugador (`both` falso, el combo), tampoco el
+ * Banish del rival (columna 0).
+ */
+export const cellsOf = (layout: VideoLayout, rows: number, both = true) =>
+  Array.from({ length: rows * 7 }, (_, index) => [Math.floor(index / 7), index % 7] as const)
+    .filter(([row, col]) => row !== layout.middle || (col % 2 === 0 && (both || col > 0)))
     .map(([row, col]) => layout.cellAt(row, col))
 
 export const VIDEO_HEIGHT_OF = (width: number) => Math.round((width * BASE_H) / BASE_W)
 
-/** La carta dentro de su casilla: parada (59×86) o acostada, centrada. */
+/** La carta dentro de su casilla: parada (59×86) o acostada, centrada; la más grande que entra a lo alto y a lo ancho, con un margen (en defensa pisa a las vecinas, como en la mesa). */
 export function cardRect(cell: Rect, sideways: boolean): Rect {
-  const long = cell.h * 0.96
+  const long = Math.min(cell.h, (cell.w * 86) / 59) * 0.96
   const short = long * (59 / 86)
   const [w, h] = sideways ? [long, short] : [short, long]
   return { x: cell.x + (cell.w - w) / 2, y: cell.y + (cell.h - h) / 2, w, h }
@@ -245,22 +282,32 @@ const duelLook = (replay: DuelReplay, frame: ReplayFrame, side: ReplaySide): Loo
 }
 
 
-// Las filas de la mesa compacta: 0 pilas del rival, 1 sus Mágicas y Trampas, 2 sus monstruos, 3 el medio, 4 tus monstruos, 5 tus Mágicas y Trampas, 6 tus pilas.
-const PILE_COLS: Record<ReplaySide, Record<MatPile | 'field', number>> = {
-  // Abajo: Extra · Banish · Campo · GY · Deck (el Deck y el Extra en sus extremos).
-  0: { extra: 0, banished: 1, field: 2, gy: 3, deck: 4, hand: -1 },
-  // Arriba, espejado: Deck · GY · Campo · Banish · Extra.
-  1: { deck: 0, gy: 1, field: 2, banished: 3, extra: 4, hand: -1 },
+/** En qué fila de `layout` van los monstruos y las Mágicas y Trampas de un lado (las Zonas Extra y su Banish, en `layout.middle`). */
+export interface Rows {
+  mz: number
+  st: number
+}
+
+// Las pilas y la Zona de campo, en las columnas de los costados como en `DuelTable` (`MINE_ROWS`, `THEIR_ROWS`, `middleRow`): la fila (de monstruos, de Mágicas y Trampas o la del medio) y la columna.
+const PILE_AT: Record<ReplaySide, Record<MatPile | 'field', readonly [keyof Rows | 'middle', number]>> = {
+  // Abajo: Campo · monstruos · GY, Extra · Mágicas y Trampas · Deck, y el Banish a la derecha del medio.
+  0: { field: ['mz', 0], gy: ['mz', 6], extra: ['st', 0], deck: ['st', 6], banished: ['middle', 6], hand: ['middle', -1] },
+  // Arriba, espejado: Deck · Mágicas y Trampas · Extra, GY · monstruos · Campo, y el Banish a la izquierda del medio.
+  1: { deck: ['st', 0], extra: ['st', 6], gy: ['mz', 0], field: ['mz', 6], banished: ['middle', 0], hand: ['middle', -1] },
 }
 
 /**
- * Las casillas de un lado con lo que tienen. `rows`: en qué fila de `layout` van sus pilas, sus Mágicas y Trampas y sus monstruos (las Zonas Extra, en `layout.middle`);
+ * Las casillas de un lado con lo que tienen. `rows`: en qué fila de `layout` van sus monstruos y sus Mágicas y Trampas (las Zonas Extra, en `layout.middle`);
  * `top`: es el de arriba, espejado y de cabeza. `shown`: la carta que se muestra en esta jugada (una colocada que se revela se ve boca arriba en ese cuadro).
  */
-export function sideSlots(state: MatState, layout: VideoLayout, rows: { piles: number; st: number; mz: number }, top: boolean, look: Look, shown: string | null): SceneSlot[] {
+export function sideSlots(state: MatState, layout: VideoLayout, rows: Rows, top: boolean, look: Look, shown: string | null): SceneSlot[] {
   const side: ReplaySide = top ? 1 : 0
-  // El rival, espejado: su zona 1 queda a la derecha.
-  const col = (index: number) => (top ? 4 - index : index)
+  // El rival, espejado: su zona 1 queda a la derecha. Las cinco del centro van en las columnas 1 a 5.
+  const col = (index: number) => (top ? 5 - index : 1 + index)
+  const pileRect = (name: MatPile | 'field') => {
+    const [row, column] = PILE_AT[side][name]
+    return layout.cellAt(row === 'middle' ? layout.middle : rows[row], column)
+  }
   // En una zona de monstruo, lo que no está en ataque va acostado (en defensa, o colocado).
   const card = (id: string, placed?: Placed, faceUp = true, monster = false): SceneCard => {
     const face = id !== shown && (!faceUp || placed?.pos === 'set') ? null : look(id)
@@ -280,7 +327,7 @@ export function sideSlots(state: MatState, layout: VideoLayout, rows: { piles: n
   const pile = (name: MatPile, ids: readonly string[], faceUp: (id: string) => boolean): SceneSlot => {
     const last = name === 'deck' ? ids[0] : ids.at(-1)
     return {
-      rect: layout.cellAt(rows.piles, PILE_COLS[side][name]),
+      rect: pileRect(name),
       pile: name,
       label: t(`practice.pile.short.${name}`),
       count: ids.length,
@@ -292,9 +339,9 @@ export function sideSlots(state: MatState, layout: VideoLayout, rows: { piles: n
   return [
     ...state.mz.map((placed, index) => zone(placed, layout.cellAt(rows.mz, col(index)), true)),
     ...state.st.map((placed, index) => zone(placed, layout.cellAt(rows.st, col(index)))),
-    { ...zone(state.field, layout.cellAt(rows.piles, PILE_COLS[side].field)), ...(state.field ? {} : { label: t('practice.zone.fieldLabel') }) },
-    // Las Zonas Extra son de los dos: la 0 tuya es la 1 del rival (`SharedZone`). Están en las columnas 1 y 3 del medio.
-    ...state.emz.flatMap((placed, index) => (placed ? [zone(placed, layout.cellAt(layout.middle, top ? 3 - 2 * index : 1 + 2 * index), true)] : [])),
+    { ...zone(state.field, pileRect('field')), ...(state.field ? {} : { label: t('practice.zone.fieldLabel') }) },
+    // Las Zonas Extra son de los dos: la 0 tuya es la 1 del rival (`SharedZone`). Están en las columnas 2 y 4 del medio.
+    ...state.emz.flatMap((placed, index) => (placed ? [zone(placed, layout.cellAt(layout.middle, top ? 4 - 2 * index : 2 + 2 * index), true)] : [])),
     pile('deck', state.deck, () => false),
     pile('extra', state.extra, (id) => state.extraUp.includes(id)),
     pile('gy', state.gy, () => true),
@@ -365,7 +412,7 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
     const look = duelLook(replay, frame, side)
     // La mano de quien grabó, boca arriba sólo con «mi mano»; la del rival, de dorso. La carta que se muestra en esta jugada, boca arriba en la mano de cualquiera.
     const shown = step?.[0] === side && step[1].type === 'reveal' ? step[1].id : null
-    const rows = side === 1 ? { piles: 0, st: 1, mz: 2 } : { piles: 6, st: 5, mz: 4 }
+    const rows = side === 1 ? { st: 0, mz: 1 } : { mz: 3, st: 4 }
     return {
       name: playerName(replay, side),
       lp: frame.lp[side],
@@ -401,7 +448,7 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
     explain: step && before && effects ? explainOf(before, step[1], effects, cardName(replay, frame, step[0])) : null,
     focus,
     footer: VIDEO_FOOTER(),
-    cells: cellsOf(layout, 7),
+    cells: cellsOf(layout, 5),
     layout,
   }
 }
