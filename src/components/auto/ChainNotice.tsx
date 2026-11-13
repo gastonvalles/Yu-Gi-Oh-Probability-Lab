@@ -294,7 +294,8 @@ function Burst() {
  *   inclinación 3D y atada por dos esquinas con cadena; entre carta y carta la cadena, de eslabones chicos, cuelga en curva por delante. El número, enorme, blanco en bloques con
  *   contorno y resplandor celestes (`ChainNumber`), pisa la esquina de abajo del lado de afuera. Con dos o más, «CADENA» (itálica) aparece al medio, por delante, y se queda. El
  *   nombre va sólo en la carta sin imagen (con imagen ya está impreso). Al empezar a resolver, la cadena se corta en el medio mientras la escena se va.
- * - **El velo:** mientras está, el campo de atrás baja y se azula (una capa al lado de la escena que llena la capa de la mesa, sólo `opacity`); no ataja toques.
+ * - **El velo:** mientras está, toda la pantalla baja y se azula (Gastón: «debería oscurecer todo»): una capa `fixed inset-0` al lado de la escena, en su misma capa (la de la cadena de
+ *   la mesa), así queda debajo de la escena y de la pregunta («¿Respondés?») y encima de las manos, las chapas, las barras, los paneles y el menú lateral; sólo `opacity`; no ataja toques.
  * - **Sin línea a la vista:** «Se resuelve del último al primero» (y, resolviendo, qué pasó con cada uno) va en un `role="status"` oculto, para el lector de pantalla.
  * - **Respondiendo** (`answering`, con la hoja o la ventana de «¿Respondés?» abierta): la escena se achica hacia arriba, así el número de la última carta no queda debajo del cartel.
  * - **Corrida** (`away`, mientras el núcleo pregunta algo que no es responder): ni cartas, ni velo a la vista, y vuelve después.
@@ -374,9 +375,9 @@ export function ChainStage({
   if (over && gone) return status
   return (
     <>
-      <div aria-hidden="true" data-chain-veil="" className={cx('pointer-events-none absolute inset-0 bg-chain-veil/65 transition-opacity duration-200 ease-out starting:opacity-0 motion-reduce:transition-opacity', hidden ? 'opacity-0' : 'opacity-100')} />
+      <div aria-hidden="true" data-chain-veil="" className={cx('pointer-events-none fixed inset-0 bg-chain-veil/65 transition-opacity duration-200 ease-out starting:opacity-0 motion-reduce:transition-opacity', hidden ? 'opacity-0' : 'opacity-100')} />
       {/* Mientras entra un eslabón, el campo baja todavía más. */}
-      {hidden ? null : <div key={`veil-${rows.length}`} aria-hidden="true" data-chain-dim="" className="pointer-events-none absolute inset-0 animate-chain-veil bg-chain-veil/45 motion-reduce:hidden" />}
+      {hidden ? null : <div key={`veil-${rows.length}`} aria-hidden="true" data-chain-dim="" className="pointer-events-none fixed inset-0 animate-chain-veil bg-chain-veil/45 motion-reduce:hidden" />}
       <div
         data-testid={over ? undefined : 'chain-notice'}
         data-chain-stage=""

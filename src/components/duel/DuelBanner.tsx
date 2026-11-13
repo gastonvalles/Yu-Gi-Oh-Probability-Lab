@@ -67,10 +67,10 @@ interface ResultHeroProps {
 
 /**
  * El final del duelo (Gastón, 2026-11-12: «debo poder ver el campo, todo debe estar centrado al medio, mostrar la vida no es necesario»; referencia: el VICTORY de Master Duel): un solo
- * bloque al medio del campo, sin velo ni hoja: el campo se ve entero arriba y abajo (detrás del bloque, sólo una franja oscura para leerlo). La palabra del resultado enorme («Victoria»,
- * «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos, quietos; entra creciendo, sólo `scale`/`opacity`), el porqué debajo y las acciones en botones
- * chicos iguales: dos por fila en lo angosto y todos en una desde 36 rem (si son impares, en lo angosto la última va de lado a lado). Sin vidas: las dicen las chapas de la mesa. Recto
- * (`mat-square`). El nombre del cartel es `title` («¡Ganaste!»). Lo usan los jugadores (con sus botones) y quienes miran.
+ * bloque al medio del campo, sin velo ni hoja, en una banda opaca de lado a lado (Gastón: «debe tener un fondo horizontal con la X arriba a la derecha»): el campo se ve arriba y abajo.
+ * La palabra del resultado enorme («Victoria», «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos, quietos; entra creciendo, sólo
+ * `scale`/`opacity`), el porqué debajo, la ✕ en la esquina de arriba a la derecha de la banda y las acciones en botones chicos iguales, de un renglón cada uno: dos por fila en lo angosto
+ * y todos en una desde 36 rem (si son impares, en lo angosto la última va de lado a lado). Sin vidas: las dicen las chapas de la mesa. Recto (`mat-square`). El nombre del cartel es `title` («¡Ganaste!»). Lo usan los jugadores (con sus botones) y quienes miran.
  */
 export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave, onHide, actions, primary, fixed = false }: ResultHeroProps) {
   const titleId = useId()
@@ -85,9 +85,10 @@ export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave
       <h2 id={titleId} className="sr-only">
         {title}
       </h2>
-      <section data-result-block="" className="pointer-events-auto @container relative grid w-full justify-items-center gap-2 p-4">
-        {/* La franja que deja leer el bloque: de lado a lado, oscura al medio y transparente en los bordes; aparece (`opacity`). */}
-        <span aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-linear-to-r from-transparent via-background/85 to-transparent motion-reduce:animate-none" />
+      <section data-result-block="" className="pointer-events-auto @container relative grid w-full justify-items-center gap-2 px-2 pb-4 pt-11 @min-[36rem]:pt-4">
+        {/* La banda: de lado a lado, opaca y recta (detrás del texto y los botones no se ve ninguna carta); arriba y abajo, el campo. Aparece (`opacity`). */}
+        <span aria-hidden="true" data-result-band="" className="absolute inset-0 animate-nav-scrim border-y border-border-subtle bg-background/95 motion-reduce:animate-none" />
+        {close ? <CloseButton size="lg" aria-label={closeLabel} title={closeLabel} className="absolute right-1 top-1" onClick={close} /> : null}
         {/* La palabra: su tamaño, por el ancho que tiene («Victoria» entra en un renglón desde 360 px). */}
         <div aria-hidden="true" data-result-word={tone} className="@container relative grid w-full place-items-center">
           <p
@@ -100,16 +101,16 @@ export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave
             {t(RESULT_WORD[tone])}
           </p>
         </div>
-        {/* El porqué, y la ✕ a su altura en el borde (no pisa la palabra). */}
+        {/* El porqué. */}
         <div className="relative grid w-full justify-items-center gap-0.5 px-12 text-center transition-[opacity,translate] delay-200 duration-300 ease-out starting:translate-y-2 starting:opacity-0 motion-reduce:transition-none">
           <p role="status" className="m-0 max-w-md text-balance text-body font-semibold text-foreground">
             {reason}
           </p>
           {note ? <p className="m-0 text-micro text-muted">{note}</p> : null}
-          {close ? <CloseButton size="md" aria-label={closeLabel} title={closeLabel} className="absolute -right-2 top-1/2 -translate-y-1/2" onClick={close} /> : null}
         </div>
+        {/* Los botones, todos del mismo ancho y alto y en un renglón (`whitespace-nowrap`: las columnas toman el ancho del texto más largo; en lo más angosto, con menos aire a los costados para que «Watch the replay» entre a 360 px). */}
         {buttons.length > 0 ? (
-          <div className="relative mt-1 grid w-full max-w-md grid-cols-2 gap-2 transition-[opacity,translate] delay-300 duration-300 ease-out starting:translate-y-2 starting:opacity-0 motion-reduce:transition-none @min-[36rem]:max-w-2xl @min-[36rem]:auto-cols-fr @min-[36rem]:grid-flow-col @min-[36rem]:grid-cols-none">
+          <div className="relative mt-1 grid w-fit max-w-full grid-cols-2 gap-2 whitespace-nowrap @max-[28rem]:[&_button]:px-3 transition-[opacity,translate] delay-300 duration-300 ease-out starting:translate-y-2 starting:opacity-0 motion-reduce:transition-none @min-[36rem]:auto-cols-fr @min-[36rem]:grid-flow-col @min-[36rem]:grid-cols-none">
             {buttons.map((button, at) => (
               <div key={at} className={cx('grid', buttons.length % 2 === 1 && at === buttons.length - 1 && 'col-span-2 @min-[36rem]:col-span-1')}>
                 {button}
