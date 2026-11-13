@@ -23,6 +23,8 @@ Cómo se lee un pedido de diseño y cómo se decide una mejora visual. Las regla
   `DESKTOP_DECK_BUILDER_MEDIA_QUERY`); los cortes de Tailwind, sólo para lo fino. En chico se apila, sin scroll horizontal; la
   navegación la arma `AppShell`, nunca una pantalla. Cómo se prueba y qué no se corre de lugar: reglas 6 y 7 de «Reglas para
   sumar pantallas».
+- **Movimiento («Impacto Ligero», `docs/movimiento.md`):** el campo se mueve sólo a propósito (una sacudida de impacto); si se
+  mueve sin querer, es un bug. Lo que entra y sale, con barrido o rebote; con movimiento reducido, con un fundido.
 
 ## C) Accesibilidad y estados
 
