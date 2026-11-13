@@ -13,7 +13,7 @@ const TILT = (14 * Math.PI) / 180
 const PERSPECTIVE = 900
 /** Tu mano (`PracticeHand`): las cartas se enciman al 55 % (cinco entran en 3,2 cartas), su caja suma 30 px a la carta y la carta es 1 : 1,4612. */
 const HAND_FIT = 3.2
-const HAND_ROOM = 30
+export const HAND_ROOM = 30
 const CARD_RATIO = 1.4612
 const HAND_CARD_MAX = 140
 const HAND_CARD_MIN = 64

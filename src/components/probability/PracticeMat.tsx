@@ -50,7 +50,7 @@ import { growHand, handFloor, handInset, mergeHandOrder } from '../../app/practi
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { comboBranches, comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, stepBranchesOf, writeSavedCombos, type ComboExtras, type SavedCombo } from '../../app/saved-combos'
 import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
-import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
+import { DESKTOP_AUTO_CHROME_REM, DuelRailsContext, RAILS_CHROME_REM, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
 import type { TallyView } from '../../app/auto/tally'
@@ -135,10 +135,10 @@ export interface MatCard {
  * ni combos guardados, y la mascota no se sienta en el campo. Lo arma la pantalla del duelo: la mesa no sabe nada de la red.
  */
 /** El aire entre el campo y la mano (`gap-2`) y el que la mano deja sobre sus cartas (`TOP_ROOM` de `PracticeHand`): la mano sube la primera distancia y queda separada del campo por la segunda. */
-const MAT_GAP = 8
+export const MAT_GAP = 8
 const HAND_TOP_ROOM = 8
 /** Escritorio: cuánto se separa del campo la mano del rival (arriba). Las manos nunca tapan el campo (Gastón, 2026-10-19: «ya no quiero que las cartas tapen la mesa nunca»). */
-const DESKTOP_HAND_GAP = 8
+export const DESKTOP_HAND_GAP = 8
 /**
  * El duelo automático desde 1101 px (sin laterales): la mano del rival sube al medio de la barra, que está vacío (la flecha a la izquierda; los íconos y el turno a la derecha), y su chapa queda
  * junto a sus íconos. Con eso, la casilla de ~100 px a 1440 × 900 entra sin scroll.
@@ -148,9 +148,9 @@ const DESKTOP_AUTO_RISE = 58
  * Su casilla crece con el alto que queda (sin línea bajo el campo): lo que deja el alto sin la barra, la mano del rival (menos lo que sube), tu mano (`DESKTOP_AUTO_HAND`) y la fila de abajo
  * (24,95 rem), y nunca más de lo que entra a lo ancho de la columna del medio (`cqw` de su caja, `@container`: con el detalle y los pasos a los costados no queda mucho).
  */
-const DESKTOP_AUTO_CELL = 'max(3rem, min(12rem, calc((100dvh - 24.95rem) / 5), calc((100cqw - 3rem) / 6.3714)))'
+const DESKTOP_AUTO_CELL = `max(3rem, min(12rem, calc((100dvh - ${DESKTOP_AUTO_CHROME_REM}rem) / 5), calc((100cqw - 3rem) / 6.3714)))`
 /** Y su mano: un poco más chica que la de los otros duelos de escritorio (100 px), para que la casilla crezca; es su presupuesto de alto, y crece sólo con lo que sobra debajo (`growHand`). */
-const DESKTOP_AUTO_HAND = 80
+export const DESKTOP_AUTO_HAND = 80
 /** Celular: cuánto se separan las manos del campo (la del rival sube, la tuya baja) sin moverlo: se corren con `transform` y `margin` de un elemento absoluto, que no cambian el alto de lo que se centra. */
 const MOBILE_HAND_GAP = 14
 /**
@@ -3089,7 +3089,7 @@ function PracticeMatBody({
       <div
         ref={columnRef}
         // Con laterales: una grilla de tres columnas (lateral, campo, lateral) y tres filas (arriba, el medio que se estira y abajo); el campo ocupa las tres. `--cell-h` es la casilla que deja el alto: sin la barra de arriba ni la de abajo sobran 17,25 rem.
-        style={rails ? ({ '--cell-h': `max(3.5rem, min(12rem, calc((100dvh - 22.95rem) / 5)))` } as CSSProperties) : undefined}
+        style={rails ? ({ '--cell-h': `max(3.5rem, min(12rem, calc((100dvh - ${RAILS_CHROME_REM}rem) / 5)))` } as CSSProperties) : undefined}
         className={cx(
           !duel && '@container',
           Boolean(detail) && 'min-[1440px]:col-start-2',
