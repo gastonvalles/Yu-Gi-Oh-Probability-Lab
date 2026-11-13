@@ -1,4 +1,4 @@
-import { allMatIds, isToken, matReducer, replayMat, type MatAction, type MatState, type Placed } from './practice-mat'
+import { allMatIds, isToken, locateCard, matReducer, replayMat, type MatAction, type MatState, type Placed } from './practice-mat'
 
 /**
  * Mesa pública: cómo se espeja la mesa de un jugador en el dispositivo del rival (duelo por enlace)
@@ -138,6 +138,12 @@ export function publicIds(state: MatState): Set<string> {
 function shownBy(before: MatState, action: MatAction): string[] {
   if (action.type === 'batch') return action.actions.flatMap((part) => (part.type === 'batch' ? [] : shownBy(before, part)))
   if (action.type === 'reveal' || action.type === 'declare' || action.type === 'activate') return [action.id]
+  // Entregar al rival una carta que no estaba a la vista (un Kaiju, de la mano a su campo): sale de mi mesa y entra a la suya, así que la mesa resultante no la muestra.
+  // ponytail: una boca abajo del campo sigue oculta; una que se le colocara boca abajo desde la mano se mostraría (el `give` no dice cómo entra): si aparece, que `give` lleve `pos`.
+  if (action.type === 'give') {
+    const where = locateCard(before, action.id)
+    return where?.kind === 'spot' && where.placed.pos === 'set' ? [] : [action.id]
+  }
 
   return action.type === 'move' && action.to === 'hand' && !before.hand.includes(action.id) ? [action.id] : []
 }
