@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
-import { CHAIN_LEAVE_MS, type ChainOutcome, type ChainRowState } from '../../app/auto/chain-feed'
+import { CHAIN_LEAVE_MS, chainDwell, chainFeed, nextShown, stepsUpTo, type ChainOutcome, type ChainRowState, type ChainStep } from '../../app/auto/chain-feed'
 
 // El catálogo y el replay corren la escena con el ritmo real: los valores del núcleo salen de acá (`auto-isolation.test.ts`).
 export { CHAIN_LEAVE_MS, CHAIN_LINGER_MS, chainDwell, chainFeed, nextShown, stepsUpTo } from '../../app/auto/chain-feed'
@@ -37,6 +37,47 @@ export const whatHappened = (row: ChainNoticeRow, rows: readonly ChainNoticeRow[
   const state = t(`auto.chain.state.${row.state}`)
 
   return row.outcome ?? (by ? t('auto.chain.byCard', { state, card: by }) : state)
+}
+
+/** La cadena contada en el paso `at`: se ven sus primeros `seen` mensajes; `cut`, se llegó saltando (no se cuenta); `gone`, la cadena terminada que ya se escondió. */
+export interface PacedChain {
+  key: unknown
+  at: number
+  seen: number
+  cut: boolean
+  gone: number
+}
+
+/**
+ * La cadena de un repaso, paso a paso (el repaso del automático y la mesa manual de un combo): un paso adelante (`at` + 1) cuenta los mensajes de ese paso desde lo que ya se veía,
+ * con su ritmo (`nextShown`, `chainDwell`); saltar a otro paso, o un `key` distinto, la corta. `at` null, apagada. `leave(key)` esconde la cadena terminada `key` (el repaso, al irse
+ * la escena). Devuelve el mismo objeto mientras nada cambia (`auto-screen-renders.test.tsx`).
+ */
+export function usePacedChain(steps: readonly ChainStep[], at: number | null, key: unknown = null) {
+  const [paced, setPaced] = useState<PacedChain | null>(null)
+  const leave = useCallback((gone: number) => setPaced((current) => (current && current.gone !== gone ? { ...current, gone } : current)), [])
+
+  if (at === null ? paced !== null : paced?.at !== at || paced.key !== key) {
+    if (at === null) setPaced(null)
+    else {
+      const due = stepsUpTo(steps, at)
+      const stepped = paced !== null && paced.key === key && at === paced.at + 1
+      const whole = chainFeed(steps, due)
+
+      setPaced({ key, at, seen: nextShown(steps, stepped ? stepsUpTo(steps, paced.at) : due, due), cut: !stepped, gone: stepped ? paced.gone : whole?.done ? whole.key : -1 })
+    }
+  }
+  useEffect(() => {
+    if (!paced || paced.cut) return
+    const due = stepsUpTo(steps, paced.at)
+
+    if (paced.seen >= due) return
+    const timer = window.setTimeout(() => setPaced((current) => (current === paced ? { ...current, seen: nextShown(steps, paced.seen, due) } : current)), chainDwell(steps, paced.seen - 1))
+
+    return () => window.clearTimeout(timer)
+  }, [paced, steps])
+
+  return [paced, leave] as const
 }
 
 /**
