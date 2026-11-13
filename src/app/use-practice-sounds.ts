@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 
-import { unlockAudio } from './audio'
 import { playSfx, sfxOfAction } from './sfx'
 import type { MatSession } from './use-mat-session'
+import { useUnlockAudio } from './use-unlock-audio'
 
 /**
  * Los sonidos de «Jugar solo» y de los combos guardados: cada jugada suena como en un duelo (`sfxOfAction`), también al reproducir un combo paso a paso; deshacer o volver un paso suena
@@ -34,19 +34,6 @@ export function usePracticeSounds(session: Pick<MatSession, 'initial' | 'actions
     }
   }, [session])
 
-  useEffect(() => {
-    if (!active) {
-      return
-    }
-
-    // Se desbloquea ya (el toque que abrió la mesa vale) para que el reparto de la mano suene, y de nuevo con el primer toque o tecla (iOS lo exige).
-    unlockAudio()
-    window.addEventListener('pointerdown', unlockAudio)
-    window.addEventListener('keydown', unlockAudio)
-
-    return () => {
-      window.removeEventListener('pointerdown', unlockAudio)
-      window.removeEventListener('keydown', unlockAudio)
-    }
-  }, [active])
+  // Se desbloquea ya (el toque que abrió la mesa vale) para que el reparto de la mano suene.
+  useUnlockAudio(active, true)
 }

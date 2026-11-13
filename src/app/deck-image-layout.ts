@@ -1,5 +1,5 @@
 import { DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD, getDesktopCompactDeckColumnCount } from './deck-zone-layout'
-import type { DeckZone } from './model'
+import { DECK_ZONES, type DeckZone } from './model'
 
 export interface Rect {
   x: number
@@ -45,7 +45,7 @@ export function computeDeckImageLayout(counts: Record<DeckZone, number>): DeckIm
   const zones: ZoneLayout[] = []
   let top = PAGE_PADDING
 
-  for (const zone of ['main', 'extra', 'side'] as const) {
+  for (const zone of DECK_ZONES) {
     if (zone !== 'main' && counts[zone] === 0) {
       continue
     }

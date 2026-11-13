@@ -182,16 +182,24 @@ export function createMatState(deck: readonly string[], extra: readonly string[]
 
 const isPhase = (value: unknown): value is MatPhase => PHASES.some((phase) => phase.id === value)
 
-/** Fisher-Yates con mulberry32: la misma semilla da siempre el mismo orden (así un combo se reproduce igual). */
-export function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
+/** mulberry32: la misma semilla da siempre la misma serie en [0, 1). La usan el barajado de la mesa y los bots. */
+export function mulberry32(seed: number) {
   let a = seed >>> 0
-  const random = () => {
+
+  return () => {
     a = (a + 0x6d2b79f5) >>> 0
     let t = a
+
     t = Math.imul(t ^ (t >>> 15), t | 1)
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+}
+
+/** Fisher-Yates con mulberry32: la misma semilla da siempre el mismo orden (así un combo se reproduce igual). */
+export function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
+  const random = mulberry32(seed)
   const next = [...items]
 
   for (let i = next.length - 1; i > 0; i -= 1) {

@@ -19,7 +19,6 @@ export const EMPTY_RANGE: NumberRange = { min: '', max: '' }
 
 /** El marco de la carta, el color con el que viene impresa. Un péndulo es un marco aparte (mitad naranja, mitad celeste) sea cual sea su otra mitad. */
 export const FRAME_KEYS = ['normal', 'effect', 'fusion', 'ritual', 'synchro', 'xyz', 'pendulum', 'link', 'spell', 'trap'] as const
-export type FrameKey = (typeof FRAME_KEYS)[number]
 
 /** Lo que dice el tipo de la carta: «Toon Monster», «Flip Effect Monster», «Union Effect Monster»… «Sin efecto» son los monstruos normales. */
 export const ABILITY_KEYS = ['toon', 'gemini', 'union', 'spirit', 'tuner', 'flip', 'non-effect'] as const

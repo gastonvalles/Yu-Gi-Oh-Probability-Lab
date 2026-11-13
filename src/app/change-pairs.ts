@@ -1,13 +1,11 @@
 import type { CardRole } from '../types'
-import type { DeckCardInstance, DeckZone } from './model'
+import { DECK_ZONES, type DeckCardInstance, type DeckZone } from './model'
 import type { BuildZones } from './saved-builds'
 
 /**
  * «Qué cambiaste» entre A y B, como lo piensa un jugador: en el Main, cada carta que sale con la que entra en su lugar; en el Extra y el Side,
  * qué baja, qué sube y qué sale o entra al deck. Puro y determinista (mismo A y B, mismo resultado), sin DOM ni workers.
  */
-
-const ZONES: readonly DeckZone[] = ['main', 'extra', 'side']
 
 /** Otra zona del deck o afuera: `outside` en una que sale es «sale del deck»; en una que entra, «nueva». */
 export type ZonePlace = DeckZone | 'outside'
@@ -89,7 +87,7 @@ const isUnclassified = (card: DeckCardInstance) => card.origin === null || card.
 function countByZone(deck: BuildZones): Map<number, Record<DeckZone, number>> {
   const counts = new Map<number, Record<DeckZone, number>>()
 
-  for (const zone of ZONES) {
+  for (const zone of DECK_ZONES) {
     for (const card of deck[zone]) {
       const entry = counts.get(card.apiCard.ygoprodeckId) ?? { main: 0, extra: 0, side: 0 }
       entry[zone] += 1
@@ -148,7 +146,7 @@ function cardMoves(a: BuildZones, b: BuildZones): CardMove[] {
       delta.side += up
     }
 
-    for (const zone of ZONES) {
+    for (const zone of DECK_ZONES) {
       move(zone, 'outside', Math.max(0, -delta[zone]))
       move('outside', zone, Math.max(0, delta[zone]))
     }
@@ -247,7 +245,7 @@ function pairMain(moves: CardMove[], a: BuildZones, b: BuildZones): MainChange[]
 export function pairChanges(a: BuildZones, b: BuildZones): DeckChanges {
   const moves = cardMoves(a, b)
   const zones = Object.fromEntries(
-    ZONES.map((zone) => {
+    DECK_ZONES.map((zone) => {
       const out = moves.filter((move) => move.from === zone)
       const inn = moves.filter((move) => move.to === zone)
       const copies = (list: CardMove[]) => list.reduce((total, move) => total + move.copies, 0)

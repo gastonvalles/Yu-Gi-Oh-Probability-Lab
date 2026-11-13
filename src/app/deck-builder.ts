@@ -5,7 +5,7 @@ import { classifyCard, normalizeCardNameForLookup, type ClassificationSuggestion
 import { getCardCopyLimit } from './deck-format'
 import { EDISON_FORMAT_LABEL, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal, isGenesysLegalCardName } from './genesys-format'
-import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
+import { DECK_ZONES, type DeckBuilderState, type DeckCardInstance, type DeckZone } from './model'
 import { removeClassificationOverrides, saveClassificationOverride } from './persistence'
 import { createId, formatInteger } from './utils'
 
@@ -190,28 +190,28 @@ export function findDeckCard(deckBuilder: DeckBuilderState, instanceId: string):
   return deckBuilder[location.zone][location.index] ?? null
 }
 
-export function toggleRoleForCard(
+/**
+ * Cambia las copias de una carta, zona por zona (`change` recibe las de una zona), las da por revisadas y, si hubo alguna,
+ * guarda como override la clasificación completa (una copia por zona).
+ */
+function editCardCopies(
   deckBuilder: DeckBuilderState,
   ygoprodeckId: number,
-  role: CardRole,
+  change: (copies: DeckCardInstance[]) => void,
 ): DeckBuilderState {
   const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
-  const zones: DeckZone[] = ['main', 'extra', 'side']
   let hasAnyChange = false
 
-  for (const zone of zones) {
+  for (const zone of DECK_ZONES) {
     const matchingCards = nextDeckBuilder[zone].filter((card) => card.apiCard.ygoprodeckId === ygoprodeckId)
 
     if (matchingCards.length === 0) {
       continue
     }
 
-    const shouldAddRole = matchingCards.some((card) => !card.roles.includes(role))
+    change(matchingCards)
 
     for (const card of matchingCards) {
-      card.roles = shouldAddRole
-        ? [...new Set([...card.roles, role])]
-        : card.roles.filter((entry) => entry !== role)
       card.needsReview = false
     }
 
@@ -219,8 +219,7 @@ export function toggleRoleForCard(
   }
 
   if (hasAnyChange) {
-    // Persist override for cards that are fully classified
-    for (const zone of zones) {
+    for (const zone of DECK_ZONES) {
       for (const card of nextDeckBuilder[zone]) {
         if (card.apiCard.ygoprodeckId === ygoprodeckId && !card.needsReview && card.origin !== null && card.roles.length > 0) {
           saveClassificationOverride(card.name, { origin: card.origin, roles: [...card.roles] })
@@ -233,45 +232,34 @@ export function toggleRoleForCard(
   return hasAnyChange ? nextDeckBuilder : deckBuilder
 }
 
+export function toggleRoleForCard(
+  deckBuilder: DeckBuilderState,
+  ygoprodeckId: number,
+  role: CardRole,
+): DeckBuilderState {
+  return editCardCopies(deckBuilder, ygoprodeckId, (matchingCards) => {
+    const shouldAddRole = matchingCards.some((card) => !card.roles.includes(role))
+
+    for (const card of matchingCards) {
+      card.roles = shouldAddRole
+        ? [...new Set([...card.roles, role])]
+        : card.roles.filter((entry) => entry !== role)
+    }
+  })
+}
+
 export function setOriginForCard(
   deckBuilder: DeckBuilderState,
   ygoprodeckId: number,
   origin: CardOrigin,
 ): DeckBuilderState {
-  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
-  const zones: DeckZone[] = ['main', 'extra', 'side']
-  let hasAnyChange = false
-
-  for (const zone of zones) {
-    const matchingCards = nextDeckBuilder[zone].filter((card) => card.apiCard.ygoprodeckId === ygoprodeckId)
-
-    if (matchingCards.length === 0) {
-      continue
-    }
-
+  return editCardCopies(deckBuilder, ygoprodeckId, (matchingCards) => {
     const nextOrigin = matchingCards.every((card) => card.origin === origin) ? null : origin
 
     for (const card of matchingCards) {
       card.origin = nextOrigin
-      card.needsReview = false
     }
-
-    hasAnyChange = true
-  }
-
-  if (hasAnyChange) {
-    // Persist override for cards that are fully classified
-    for (const zone of zones) {
-      for (const card of nextDeckBuilder[zone]) {
-        if (card.apiCard.ygoprodeckId === ygoprodeckId && !card.needsReview && card.origin !== null && card.roles.length > 0) {
-          saveClassificationOverride(card.name, { origin: card.origin, roles: [...card.roles] })
-          break
-        }
-      }
-    }
-  }
-
-  return hasAnyChange ? nextDeckBuilder : deckBuilder
+  })
 }
 
 /** Marks a suggested classification as confirmed without changing origin/roles. */
@@ -280,10 +268,9 @@ export function confirmClassificationForCard(
   ygoprodeckId: number,
 ): DeckBuilderState {
   const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
-  const zones: DeckZone[] = ['main', 'extra', 'side']
   let hasAnyChange = false
 
-  for (const zone of zones) {
+  for (const zone of DECK_ZONES) {
     for (const card of nextDeckBuilder[zone]) {
       if (card.apiCard.ygoprodeckId !== ygoprodeckId || !card.needsReview || card.origin === null || card.roles.length === 0) {
         continue
@@ -304,10 +291,9 @@ export function confirmClassificationForCard(
  */
 export function confirmAllClassifications(deckBuilder: DeckBuilderState): DeckBuilderState {
   const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
-  const zones: DeckZone[] = ['main', 'extra', 'side']
   let hasAnyChange = false
 
-  for (const zone of zones) {
+  for (const zone of DECK_ZONES) {
     for (const card of nextDeckBuilder[zone]) {
       if (!card.needsReview || card.origin === null || card.roles.length === 0) {
         continue
@@ -327,9 +313,8 @@ export function reclassifyAll(
   overrides?: ReadonlyMap<string, ClassificationSuggestion>,
 ): DeckBuilderState {
   const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
-  const zones: DeckZone[] = ['main', 'extra', 'side']
 
-  for (const zone of zones) {
+  for (const zone of DECK_ZONES) {
     for (const card of nextDeckBuilder[zone]) {
       const suggestion = classifyCard(card.apiCard, card.name, overrides)
 
@@ -356,10 +341,9 @@ export function reclassifyAll(
  */
 export function resuggestAll(deckBuilder: DeckBuilderState): DeckBuilderState {
   const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
-  const zones: DeckZone[] = ['main', 'extra', 'side']
   const names = new Set<string>()
 
-  for (const zone of zones) {
+  for (const zone of DECK_ZONES) {
     for (const card of nextDeckBuilder[zone]) {
       const suggestion = classifyCard(card.apiCard, card.name)
       card.origin = suggestion.origin
@@ -405,9 +389,8 @@ function findDeckCardLocation(
   deckBuilder: DeckBuilderState,
   instanceId: string,
 ): { zone: DeckZone; index: number } | null {
-  const zones: DeckZone[] = ['main', 'extra', 'side']
 
-  for (const zone of zones) {
+  for (const zone of DECK_ZONES) {
     const index = deckBuilder[zone].findIndex((card) => card.instanceId === instanceId)
 
     if (index !== -1) {
@@ -429,10 +412,9 @@ export function isCardAtCopyLimit(
 
 function countCardCopies(deckBuilder: DeckBuilderState, cardName: string): number {
   const normalizedCardName = normalizeCardName(cardName)
-  const zones: DeckZone[] = ['main', 'extra', 'side']
   let copies = 0
 
-  for (const zone of zones) {
+  for (const zone of DECK_ZONES) {
     for (const card of deckBuilder[zone]) {
       if (normalizeCardName(card.name) === normalizedCardName) {
         copies += 1

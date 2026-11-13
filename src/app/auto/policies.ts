@@ -1,6 +1,10 @@
 import { AUTO_RULES, BOT_SWAP_CARDS, TURN_RULES, type AutoRule, type TurnRule } from '../handtraps'
+import { mulberry32 } from '../practice-mat'
 import type { AutoOverlay, CardRef, ChainLink, CorePlace } from './adapter'
 import { LOCATION, type AskOf, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
+
+/** Sigue saliendo de acá para el fuzz y el bot de la sesión; vive en la mesa, junto a `shuffleWithSeed`. */
+export { mulberry32 }
 
 /** Las handtraps de un ejecutor (`base`, en su orden de preferencia) y después las de `BOT_SWAP_CARDS` que no tiene: si se las ponen, también las usa. Vive acá porque los ejecutores sólo importan valores de `policies` y de las listas (`auto-bot-privacy.test.ts`). */
 export const withSwapCards = (base: readonly number[]): number[] => [...base, ...BOT_SWAP_CARDS.map((card) => card.id).filter((id) => !base.includes(id))]
@@ -324,21 +328,6 @@ export function handtrapDecide(priority: readonly number[], extra: readonly numb
     }
 
     return { answer: fallback(ask) }
-  }
-}
-
-/** mulberry32, el mismo generador que `shuffleWithSeed` de la mesa. */
-export function mulberry32(seed: number) {
-  let a = seed >>> 0
-
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
 

@@ -127,33 +127,7 @@ export function buildDerivedDeckLevels(cards: CardEntry[]): DerivedDeckValueOpti
 }
 
 export function buildDerivedDeckMonsterTypes(cards: CardEntry[]): DerivedDeckValueOption<string>[] {
-  const options = new Map<string, DerivedDeckValueOption<string>>()
-
-  for (const card of cards) {
-    if (!isMonsterCard(card) || !card.apiCard?.race) {
-      continue
-    }
-
-    const key = card.apiCard.race
-    const current = options.get(key)
-
-    if (current) {
-      current.cardIds.push(card.id)
-      current.cardNames.push(card.name)
-      current.copies += card.copies
-      continue
-    }
-
-    options.set(key, {
-      key,
-      label: key,
-      cardIds: [card.id],
-      cardNames: [card.name],
-      copies: card.copies,
-    })
-  }
-
-  return [...options.values()].sort((left, right) => left.label.localeCompare(right.label))
+  return groupMonsters(cards, (card) => card.apiCard?.race || null, (left, right) => left.label.localeCompare(right.label))
 }
 
 export function buildDerivedDeckAttackValues(cards: CardEntry[]): DerivedDeckValueOption<number>[] {
@@ -168,14 +142,23 @@ function buildDerivedDeckNumericOptions(
   cards: CardEntry[],
   resolveValue: (card: CardEntry) => number | null,
 ): DerivedDeckValueOption<number>[] {
-  const options = new Map<number, DerivedDeckValueOption<number>>()
+  return groupMonsters(cards, resolveValue, (left, right) => left.key - right.key)
+}
+
+/** Agrupa los monstruos por una clave (los que no tienen, se saltean): las cartas, el nombre y las copias de cada grupo. */
+function groupMonsters<K extends string | number>(
+  cards: CardEntry[],
+  keyOf: (card: CardEntry) => K | null,
+  sort: (left: DerivedDeckValueOption<K>, right: DerivedDeckValueOption<K>) => number,
+): DerivedDeckValueOption<K>[] {
+  const options = new Map<K, DerivedDeckValueOption<K>>()
 
   for (const card of cards) {
     if (!isMonsterCard(card)) {
       continue
     }
 
-    const key = resolveValue(card)
+    const key = keyOf(card)
 
     if (key === null) {
       continue
@@ -199,7 +182,7 @@ function buildDerivedDeckNumericOptions(
     })
   }
 
-  return [...options.values()].sort((left, right) => left.key - right.key)
+  return [...options.values()].sort(sort)
 }
 
 function isMonsterCard(card: CardEntry): boolean {

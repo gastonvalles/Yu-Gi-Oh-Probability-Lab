@@ -110,9 +110,6 @@ export function mismatches(sentence: EffectSentence, effect: LogicalEffect): num
   return count
 }
 
-/** Si la frase puede ser ese efecto: ninguna de sus señales lo contradice. */
-export const compatible = (sentence: EffectSentence, effect: LogicalEffect): boolean => mismatches(sentence, effect) === 0
-
 /** Un par confirmado: la frase del texto y el efecto del script que es. */
 export interface EffectAlignment {
   sentence: EffectSentence
@@ -178,8 +175,6 @@ export const EFFECT_PLACE = {
   /** Desde la Zona de Péndulo (`SetRange(LOCATION_PZONE)`) y la frase está en la parte «Pendulum Effect» del texto: ahí la segunda fuente es la **sección** del texto, que dice cuál efecto vale en la Zona de Péndulo. */
   pendulum: 1 << 4,
 } as const
-
-export type EffectPlaceName = keyof typeof EFFECT_PLACE
 
 /** El lugar que nombra la frase **de esta carta** (no el de otras: «from your hand» a secas puede ser lo que se busca, no desde dónde se activa). */
 const TEXT_HAND = /^[^:]*\bthis card (?:is )?in your hand\b|\b(?:discard|reveal) this card\b/i

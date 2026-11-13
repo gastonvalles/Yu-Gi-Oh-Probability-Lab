@@ -271,26 +271,36 @@ export function parseAgo(text: string | null): { value: number; unit: AgoUnit } 
 /** Los más vistos primero; con la misma cantidad (o sin dato), por id para que el orden no cambie de un pedido a otro. */
 export const byViewers = (a: LiveStream, b: LiveStream) => (b.viewers ?? -1) - (a.viewers ?? -1) || a.id.localeCompare(b.id)
 
+/** Lo que `streams` y `past` tienen en común, validado: un id de video, un canal conocido y un título; o nada. */
+function parseBase(entry: unknown): { entry: Record<string, unknown>; id: string; channel: ReplayChannel; title: string } | null {
+  if (
+    isObject(entry) &&
+    typeof entry.id === 'string' &&
+    VIDEO_ID.test(entry.id) &&
+    typeof entry.channel === 'string' &&
+    CHANNEL_KEYS.includes(entry.channel) &&
+    typeof entry.title === 'string' &&
+    entry.title.trim() !== ''
+  ) {
+    return { entry, id: entry.id, channel: entry.channel as ReplayChannel, title: entry.title.trim().slice(0, MAX_TITLE_LENGTH) }
+  }
+
+  return null
+}
+
 /** Lo que devuelve `/api/live`, validado: la app nunca arma un link o un reproductor con algo que no sea un id de video. */
 export function parseLiveResponse(value: unknown): LiveStreams {
   const streams: LiveStream[] = []
 
   if (isObject(value) && Array.isArray(value.streams)) {
-    for (const entry of value.streams) {
-      if (
-        isObject(entry) &&
-        typeof entry.id === 'string' &&
-        VIDEO_ID.test(entry.id) &&
-        typeof entry.channel === 'string' &&
-        CHANNEL_KEYS.includes(entry.channel) &&
-        typeof entry.title === 'string' &&
-        entry.title.trim() !== '' &&
-        !streams.some((stream) => stream.id === entry.id)
-      ) {
+    for (const raw of value.streams) {
+      const base = parseBase(raw)
+
+      if (base && !streams.some((stream) => stream.id === base.id)) {
+        const { entry, ...fields } = base
+
         streams.push({
-          id: entry.id,
-          channel: entry.channel as ReplayChannel,
-          title: entry.title.trim().slice(0, MAX_TITLE_LENGTH),
+          ...fields,
           viewers: typeof entry.viewers === 'number' && Number.isFinite(entry.viewers) && entry.viewers >= 0 ? Math.round(entry.viewers) : null,
         })
       }
@@ -300,22 +310,14 @@ export function parseLiveResponse(value: unknown): LiveStreams {
   const past: PastStream[] = []
 
   if (isObject(value) && Array.isArray(value.past)) {
-    for (const entry of value.past) {
-      if (
-        isObject(entry) &&
-        typeof entry.id === 'string' &&
-        VIDEO_ID.test(entry.id) &&
-        typeof entry.channel === 'string' &&
-        CHANNEL_KEYS.includes(entry.channel) &&
-        typeof entry.title === 'string' &&
-        entry.title.trim() !== '' &&
-        !past.some((stream) => stream.id === entry.id) &&
-        !streams.some((stream) => stream.id === entry.id)
-      ) {
+    for (const raw of value.past) {
+      const base = parseBase(raw)
+
+      if (base && !past.some((stream) => stream.id === base.id) && !streams.some((stream) => stream.id === base.id)) {
+        const { entry, ...fields } = base
+
         past.push({
-          id: entry.id,
-          channel: entry.channel as ReplayChannel,
-          title: entry.title.trim().slice(0, MAX_TITLE_LENGTH),
+          ...fields,
           duration: typeof entry.duration === 'string' && DURATION.test(entry.duration) ? entry.duration : null,
           published: typeof entry.published === 'string' && PUBLISHED.test(entry.published) ? entry.published : null,
         })

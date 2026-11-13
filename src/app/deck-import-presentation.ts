@@ -1,5 +1,5 @@
 import { t } from '../i18n'
-import type { DeckZone } from './model'
+import { DECK_ZONES, type DeckZone } from './model'
 import type {
   DeckImportPreview,
   ResolvedImportedDeckEntry,
@@ -20,8 +20,6 @@ interface ProblemSummary {
   invalidLineCount: number
   totalProblems: number
 }
-
-const ZONE_ORDER: DeckZone[] = ['main', 'extra', 'side']
 
 const ZONE_LABELS: Record<DeckZone, string> = {
   main: 'Main Deck',
@@ -44,7 +42,7 @@ export function groupResolvedByZone(entries: ResolvedImportedDeckEntry[]): ZoneG
 
   const groups: ZoneGroup[] = []
 
-  for (const zone of ZONE_ORDER) {
+  for (const zone of DECK_ZONES) {
     const zoneEntries = byZone.get(zone)
     if (zoneEntries && zoneEntries.length > 0) {
       groups.push({
