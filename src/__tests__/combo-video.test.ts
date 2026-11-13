@@ -8,7 +8,7 @@ import { flightsOf, freshTargets, MESA, overlaysOf, replaceOverlays, targetOverl
 import { transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { videoLayout, type Scene, type SceneCard } from '../components/replays/video/video-scene'
 import { bitrateFor } from '../components/replays/video/video-support'
-import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, videoFileName } from '../components/replays/video/video-timeline'
+import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, VIDEO_PACE, videoFileName } from '../components/replays/video/video-timeline'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
 
 // Un combo chico con el simulador de handtraps: paso a la Main, invoco h0, coloco h1, el rival usa su Ash, mando h0 al cementerio y saco una ficha.
@@ -119,11 +119,12 @@ describe('el archivo y los tiempos', () => {
   it('se llama como el combo, con la fecha; dura lo de sus jugadas más el título y el cierre', () => {
     expect(videoFileName({ kind: 'combo', combo })).toBe('Linea-basica-2026-10-29.mp4')
     expect(videoFileName({ kind: 'combo', combo: { ...combo, name: '../../ «»' } })).toBe('2026-10-29.mp4')
-    // El título, cada jugada (la de un combo, lo que espera la mesa al reproducirlo; un cambio de fase, menos) y el cierre.
+    // El título, cada jugada (la de un combo, lo que espera la mesa al reproducirlo; un cambio de fase, menos; todo a `VIDEO_PACE`) y el cierre.
     const durations = frameDurations({ kind: 'combo', combo })
     expect(durations).toHaveLength(actions.length + 2)
     expect(durations[0]).toBe(INTRO_MS)
-    expect(durations.slice(1, -1)).toEqual(actions.map((action) => (action.type === 'phase' ? MESA.banner : COMBO_STEP_MS)))
+    expect(durations.slice(1, -1)).toEqual(actions.map((action) => (action.type === 'phase' ? MESA.banner : COMBO_STEP_MS) / VIDEO_PACE))
+    expect(VIDEO_PACE).toBe(1.25)
     expect(durations.at(-1)).toBe(OUTRO_MS)
   })
 })

@@ -10,7 +10,7 @@ import { placesOf, poseAt, transitionOf, type Motion } from '../components/repla
 import { phoneDuelLayout } from '../components/probability/compact-field'
 import { artUrls, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
-import { FPS, frameDurations, frameOf, INTRO_MS, OUTRO_MS, STEP_MS, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
+import { FPS, frameDurations, frameOf, INTRO_MS, OUTRO_MS, STEP_MS, VIDEO_PACE, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
 import { fakeAssets } from './support/video-fakes'
 
 // Un duelo chico (como el de `duel-replay.test.ts`): invoco, coloco, activo y paso; el rival roba, invoca y me ataca.
@@ -242,9 +242,10 @@ describe('los tiempos y el nombre del archivo', () => {
     const durations = frameDurations(subject)
     expect(durations).toHaveLength(replay.steps.length + 2)
     expect(durations[0]).toBe(INTRO_MS)
-    expect(durations[1]).toBeLessThan(STEP_MS)
-    expect(durations[2]).toBe(STEP_MS)
-    expect(durations.at(-2)).toBe(STEP_MS)
+    // A `VIDEO_PACE` (1,25×) del ritmo del reproductor.
+    expect(durations[1]).toBeLessThan(STEP_MS / VIDEO_PACE)
+    expect(durations[2]).toBe(STEP_MS / VIDEO_PACE)
+    expect(durations.at(-2)).toBe(STEP_MS / VIDEO_PACE)
     expect(durations.at(-1)).toBe(OUTRO_MS)
     expect(frameDurations({ kind: 'duel', replay: { ...replay, steps: [] } })).toEqual([INTRO_MS + OUTRO_MS])
     // 30 cuadros por segundo, sin que el redondeo se acumule: el cuadro de cada momento sale de la cuenta desde el principio.

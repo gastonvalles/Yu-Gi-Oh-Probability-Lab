@@ -12,7 +12,7 @@ import { comboArtUrls, comboRowLook, comboScenes, resolveComboNames } from './vi
 import { chainLayers, replayRowLook, type RowLook } from './video-chain'
 import { artUrls, replayScenes, videoLayout, type Scene } from './video-scene'
 import { bitrateFor, VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
-import { FPS, frameDurations, frameOf, subjectChain, type VideoSpeed, type VideoSubject } from './video-timeline'
+import { FPS, frameDurations, frameOf, paceOf, subjectChain, type VideoChoice, type VideoSpeed, type VideoSubject } from './video-timeline'
 
 /**
  * El video de un replay o un combo, entero en el navegador: cada cuadro se pinta en un lienzo, `VideoEncoder` (WebCodecs) lo codifica en H.264 y `mp4-mux.ts` arma el .mp4.
@@ -29,7 +29,7 @@ const SLICE_MS = 30
 const TITLE_FADE_MS = 250
 
 export interface VideoOptions {
-  speed?: VideoSpeed
+  speed?: VideoChoice
   signal?: AbortSignal
   /** De 0 a 1. */
   onProgress?: (done: number) => void
@@ -124,7 +124,9 @@ function fieldFade(before: Scene | null, after: Scene, speed: VideoSpeed): ((ms:
 const fadeEase = bezierEase(EASE_OUT)
 
 export async function makeReplayVideo(subject: VideoSubject, options: VideoOptions = {}): Promise<VideoResult> {
-  const { signal, speed = 1 } = options
+  const { signal } = options
+  // Todo lo que anima el video corre a este ritmo (el de fábrica por lo elegido).
+  const speed = paceOf(options.speed ?? 1)
   const support = await videoSupport()
   if (!support.ok) throw new Error(`replay-video: ${support.reason}`)
 

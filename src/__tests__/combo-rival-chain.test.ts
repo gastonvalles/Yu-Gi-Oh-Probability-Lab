@@ -9,7 +9,7 @@ import { comboChainSteps, comboTheirsAt, createSavedCombo, migrateSavedCombo, ty
 import { comboScenes } from '../components/replays/video/video-combo'
 import { placeRect, replayScenes } from '../components/replays/video/video-scene'
 import { buildDuelReplay } from '../app/duel-replay'
-import { chainMs, chainTimeline, frameDurations, subjectChain } from '../components/replays/video/video-timeline'
+import { chainMs, chainTimeline, frameDurations, subjectChain, VIDEO_PACE } from '../components/replays/video/video-timeline'
 
 // Un combo de «Jugar solo automático» contra el bot pasivo: la mano de apertura (plegada), paso a la Main, invoco h0, le doy h1 (un Kaiju: el rival lo toma en su zona 3) y activo h2,
 // que hace una cadena de un eslabón. Después el rival empieza su turno (eso ya no es del combo).
@@ -154,7 +154,7 @@ describe('el combo de «Jugar solo automático» guarda el campo del rival y la 
     const starts = durations.reduce<number[]>((list, ms) => [...list, list.at(-1)! + ms], [0])
 
     expect(steps).toEqual(comboChainSteps(combo))
-    expect(durations[4]! - frameDurations({ kind: 'combo', combo: plain })[4]!).toBe(chainMs(steps, 4))
+    expect(durations[4]! - frameDurations({ kind: 'combo', combo: plain })[4]!).toBe(chainMs(steps, 4) / VIDEO_PACE)
     expect(chainMs(steps, 4)).toBeGreaterThan(0)
     // Los momentos de la cadena caen en el tramo de la jugada 4 (y el `end`, en el de la 5).
     const beats = chainTimeline(steps, starts)
