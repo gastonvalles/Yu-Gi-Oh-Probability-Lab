@@ -4,14 +4,16 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
 import type { AskWhyView } from '../../app/auto/ask-why'
 import { POSITION } from '../../app/auto/protocol'
+import type { CardFrame } from '../../app/card-frame'
 import { t } from '../../i18n'
+import { CardArt } from '../CardArt'
 import { AskWhy } from '../duel/AskWhy'
 import { Options } from '../probability/CardSheet'
 import { CARD_BACK } from '../probability/practice-styles'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { choiceChip } from '../ui/surfaces'
-import { AutoPanel, PANEL_PRIMARY, PanelCard } from './AutoPanel'
+import { AutoPanel, PANEL_PRIMARY } from './AutoPanel'
 import { PickCount } from './CardPicker'
 
 /** Una opción del núcleo: un texto, una posición, un número, un Tipo o un Atributo. */
@@ -42,20 +44,26 @@ interface AskOptionsProps {
   stacked?: boolean
   /** Qué se pregunta (`ask-ui`: `position`, `number`…): la posición va con dos dibujos (M-05). */
   of?: string
-  /** La carta de la que se habla (la posición: la que se coloca), al medio, entre las opciones. */
-  card?: { name: string; art: string | null }
+  /** La carta de la que se habla (la posición: la que se coloca): cada opción la muestra parada, acostada o con el dorso. Sin arte, el color de su tipo (`frame`). */
+  card?: { name: string; art: string | null; frame?: CardFrame }
   /** Sólo el catálogo lo fuerza (la ventana en su marco); en la mesa, según el ancho. */
   variant?: 'floating'
 }
 
-/** El dibujo de una posición (`select_position`: el valor de `POSITION`): la carta parada (ataque) o acostada (defensa), boca arriba o con el dorso. */
-function PositionDrawing({ value }: { value: number }) {
+/**
+ * Una posición (`select_position`: el valor de `POSITION`) **es la carta** (Gastón, 2026-11-12: «la idea es que aparezca la carta en ataque o en defensa»): parada (ataque) o acostada (defensa),
+ * boca arriba con su arte (sin arte, el color de su tipo) o con el dorso. Cada una en una caja cuadrada del alto de una carta parada, así la acostada mide lo mismo y los rótulos quedan a la misma
+ * altura. El ancho de la carta (`--pos-w`) es el de la ventana (`--desk-card`), sin pasar dos cajas por renglón.
+ */
+function PositionCard({ value, card }: { value: number; card?: AskOptionsProps['card'] }) {
   const down = (value & POSITION.FACEDOWN) !== 0
   const defense = (value & (POSITION.FACEUP_DEFENSE | POSITION.FACEDOWN_DEFENSE)) !== 0
 
   return (
-    <span aria-hidden="true" data-position-drawing={defense ? 'defense' : 'attack'} className="grid h-14 w-14 place-items-center">
-      <span className={cx('relative block h-14 w-10 overflow-hidden', defense && 'rotate-90', down ? 'bg-input' : 'border-2 border-foreground/70 bg-surface-raised')}>{down ? <span className={CARD_BACK} /> : null}</span>
+    <span aria-hidden="true" data-position-drawing={defense ? 'defense' : 'attack'} data-face={down ? 'down' : 'up'} className="grid size-[calc(var(--pos-w)*614/421)] place-items-center">
+      <span className={cx('relative block aspect-[421/614] w-(--pos-w) overflow-hidden bg-input', defense && 'rotate-90')}>
+        {down ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card?.art ?? null} name={card?.name ?? ''} {...(card?.frame ? { frame: card.frame } : {})} className="block h-full w-full object-cover" />}
+      </span>
     </span>
   )
 }
@@ -80,20 +88,30 @@ export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel
 
   const toggle = (id: string) => setChosen((current) => (current.includes(id) ? current.filter((key) => key !== id) : count === 1 ? [id] : current.length < count ? [...current, id] : current))
 
-  // M-05: la posición son dos dibujos; tocar uno contesta, sin confirmar. Van al medio del cuerpo, a los costados de la carta que se coloca (Gastón, 2026-11-12: «la carta y las 2 opciones en el medio»).
+  // M-05: cada posición es la carta (parada, acostada o con el dorso), lado a lado y al medio; tocar una contesta, sin confirmar. Con tres o cuatro, de a dos por renglón si no entran.
   const position = mode === 'one' && of === 'position'
   const button = (option: AskOption) => (
-    <Button key={option.id} role="menuitem" variant="secondary" aria-disabled={option.disabled || undefined} className={cx('min-h-28 min-w-24 flex-col gap-2 px-3!', option.disabled && 'cursor-default opacity-40')} onClick={option.disabled ? undefined : () => onPick([option.id])}>
-      <PositionDrawing value={Number(option.id)} />
+    <Button
+      key={option.id}
+      role="menuitem"
+      variant="tertiary"
+      aria-label={card ? `${option.label} · ${card.name}` : option.label}
+      aria-disabled={option.disabled || undefined}
+      className={cx('h-auto flex-col gap-1 px-1! py-1! hover:outline-2 hover:outline-info/60 focus-visible:outline-2 focus-visible:outline-info', option.disabled && 'cursor-default opacity-40')}
+      onClick={option.disabled ? undefined : () => onPick([option.id])}
+    >
+      <PositionCard value={Number(option.id)} card={card} />
       <span className="whitespace-nowrap">{option.label}</span>
     </Button>
   )
-  const half = Math.ceil(options.length / 2)
   const positions = (
-    <div role="menu" aria-label={title} data-positions="" className="flex w-full min-w-0 flex-wrap items-center justify-center gap-3">
-      {options.slice(0, half).map(button)}
-      {card ? <PanelCard name={card.name} art={card.art} /> : null}
-      {options.slice(half).map(button)}
+    <div
+      role="menu"
+      aria-label={title}
+      data-positions=""
+      className="flex w-full min-w-0 flex-wrap items-start justify-center gap-3 [--pos-w:min(var(--desk-card,4.5rem),calc((100cqw_-_3rem)/2*421/614))]"
+    >
+      {options.map(button)}
     </div>
   )
 

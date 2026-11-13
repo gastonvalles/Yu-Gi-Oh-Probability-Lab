@@ -1078,14 +1078,23 @@ describe('la carta de la que se habla, siempre al medio (TI-248)', () => {
     expect(screen.queryByRole('button', { name: 'Ver carta' })).toBeNull()
   })
 
-  it('la posición: la carta que se coloca al medio, entre «En ataque» y «En defensa», en el cuerpo (no al fondo, en la fila de botones); tocar una contesta', () => {
+  it('la posición: cada opción ES la carta (parada en ataque, acostada en defensa, con el dorso boca abajo), lado a lado en el cuerpo, en cajas cuadradas del mismo tamaño; tocar cada una contesta la suya', () => {
     const onPick = vi.fn()
-    render(<AskOptions title="Elegí la posición de «Angelechy Enlisted»" options={[{ id: '1', label: 'En ataque' }, { id: '4', label: 'En defensa' }]} mode="one" of="position" card={{ name: 'Angelechy Enlisted', art: null }} onPick={onPick} />)
+    render(<AskOptions title="Elegí la posición de «Angelechy Enlisted»" options={[{ id: '1', label: 'En ataque' }, { id: '4', label: 'En defensa' }, { id: '8', label: 'Boca abajo en defensa' }]} mode="one" of="position" card={{ name: 'Angelechy Enlisted', art: null }} onPick={onPick} />)
     const menu = document.querySelector('[data-positions]')!
 
     expect(menu.closest('[data-panel-body]')).not.toBeNull()
-    expect([...menu.children].map((child) => child.getAttribute('role') ?? (child.hasAttribute('data-panel-card') ? 'card' : ''))).toEqual(['menuitem', 'card', 'menuitem'])
-    fireEvent.click(screen.getByRole('menuitem', { name: /En defensa/ }))
-    expect(onPick).toHaveBeenCalledWith(['4'])
+    // Sin una tercera carta suelta: sólo las opciones.
+    expect([...menu.children].map((child) => child.getAttribute('role'))).toEqual(['menuitem', 'menuitem', 'menuitem'])
+    const [attack, defense, down] = screen.getAllByRole('menuitem')
+    expect(attack).toHaveAccessibleName('En ataque · Angelechy Enlisted')
+    // La de ataque, parada y con la carta; la de defensa, la misma carta girada; boca abajo, el dorso girado.
+    expect(attack!.querySelector('[data-position-drawing="attack"][data-face="up"] > span')).not.toHaveClass('rotate-90')
+    expect(defense!.querySelector('[data-position-drawing="defense"][data-face="up"] > span')).toHaveClass('rotate-90')
+    expect(down!.querySelector('[data-position-drawing="defense"][data-face="down"] > span')).toHaveClass('rotate-90')
+    expect(attack!.querySelector('[data-position-drawing]')).toHaveClass('size-[calc(var(--pos-w)*614/421)]')
+    fireEvent.click(attack!)
+    fireEvent.click(down!)
+    expect(onPick.mock.calls).toEqual([[['1']], [['8']]])
   })
 })

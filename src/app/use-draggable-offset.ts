@@ -81,8 +81,11 @@ export interface Size {
   height: number
 }
 
-/** Dónde se guarda el tamaño de un cartel que se estira: al lado de su posición. */
-export const sizeKey = (key: string) => `${key}:size`
+/**
+ * Dónde se guarda el tamaño de un cartel que se estira: al lado de su posición. `v2` (Gastón, 2026-11-12): los tamaños de antes se agrandaron a mano para ver contenido que las ventanas escondían;
+ * ahora que el contenido entra y escala, se reinician una vez (la posición guardada queda).
+ */
+export const sizeKey = (key: string) => `${key}:size:v2`
 
 /** El tamaño guardado (sólo números finitos y positivos; lo demás, ninguno: sale con el de siempre). */
 export function readSize(key: string): Size | null {

@@ -164,6 +164,10 @@ describe('la ventana del escritorio', () => {
       expect(readSize('k')).toBeNull()
     }
     expect(clampSize({ width: 5000, height: 10 }, { width: 360, height: 160 }, { left: 0, top: 0, right: 1280, bottom: 800 })).toEqual({ width: 1280, height: 160 })
+    // Los tamaños de antes (`:size`, agrandados a mano para ver lo que se escondía) se reiniciaron una vez: la clave es `:size:v2`.
+    expect(sizeKey('k')).toBe('k:size:v2')
+    localStorage.setItem('k:size', '{"width":900,"height":700}')
+    expect(readSize('k')).toBeNull()
 
     localStorage.setItem(sizeKey(autoWindowKey('ask')), '{"width":5000,"height":5000}')
     ask()
