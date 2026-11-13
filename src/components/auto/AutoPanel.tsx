@@ -65,8 +65,11 @@ export const ON_ART_TAG = `${ON_ART} group-data-[window]/panel:bg-background`
 /**
  * La fila de abajo: un renglón, la principal al final (a la derecha); en la ventana, todo a la derecha y pegada al borde de abajo (`mt-auto`: estirada, el aire queda entre el contenido y ella). Con
  * el dedo, la esquina de estirar (36 px) va a la derecha de los botones, no debajo: sin un renglón vacío al pie.
+ * Si no entran en un renglón, sube lo de la izquierda («Seguir en modo manual», «No activar») y la principal queda siempre abajo a la derecha: se acomodan de derecha a izquierda y de abajo hacia
+ * arriba (`flex-row-reverse` + `flex-wrap-reverse`; en el código y para el teclado, el orden de siempre).
  */
-const ACTIONS = 'flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap group-data-[auto-panel=floating]/panel:mt-auto group-data-[auto-panel=floating]/panel:flex-wrap group-data-[auto-panel=floating]/panel:justify-end group-data-[auto-panel=floating]/panel:pointer-coarse:pr-7'
+export const WRAP_RIGHT = 'group-data-[auto-panel=floating]/panel:flex-row-reverse group-data-[auto-panel=floating]/panel:flex-wrap-reverse group-data-[auto-panel=floating]/panel:justify-start'
+const ACTIONS = `flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap group-data-[auto-panel=floating]/panel:mt-auto ${WRAP_RIGHT} group-data-[auto-panel=floating]/panel:pointer-coarse:pr-7`
 
 /**
  * La carta de la que habla un cartel, al medio (un sí o no de un efecto, la posición): del tamaño de las de la bandeja (`--desk-card` en la ventana, que crece con ella), con la pestaña de su lugar
@@ -200,7 +203,8 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
     const place = () => {
       const line = document.querySelector('[data-duel-line]')
       // La ventana (celular y escritorio) puede subir sobre el campo lo que necesite para mostrar su contenido entero (Gastón, 2026-11-12: «nada escondido»): su techo es el borde de arriba de la mesa.
-      const edge = floating ? line?.parentElement?.getBoundingClientRect().top : tall ? undefined : line?.getBoundingClientRect().bottom
+      // La hoja acoplada también (a 360×740 recortaba 21 px la carta de «¿Respondés?»): mide su contenido, así que sólo sube lo que le hace falta. Opciones en la hoja, hasta la mitad.
+      const edge = tall && !floating ? undefined : line?.parentElement?.getBoundingClientRect().top
 
       set('--panel-ceiling', edge === undefined ? '50dvh' : `${Math.max(0, Math.round(edge))}px`)
       // Y su piso, 8 px arriba de tu chapa y de la botonera (↶ ≡ ⚙): nunca las tapa.
@@ -228,9 +232,21 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
       if (cards.length) set('--hand-card', `${Math.round(Math.min(...cards))}px`)
     }
 
-    place()
-    window.addEventListener('resize', place)
-    return () => window.removeEventListener('resize', place)
+    // La pregunta que no entra en los dos renglones de la barra ensancha la ventana de fábrica (en proporción a lo que le falta; estirada a mano, manda lo suyo).
+    const widen = () => {
+      const title = root.querySelector('[data-window-bar] h2')
+
+      if (!desk || root.style.width || !title || title.scrollHeight <= title.clientHeight + 1) return
+      set('--window-w', `${Math.min(window.innerWidth - 32, Math.ceil((root.offsetWidth * title.scrollHeight) / title.clientHeight) + 24)}px`)
+    }
+    const fit = () => {
+      place()
+      widen()
+    }
+
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
   }, [slot, inline, minimized, tall, desk, phoneWindow, floating])
 
   const attrs = {
@@ -533,7 +549,7 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
   // Las jugadas son los botones de la ficha: la fila de abajo, que no se desplaza. Filas de a dos (con una suelta, la primera ocupa su fila: la principal queda con pareja, abajo a la derecha); en la ventana, a su ancho y a la derecha.
   const menu = (
     <div role="menu" aria-label={name} className="w-full min-w-0">
-      <div className="grid grid-cols-2 gap-2 group-data-[auto-panel=floating]/panel:flex group-data-[auto-panel=floating]/panel:flex-wrap group-data-[auto-panel=floating]/panel:justify-end">
+      <div className={cx('grid grid-cols-2 gap-2 group-data-[auto-panel=floating]/panel:flex', WRAP_RIGHT)}>
         {ordered.map((item, index) => {
           const main = index === ordered.length - 1 && first >= 0 && !item.disabled
 
@@ -573,9 +589,10 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
     }
   }, [])
 
-  // En la ventana de escritorio el nombre va en la barra (el de acá queda para nombrar la ficha).
+  // En la ventana de escritorio el nombre va en la barra (el de acá queda para nombrar la ficha). Estirada la ventana, la miniatura crece con su alto (`--win-h`, menos la barra, las jugadas y el
+  // aire: 8,5 rem) hasta 7 rem y sin pasar un tercio del ancho; de fábrica, 2,75 rem.
   const head = (
-    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2">
+    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-2 group-data-[window]/panel:grid-cols-[min(7rem,33cqw,max(2.75rem,calc((var(--win-h,0px)_-_8.5rem)*421/614)))_minmax(0,1fr)]">
       <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden bg-input">
         {back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} {...(frame ? { frame } : {})} className="block h-full w-full object-cover" />}
         {/* La carta se toca: la abre en grande, con su detalle (sin botón «Ver carta»; con el panel de detalle a la vista, la mesa no pasa `onInspect`). */}

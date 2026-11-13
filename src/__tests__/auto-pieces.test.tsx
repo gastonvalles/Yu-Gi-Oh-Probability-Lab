@@ -186,17 +186,20 @@ describe('AutoPanel en el celular: apoyado abajo, sobre la mano, con techo en la
     expect(screen.getByRole('dialog')).toHaveTextContent('Tras la Invocación Especial')
   })
 
-  it('el techo es el borde de abajo de la línea (`data-duel-line`): el cartel nunca tapa el campo ni la cadena', () => {
+  // Cambiado a propósito (TI-254): antes el techo era el borde de abajo de la línea y, a 360×740, la carta de «¿Respondés?» se recortaba 21 px. La hoja mide su contenido: sólo sube lo que le falta.
+  it('el techo es el borde de arriba de la mesa (la que contiene a `data-duel-line`): la hoja sube sobre el campo lo necesario para mostrar su contenido entero', () => {
+    const mesa = document.createElement('div')
     const line = document.createElement('div')
 
     line.setAttribute('data-duel-line', '')
-    line.getBoundingClientRect = () => ({ bottom: 512 }) as DOMRect
-    document.body.append(line)
+    mesa.getBoundingClientRect = () => ({ top: 96 }) as DOMRect
+    mesa.append(line)
+    document.body.append(mesa)
     try {
       render(<AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />)
-      expect(screen.getByRole('dialog').style.getPropertyValue('--panel-ceiling')).toBe('512px')
+      expect(screen.getByRole('dialog').style.getPropertyValue('--panel-ceiling')).toBe('96px')
     } finally {
-      line.remove()
+      mesa.remove()
     }
   })
 
@@ -483,8 +486,8 @@ describe('AutoPanel en escritorio: el mismo cartel, en una ventana', () => {
     expect(group).toHaveClass('@container')
     expect(group.className).toContain('[--desk-card:clamp(4rem,min(calc(100cqw_-_1.5rem),var(--fit-h)),var(--card-cap))]')
     expect(group.className).toContain('[--fit-h:calc((var(--win-h,')
-    // Los botones a su ancho y a la derecha (B-04); si no entran, bajan de renglón (nunca se cortan por el borde).
-    expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:justify-end', 'group-data-[auto-panel=floating]/panel:flex-wrap')
+    // Los botones a su ancho y a la derecha (B-04); si no entran, sube lo de la izquierda y la principal queda abajo a la derecha (nunca se cortan por el borde).
+    expect(screen.getByRole('button', { name: 'Activar' }).parentElement).toHaveClass('group-data-[auto-panel=floating]/panel:flex-row-reverse', 'group-data-[auto-panel=floating]/panel:flex-wrap-reverse', 'group-data-[auto-panel=floating]/panel:justify-start')
     expect(group.querySelector('.gap-3')).toBeNull()
   })
 
