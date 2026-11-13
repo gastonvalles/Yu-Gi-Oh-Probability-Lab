@@ -402,6 +402,11 @@ interface CardPickerProps {
   onInspect?: (key: string) => void
   /** Cada copia aparte aunque el toque elija una (`PickGrid`). */
   apart?: boolean
+  /**
+   * Declarar una carta: el buscador está siempre y, además de `cards` (las que se vieron y las del deck propio, a un toque), muestra las de todo el catálogo que encuentra `find` (nunca sin
+   * escribir: no dicen nada del rival). `status`: el catálogo cargando o sin poder cargar (las de `cards` siguen valiendo).
+   */
+  more?: { find: (query: string) => PickCard[]; status: 'loading' | 'ready' | 'error' }
 }
 
 /**
@@ -410,7 +415,7 @@ interface CardPickerProps {
  * elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, una sola principal («Elegir 3 cartas», o «Listo») que se
  * enciende con `min` (o con `done`) y el contador («2 de 3») a la derecha del título. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done, onInspect, apart = false }: CardPickerProps) {
+export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done, onInspect, apart = false, more }: CardPickerProps) {
   const leaving = useLeaving()
   const whyId = useId()
   // El tramo de Mayús, en el orden que se ve (por lugar).
@@ -422,9 +427,14 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
   // Con `max` 1, la principal sólo si hay «Listo» (terminar sin elegir).
   const finish = single && done === true
   const [query, setQuery] = useState('')
-  const searchable = cards.length >= SEARCH_FROM
+  const searchable = more !== undefined || cards.length >= SEARCH_FROM
   const needle = query.trim().toLocaleLowerCase()
-  const shown = needle ? cards.filter((card) => card.name.toLocaleLowerCase().includes(needle)) : cards
+  const listed = needle ? cards.filter((card) => card.name.toLocaleLowerCase().includes(needle)) : cards
+  const found = needle && more ? more.find(query) : []
+  const shown = [...listed, ...found]
+  const open = eligible && found.length > 0 ? new Set([...eligible, ...found.map((card) => card.key)]) : eligible
+  // El catálogo, mientras se busca en él: cargando o sin cargar (una línea chica, sin tapar lo que ya se encontró).
+  const moreNote = needle && more && more.status !== 'ready' ? t(more.status === 'loading' ? 'auto.picker.catalogLoading' : 'auto.picker.catalogError') : null
 
   // Sin cancelar, Escape no cierra esto ni lo que haya abajo: hay que contestar. Con cancelar, Escape cancela.
   useEscapeKey(onCancel ?? (() => {}), !leaving)
@@ -455,12 +465,17 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
       }
     >
       <div className="grid gap-2">
-        {searchable ? <SearchField label={t('auto.picker.search')} placeholder={t('auto.picker.search')} value={query} onChange={setQuery} /> : null}
+        {searchable ? <SearchField label={t('auto.picker.search')} placeholder={t(more ? 'auto.picker.searchAny' : 'auto.picker.search')} value={query} onChange={setQuery} /> : null}
         {shown.length > 0 ? (
-          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} apart={apart} className={TRAY} {...(onInspect ? { onInspect } : {})} />
-        ) : (
-          <p className="m-0 text-body text-muted">{t('auto.picker.noMatches', { query: query.trim() })}</p>
-        )}
+          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={open} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} apart={apart} className={TRAY} {...(onInspect ? { onInspect } : {})} />
+        ) : moreNote === null ? (
+          <p className="m-0 text-body text-muted">{needle ? t('auto.picker.noMatches', { query: query.trim() }) : t('auto.picker.typeName')}</p>
+        ) : null}
+        {moreNote ? (
+          <p role="status" aria-busy={more?.status === 'loading' || undefined} className="m-0 text-micro text-muted">
+            {moreNote}
+          </p>
+        ) : null}
       </div>
     </AutoPanel>
   )

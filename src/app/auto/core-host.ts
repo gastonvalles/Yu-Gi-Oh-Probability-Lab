@@ -65,6 +65,8 @@ export interface HostOptions {
   cardReader: (code: number) => OcgCardData | null
   /** `constant.lua`, `utility.lua` y sus bibliotecas, y `c<código>.lua`. `null` si no existe (una ficha no tiene script: es normal). */
   scriptReader: (name: string) => string | null
+  /** Deja leer una carta que no está en el duelo (la que se declara, `announce_card`): sin esto, sólo valen las precargadas. */
+  fetchCard?: (code: number) => Promise<void>
   emit: (event: AutoEvent) => void
   /** Para pruebas: cada mensaje del núcleo tal como llega, antes de filtrarlo (el oráculo de la información oculta lo usa). */
   tap?: (message: OcgMessage) => void
@@ -540,7 +542,15 @@ export function createAutoHost(options: HostOptions): AutoHost {
     started = true
     emit({ t: 'loading', done: codes.length, total: codes.length })
     run(null)
-    for (const answer of replay) give(answer)
+    for (const answer of replay) {
+      await readable(answer)
+      give(answer)
+    }
+  }
+
+  /** La carta declarada, legible antes de contestar (también re-simulando: la misma fila, la misma respuesta aceptada). */
+  async function readable(answer: CoreAnswer) {
+    if (answer.type === 'announce_card') await options.fetchCard?.(answer.code)
   }
 
   return {
@@ -561,7 +571,10 @@ export function createAutoHost(options: HostOptions): AutoHost {
           break
         // Una respuesta vieja (dos toques, una reconexión) se descarta en `give`: no es la de la pregunta pendiente.
         case 'answer':
-          if (pending && command.askId === pending.askId) give(command.answer)
+          if (pending && command.askId === pending.askId) {
+            await readable(command.answer)
+            give(command.answer)
+          }
           break
         case 'rewind':
           // Más allá de lo jugado no hay a dónde volver: callarlo dejaría a quien lo pidió esperando la re-emisión para siempre.

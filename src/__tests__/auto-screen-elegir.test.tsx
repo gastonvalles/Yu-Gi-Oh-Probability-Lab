@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// El catálogo del armador, para declarar cualquier carta (el arnés deja a `ygoprodeck` sin él): una sola, que no está en ningún deck.
+vi.mock('../app/auto/announce', async (original) => {
+  const real = await original<typeof import('../app/auto/announce')>()
+  const entries = real.announceEntries([{ ygoprodeckId: 44095762, name: 'Mirror Force', cardType: 'Trap Card', race: 'Normal', attribute: null, level: null, linkValue: null, atk: null, def: null } as never])
+
+  return { ...real, loadAnnounceCatalog: async () => ({ entries, matches: () => true }) }
+})
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { loc, pos } from './support/auto-session-fake'
@@ -304,28 +312,31 @@ describe('auto-screen · elegir', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('declarar una carta: pocas, en la banda (el toque la declara); muchas, en la hoja con un buscador por nombre', () => {
+  it('declarar una carta: en la hoja, lo que ofrece el anfitrión a un toque y en su orden (lo visto, primero); el buscador encuentra cualquiera del catálogo y la declara', async () => {
     const fake = renderAuto()
     const announce = (cards: number[]): CoreAsk => ({ type: 'announce_card', player: 0, opcodes: ['1073741840'], cards })
 
     core(() => fake.ask(announce([400, 100])))
-    const band = screen.getByRole('group', { name: 'Declará el nombre de una carta' })
+    const first = screen.getByRole('dialog', { name: 'Declará el nombre de una carta' })
 
-    // Por nombre: Ash Blossom antes que Nibiru.
-    expect(within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Ash Blossom', 'Nibiru'])
-    fireEvent.click(within(band).getByRole('option', { name: 'Nibiru' }))
+    expect(within(first).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Nibiru', 'Ash Blossom'])
+    fireEvent.click(within(first).getByRole('option', { name: 'Nibiru' }))
     expect(fake.answers).toEqual([{ type: 'announce_card', code: 400 }])
 
     core(() => fake.ask(announce([100, 101, 102, 200, 400, ...Array.from({ length: 9 }, (_, i) => 5000 + i)])))
     const sheet = screen.getByRole('dialog', { name: 'Declará el nombre de una carta' })
+    const search = within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' })
 
-    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'nib' } })
+    fireEvent.change(search, { target: { value: 'nib' } })
     expect(within(sheet).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Nibiru'])
-    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'zzz' } })
+    // El catálogo llega recién con la pregunta.
+    await act(async () => {})
+    fireEvent.change(search, { target: { value: 'zzz' } })
     expect(within(sheet).getByText('No hay cartas con «zzz».')).toBeInTheDocument()
-    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'droll' } })
-    fireEvent.click(within(sheet).getByRole('option', { name: 'Droll' }))
-    expect(fake.answers[1]).toEqual({ type: 'announce_card', code: 101 })
+    // Una que no está en ningún deck: del catálogo, sin mayúsculas.
+    fireEvent.change(search, { target: { value: 'MIRROR' } })
+    fireEvent.click(within(sheet).getByRole('option', { name: 'Mirror Force' }))
+    expect(fake.answers[1]).toEqual({ type: 'announce_card', code: 44095762 })
     expect(dispatches).toBe(0)
   })
 })

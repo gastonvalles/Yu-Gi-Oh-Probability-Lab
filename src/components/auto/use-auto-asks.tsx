@@ -53,6 +53,8 @@ import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { AutoCardSheet } from './AutoPanel'
 import { BAND_MAX, CardPicker, PickBand, copyGroups, pickPlace, type PickCard, type PickFrom } from './CardPicker'
+import { announceMatches } from '../../app/auto/announce'
+import { useAnnounceCatalog } from './use-announce-catalog'
 import { ChainStage, outcomeLabel } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
@@ -70,6 +72,8 @@ import { SortSheet } from './SortSheet'
 /** Cuánto espera la mesa entre una jugada y la siguiente de una misma tanda (una cadena larga se cuenta paso a paso). */
 export const STEP_MS = 220
 const NOTHING = () => {}
+/** La clave de una carta del catálogo al declarar (`announce`): no es de la lista de la pregunta. */
+const CATALOG_KEY = 'code:'
 /** Los Tipos (`RACE_*`, por bit) y los Atributos (`ATTRIBUTE_*`) del núcleo, con las palabras de las cartas (en inglés, como las muestra el catálogo). */
 const RACES = ['Warrior', 'Spellcaster', 'Fairy', 'Fiend', 'Zombie', 'Machine', 'Aqua', 'Pyro', 'Rock', 'Winged Beast', 'Plant', 'Insect', 'Thunder', 'Dragon', 'Sea Serpent', 'Reptile', 'Psychic', 'Divine-Beast', 'Creator God', 'Wyrm', 'Cyberse', 'Illusion', 'Cyborg', 'Magical Knight', 'High Dragon', 'Omega Psychic', 'Celestial Warrior', 'Galaxy', 'Yokai']
 const ATTRIBUTES = ['EARTH', 'WATER', 'FIRE', 'WIND', 'LIGHT', 'DARK', 'DIVINE']
@@ -684,7 +688,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       const same = sig !== '' && decision.hold !== null && sig === decision.sig
       const first = state ? askView(state).cardPick : null
 
-      setDecision({ of: same ? decision.of : askId, sig, hold: null, actions: null, listed: same ? decision.listed : first?.surface === 'list' ? { band: first.cards.length <= BAND_MAX } : null })
+      setDecision({ of: same ? decision.of : askId, sig, hold: null, actions: null, listed: same ? decision.listed : first?.surface === 'list' ? { band: first.type !== 'announce_card' && first.cards.length <= BAND_MAX } : null })
     }
     setStuck(null)
     setSub(null)
@@ -1358,7 +1362,21 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     const card = list?.cards[listKeys.indexOf(key)]
 
     if (card) zoom(card.ref ? codeOf(card.ref) || card.code : card.code)
+    else if (key.startsWith(CATALOG_KEY)) zoom(Number(key.slice(CATALOG_KEY.length)))
   }
+  // Declarar: además de las que ofrece el anfitrión, cualquiera del catálogo que encuentre el buscador (con el filtro de la carta, si se puede juzgar acá).
+  const announceAsk = askState?.ask.type === 'announce_card' ? askState.ask : null
+  const announceCatalog = useAnnounceCatalog(announceAsk !== null && list !== null)
+  const announceMore =
+    announceAsk && list
+      ? {
+          status: announceCatalog.status,
+          find: (query: string): PickCard[] =>
+            announceCatalog.catalog
+              ? announceMatches(announceCatalog.catalog.entries, query, announceAsk.opcodes, announceCatalog.catalog.matches, new Set(list.cards.map((card) => card.code))).map((entry) => ({ key: `${CATALOG_KEY}${entry.code}`, name: entry.name, art: artOfCode(entry.code) }))
+              : [],
+        }
+      : null
   const inspectOffered = (key: string) => {
     const candidate = offer?.candidates.find((item) => item.key === key)
 
@@ -1372,7 +1390,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         // Eligiendo varias (también un `select_unselect_card`, que se contesta de a una), cada copia es una carta aparte.
         apart: list.max > 1,
         onInspect: inspectListed,
-        onToggle: (key: string) => gesture({ kind: 'pick', index: listKeys.indexOf(key) }),
+        onToggle: (key: string) => gesture(key.startsWith(CATALOG_KEY) ? { kind: 'announce', code: Number(key.slice(CATALOG_KEY.length)) } : { kind: 'pick', index: listKeys.indexOf(key) }),
         ...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {}),
       }
     : null
@@ -1583,6 +1601,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             max={list.type === 'select_unselect_card' ? 1 : list.max}
             onPick={() => gesture({ kind: 'done' })}
             {...listProps}
+            {...(announceMore ? { more: announceMore } : {})}
           />
         ) : null}
       </Presence>

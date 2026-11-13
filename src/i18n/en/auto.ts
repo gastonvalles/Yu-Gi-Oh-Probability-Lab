@@ -160,6 +160,10 @@ export const auto: Translated<typeof es> = {
   'auto.picker.copies': '{name}, {count} copies',
   'auto.picker.search': 'Search by name',
   'auto.picker.noMatches': 'No cards match “{query}”.',
+  'auto.picker.searchAny': 'Search any card by name',
+  'auto.picker.typeName': 'Type the name of the card you want to declare.',
+  'auto.picker.catalogLoading': 'Searching all cards…',
+  'auto.picker.catalogError': 'Couldn’t load the card catalog: pick one from the list or try again later.',
   // Where each card is: its group's heading (and, lowercased, «…, in your hand» for screen readers) and the short chip over the card.
   'auto.picker.place.mine.hand': 'Your hand',
   'auto.picker.place.mine.deck': 'Your Deck',

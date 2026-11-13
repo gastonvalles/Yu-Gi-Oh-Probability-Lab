@@ -895,16 +895,25 @@ describe('ask-ui: declarar una carta (`announce_card`)', () => {
     expect(pickTitle(pick)).toBe('Declará el nombre de una carta')
   })
 
-  it('sin cartas que ofrecer (un anfitrión de antes, o ninguna cumple el filtro), no hay respuesta segura: la línea avisa', () => {
+  it('sin la lista (un anfitrión de antes), no hay respuesta segura: la línea avisa; con la lista vacía (ninguna vista cumple el filtro), se declara por nombre', () => {
     expect(askView(open(announce(), ctx(MESA))).auto).toEqual({ answer: null, why: 'none' })
-    expect(askView(open(announce([]), ctx(MESA))).auto).toEqual({ answer: null, why: 'none' })
+    expect(askView(open(announce([]), ctx(MESA))).auto).toBeNull()
   })
 
-  it('las que se declaran van por nombre (el orden del anfitrión es por código)', () => {
+  it('cualquier carta, por su código (la del catálogo que encontró el buscador); en otra pregunta o con un código que no es, nada', () => {
+    const state = open(announce([46986414]), ctx(MESA))
+
+    expect(step(state, { kind: 'announce', code: 44095762 }).answer).toEqual({ type: 'announce_card', code: 44095762 })
+    expect(step(state, { kind: 'announce', code: 0 }).answer).toBeUndefined()
+    expect(step(open(ASKS.find((ask) => ask.type === 'select_card')!, ctx(MESA)), { kind: 'announce', code: 44095762 }).answer).toBeUndefined()
+  })
+
+  it('las que se declaran quedan en el orden del anfitrión (lo que se vio, primero); las de un deck, por nombre', () => {
     const names: Record<number, string> = { 1: 'Zeta', 2: 'Alfa', 3: 'Mima' }
     const cards = [1, 2, 3].map((code): AskCard => ({ ref: null, code, place: 'none' }))
 
-    expect(listOrder(cards, (card) => names[card.code]!)).toEqual([1, 2, 0])
+    expect(listOrder(cards, (card) => names[card.code]!)).toEqual([0, 1, 2])
+    expect(listOrder(cards.map((card) => ({ ...card, place: 'pile', pile: 'deck' })), (card) => names[card.code]!)).toEqual([1, 2, 0])
   })
 })
 

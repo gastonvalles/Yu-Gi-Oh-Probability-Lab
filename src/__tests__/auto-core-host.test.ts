@@ -256,6 +256,49 @@ describe('el anfitrión del núcleo', () => {
       expect(auto.answers.at(-1)).toEqual({ type: 'announce_card', code: 89631139 })
     })
 
+    it('se puede declarar una carta que no está en ningún deck: el anfitrión la lee antes de contestar (`fetchCard`); sin eso, el núcleo la rechaza', async () => {
+      const [PROHIBITION, BLUE_EYES, DARK_MAGICIAN, MIRROR_FORCE] = [43711255, 89631139, 46986414, 44095762]
+      const declare = async (fetching: boolean) => {
+        const events: AutoEvent[] = []
+        // Como en la app: el lector tiene sólo las cartas de los dos decks; la que falta llega con `fetchCard`.
+        const preloaded = new Map([PROHIBITION, BLUE_EYES, DARK_MAGICIAN].map((code) => [code, cards.get(code)!]))
+        const auto = createAutoHost({
+          core: { wasmBinary: wasmBinary() },
+          cardReader: (code) => preloaded.get(code) ?? null,
+          scriptReader: store.read,
+          emit: (event) => events.push(event),
+          ...(fetching ? { fetchCard: async (code: number) => void preloaded.set(code, cards.get(code)!) } : {}),
+        })
+
+        await auto.handle({ t: 'create', seed: 3, flags: MR5, players: PLAYERS, decks: [{ main: [PROHIBITION, ...Array(9).fill(BLUE_EYES)], extra: [], hand: [PROHIBITION] }, deck(Array(10).fill(DARK_MAGICIAN))] })
+        for (let i = 0; i < 30; i += 1) {
+          const asked = events.filter((event) => event.t === 'ask').at(-1) as Extract<AutoEvent, { t: 'ask' }>
+          const activate = asked.ask.type === 'select_idlecmd' && asked.seat === 0 ? asked.ask.activates.findIndex((card) => card.code === PROHIBITION) : -1
+
+          if (asked.ask.type === 'announce_card') {
+            await auto.handle({ t: 'answer', askId: asked.askId, answer: { type: 'announce_card', code: MIRROR_FORCE } })
+            break
+          }
+          await auto.handle({ t: 'answer', askId: asked.askId, answer: activate >= 0 ? { type: 'select_idlecmd', action: 5, index: activate } : passivePolicy()(asked.ask) })
+        }
+
+        return { auto, events }
+      }
+
+      const fetched = await declare(true)
+
+      expect(fetched.auto.answers.at(-1)).toEqual({ type: 'announce_card', code: MIRROR_FORCE })
+      expect(fetched.events.filter((event) => event.t === 'fault')).toEqual([])
+      // Re-simulando (deshacer), la misma respuesta vuelve a valer.
+      await fetched.auto.handle({ t: 'rewind', to: fetched.auto.answers.length })
+      expect(fetched.events.filter((event) => event.t === 'fault')).toEqual([])
+
+      const refused = await declare(false)
+
+      expect(refused.auto.answers.at(-1)).not.toEqual({ type: 'announce_card', code: MIRROR_FORCE })
+      expect(refused.events.some((event) => event.t === 'fault' && event.kind === 'retry')).toBe(true)
+    })
+
     it('la mano del rival que un efecto deja a la vista (Mind Scan: `EFFECT_PUBLIC`, sin ningún mensaje) se puede declarar, y lo visto va antes que el deck propio', async () => {
       const [PROHIBITION, MIND_SCAN, TOON_MERMAID, BLUE_EYES, DARK_MAGICIAN, CELTIC] = [43711255, 34298391, 65458948, 89631139, 46986414, 91152256]
       const events: AutoEvent[] = []

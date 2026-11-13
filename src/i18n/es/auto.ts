@@ -171,6 +171,11 @@ export const auto = {
   // Con muchas cartas (las que se pueden declarar), un buscador por nombre arriba de la grilla.
   'auto.picker.search': 'Buscar por nombre',
   'auto.picker.noMatches': 'No hay cartas con «{query}».',
+  // Declarar el nombre de una carta: el buscador encuentra cualquiera (el catálogo del armador), además de las que se vieron.
+  'auto.picker.searchAny': 'Buscá cualquier carta por su nombre',
+  'auto.picker.typeName': 'Escribí el nombre de la carta que querés declarar.',
+  'auto.picker.catalogLoading': 'Buscando en todas las cartas…',
+  'auto.picker.catalogError': 'No se pudo cargar el catálogo de cartas: elegí una de la lista o probá más tarde.',
   // De dónde es cada carta: el encabezado de su grupo (y, con minúscula, «…, en tu mano» para el lector de pantalla) y el chip corto sobre la carta.
   'auto.picker.place.mine.hand': 'Tu mano',
   'auto.picker.place.mine.deck': 'Tu Deck',

@@ -206,6 +206,8 @@ export type AskGesture =
   | { kind: 'pick'; index: number }
   | { kind: 'zone'; side: Side; zone: MatSpot; index: number }
   | { kind: 'option'; value: number }
+  /** Declarar cualquier carta por su código (`announce_card`; el núcleo juzga el filtro y, si no vale, vuelve a preguntar). */
+  | { kind: 'announce'; code: number }
   | { kind: 'done' }
   | { kind: 'cancel' }
 
@@ -366,11 +368,11 @@ function surfaceOf(cards: readonly AskCard[]): { surface: CardPick['surface']; p
 /**
  * El orden en que se muestran las candidatas de una lista aparte (índices de `cards`: la respuesta sigue siendo la del núcleo). Las que están en un deck, el tuyo o el del rival, van por
  * nombre y en los lugares que ocupaban: el núcleo las manda en el orden del deck y verlo regalaría qué se roba primero (el visor del deck de `PracticeMat` también va por nombre). Las
- * que sólo se nombran por código (las que se pueden declarar), también.
+ * que se pueden declarar quedan como las manda el anfitrión: lo que se vio, primero.
  */
 export function listOrder(cards: readonly AskCard[], nameOf: (card: AskCard) => string): number[] {
   const order = cards.map((_, index) => index)
-  const slots = order.filter((index) => cards[index]!.pile === 'deck' || cards[index]!.place === 'none')
+  const slots = order.filter((index) => cards[index]!.pile === 'deck')
   const byName = [...slots].sort((a, b) => nameOf(cards[a]!).localeCompare(nameOf(cards[b]!)) || a - b)
 
   slots.forEach((slot, rank) => {
@@ -818,10 +820,10 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
     case 'sort_chain':
       base.cards = cardsOf(ask.cards)
       break
-    // Declarar una carta: una de las que ofrece el anfitrión, por código (no están en la mesa). Sin ninguna (un anfitrión de antes), no hay respuesta segura.
+    // Declarar una carta: una de las que ofrece el anfitrión, por código (no están en la mesa), o cualquier otra por su nombre (`announce`). Sin la lista (un anfitrión de antes), no hay respuesta segura.
     case 'announce_card':
       base.cards = (ask.cards ?? []).map((code) => ({ ref: null, code, place: 'none' }))
-      if (base.cards.length === 0) auto(null, 'none')
+      if (!ask.cards) auto(null, 'none')
       break
     case 'select_counter':
       base.cards = cardsOf(ask.cards, (card) => card.count)
@@ -1174,6 +1176,9 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
       // principal, y hasta tocarla se puede soltar una (Gastón, 2026-11-12: elegir la última no le daba tiempo de revisar).
       return now.done && now.max === 1 && now.min >= 1 && now.eligible.every((i) => now.chosen.includes(i)) ? answer(cardAnswer(ask, now)) : after
     }
+
+    case 'announce':
+      return ask.type === 'announce_card' && Number.isInteger(gesture.code) && gesture.code > 0 ? answer({ type: ask.type, code: gesture.code }) : same
 
     case 'zone': {
       const target = state.base.targets.find((item) => item.side === gesture.side && item.zone === gesture.zone && item.index === gesture.index)
