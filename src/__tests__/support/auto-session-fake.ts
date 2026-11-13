@@ -108,7 +108,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     mine: states.mine,
     theirs: { initial: states.theirs, acts: [], state: states.theirs, known: {} },
     overlay,
-    apply: () => ({ mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [], lp: [] }),
+    apply: () => ({ mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [], lp: [], hands: [] }),
     idAt: (place: CorePlace) => cards.find((spot) => spot.side === sideOf(place.controller) && spot.location === place.location && spot.sequence === place.sequence)?.id ?? null,
     locationOf: (ref: CardRef) => {
       const spot = cards.find((entry) => entry.side === ref.side && entry.id === ref.id)
@@ -128,6 +128,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     order: [],
     chainSteps: [],
     lifeSteps: [],
+    handShuffles: [],
     mine: states.mine,
     theirs: states.theirs,
     overlay: adapter.overlay,

@@ -307,7 +307,11 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
   it('una bolsa sigue el orden del núcleo: la carta que el núcleo nombró en un lugar es la que sale de ahí después, aunque salga oculta', () => {
     const adapter = make()
 
-    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(3) }, { type: 'shuffle_hand', player: 1, cards: [0, 0, 0] }))
+    const drawn = adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(3) }, { type: 'shuffle_hand', player: 1, cards: [0, 0, 0] }))
+
+    // El barajado va por su canal (la mesa lo anima), no como jugada: después del robo, que sí lo es.
+    expect(drawn.hands).toEqual([{ at: 1, mine: false }])
+    expect(drawn.order).toEqual(['theirs'])
     adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 777, controller: 1, location: L.HAND, sequence: 0 }] }))
     const shown = adapter.idAt(at(1, L.HAND, 0))!
 

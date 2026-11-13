@@ -120,3 +120,6 @@ export const shuffleDeck = (layers: Iterable<Element>) => shuffle(layers, DECK, 
 
 /** Baraja una mano (la propia o los dorsos del rival): se junta en una pila, el riffle del mazo, y se abre salteada a sus lugares. El orden de la mano no cambia. */
 export const shuffleHand = (cards: Iterable<Element>) => shuffle(cards, HAND, true)
+
+/** ¿Alguna de estas cartas se está barajando? Un barajado del núcleo que llega junto con el de la jugada (buscar en el deck baraja la mano) no lo vuelve a empezar. */
+export const shuffling = (cards: Iterable<Element>) => [...cards].some((card) => animationsOf(card).some((animation) => animation.id === SHUFFLE_ID && animation.playState === 'running'))

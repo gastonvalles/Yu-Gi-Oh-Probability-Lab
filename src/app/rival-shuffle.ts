@@ -17,3 +17,11 @@ export function useRivalShuffle(state: MatState): number {
   if (seen.state !== state) setSeen({ state, count: seen.count + (rivalShuffled(seen.state, state) ? 1 : 0) })
   return seen.count
 }
+
+/** Cuántas veces subió `count` (bajar, al deshacer o reiniciar, no cuenta; al montarse, cero): un pulso por cada mano que barajó un efecto (`AutoSnapshot.handShuffles`), que `PracticeMat` baraja a la vista. */
+export function useRises(count: number): number {
+  const [seen, setSeen] = useState({ count, rises: 0 })
+
+  if (seen.count !== count) setSeen({ count, rises: seen.rises + (count > seen.count ? 1 : 0) })
+  return seen.rises
+}
