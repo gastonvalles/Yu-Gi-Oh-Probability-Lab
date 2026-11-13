@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { fromPortableConfig } from '../app/app-state-codec'
 import { KNOWN_CARDS_MAP, deriveOrigin } from '../app/classification-engine'
-import { normalizeCardRoleKey, normalizeStoredRoles, resolveStoredCardOrigin } from '../app/deck-groups'
+import { normalizeCardOriginKey, normalizeCardRoleKey, normalizeStoredRoles } from '../app/deck-groups'
 import { loadClassificationOverrides } from '../app/persistence'
 import { readSavedBuilds } from '../app/saved-builds'
 
@@ -11,29 +11,17 @@ afterEach(() => localStorage.clear())
 
 const apiCard = { ygoprodeckId: 1, cardType: 'Effect Monster', frameType: 'effect' }
 
-describe('roles unificados, Tech eliminado y sin Hybrid: datos guardados antes del cambio', () => {
-  it('los roles que se unificaron pasan a su equivalente y Tech se descarta', () => {
-    expect(normalizeCardRoleKey('removal')).toBe('boardbreaker')
-    expect(normalizeCardRoleKey('combo_piece')).toBe('enabler')
-    expect(normalizeCardRoleKey('tech')).toBeNull()
-    expect(normalizeCardRoleKey('inventado')).toBeNull()
-    // Handtrap, Draw, Floodgate y Garnet siguen existiendo por separado.
+describe('roles y orígenes que ya no existen (Board Breaker, Removal, Combo Piece, Tech, Hybrid, non-engine)', () => {
+  it('ya no se leen: se descartan', () => {
+    for (const viejo of ['board_breaker', 'removal', 'combo_piece', 'tech', 'inventado']) expect(normalizeCardRoleKey(viejo)).toBeNull()
     expect(normalizeCardRoleKey('floodgate')).toBe('floodgate')
-    expect(normalizeCardRoleKey('handtrap')).toBe('handtrap')
-    expect(normalizeCardRoleKey('draw')).toBe('draw')
-    expect(normalizeCardRoleKey('garnet')).toBe('garnet')
     expect(normalizeStoredRoles(['floodgate', 'disruption', 'tech', 'removal', 'boardbreaker'])).toEqual(['floodgate', 'disruption', 'boardbreaker'])
+    expect(normalizeCardOriginKey('hybrid')).toBeNull()
+    expect(normalizeCardOriginKey('non-engine')).toBeNull()
+    expect(normalizeCardOriginKey('non_engine')).toBe('non_engine')
   })
 
-  it('Hybrid pasa a Engine si la carta tiene un rol de tu plan y a Non-engine si no', () => {
-    expect(resolveStoredCardOrigin('hybrid', ['extender', 'boardbreaker'])).toBe('engine')
-    expect(resolveStoredCardOrigin('hybrid', ['draw'])).toBe('engine')
-    expect(resolveStoredCardOrigin('hybrid', ['handtrap'])).toBe('non_engine')
-    expect(resolveStoredCardOrigin('engine', [])).toBe('engine')
-    expect(resolveStoredCardOrigin('algo', [])).toBeNull()
-  })
-
-  it('al cargar una configuración vieja, las cartas y las reglas quedan con los roles nuevos', () => {
+  it('una configuración guardada con ellos carga sin romper: la carta queda sin ese rol ni origen y para revisar, y la regla sin ese filtro', () => {
     const restored = fromPortableConfig({
       version: 16,
       handSize: 5,
@@ -41,7 +29,10 @@ describe('roles unificados, Tech eliminado y sin Hybrid: datos guardados antes d
       patternsSeedVersion: 9,
       deckBuilder: {
         deckName: 'Viejo',
-        main: [{ name: 'Ash', apiCard, origin: 'hybrid', roles: ['handtrap', 'draw', 'combo_piece', 'tech'] }],
+        main: [
+          { name: 'Ash', apiCard, origin: 'hybrid', roles: ['handtrap', 'draw', 'combo_piece', 'tech'] },
+          { name: 'Nibiru', apiCard, origin: 'non_engine', roles: ['handtrap'] },
+        ],
         extra: [],
         side: [],
       },
@@ -55,12 +46,12 @@ describe('roles unificados, Tech eliminado y sin Hybrid: datos guardados antes d
       ],
     })
 
-    // Tech se descarta sin pedir revisión; Combo Piece pasa a Enabler.
-    expect(restored.deckBuilder.main[0]).toMatchObject({ origin: 'engine', roles: ['handtrap', 'draw', 'enabler'], needsReview: false })
-    expect(restored.patterns[0]!.conditions[0]!.matcher).toEqual({ type: 'role', value: 'enabler' })
+    expect(restored.deckBuilder.main[0]).toMatchObject({ origin: null, roles: ['handtrap', 'draw'], needsReview: true })
+    expect(restored.deckBuilder.main[1]).toMatchObject({ origin: 'non_engine', roles: ['handtrap'], needsReview: false })
+    expect(restored.patterns[0]).toMatchObject({ name: 'Con combo piece', needsReview: true, conditions: [{ matcher: null }] })
   })
 
-  it('las builds guardadas y las clasificaciones propias también se migran', () => {
+  it('las builds guardadas y las clasificaciones propias cargan sin romper', () => {
     localStorage.setItem(
       'ygo-lab:saved-builds',
       JSON.stringify([
@@ -68,16 +59,19 @@ describe('roles unificados, Tech eliminado y sin Hybrid: datos guardados antes d
           id: 'b1',
           name: 'Vieja',
           savedAt: '2026-01-01',
-          main: [{ instanceId: 'x', name: 'Ash', apiCard, origin: 'hybrid', roles: ['combo_piece', 'removal', 'tech'] }],
+          main: [{ instanceId: 'x', name: 'Ash', apiCard, origin: 'hybrid', roles: ['combo_piece', 'removal', 'tech', 'starter'] }],
           extra: [],
           side: [],
         },
       ]),
     )
-    localStorage.setItem('ygo-probability-lab:classification-overrides:v1', JSON.stringify([['ash', { origin: 'hybrid', roles: ['handtrap', 'tech'] }]]))
+    localStorage.setItem(
+      'ygo-probability-lab:classification-overrides:v1',
+      JSON.stringify([['ash', { origin: 'hybrid', roles: ['handtrap', 'tech'] }], ['nibiru', { origin: 'non_engine', roles: ['handtrap', 'tech'] }]]),
+    )
 
-    expect(readSavedBuilds()[0]!.main[0]).toMatchObject({ origin: 'engine', roles: ['enabler', 'boardbreaker'] })
-    expect([...loadClassificationOverrides().values()]).toEqual([{ origin: 'non_engine', roles: ['handtrap'] }])
+    expect(readSavedBuilds()[0]!.main[0]).toMatchObject({ origin: null, roles: ['starter'] })
+    expect([...loadClassificationOverrides().entries()]).toEqual([['nibiru', { origin: 'non_engine', roles: ['handtrap'] }]])
   })
 })
 

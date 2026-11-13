@@ -11,14 +11,11 @@ import {
   normalizeTurnContext,
 } from './patterns'
 import {
-  isRetiredCardRole,
   normalizeCardOriginKey,
-  resolveStoredCardOrigin,
   normalizeCardRoleKey,
 } from './deck-groups'
 import type {
   ApiCardReference,
-  CardOrigin,
   CardRole,
   Matcher,
   PatternCondition,
@@ -178,7 +175,7 @@ function parseDeckZone(value: unknown, fieldName: string) {
 
     const name = parseRequiredString(item.name, `${fieldName}[${index}].name`)
     const { roles, needsReview: hasRoleReviewPending } = parseCardRoles(item.roles)
-    const { origin, needsReview: hasOriginReviewPending } = parseCardOrigin(item.origin, roles)
+    const origin = normalizeCardOriginKey(item.origin)
 
     return {
       instanceId: createId('deck-card'),
@@ -186,7 +183,7 @@ function parseDeckZone(value: unknown, fieldName: string) {
       apiCard: parseApiCardReference(item.apiCard, `${fieldName}[${index}].apiCard`, name),
       origin,
       roles,
-      needsReview: item.needsReview === true || hasRoleReviewPending || hasOriginReviewPending,
+      needsReview: item.needsReview === true || hasRoleReviewPending || origin === null,
     }
   })
 }
@@ -278,10 +275,6 @@ function parseCardRoles(value: unknown): { roles: CardRole[]; needsReview: boole
   let needsReview = false
 
   for (const entry of value) {
-    if (isRetiredCardRole(entry)) {
-      continue
-    }
-
     const normalizedRole = normalizeCardRoleKey(entry)
 
     if (!normalizedRole) {
@@ -297,15 +290,6 @@ function parseCardRoles(value: unknown): { roles: CardRole[]; needsReview: boole
   return {
     roles,
     needsReview,
-  }
-}
-
-function parseCardOrigin(value: unknown, roles: readonly CardRole[]): { origin: CardOrigin | null; needsReview: boolean } {
-  const origin = resolveStoredCardOrigin(value, roles)
-
-  return {
-    origin,
-    needsReview: origin === null,
   }
 }
 

@@ -4,7 +4,7 @@ import { LAB_CACHE_KEY } from './lab-cache-store'
 import { fromPortableConfig, toPortableConfig } from './app-state-codec'
 import { normalizeCardNameForLookup, type ClassificationSuggestion } from './classification-engine'
 import { invalidateClassificationOverridesCache } from './classification-overrides'
-import { normalizeStoredRoles, resolveStoredCardOrigin } from './deck-groups'
+import { normalizeCardOriginKey, normalizeStoredRoles } from './deck-groups'
 
 const BACKUP_KEY = `${STORAGE_KEY}:backup`
 
@@ -88,9 +88,9 @@ export function loadClassificationOverrides(): Map<string, ClassificationSuggest
         continue
       }
 
-      // Roles u orígenes que ya no existen (Handtrap, Hybrid…) pasan a su equivalente.
+      // Un rol que ya no existe se descarta; sin un origen que se conozca, la clasificación propia no se usa.
       const roles = normalizeStoredRoles(val.roles)
-      const origin = resolveStoredCardOrigin(val.origin, roles)
+      const origin = normalizeCardOriginKey(val.origin)
 
       if (origin) {
         overrides.set(key, { origin, roles })
