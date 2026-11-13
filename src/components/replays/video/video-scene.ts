@@ -296,6 +296,24 @@ const PILE_AT: Record<ReplaySide, Record<MatPile | 'field', readonly [keyof Rows
   1: { deck: ['st', 0], extra: ['st', 6], gy: ['mz', 0], field: ['mz', 6], banished: ['middle', 0], hand: ['middle', -1] },
 }
 
+/** Las filas de cada lado en el video de un duelo: el rival arriba (Mágicas y Trampas, monstruos), quien grabó abajo. */
+export const duelRows = (side: ReplaySide): Rows => (side === 1 ? { st: 0, mz: 1 } : { mz: 3, st: 4 })
+
+/**
+ * La casilla de un lugar de la mesa de un duelo, con las claves de los medallones de la cadena (`medalPlaceOf`: `mz:0`, `st:2`, `emz:1`, `field`, las pilas y `hand`), en el mismo
+ * lugar que pone `sideSlots` a cada carta; la mano, su franja. Null si la clave no es de la mesa.
+ */
+export function placeRect(layout: VideoLayout, side: ReplaySide, place: string): Rect | null {
+  const rows = duelRows(side)
+  const [zone, at] = place.split(':')
+  const index = Number(at)
+  if (zone === 'mz' || zone === 'st') return layout.cellAt(rows[zone], side === 1 ? 5 - index : 1 + index)
+  if (zone === 'emz') return layout.cellAt(layout.middle, side === 1 ? 4 - 2 * index : 2 + 2 * index)
+  if (zone === 'hand') return side === 0 ? layout.myHand : layout.theirHand
+  const pile = PILE_AT[side][zone as MatPile | 'field']
+  return pile ? layout.cellAt(pile[0] === 'middle' ? layout.middle : rows[pile[0]], pile[1]) : null
+}
+
 /**
  * Las casillas de un lado con lo que tienen. `rows`: en qué fila de `layout` van sus monstruos y sus Mágicas y Trampas (las Zonas Extra, en `layout.middle`);
  * `top`: es el de arriba, espejado y de cabeza. `shown`: la carta que se muestra en esta jugada (una colocada que se revela se ve boca arriba en ese cuadro).
@@ -412,7 +430,7 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
     const look = duelLook(replay, frame, side)
     // La mano de quien grabó, boca arriba sólo con «mi mano»; la del rival, de dorso. La carta que se muestra en esta jugada, boca arriba en la mano de cualquiera.
     const shown = step?.[0] === side && step[1].type === 'reveal' ? step[1].id : null
-    const rows = side === 1 ? { st: 0, mz: 1 } : { mz: 3, st: 4 }
+    const rows = duelRows(side)
     return {
       name: playerName(replay, side),
       lp: frame.lp[side],

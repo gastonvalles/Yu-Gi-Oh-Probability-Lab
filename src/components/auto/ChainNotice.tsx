@@ -47,7 +47,7 @@ export const whatHappened = (row: ChainNoticeRow, rows: readonly ChainNoticeRow[
  * `bond` es el centro de cada lugar en el `viewBox` de 300 × 400 de la cadena (la carta mide 100 × 146 y su centro sin correr es 150, 187); `side`, de qué lado queda (el número va en
  * la esquina de abajo de ese lado). La inclinación 3D, quieta, va en `chain-tilt-*` (`index.css`).
  */
-const LAYOUT = {
+export const LAYOUT = {
   narrow: {
     left: {
       depth: [
@@ -110,21 +110,21 @@ const LAYOUT = {
   },
 } satisfies Record<string, Record<'left' | 'right', { depth: string[]; bond: Array<readonly [number, number]> }>>
 /** De qué lado queda cada lugar cuando la última entró a la izquierda (con la última a la derecha, al revés). */
-const SIDE_LEFT = ['left', 'right', 'left', 'right'] as const
+export const SIDE_LEFT = ['left', 'right', 'left', 'right'] as const
 /** El número pisa la esquina de abajo del lado de afuera de su carta. */
 const NUMBER_CORNER = { left: 'bottom-0 left-0 -translate-x-1/3 translate-y-1/3', right: 'bottom-0 right-0 translate-x-1/3 translate-y-1/3' } as const
 /** Cuánto tarda en apagarse un tramo de cadena que quedó entre lugares viejos (lo que dura su transición). */
 const FADE_MS = 250
 /** Cuántas cartas se ven a la vez; las de antes se achican y se van hacia arriba, y vuelven cuando se resuelven las de adelante. */
-const SHOWN = LAYOUT.narrow.left.depth.length
+export const SHOWN = LAYOUT.narrow.left.depth.length
 /** Cada cuánto va un eslabón a lo largo de la cadena y cuánto cuelga en el medio (en unidades del `viewBox`): eslabones chicos y apretados, como en Master Duel. */
 const LINK_STEP = 10.5
-const SAG = 30
+export const SAG = 30
 
 type Pose = 'slot' | 'back' | 'out'
 
 /** Cuánto se mete la cadena en cada carta desde su centro, por su lugar (las grandes, más): cruza de borde a borde y pisa un poco cada carta, como en Master Duel. */
-const BOND_TRIM = [44, 30, 22, 18]
+export const BOND_TRIM = [44, 30, 22, 18]
 
 type Point = readonly [number, number]
 
@@ -208,7 +208,7 @@ function Bond({ number, from, to, fromAt, toAt, broken = false, fading = false }
 }
 
 /** Los tramos cortos de cadena (unos cinco eslabones) que abrazan dos esquinas de cada carta (arriba a la izquierda y abajo a la derecha), en el `viewBox` de la carta (100 × 146). */
-const CORNER_TIES: ReadonlyArray<readonly [Point, Point]> = [
+export const CORNER_TIES:ReadonlyArray<readonly [Point, Point]> = [
   [
     [-11, 22],
     [22, -11],
@@ -235,8 +235,8 @@ const GLYPHS: readonly string[][] = [
   ['###', '#.#', '###', '#.#', '###'],
   ['###', '#.#', '###', '..#', '###'],
 ]
-const CELL = 14
-const DIGIT_STEP = 3 * CELL + 10
+export const CELL = 14
+export const DIGIT_STEP = 3 * CELL + 10
 /** Las celdas de un número, dígito por dígito: cada una, un cuadrado. */
 export const glyphCells = (value: number) =>
   [...String(value)].flatMap((digit, i) => (GLYPHS[Number(digit)] ?? []).flatMap((line, row) => [...line].flatMap((cell, col) => (cell === '#' ? [{ x: DIGIT_STEP * i + col * CELL, y: row * CELL }] : []))))
@@ -269,7 +269,7 @@ function ChainNumber({ value, flash = false, className }: { value: number; flash
 }
 
 /** Los rayos del estallido de entrada (en un `viewBox` de −100 a 100): 18, de largo alternado, desde el centro. */
-const BURST_RAYS = Array.from({ length: 18 }, (_, i) => ({ angle: i * 20, reach: i % 2 === 0 ? 98 : 72 }))
+export const BURST_RAYS = Array.from({ length: 18 }, (_, i) => ({ angle: i * 20, reach: i % 2 === 0 ? 98 : 72 }))
 
 /** El estallido de rayos dorados que sale de atrás de la carta que entra (Master Duel): una capa quieta que escala y se apaga (`animate-fx-flash`); con movimiento reducido, no está. */
 function Burst() {

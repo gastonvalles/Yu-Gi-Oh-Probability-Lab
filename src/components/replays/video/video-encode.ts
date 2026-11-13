@@ -9,7 +9,8 @@ import { drawBanner, drawFlight, drawFrame, loadFieldArt, loadVideoAssets, type 
 import { dealOverlays, flightsOf, lifeOf, overlaysOf, replaceOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
 import { movingKeys, transitionOf } from './video-motion'
 import { comboArtUrls, comboScenes, resolveComboNames } from './video-combo'
-import { artUrls, replayScenes, type Scene } from './video-scene'
+import { chainOverlays } from './video-chain'
+import { artUrls, replayScenes, videoLayout, type Scene } from './video-scene'
 import { bitrateFor, VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
 import { FPS, frameDurations, frameOf, type VideoSpeed, type VideoSubject } from './video-timeline'
 
@@ -186,7 +187,9 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
   }
 
   try {
-    let live: Overlay[] = []
+    // La cadena guardada (el duelo automático): su escena y sus medallones, con los tiempos de todo el video; lo que se activa no sale grande (lo dice la escena).
+    const chained = subject.kind === 'duel' && Boolean(subject.replay.chain?.length)
+    let live: Overlay[] = subject.kind === 'duel' ? chainOverlays(subject.replay, starts, speed, videoLayout(VIDEO_WIDTH), assets) : []
     let before: Scene | null = null
     let slice = performance.now()
     const scenes = plan.scenes[Symbol.iterator]()
@@ -202,7 +205,7 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
       let life: ReturnType<typeof lifeOf> = null
       if (before && before !== scene) {
         flights = flightsOf(transitionOf(before, scene), scene.layout.scale, speed, durations[index]!)
-        live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind), start)
+        live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind, chained), start)
         life = lifeOf(before, scene, speed)
       }
       const shown = scene
@@ -226,7 +229,8 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
         const ms = now - start
         const flying = ms < landed
         const lp = life?.(ms) ?? null
-        const alive = live.filter((overlay) => now >= overlay.start && now < overlay.start + overlay.duration)
+        // La escena de la cadena va encima de todo (su velo baja el cuadro entero).
+        const alive = live.filter((overlay) => now >= overlay.start && now < overlay.start + overlay.duration).sort((a, b) => Number(a.kind === 'chain') - Number(b.kind === 'chain'))
         // La mesa de abajo: sin las cartas en vuelo mientras vuelan ni las que anima un efecto (el barajado, el reparto), con las vidas que cuentan y el arte del campo que entra o se va.
         const hiding = alive.filter((overlay) => overlay.hides)
         const field = fields?.(ms) ?? null
