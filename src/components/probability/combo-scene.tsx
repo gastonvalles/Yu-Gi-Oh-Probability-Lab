@@ -3,6 +3,7 @@ import { actingOf, linksOf, medalsOf } from '../../app/card-glow'
 import { createMatState, isToken } from '../../app/practice-mat'
 import { comboChainSteps, comboTheirReal, comboTheirsAt, type SavedCombo } from '../../app/saved-combos'
 import { ChainStage, chainDwell, chainFeed, outcomeLabel, stepsUpTo } from '../auto/ChainNotice'
+import { artOfDrawId } from '../duel/duel-art'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import type { DuelMatLink } from './PracticeMat'
 
@@ -65,14 +66,14 @@ export function useComboScene(combo: Pick<SavedCombo, 'theirs' | 'chain'> | null
     // Las cartas del rival que se vieron (y las tuyas que le diste), con su arte; lo demás, de dorso.
     const artOfRival = (id: string) => {
       const real = isToken(id) ? id : at ? comboTheirReal(id, at.known) : null
-      return real ? artOf(real) : null
+      return real ? (artOf(real) ?? artOfDrawId(real)) : null
     }
     const side: DuelSideView = { state, artOf: artOfRival, handCount: state.hand.length, act: acting.theirs, links: links.theirs, medals: medals.theirs }
     const rows = (live?.rows ?? []).map((row) => ({
       number: row.number,
       mine: row.mine,
       name: nameOf(`card-${row.code}-1`),
-      art: row.code ? artOf(`card-${row.code}-1`) : null,
+      art: row.code ? (artOf(`card-${row.code}-1`) ?? artOfDrawId(`card-${row.code}-1`)) : null,
       state: row.state,
       ...(row.by ? { by: row.by } : {}),
       ...(row.outcome ? { outcome: outcomeLabel(row.outcome) } : {}),
