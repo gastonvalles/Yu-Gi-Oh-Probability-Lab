@@ -112,7 +112,7 @@ describe('la escena de la cadena en el video', () => {
     expect(stagePoseOf(4, 5)).toBe(BACK_POSE)
     // Las clases y los tiempos que copia el video siguen en `ChainStage`.
     const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'components', 'auto', 'ChainNotice.tsx'), 'utf8')
-    for (const text of ['starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0', "'-translate-y-full scale-50 opacity-0'", `duration-${STAGE_MS.move}`, `delay-${STAGE_MS.newest} duration-${STAGE_MS.word}`, `'delay-${STAGE_MS.newest}'`, `delay-${STAGE_MS.bondDelay}`, 'left-1/3 top-2/7 aspect-[421/614] w-1/3', 'aspect-3/4 h-full max-w-full', 'top-2/5', 'bg-chain-veil/65', 'bg-chain-veil/45']) expect(source).toContain(text)
+    for (const text of ['starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0', "'-translate-y-full scale-50 opacity-0'", `duration-${STAGE_MS.move}`, `'delay-${STAGE_MS.newest}'`, `delay-${STAGE_MS.bondDelay}`, 'left-1/3 top-2/7 aspect-[421/614] w-1/3', 'aspect-3/4 h-full max-w-full', 'bg-chain-veil/65', 'bg-chain-veil/45']) expect(source).toContain(text)
   })
 
   it('cada carta lleva la inclinación 3D de la mesa (`chain-tilt-*` de `index.css`, con su perspectiva): la de adelante se ve más ancha abajo y más alta del lado que se acerca', () => {

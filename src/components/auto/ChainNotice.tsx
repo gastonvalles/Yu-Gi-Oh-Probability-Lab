@@ -368,7 +368,7 @@ function Burst() {
  *   amarillo alrededor de la carta y de su número. La última va adelante y abajo, la más grande, alternando de lado (impar a la izquierda, par a la derecha); la anterior, arriba en la
  *   esquina opuesta; las de antes, más chicas y más arriba (`LAYOUT`); desde la quinta, se van hacia arriba. Cada carta entera, con su halo blanco (una sombra quieta), una leve
  *   inclinación 3D y atada por dos esquinas con cadena; entre carta y carta la cadena, de eslabones chicos, cuelga en curva por delante. El número, enorme, blanco en bloques con
- *   contorno y resplandor celestes (`ChainNumber`), pisa la esquina de abajo del lado de afuera. Con dos o más, «CADENA» (itálica) aparece al medio, por delante, y se queda. El
+ *   contorno y resplandor celestes (`ChainNumber`), pisa la esquina de abajo del lado de afuera. El
  *   nombre va sólo en la carta sin imagen (con imagen ya está impreso). Al empezar a resolver, la cadena se corta en el medio mientras la escena se va.
  * - **El velo:** mientras está, toda la pantalla baja y se azula (Gastón: «debería oscurecer todo»): una capa `fixed inset-0` al lado de la escena, en su misma capa (la de la cadena de
  *   la mesa), así queda debajo de la escena y de la pregunta («¿Respondés?») y encima de las manos, las chapas, las barras, los paneles y el menú lateral; sólo `opacity`; no ataja toques.
@@ -513,13 +513,6 @@ export function ChainStage({
             </div>
           )
         })}
-        {/* «CADENA» (con dos o más): grande, blanca e itálica, al medio, entre las cartas y por delante; aparece cuando la carta se asienta y se queda hasta que se va la escena: al resolver,
-            con el fundido de la escena (no de golpe); corrida, con el suyo. */}
-        {rows.length > 1 ? (
-          <span key={rows.length} aria-hidden="true" data-chain-word="" className={`absolute inset-x-0 top-2/5 z-7 flex justify-center text-title font-extrabold uppercase italic text-white text-shadow-lg text-shadow-chain-glow transition-[opacity,scale] delay-100 duration-300 ease-out starting:scale-75 starting:opacity-0 motion-reduce:transition-opacity min-[1101px]:text-display${away ? ' opacity-0' : ''}`}>
-            {t('auto.chain.title')}
-          </span>
-        ) : null}
         {over ? null : status}
       </div>
       {over ? status : null}

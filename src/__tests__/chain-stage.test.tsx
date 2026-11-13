@@ -69,10 +69,8 @@ describe('la cadena en grande', () => {
     const bond = document.querySelector('[data-chain-bond="2"]')!
     expect(bond.querySelectorAll('rect').length).toBeGreaterThan(4)
     expect(bond).toHaveClass('starting:opacity-0')
-    // «CADENA» destella al medio (con dos o más); el velo baja el campo y no ataja toques.
-    expect(document.querySelector('[data-chain-word]')).toHaveTextContent('Cadena')
-    // «CADENA», itálica, al medio y por delante de las cartas (z-7 sobre z-5); aparece y se queda.
-    expect(document.querySelector('[data-chain-word]')).toHaveClass('uppercase', 'italic', 'z-7', 'delay-100', 'starting:opacity-0', 'motion-reduce:transition-opacity')
+    // Sin la palabra al medio (con dos o más): el velo baja el campo y no ataja toques.
+    expect(document.querySelector('[data-chain-word]')).toBeNull()
     // El estallido de rayos dorados, detrás de la carta que entra (sólo la nueva; con movimiento reducido, no está).
     expect(document.querySelectorAll('[data-chain-burst]')).toHaveLength(1)
     expect(cards()[2]!.querySelector('[data-chain-burst]')).toHaveClass('-z-1', 'animate-fx-flash', 'motion-reduce:hidden')
@@ -113,12 +111,11 @@ describe('la cadena en grande', () => {
         <ChainStage rows={rows} current={2} />
       </Provider>,
     )
-    // Se está yendo: sólo opacidad, y sin el oscurecido de entrar; «CADENA» se va con el fundido de la escena (como en el video), no de golpe.
+    // Se está yendo: sólo opacidad, y sin el oscurecido de entrar.
     expect(document.querySelector('[data-chain-stage]')).toHaveAttribute('data-leaving')
     expect(document.querySelector('[data-chain-stage]')).toHaveClass('opacity-0', 'duration-200', 'motion-reduce:transition-opacity')
     expect(veil()).toHaveClass('opacity-0', 'duration-200')
     expect(document.querySelector('[data-chain-dim]')).toBeNull()
-    expect(document.querySelector('[data-chain-stage] [data-chain-word]')).not.toHaveClass('opacity-0')
     expect(CHAIN_LEAVE_MS).toBeGreaterThanOrEqual(150)
     expect(CHAIN_LEAVE_MS).toBeLessThanOrEqual(200)
     act(() => vi.advanceTimersByTime(CHAIN_LEAVE_MS))
@@ -183,7 +180,7 @@ describe('la cadena en grande', () => {
     expect(delay! + ms!).toBeLessThanOrEqual(700)
   })
 
-  it('una activación sola, aunque nadie pueda responder, entra igual con su «1» (sin «CADENA») y se va apenas empieza a resolverse', () => {
+  it('una activación sola, aunque nadie pueda responder, entra igual con su «1» y se va apenas empieza a resolverse', () => {
     vi.useFakeTimers()
     const view = stage([ENGAGE])
 
@@ -317,8 +314,6 @@ describe('la cadena en grande', () => {
     expect(bonds()).toEqual([])
     expect(veil()).toHaveClass('opacity-0')
     expect(document.querySelector('[data-chain-dim]')).toBeNull()
-    // «CADENA», con su fundido (no de golpe).
-    expect(document.querySelector('[data-chain-word]')).toHaveClass('opacity-0', 'transition-[opacity,scale]')
     expect(screen.getByRole('status')).toHaveClass('sr-only')
   })
 

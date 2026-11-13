@@ -14,7 +14,9 @@
           "El replay de un duelo y el video que descargás llevan ahora los mismos impactos que la mesa: la pausa del golpe, el anillo y la sacudida del campo."
         ],
         "comoSeUsa": [],
-        "arreglos": [],
+        "arreglos": [
+          "La escena de la cadena ya no lleva la palabra «CADENA» al medio."
+        ],
         "ojo": [
           "Con «Efectos: Livianos» la línea de la cadena queda, pero no hay chispa, corte ni estallido.",
           "En el replay, saltar en la línea de tiempo no dispara impactos; sólo al avanzar de a un paso o reproducir.",
@@ -29,7 +31,9 @@
           "A duel replay and the video you download now carry the same impacts as the table: the hit pause, the ring and the shake of the field."
         ],
         "comoSeUsa": [],
-        "arreglos": [],
+        "arreglos": [
+          "The chain scene no longer shows the word «CHAIN» in the middle."
+        ],
         "ojo": [
           "With «Effects: Light» the chain line stays, but there is no spark, cut or burst.",
           "In the replay, jumping on the timeline doesn't trigger impacts; only stepping or playing does.",
