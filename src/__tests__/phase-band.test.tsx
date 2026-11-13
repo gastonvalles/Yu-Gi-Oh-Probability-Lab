@@ -4,7 +4,7 @@ import { act, fireEvent, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PHASE_BAND_HOLD_MS, PHASE_BAND_MS, PhaseBand, TURN_BAND_HOLD_MS, TURN_BAND_MS, type PhaseCue } from '../components/duel/PhaseBand'
+import { PHASE_BAND_HOLD_MS, PHASE_BAND_MS, PHASE_BAND_SETTLE_MS, PhaseBand, TURN_BAND_HOLD_MS, TURN_BAND_MS, type PhaseCue } from '../components/duel/PhaseBand'
 
 const bands = () => document.querySelectorAll('[data-fx="banner"]')
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms))
@@ -94,21 +94,21 @@ describe('PhaseBand', () => {
     expect(bands()).toHaveLength(0)
   })
 
-  it('al pasar el turno sale antes «Cambio de turno», más alta y del color de quien empieza, y después la fase más nueva; el primer turno no la tiene', () => {
-    const view = render(<PhaseBand cue={{ key: 1, phase: 'draw', side: 'theirs' }} />)
+  it('al pasar el turno al rival sale antes «Cambio de turno», más alta y lima, y enseguida su fase más nueva (su turno se ve fase por fase); el primer turno no la tiene', () => {
+    const view = render(<PhaseBand cue={{ key: 1, phase: 'draw', side: 'mine' }} />)
 
     // El primer turno: sólo su fase.
     expect(bands()[0]).toHaveTextContent(/^Draw Phase$/)
     leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
-    view.rerender(<PhaseBand cue={{ key: 2, phase: 'draw', side: 'mine', turn: true }} />)
+    view.rerender(<PhaseBand cue={{ key: 2, phase: 'draw', side: 'theirs', turn: true }} />)
     expect(bands()).toHaveLength(1)
     expect(bands()[0]).toHaveAttribute('data-turn')
-    expect(bands()[0]).toHaveAttribute('data-side', 'mine')
+    expect(bands()[0]).toHaveAttribute('data-side', 'theirs')
     expect(bands()[0]).toHaveTextContent(/^Cambio de turno$/)
     expect(bands()[0]).toHaveClass('h-20', 'pointer-events-none')
-    // Una fase que llega mientras se ve espera su turno (no se apilan): sale la más nueva, después.
+    // Una fase que llega mientras se ve espera su turno (no se apilan): sale la más nueva, apenas se va «Cambio de turno».
     advance(500)
-    view.rerender(<PhaseBand cue={{ key: 3, phase: 'standby', side: 'mine' }} />)
+    view.rerender(<PhaseBand cue={{ key: 3, phase: 'standby', side: 'theirs' }} />)
     expect(bands()).toHaveLength(1)
     expect(bands()[0]).toHaveTextContent(/^Cambio de turno$/)
     leave(TURN_BAND_HOLD_MS - 500, TURN_BAND_MS - 500)
@@ -117,5 +117,45 @@ describe('PhaseBand', () => {
     expect(bands()[0]).toHaveTextContent(/^Standby Phase$/)
     leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
     expect(bands()).toHaveLength(0)
+  })
+
+  it('en tu turno, tras «Cambio de turno» entra sólo la fase en la que te quedás: tu Draw y tu Standby, que pasan solas, no entran para irse', () => {
+    const view = render(<PhaseBand cue={{ key: 1, phase: 'draw', side: 'mine', turn: true }} />)
+
+    leave(TURN_BAND_HOLD_MS, TURN_BAND_MS)
+    // «Cambio de turno» se fue y la Draw Phase espera quieta: llegan la Standby y la Main Phase 1, cada ~250 ms.
+    expect(bands()).toHaveLength(0)
+    advance(150)
+    view.rerender(<PhaseBand cue={{ key: 2, phase: 'standby', side: 'mine' }} />)
+    advance(280)
+    view.rerender(<PhaseBand cue={{ key: 3, phase: 'main1', side: 'mine' }} />)
+    advance(PHASE_BAND_SETTLE_MS - 1)
+    expect(bands()).toHaveLength(0)
+    advance(1)
+    expect(bands()).toHaveLength(1)
+    expect(bands()[0]).toHaveTextContent(/^Main Phase 1$/)
+    leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
+    expect(bands()).toHaveLength(0)
+  })
+
+  it('tu End Phase en un duelo (settle) espera: si pasa el turno no sale (entra «Cambio de turno» sin demora) y, si te quedás, entra entera', () => {
+    const view = render(<PhaseBand cue={{ key: 1, phase: 'end', side: 'mine', settle: true }} />)
+
+    expect(bands()).toHaveLength(0)
+    advance(250)
+    view.rerender(<PhaseBand cue={{ key: 2, phase: 'draw', side: 'theirs', turn: true }} />)
+    expect(bands()).toHaveLength(1)
+    expect(bands()[0]).toHaveTextContent(/^Cambio de turno$/)
+    leave(TURN_BAND_HOLD_MS, TURN_BAND_MS)
+    // La End Phase no vuelve: detrás de «Cambio de turno» va la fase del rival.
+    expect(bands()[0]).toHaveTextContent(/^Draw Phase$/)
+    expect(bands()[0]).toHaveAttribute('data-side', 'theirs')
+    leave(PHASE_BAND_HOLD_MS, PHASE_BAND_MS)
+
+    view.rerender(<PhaseBand cue={{ key: 3, phase: 'end', side: 'mine', settle: true }} />)
+    advance(PHASE_BAND_SETTLE_MS)
+    expect(bands()[0]).toHaveTextContent(/^End Phase$/)
+    advance(PHASE_BAND_HOLD_MS + 50)
+    expect(bands()).toHaveLength(1)
   })
 })

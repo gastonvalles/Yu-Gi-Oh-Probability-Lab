@@ -895,7 +895,8 @@ function PracticeMatBody({
   const phaseCue = useMemo<PhaseCue | null>(() => {
     // Un pase deja el turno 2 o más: el arranque de la mesa (de 0 a 1) no es un cambio de turno.
     const passed = dueling && banner?.turn != null && banner.turn > 1
-    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: passed ? 'theirs' : 'mine', turn: passed } : null
+    // Tu End Phase en un duelo espera antes de entrar (`settle`): el pase suele seguirla enseguida y entonces no sale.
+    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: passed ? 'theirs' : 'mine', turn: passed, settle: dueling && !passed && banner.phase === 'end' } : null
     const rival: PhaseCue | null = rivalNotice ? { key: rivalNotice.key, phase: rivalNotice.phase, side: rivalNotice.label ? 'mine' : 'theirs', turn: Boolean(rivalNotice.label) } : null
 
     return own && rival ? (own.key >= rival.key ? own : rival) : (own ?? rival)
