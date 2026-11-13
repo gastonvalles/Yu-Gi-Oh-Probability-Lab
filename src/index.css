@@ -1145,21 +1145,9 @@
 }
 
 /*
- * Parallax: el fondo se mueve más lento que lo que está adelante. `parallax-slow` baja de a poco mientras el contenido sube (el adorno de una portada); `parallax-media` mueve la imagen
- * dentro de su marco mientras la tarjeta cruza la pantalla (una miniatura). Va con la línea de tiempo del scroll (corre en el compositor, sin JavaScript); donde el navegador no la tiene,
+ * Parallax: `parallax-media` mueve la imagen dentro de su marco mientras la tarjeta cruza la pantalla (una miniatura). Va con la línea de tiempo del scroll (corre en el compositor, sin JavaScript); donde el navegador no la tiene,
  * o con el movimiento reducido, todo queda quieto.
  */
-@utility parallax-slow {
-  @supports (animation-timeline: scroll()) {
-    animation: parallax-slow linear both;
-    animation-timeline: scroll(nearest block);
-    animation-range: 0 24rem;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
 @utility parallax-media {
   @supports (animation-timeline: view()) {
     animation: parallax-media linear both;
@@ -1168,12 +1156,6 @@
   }
   @media (prefers-reduced-motion: reduce) {
     animation: none;
-  }
-}
-
-@keyframes parallax-slow {
-  to {
-    transform: translateY(2.5rem);
   }
 }
 
@@ -1609,7 +1591,6 @@
   /* El texto (y el pulgar del interruptor) sobre un relleno lima: el carbón del fondo (13,59:1; el blanco sobre lima no se lee, 1,30:1). */
   --color-info-foreground: var(--accent-foreground);
   --color-field-line: var(--field-line);
-  --color-handtrap: var(--handtrap);
   --color-nav: var(--nav);
   --color-nav-raised: var(--nav-raised);
   --color-nav-active: var(--nav-active);
@@ -1664,7 +1645,6 @@
     --field-line-rgb: 255 255 255;
 
     /* El Extra Deck y los monstruos Sincro y Enlace: el azul de siempre (las zonas del deck son categorías y se distinguen por color). */
-    --handtrap: #3b82f6;
     --handtrap-rgb: 59 130 246;
     /* Bien / listo: un verde agua (~166°) que se separa del verde del EVA-01 (101°); siempre con ícono o texto. */
     --success: #2edcb4;

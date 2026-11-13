@@ -4,7 +4,7 @@
 import type { OnlineLink, OnlineSnapshot, PhaseView } from '../../app/auto/online'
 import type { DuelSnapshot } from '../../app/duel-session'
 
-export interface FakeLink extends OnlineLink {
+interface FakeLink extends OnlineLink {
   /** El último snapshot de la sala que le pasó la pantalla. */
   room: DuelSnapshot | null
   resyncs: number

@@ -193,7 +193,6 @@ export const meta = {
   'meta.replays.moreOptions': 'Más opciones de {label}',
   'meta.replays.viewDeck': 'Ver deck',
   'meta.replays.viewDeckLabel': 'Ver deck {deck}',
-  'meta.replays.viewDecks': 'Ver decks',
   'meta.replays.viewDecksLabel': 'Ver los decks de {label}',
   'meta.replays.stage.final': 'Final',
   'meta.replays.stage.semifinal': 'Semifinal',

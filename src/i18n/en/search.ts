@@ -28,8 +28,6 @@ export const search: Translated<typeof es> = {
 
   // Search filters (the drawer) and the active-filter chips.
   'search.filters.title': 'Filters',
-  'search.filters.active': { one: '{count} active filter', other: '{count} active filters' },
-  'search.filters.none': 'No active filters',
   'search.filters.clear': 'Clear filters',
   'search.filters.archetype': 'Archetype',
   'search.filters.frame': 'Frame',

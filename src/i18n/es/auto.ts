@@ -162,10 +162,8 @@ export const auto = {
   'auto.options.attribute': { one: 'Declará {count} Atributo', other: 'Declará {count} Atributos' },
   'auto.options.declare': 'Declarar',
   // Las demás posiciones ya existen (`practice.menu.attack`, `defense`, `turnFaceDown`).
-  'auto.position.faceDownAttack': 'Boca abajo en ataque',
 
   // Elegir cartas de una lista que no está en el campo (de varios lugares, o por código).
-  'auto.picker.title': 'Elegí cartas',
   'auto.picker.cards': 'Cartas para elegir',
   'auto.picker.choose': { one: 'Elegir {count} carta', other: 'Elegir {count} cartas' },
   'auto.picker.status': '{chosen} de {max}',
@@ -220,7 +218,6 @@ export const auto = {
   'auto.pick.tributeOne': 'Elegí el monstruo para Sacrificar',
   'auto.pick.sum': 'Elegí cartas que sumen {total} Niveles · {chosen} de {total}',
   'auto.pick.sumAtLeast': 'Elegí cartas que sumen al menos {total} Niveles · {chosen} de {total}',
-  'auto.pick.counter': 'Contadores: {chosen} de {total}',
   'auto.pick.attackTarget': 'Elegí a qué monstruo atacar',
   // Declarar una carta (Prohibition, Crossout Designator): «Declarar» es la palabra de las cartas.
   'auto.pick.announce': 'Declará el nombre de una carta',
@@ -307,7 +304,6 @@ export const auto = {
   'auto.bar.ask': 'Preguntar',
   'auto.bar.never': 'Nunca',
   'auto.bar.always': 'Siempre',
-  'auto.bar.turnMine': 'Tu turno · {turn}',
   'auto.bar.chainAskHint': 'Te pregunta cada vez que tenés un efecto rápido o uno con su condición cumplida.',
   'auto.bar.chainNeverHint': 'No te pregunta; las obligatorias, igual.',
   'auto.bar.auto': 'Automática',
@@ -324,7 +320,6 @@ export const auto = {
 
   // La línea del registro: lo que hace el núcleo, la cadena y los avisos que no frenan el duelo.
   'auto.lane.thinking': 'El núcleo está resolviendo…',
-  'auto.lane.rivalChoosing': 'El rival está eligiendo',
   'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
   'auto.lane.pass': 'Pasar',
   // La banda de responder a una cadena (a qué eslabón lo dice la pila de arriba): con qué cartas y qué número tomaría tu respuesta.
@@ -342,7 +337,6 @@ export const auto = {
   // Varias obligatorias a la vez: se elige cuál entra primero en la cadena (la banda del medio).
   'auto.forced.title': 'Elegí cuál de los {count} efectos obligatorios se activa primero',
   'auto.forced.hint': 'Los demás se activan después.',
-  'auto.lane.autoZone': 'La casilla se eligió sola',
   // Los avisos de algo que salió mal, con palabras de la mesa (el detalle técnico va a la consola).
   'auto.lane.unmapped': 'La mesa no pudo mostrar una jugada del núcleo; el duelo sigue igual.',
   'auto.lane.script': 'Falló el script de {card}: el duelo sigue.',
@@ -409,12 +403,6 @@ export const auto = {
   'auto.bar.manualHint': 'La partida sigue en la mesa manual, con todas las opciones. Si el automático se equivocó, podés volver atrás unas jugadas.',
   // La botonera redonda de escritorio (abajo a la derecha): el nombre visible va dentro del nombre accesible.
   'auto.dock.label': 'Botonera del duelo',
-  'auto.dock.auto': 'Automático',
-  'auto.dock.autoName': 'Automático: seguir en modo manual',
-  'auto.dock.chain': 'Cadena',
-  'auto.dock.chainName': 'Cadena: {mode}',
-  'auto.dock.chainTitle': 'Respuestas a la cadena',
-  'auto.dock.steps': 'Pasos',
   'auto.dock.options': 'Opciones',
   'auto.manual.text': 'La mesa sigue como está y con todas las opciones. Si el automático se equivocó, volvé atrás y rehacé esas jugadas a mano.',
   'auto.manual.back': 'Volver atrás',
@@ -452,7 +440,6 @@ export const auto = {
   'auto.online.deckOutWin': '{name} no pudo robar.',
 
   // Seguir el duelo por enlace en modo manual (desde «Más opciones»): la fila, el pedido al otro, la espera y cómo terminó.
-  'auto.online.manualTitle': 'Modo manual',
   'auto.online.manualHint': 'Le preguntás a {name}: si acepta, siguen a mano los dos, con la mesa como está. El automático vuelve en la revancha.',
   'auto.online.manualControlHint': 'Ahora no se puede: hay una carta bajo el control del otro jugador.',
   'auto.online.manualAsk': 'Pasar a manual',

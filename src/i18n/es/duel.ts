@@ -15,8 +15,6 @@ export const duel = {
 
   // La mesa con los dos campos.
   'duel.table.label': 'Mesa del duelo',
-  'duel.table.theirs': 'Campo del rival',
-  'duel.table.mine': 'Tu campo',
   'duel.zone.theirs': 'Rival, {zone}',
   'duel.zone.conflict': '{zone}: la ocupan los dos',
   'duel.hand.theirs': 'Mano del rival: {count}',
@@ -45,8 +43,6 @@ export const duel = {
   'duel.dock.link': 'Link',
   'duel.dock.atk': 'ATK',
   'duel.dock.def': 'DEF',
-  'duel.undo.askTitle': '¿Permitís que {name} vuelva atrás la última jugada?',
-  'duel.undo.askText': '{name} quiere deshacer la última jugada de la mesa, sea de quien sea. Si la permitís, esa mesa vuelve a como estaba antes.',
   'duel.undo.askShort': '{name} quiere volver atrás la última jugada',
   'duel.undo.allow': 'Permitir',
   'duel.undo.deny': 'No permitir',
@@ -60,8 +56,6 @@ export const duel = {
   'duel.prompt.move': 'Arrastralo de arriba para moverlo (o Alt + flechas) · Doble clic: vuelve a su lugar',
   'duel.prompt.show': 'Mostrar la pregunta',
   // Arriba de la pregunta, chico: en qué fase y de quién es el turno.
-  'duel.prompt.turnMine': '{phase} · Tu turno',
-  'duel.prompt.turnTheirs': '{phase} · Turno del rival',
   'duel.pass.ask': '{name} quiere pasar a la {phase}. ¿Hacés algo antes?',
   'duel.pass.askEnd': '{name} quiere terminar su turno. ¿Hacés algo antes?',
   'duel.pass.askWith': '{name} quiere pasar a la {phase}. Podés responder con {cards}.',
@@ -76,8 +70,6 @@ export const duel = {
   'duel.mark.label': '{place}: marcar',
   'duel.mark.notice.pile': '{name} marca tu {pile} como objetivo',
   'duel.point.label': 'Señalar',
-  'duel.point.noticeMine': '{name} señala algo de tu lado',
-  'duel.point.noticeTheirs': '{name} señala algo de su lado',
   'duel.mark.notice.card': '{name} marca una de tus cartas como objetivo',
   'duel.announce.yourCard': 'una de tus cartas',
   'duel.announce.rivalCard': 'una carta del rival',
@@ -147,7 +139,6 @@ export const duel = {
   'duel.arena.live': 'Duelos en vivo',
   'duel.arena.isPlaying': '{name} está jugando',
   'duel.arena.versus': '{host} vs {guest}',
-  'duel.arena.seats': '{count} de 2 jugadores',
   'duel.arena.watch': 'Mirar',
   'duel.arena.watchLabel': 'Mirar el duelo de {name}',
   'duel.arena.watchers': 'Mirando {count} de {max}',
@@ -252,7 +243,6 @@ export const duel = {
   'duel.room.incompatible': 'Tu rival usa otra versión del duelo, o los dos crearon la sala: pedile que abra tu enlace.',
 
   // Mirar un duelo sin jugar (hasta dos espectadores, que no pueden hacer nada).
-  'duel.room.watchTitle': 'Para mirar',
   'duel.room.watchHint': 'Hasta dos personas pueden mirar el duelo: ven las dos mesas, pero no pueden hacer nada.',
   'duel.room.copyWatch': 'Copiar enlace para mirar',
   'duel.room.watchers': '{count} mirando',
@@ -264,7 +254,6 @@ export const duel = {
   'duel.watch.waitingStart': 'Esperando que {names} empiecen…',
   'duel.watch.waitingRival': 'Esperando al rival de {name}…',
   'duel.watch.waitingStartNoNames': 'Esperando que los jugadores empiecen…',
-  'duel.watch.turnOf': 'Turno de {name}',
   'duel.watch.playerAway': 'Falta un jugador',
   'duel.watch.won': 'Ganó {name}.',
   'duel.turnOrder.first': 'Vas primero',
@@ -293,7 +282,6 @@ export const duel = {
 
   // La conexión.
   'duel.status.connecting': 'Conectando…',
-  'duel.status.open': 'Conectado',
   'duel.status.reconnecting': 'Reconectando…',
   'duel.status.full': 'Esa sala ya tiene dos jugadores.',
   'duel.status.gone': 'La sala se cerró.',
@@ -312,7 +300,6 @@ export const duel = {
   'duel.bar.theirTurnN': 'Turno de {name} · {turn}',
   'duel.bar.lifeOf': 'Puntos de vida de {name}',
   'duel.bar.openCalculator': 'Abrir la calculadora de vidas',
-  'duel.bar.handTag': 'Mano {count}',
   'duel.bar.handCount': { one: 'Una carta en la mano', other: '{count} cartas en la mano' },
   'duel.bar.clock': 'Reloj de la ronda: {time}',
   'duel.bar.clockStart': 'Iniciar el reloj',
@@ -373,7 +360,6 @@ export const duel = {
   'duel.games.rps.draw': 'Empate',
   'duel.games.rps.again': 'Otra ronda',
   'duel.games.log.title': 'Registro',
-  'duel.games.log.empty': 'Todavía no pasó nada.',
   'duel.games.log.coin': '{name} tiró la moneda: {result}',
   'duel.games.log.die': '{name} tiró el dado: {value}',
   'duel.games.log.rps': '{name} eligió en piedra, papel o tijera',
@@ -442,7 +428,6 @@ export const duel = {
   'duel.signal.thinking': 'Pensando…',
   'duel.signal.good': 'Continuá',
   'duel.bar.bigWindowOn': 'Ventana grande',
-  'duel.bar.bigWindowOff': 'Salir de la ventana grande',
   'duel.look.deck': '{name} está buscando en su Deck',
   'duel.look.extra': '{name} está mirando su Extra Deck',
   'duel.look.gy': '{name} está mirando su cementerio',
@@ -480,7 +465,6 @@ export const duel = {
   'duel.siding.zone.main': 'Main Deck',
   'duel.siding.zone.extra': 'Extra Deck',
   'duel.siding.zone.side': 'Side Deck',
-  'duel.siding.empty': 'Sin cartas.',
   'duel.siding.moved': '{name} pasó al {zone}.',
   'duel.siding.moveLabel': 'Mover {name} al {zone}',
   'duel.siding.ready': 'Listo',
@@ -499,7 +483,6 @@ export const duel = {
   'duel.series.chip': 'Duelo {game} · {mine}–{theirs}',
   'duel.result.rematchWaiting': 'Esperando a {name}…',
   'duel.result.rematchOffered': '{name} quiere la revancha.',
-  'duel.turn.passHint': 'Pasar el turno',
 
   // Los puntos de vida con los que empieza el duelo (los fija quien lo crea).
 

@@ -152,10 +152,8 @@ export const auto: Translated<typeof es> = {
   'auto.options.race': { one: 'Declare {count} Type', other: 'Declare {count} Types' },
   'auto.options.attribute': { one: 'Declare {count} Attribute', other: 'Declare {count} Attributes' },
   'auto.options.declare': 'Declare',
-  'auto.position.faceDownAttack': 'Face-down Attack Position',
 
   // Choosing cards from a list that is not on the field.
-  'auto.picker.title': 'Choose cards',
   'auto.picker.cards': 'Cards to choose from',
   'auto.picker.choose': { one: 'Choose {count} card', other: 'Choose {count} cards' },
   'auto.picker.status': '{chosen} of {max}',
@@ -208,7 +206,6 @@ export const auto: Translated<typeof es> = {
   'auto.pick.tributeOne': 'Choose the monster to Tribute',
   'auto.pick.sum': 'Choose cards whose Levels add up to {total} · {chosen} of {total}',
   'auto.pick.sumAtLeast': 'Choose cards whose Levels add up to at least {total} · {chosen} of {total}',
-  'auto.pick.counter': 'Counters: {chosen} of {total}',
   'auto.pick.attackTarget': 'Choose which monster to attack',
   'auto.pick.announce': 'Declare a card name',
   'auto.pick.for': '{what} {why}',
@@ -290,7 +287,6 @@ export const auto: Translated<typeof es> = {
   'auto.bar.ask': 'Ask',
   'auto.bar.never': 'Never',
   'auto.bar.always': 'Always',
-  'auto.bar.turnMine': 'Your turn · {turn}',
   'auto.bar.chainAskHint': 'It asks you every time you have a Quick Effect or one whose condition is met.',
   'auto.bar.chainNeverHint': "It doesn't ask you; mandatory ones still do.",
   'auto.bar.auto': 'Automatic',
@@ -306,7 +302,6 @@ export const auto: Translated<typeof es> = {
 
   // The log line: what the engine does, the chain and the notices that don't stop the duel.
   'auto.lane.thinking': 'The rules engine is resolving…',
-  'auto.lane.rivalChoosing': 'The opponent is choosing',
   'auto.lane.respondTo': 'You can respond to {card} with {cards}',
   'auto.lane.pass': 'Pass',
   // The band to respond to a chain (which link is said by the chain stack above): with which cards and which number your response would take.
@@ -321,7 +316,6 @@ export const auto: Translated<typeof es> = {
   // Several mandatory ones at once: you pick which one enters the chain first (the band in the middle).
   'auto.forced.title': 'Choose which of the {count} mandatory effects activates first',
   'auto.forced.hint': 'The rest activate afterwards.',
-  'auto.lane.autoZone': 'The zone was picked for you',
   // What went wrong, in the mat's words (the technical detail goes to the console).
   'auto.lane.unmapped': "The mat couldn't show one of the rules engine's plays; the duel goes on.",
   'auto.lane.script': "{card}'s script failed: the duel goes on.",
@@ -387,12 +381,6 @@ export const auto: Translated<typeof es> = {
   'auto.bar.manual': 'Continue in manual mode',
   'auto.bar.manualHint': 'The game continues on the manual table, with every option. If the automatic mode got something wrong, you can go back a few plays.',
   'auto.dock.label': 'Duel buttons',
-  'auto.dock.auto': 'Auto',
-  'auto.dock.autoName': 'Auto: continue in manual mode',
-  'auto.dock.chain': 'Chain',
-  'auto.dock.chainName': 'Chain: {mode}',
-  'auto.dock.chainTitle': 'Chain responses',
-  'auto.dock.steps': 'Steps',
   'auto.dock.options': 'Options',
   'auto.manual.text': 'The table stays as it is, with every option. If the automatic mode got something wrong, go back and redo those plays by hand.',
   'auto.manual.back': 'Go back',
@@ -429,7 +417,6 @@ export const auto: Translated<typeof es> = {
   'auto.online.deckOutWin': "{name} couldn't draw.",
 
   // Going on with the link duel in manual mode (from «More options»): the row, the request to the other player, the wait and how it ended.
-  'auto.online.manualTitle': 'Manual mode',
   'auto.online.manualHint': 'You ask {name}: if they agree, you both go on by hand, with the table as it is. Automatic comes back with the rematch.',
   'auto.online.manualControlHint': "Not right now: a card is under the other player's control.",
   'auto.online.manualAsk': 'Switch to manual',

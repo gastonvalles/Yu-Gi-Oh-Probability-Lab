@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react'
 
 /** El ⋯ de la barra de la mesa (`MatMoreMenu`): el botón «Más opciones» que abre un menú. */
-export const matMenuButton = () => screen.getAllByRole('button', { name: 'Más opciones' }).find((button) => button.getAttribute('aria-haspopup') === 'menu')!
+const matMenuButton = () => screen.getAllByRole('button', { name: 'Más opciones' }).find((button) => button.getAttribute('aria-haspopup') === 'menu')!
 
 /** Las filas del ⋯ abierto (`menuitem` y, los ajustes, `menuitemcheckbox`). */
 const rows = () => [...screen.getByRole('menu').querySelectorAll<HTMLElement>('[role^="menuitem"]')]
