@@ -1175,8 +1175,9 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
       const after = next([...state.chosen, index])
       const now = askView(after.state).cardPick!
 
-      // Completa: vale y ya no se puede sumar ninguna (con `max = 1`, al primer toque).
-      return now.done && now.eligible.every((i) => now.chosen.includes(i)) ? answer(cardAnswer(ask, now)) : after
+      // Contesta sola sólo la de una carta obligatoria (`max = 1`, sin botón: el primer toque). Eligiendo varias (o una que se puede saltear, con «Listo»), nunca: completa, sólo enciende la
+      // principal, y hasta tocarla se puede soltar una (Gastón, 2026-11-12: elegir la última no le daba tiempo de revisar).
+      return now.done && now.max === 1 && now.min >= 1 && now.eligible.every((i) => now.chosen.includes(i)) ? answer(cardAnswer(ask, now)) : after
     }
 
     case 'zone': {
