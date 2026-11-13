@@ -66,6 +66,12 @@ export function DuelSection() {
         </div>
       </Specimen>
 
+      <Specimen title="A2 · Replay de un duelo" layout="column" className="col-span-full" note={<>Como la mesa que se juega: la caja de la fase al medio (<Tag>centerPhase</Tag>, la del turno de abajo en lima, de sólo lectura) en vez de la tira de siglas. La usa el replay de un duelo, con el remolino, las chapas y las dos manos.</>}>
+        <div className="mx-auto w-full max-w-[24.375rem] [--cell:3.57rem]">
+          <DuelTable mine={duel.mine} theirs={duel.theirs} turn="mine" centerPhase />
+        </div>
+      </Specimen>
+
       <Specimen
         title="B · Tira del rival"
         layout="column"
