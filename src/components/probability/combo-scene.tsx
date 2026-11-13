@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import type { ChainStep } from '../../app/auto/chain-feed'
 import { actingOf, linksOf, medalsOf } from '../../app/card-glow'
 import { createMatState, isToken } from '../../app/practice-mat'
 import { comboChainSteps, comboTheirReal, comboTheirsAt, type SavedCombo } from '../../app/saved-combos'
-import { ChainStage, chainDwell, chainFeed, outcomeLabel, stepsUpTo } from '../auto/ChainNotice'
+import { ChainStage, chainFeed, outcomeLabel, usePacedChain } from '../auto/ChainNotice'
 import { artOfDrawId } from '../duel/duel-art'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import type { DuelMatLink } from './PracticeMat'
@@ -11,6 +12,7 @@ import type { DuelMatLink } from './PracticeMat'
 export type ComboScene = Pick<DuelMatLink, 'areas' | 'opponent' | 'sharedZone' | 'rivalHand' | 'act' | 'links' | 'medals' | 'chain'>
 
 const NO_RIVAL = createMatState([], [], 0)
+const NO_STEPS: ChainStep[] = []
 
 /**
  * El campo del rival y la cadena de un combo que los trae (`theirs`, `chain`), en el paso `cursor`, para la mesa manual (el enlace compartido, Replays, «Tus combos»): como en el repaso del
@@ -20,39 +22,10 @@ const NO_RIVAL = createMatState([], [], 0)
 export function useComboScene(combo: Pick<SavedCombo, 'theirs' | 'chain'> | null, cursor: number, nameOf: (id: string) => string, artOf: (id: string) => string | null): ComboScene | null {
   const chain = combo?.chain
   const steps = useMemo(() => (chain ? comboChainSteps({ chain }) : null), [chain])
-  const [paced, setPaced] = useState<{ steps: typeof steps; at: number; seen: number; cut: boolean; gone: number } | null>(null)
+  // Un combo con otra cadena la corta (`key`).
+  const [paced] = usePacedChain(steps ?? NO_STEPS, steps ? cursor : null, steps)
 
-  if (steps === null ? paced !== null : paced?.steps !== steps || paced.at !== cursor) {
-    if (steps === null) setPaced(null)
-    else {
-      const due = stepsUpTo(steps, cursor)
-      const stepped = paced !== null && paced.steps === steps && cursor === paced.at + 1
-      let seen = stepped ? stepsUpTo(steps, paced.at) : due
-
-      if (seen < due) seen += 1
-      while (seen < due && chainDwell(steps, seen - 1) === 0) seen += 1
-      const whole = chainFeed(steps, due)
-
-      setPaced({ steps, at: cursor, seen, cut: !stepped, gone: stepped ? paced.gone : whole?.done ? whole.key : -1 })
-    }
-  }
-  useEffect(() => {
-    if (!paced || paced.cut || !paced.steps) return
-    const { steps: list } = paced
-    const due = stepsUpTo(list, paced.at)
-
-    if (paced.seen >= due) return
-    const timer = window.setTimeout(() => {
-      let next = paced.seen + 1
-
-      while (next < due && chainDwell(list, next - 1) === 0) next += 1
-      setPaced((current) => (current === paced ? { ...current, seen: next } : current))
-    }, chainDwell(list, paced.seen - 1))
-
-    return () => window.clearTimeout(timer)
-  }, [paced])
-
-  const feed = useMemo(() => (paced?.steps && !paced.cut ? chainFeed(paced.steps, paced.seen) : null), [paced])
+  const feed = useMemo(() => (steps && paced && !paced.cut ? chainFeed(steps, paced.seen) : null), [steps, paced])
   const live = feed && !(feed.done && paced?.gone === feed.key) ? feed : null
   const acting = useMemo(() => actingOf(live), [live])
   const links = useMemo(() => linksOf(live), [live])

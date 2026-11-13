@@ -6,7 +6,7 @@ import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
 import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { comboExtrasFromAuto } from '../../app/auto/auto-replay'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
-import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainRow, type ChainStep } from '../../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, nextShown, stepsUpTo, type ChainRow, type ChainStep } from '../../app/auto/chain-feed'
 import { frameKindOf, frameOfType, type CardFrame } from '../../app/card-frame'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { rivalAttackInCourse } from '../../app/attack-trail'
@@ -55,7 +55,7 @@ import { AutoCardSheet } from './AutoPanel'
 import { BAND_MAX, CardPicker, PickBand, copyGroups, pickPlace, type PickCard, type PickFrom } from './CardPicker'
 import { announceMatches } from '../../app/auto/announce'
 import { useAnnounceCatalog } from './use-announce-catalog'
-import { ChainStage, outcomeLabel } from './ChainNotice'
+import { ChainStage, outcomeLabel, usePacedChain } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
 import { RespondBand } from './RespondBand'
@@ -465,13 +465,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     if (reviewing || snap.replaying || !chainDue) return
     const wait = Math.max(0, chainDwell(steps, chainSeen - 1) - (Date.now() - chainShownAt.current))
     const timer = window.setTimeout(() => {
-      // Los que no se dejan ver solos (uno resuelto, el final) se muestran junto con el siguiente.
-      const due = stepsDue(paced.cursor, theirsShown)
-      let next = chainSeen + 1
-
-      while (next < due && chainDwell(steps, next - 1) === 0) next += 1
+      // Los que no se dejan ver solos (uno resuelto, el final) se muestran junto con el siguiente (`chainDue`: el siguiente ya pasó, `chainSeen` < lo debido).
       chainShownAt.current = Date.now()
-      setChainSeen(next)
+      setChainSeen(nextShown(steps, chainSeen, stepsDue(paced.cursor, theirsShown)))
     }, wait)
 
     return () => window.clearTimeout(timer)
@@ -936,36 +932,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const comboSteps = useMemo(() => (reviewCombo ? comboChainSteps({ chain: reviewCombo }) : null), [reviewCombo])
   const reviewSteps = comboSteps ?? steps
   const reviewAt = review && review.name === undefined ? review.session.cursor + opening.skip : review && comboSteps ? review.session.cursor : null
-  const [reviewChain, setReviewChain] = useState<{ at: number; seen: number; cut: boolean; gone: number } | null>(null)
-
-  if (reviewAt === null ? reviewChain !== null : reviewChain?.at !== reviewAt) {
-    if (reviewAt === null) setReviewChain(null)
-    else {
-      const due = stepsUpTo(reviewSteps, reviewAt)
-      const stepped = reviewChain !== null && reviewAt === reviewChain.at + 1
-      let seen = stepped ? stepsUpTo(reviewSteps, reviewChain.at) : due
-
-      if (seen < due) seen += 1
-      while (seen < due && chainDwell(reviewSteps, seen - 1) === 0) seen += 1
-      const whole = chainFeed(reviewSteps, due)
-
-      setReviewChain({ at: reviewAt, seen, cut: !stepped, gone: stepped ? reviewChain.gone : whole?.done ? whole.key : -1 })
-    }
-  }
-  useEffect(() => {
-    if (!reviewChain || reviewChain.cut) return
-    const due = stepsUpTo(reviewSteps, reviewChain.at)
-
-    if (reviewChain.seen >= due) return
-    const timer = window.setTimeout(() => {
-      let next = reviewChain.seen + 1
-
-      while (next < due && chainDwell(reviewSteps, next - 1) === 0) next += 1
-      setReviewChain((current) => (current === reviewChain ? { ...current, seen: next } : current))
-    }, chainDwell(reviewSteps, reviewChain.seen - 1))
-
-    return () => window.clearTimeout(timer)
-  }, [reviewChain, reviewSteps])
+  const [reviewChain, leaveReviewChain] = usePacedChain(reviewSteps, reviewAt)
   const liveFeed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
   const reviewFeed = useMemo(() => (reviewChain && !reviewChain.cut ? chainFeed(reviewSteps, reviewChain.seen) : null), [reviewChain, reviewSteps])
   const feed = reviewing ? reviewFeed : liveFeed
@@ -1225,10 +1192,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // última carta).
   useEffect(() => {
     if (!feed?.done) return
-    const timer = window.setTimeout(() => (reviewing ? setReviewChain((current) => (current && current.gone !== feed.key ? { ...current, gone: feed.key } : current)) : setChainGone(feed.key)), CHAIN_LINGER_MS)
+    const timer = window.setTimeout(() => (reviewing ? leaveReviewChain(feed.key) : setChainGone(feed.key)), CHAIN_LINGER_MS)
 
     return () => window.clearTimeout(timer)
-  }, [feed, reviewing])
+  }, [feed, reviewing, leaveReviewChain])
   // La cadena que se puede pasar, en la banda de responder: a qué eslabón y con qué cartas (con su lugar). Con una sola de un solo efecto, ya viene elegida; una con varios efectos
   // abre su lista (como su menú en la mesa).
   const offer = shown && lane === null ? respondOffer(shown, chain) : null
