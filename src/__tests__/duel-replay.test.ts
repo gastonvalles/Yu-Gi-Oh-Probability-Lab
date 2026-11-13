@@ -2,8 +2,9 @@ import { deflateRawSync } from 'node:zlib'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { replayChain } from '../app/auto/auto-replay'
 import { encodeComboPayload, buildComboLink, packPayload, unpackPayload } from '../app/combo-share'
-import { buildDuelReplay, duelReplayAt, walkReplay, type DuelReplay, type ReplayInput } from '../app/duel-replay'
+import { buildDuelReplay, duelReplayAt, walkReplay, type DuelReplay, type ReplayChainStep, type ReplayInput } from '../app/duel-replay'
 import {
   buildReplayLink,
   compactReplayEnvelope,
@@ -122,7 +123,7 @@ describe('el replay de un duelo', () => {
       ['null', 'notReplay'],
       [JSON.stringify({ app: 'otra', kind: 'duel', v: 1, replay }), 'notReplay'],
       [text(replay, { kind: 'combo' }), 'notReplay'],
-      [text(replay, { v: 3 }), 'newer'],
+      [text(replay, { v: 4 }), 'newer'],
       // Un v2 trae `d`, no `replay`.
       [text(replay, { v: 2 }), 'broken'],
       [text(replay, { v: 0 }), 'broken'],
@@ -271,6 +272,79 @@ describe('el enlace v2 (la forma compacta del combo)', () => {
     ]
 
     for (const value of hostile) expect(parseReplayText(value), value.slice(0, 120)).toEqual({ ok: false, error: 'broken' })
+  })
+})
+
+// La cadena de la jugada 4 (activé h2): CL1 mío desde la Zona de Mágicas, CL2 del rival desde la mano, que la niega; y una que llegó después de la última jugada que entró.
+const CHAIN: ReplayChainStep[] = [
+  { at: 4, kind: 'chain', index: 0, link: { code: 14560127, side: 0, place: [0, 8, 1] } },
+  { at: 4, kind: 'chain', index: 1, link: { code: 14558127, side: 1, place: [1, 2, 0] } },
+  { at: 4, kind: 'solving', index: 1 },
+  { at: 4, kind: 'solved', index: 1, outcome: { kind: 'draw', count: 1 } },
+  { at: 4, kind: 'solving', index: 0 },
+  { at: 4, kind: 'negated', index: 0, by: 2 },
+  { at: 5, kind: 'solved', index: 0 },
+  { at: 5, kind: 'end', index: -1 },
+  { at: 11, kind: 'chain', index: 0, link: { code: 0, side: 1 } },
+]
+const chained = buildDuelReplay({ ...input, chain: CHAIN })
+
+describe('la cadena del duelo automático (v3)', () => {
+  it('va hasta la última jugada que entró y nombra sus cartas; sin cadena, el replay no la lleva', () => {
+    expect(chained.chain).toEqual(CHAIN.slice(0, -1))
+    expect(chained.cards['14558127']).toBe('Carta 14558127')
+    expect(replay.chain).toBeUndefined()
+  })
+
+  it('del snapshot: cada mensaje en su lugar de `order` (`seq`) y los lados desde quien graba, sin id ni `desc`', () => {
+    const link = { card: { side: 'mine' as const, id: 'card-1-1' }, code: 1, mine: true, description: '16', from: 8, place: { side: 'theirs' as const, location: 4, sequence: 2 } }
+
+    expect(replayChain([{ kind: 'chain', at: 2, seq: 4, index: 0, link }, { kind: 'negated', at: 2, seq: 4, index: 0, by: 2 }, { kind: 'end', at: 2, index: -1 }])).toEqual([
+      { at: 4, kind: 'chain', index: 0, link: { code: 1, side: 0, place: [1, 4, 2] } },
+      { at: 4, kind: 'negated', index: 0, by: 2 },
+    ])
+  })
+
+  it('ida y vuelta: guardado (v3), en el enlace sin nombres y en la forma v1; uno sin cadena se sigue escribiendo v2', async () => {
+    const payload = await encodeReplayPayload(chained)
+    const link = await encodeReplayLinkPayload(chained)
+
+    expect(JSON.parse((await unpackPayload(payload, 1e6) as { text: string }).text)).toMatchObject({ v: 3 })
+    expect(await decodeReplayPayload(payload)).toEqual({ ok: true, replay: chained })
+    expect(await decodeReplayPayload(link)).toEqual({ ok: true, replay: { ...chained, cards: {} } })
+    expect(replayCodes(chained)).toContain(14558127)
+    expect(parseReplayText(JSON.stringify(replayEnvelope(chained)))).toEqual({ ok: true, replay: chained })
+    expect(compactReplayEnvelope(replay)).toMatchObject({ v: 2 })
+    // Con «mi mano» también (el lugar de `hidden` va antes que la cadena).
+    const both = buildDuelReplay({ ...input, view: 'mine', chain: CHAIN })
+    expect(await decodeReplayPayload(await encodeReplayPayload(both))).toEqual({ ok: true, replay: both })
+  })
+
+  it('la cadena hostil no rompe ni lanza', () => {
+    const good = compactReplayEnvelope(chained)
+    const chainAt = (change: (chain: unknown[][]) => unknown) => JSON.stringify({ ...good, d: [...good.d.slice(0, 14), change(good.d[14] as unknown[][])] })
+    const plain = JSON.parse(JSON.stringify(chained)) as DuelReplay
+    const hostile = [
+      chainAt(() => 'x'),
+      chainAt((chain) => chain.with(0, [99, 0, 0, null, 0])),
+      chainAt((chain) => chain.with(0, [4, 9, 0])),
+      chainAt((chain) => chain.with(0, [4, 0, 0, 9999, 0])),
+      chainAt((chain) => chain.with(0, [4, 0, 0, null, 2])),
+      chainAt((chain) => chain.with(0, [4, 0, 0, null, 0, 0, 8])),
+      chainAt((chain) => chain.with(1, [4, 1, 0, 'x'])),
+      chainAt((chain) => [...chain, [0, 5, -1]]),
+      text({ ...plain, chain: [{ at: 0, kind: 'nuke', index: 0 }] }),
+      text({ ...plain, chain: [{ at: 0, kind: 'solved', index: 0, outcome: { kind: 'add', count: 0 } }] }),
+    ]
+
+    for (const value of hostile) expect(parseReplayText(value), value.slice(-120)).toEqual({ ok: false, error: 'broken' })
+  })
+
+  it('un enlace de un duelo con cadena crece poco', async () => {
+    const before = (await encodeReplayLinkPayload(replay)).length
+    const after = (await encodeReplayLinkPayload(chained)).length
+
+    expect(after - before).toBeLessThan(80)
   })
 })
 

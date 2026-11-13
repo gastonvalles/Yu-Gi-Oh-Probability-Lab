@@ -1,13 +1,14 @@
-import { buildDuelReplay, type DuelReplay, type ReplayMode, type ReplayResult, type ReplayView } from '../duel-replay'
+import { buildDuelReplay, type DuelReplay, type ReplayChainStep, type ReplayMode, type ReplayResult, type ReplaySide, type ReplayView } from '../duel-replay'
 import { publicIds } from '../mat-public'
 import type { AutoSnapshot } from './auto-session'
+import type { ChainStep } from './chain-feed'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from './end-reasons'
 import type { Seat } from './protocol'
 
 /**
  * El replay de un duelo automático (solo o por enlace), sacado del snapshot de la sesión: ya viene después de deshacer (lo deshecho no está), con mi mesa de ids reales
- * y la del rival como me la contó el adaptador (sólo lo que el núcleo dejó ver). La cadena y el ATK/DEF del momento no van: el replay muestra la mesa (sin ATK/DEF
- * antes que el impreso, que podría mentir) y cada jugada dice qué se activó.
+ * y la del rival como me la contó el adaptador (sólo lo que el núcleo dejó ver). El ATK/DEF del momento no va: el replay muestra la mesa (sin ATK/DEF antes que el
+ * impreso, que podría mentir) y cada jugada dice qué se activó; la cadena sí (`replayChain`: la escena y los medallones).
  */
 export interface AutoReplayOptions {
   seat: Seat
@@ -30,7 +31,7 @@ function coreResult(snap: Pick<AutoSnapshot, 'status' | 'overlay'>, seat: Seat):
   return { winner, reason: end.reason === REASON_LP || (loser !== null && snap.overlay.lp[loser]! <= 0) ? 'lp' : end.reason === REASON_DECK || end.reason < SCRIPT_REASON ? 'deck' : 'effect' }
 }
 
-export function replayFromAuto(snap: Pick<AutoSnapshot, 'initial' | 'mineActions' | 'theirsActs' | 'order' | 'lifeSteps' | 'names' | 'status' | 'overlay'>, options: AutoReplayOptions): DuelReplay {
+export function replayFromAuto(snap: Pick<AutoSnapshot, 'initial' | 'mineActions' | 'theirsActs' | 'order' | 'lifeSteps' | 'names' | 'status' | 'overlay' | 'chainSteps'>, options: AutoReplayOptions): DuelReplay {
   const { seat, theirCode } = options
   const seen: Record<string, string> = {}
 
@@ -58,5 +59,26 @@ export function replayFromAuto(snap: Pick<AutoSnapshot, 'initial' | 'mineActions
     life: snap.lifeSteps.map(({ at, lp }) => ({ at, lp: [lp[seat]!, lp[1 - seat]!] as const })),
     nameOf: (code) => snap.names[code],
     ...(result ? { result } : {}),
+    chain: replayChain(snap.chainSteps),
   })
+}
+
+/** La cadena del replay: cada mensaje en su lugar de `order` (`seq`; el adaptador siempre lo anota) y los lados contados desde quien graba (0). */
+export function replayChain(steps: readonly ChainStep[]): ReplayChainStep[] {
+  const sideOf = (side: 'mine' | 'theirs'): ReplaySide => (side === 'mine' ? 0 : 1)
+
+  return steps.flatMap(({ kind, seq, index, link, by, outcome }) =>
+    seq === undefined
+      ? []
+      : [
+          {
+            at: seq,
+            kind,
+            index,
+            ...(link ? { link: { code: link.code, side: link.mine ? 0 : 1, ...(link.place ? { place: [sideOf(link.place.side), link.place.location, link.place.sequence] as [ReplaySide, number, number] } : {}) } } : {}),
+            ...(by ? { by } : {}),
+            ...(outcome ? { outcome } : {}),
+          } satisfies ReplayChainStep,
+        ],
+  )
 }

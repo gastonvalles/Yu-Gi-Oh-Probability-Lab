@@ -1,3 +1,4 @@
+import type { ChainOutcome, ChainStepKind } from './auto/chain-feed'
 import { duelTurnNumber } from './duel-turn'
 import { encodeAct, mapActionIds, openPublic, type WireAct } from './mat-public'
 import { matReducer, type MatAction, type MatState, type Placed } from './practice-mat'
@@ -40,6 +41,22 @@ export interface DuelReplay {
   /** Sólo con `view: 'mine'`: el id real de las cartas propias que estuvieron en la mano o boca abajo. */
   hidden?: Record<string, string>
   result?: ReplayResult
+  /** Sólo el duelo automático: la cadena del núcleo, mensaje por mensaje (un replay de antes, o del duelo manual, no la trae). */
+  chain?: ReplayChainStep[]
+}
+
+/**
+ * Un mensaje de la cadena (`ChainStep` de `auto/chain-feed.ts`) visto desde quien grabó: llegó con `at` jugadas del replay hechas (se muestra con la mesa ahí, como en vivo), qué
+ * pasó y en qué eslabón. Al encadenarse, la carta (su passcode: activarla la muestra; 0 si no se supo), de qué lado y dónde se activó (`place`: lado, `LOCATION`, secuencia; ahí va
+ * su medallón). Sin el id de la carta ni el `desc` del efecto: el replay no los usa.
+ */
+export interface ReplayChainStep {
+  at: number
+  kind: ChainStepKind
+  index: number
+  link?: { code: number; side: ReplaySide; place?: [side: ReplaySide, location: number, sequence: number] }
+  by?: number
+  outcome?: ChainOutcome
 }
 
 /**
@@ -58,6 +75,8 @@ export interface ReplayInput {
   /** El nombre de una carta por su passcode (el de los datos del duelo). */
   nameOf: (passcode: number) => string | undefined
   result?: ReplayResult
+  /** La cadena, con `at` contado en `order`. */
+  chain?: readonly ReplayChainStep[]
   now?: Date
 }
 
@@ -107,7 +126,10 @@ export function buildDuelReplay(input: ReplayInput): DuelReplay {
   }
 
   const hidden = Object.fromEntries([...secret].flatMap((id) => (opaque[id] && REAL_ID.test(id) ? [[opaque[id], id] as const] : [])))
-  const reveals = [opened.reveal, theirs.reveal ?? {}, ...steps.map((step) => step[2] ?? {}), hidden]
+  // Lo que pasó después de la última jugada que entró (se cortó `order`), no.
+  const chain = (input.chain ?? []).filter((item) => item.at <= steps.length)
+  const chainCodes = Object.fromEntries(chain.flatMap((item) => (item.link?.code ? [[item.link.code, `card-${item.link.code}-1`] as const] : [])))
+  const reveals = [opened.reveal, theirs.reveal ?? {}, ...steps.map((step) => step[2] ?? {}), hidden, chainCodes]
   const cards: Record<string, string> = {}
 
   for (const reveal of reveals) {
@@ -142,6 +164,7 @@ export function buildDuelReplay(input: ReplayInput): DuelReplay {
     cards,
     ...(input.view === 'mine' ? { hidden } : {}),
     ...(input.result ? { result: input.result } : {}),
+    ...(chain.length > 0 ? { chain } : {}),
   }
 }
 
