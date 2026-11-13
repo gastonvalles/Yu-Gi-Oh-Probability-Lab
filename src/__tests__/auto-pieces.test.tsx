@@ -346,7 +346,7 @@ describe('PickBand', () => {
     expect(group).toHaveAttribute('data-auto-panel', 'floating')
     expect(group).toHaveTextContent('Cementerio · 3')
     // La bandeja: una sola fila de cartas de 1/6 del ancho (con pocas no se agrandan); con más de seis, se desliza.
-    expect(within(group).getByRole('listbox')).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]', 'overflow-x-auto')
+    expect(within(group).getByRole('listbox')).toHaveClass('grid-flow-col', 'auto-cols-[min(calc((100%-2.5rem)/6),4.5rem)]', 'overflow-x-auto')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
     expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Cancelar', 'Listo'])
     expect(within(group).getByRole('button', { name: 'Listo' })).toBeDisabled()
