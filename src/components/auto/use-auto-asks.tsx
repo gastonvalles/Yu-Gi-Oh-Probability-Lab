@@ -1294,10 +1294,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const aim = shown?.cardPick && shown.title === ATTACK_TARGET_HINT ? attacker : null
   const rivalAim = useMemo(() => (shown ? rivalAttackInCourse(attacks, snap.order, snap.mineActions, snap.theirsActs, snap.lifeSteps) : null), [shown, attacks, snap.order, snap.mineActions, snap.theirsActs, snap.lifeSteps])
 
-  // Guardar un combo: lo del duelo que suma (el campo del rival, la cadena), contado desde la mano de apertura plegada.
-  const { initial: snapInitial, theirsActs, order, chainSteps, names: snapNames } = snap
-  const openingSkip = opening.skip
-  const comboExtras = useCallback((count: number) => comboExtrasFromAuto({ initial: snapInitial, theirsActs, order, chainSteps, names: snapNames }, openingSkip, count), [snapInitial, theirsActs, order, chainSteps, snapNames, openingSkip])
+  // Guardar un combo: lo del duelo que suma (el campo del rival, la cadena), contado desde la mano de apertura plegada. Se calcula recién al guardar, con el snapshot de ese
+  // momento (un ref): la función es siempre la misma y un aviso del núcleo no vuelve a dibujar la mesa por ella.
+  const savedFrom = useRef({ snap, skip: opening.skip })
+  useEffect(() => {
+    savedFrom.current = { snap, skip: opening.skip }
+  })
+  const comboExtras = useCallback((count: number) => comboExtrasFromAuto(savedFrom.current.snap, savedFrom.current.skip, count), [])
   const dockHighlight = highlight ?? linkHighlight
   const detail = useMemo(() => (desktop ? <DuelCardDock peek={peeked} highlight={dockHighlight} stats={reviewing ? null : dockStats} /> : undefined), [desktop, peeked, dockHighlight, reviewing, dockStats])
   const limits = useMemo(() => (reviewing ? null : <LimitsChip texts={limitTexts} />), [reviewing, limitTexts])
