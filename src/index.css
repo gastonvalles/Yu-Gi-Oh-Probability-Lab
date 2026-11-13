@@ -1781,6 +1781,14 @@
     }
   }
 
+  @media (width < 1101px) {
+    :root:has(body[data-duel]) {
+      /* Un duelo en la tableta (640 a 1100 px): la misma vista que en el celular (`matDuelLayout` la cuenta con 14°); la práctica sola sigue con la suya. */
+      --field-tilt: 14deg;
+      --field-stretch: calc(1 / cos(var(--field-tilt)));
+    }
+  }
+
   @media (min-width: 1101px) {
     :root {
       /* Escritorio: más inclinada y con la perspectiva más cerca (lo lejano se achica de verdad), y estirada a lo alto lo que la inclinación le come (1 / cos) para que no quede un hueco arriba. */

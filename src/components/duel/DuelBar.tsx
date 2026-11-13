@@ -13,7 +13,6 @@ import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useSwipeAway } from '../../app/use-swipe-away'
 import { sacudir } from '../probability/AttackFx'
-import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { MatMoreMenu, MatReplayContext, MatUndoContext } from '../probability/MatBarActions'
 import { DELTA_MS, LifeHold, useHeldValue, useLifeCount, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
@@ -34,7 +33,6 @@ import { respondersText } from './PassPrompt'
 import { ResultStrip } from './DuelResult'
 import { LifeBadge, LifeScore, SIGNAL_MS } from './LifeScore'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
-import { TypeMark } from './TypeMark'
 import { isEmojiSignal } from '../../app/duel-signals'
 
 export { SIGNAL_MS }
@@ -115,8 +113,6 @@ interface DuelBarProps {
   onConcede?: () => void
   /** El duelo automático: «La mesa», sus ajustes, Reconectar y Rendirse están en Opciones (el ⚙ de abajo a la derecha: `OptionsGear`) y la barra no lleva ⋯. */
   inOptions?: boolean
-  /** La línea del registro (sólo en el celular): lo último que pasó; tocarla abre el chat con el registro. */
-  log?: ReactNode
   /** Volver a conectarme a la sala ya: lo toca cualquiera de los dos si el duelo quedó en pausa por un aviso que no llegó, y el relay vuelve a decirle a cada uno si el otro está. */
   onReconnect: () => void
   /** La tarjeta del resultado está abierta sobre la mesa: la línea de arriba no la repite. */
@@ -128,8 +124,6 @@ interface DuelBarProps {
   /** Lo que acabás de avisar: sale como un globo debajo de tus vidas (en el marcador, hasta 1100 px). */
   mySignal?: string | null
   mySignalKey?: number
-  /** El botón del chat (hasta 1100 px: en escritorio el chat está fijo a la derecha), en la fila de los íconos. */
-  chat?: ReactNode
   /** Lo que se apoya sobre la línea del registro (la misma fila, sin sumar alto: el campo no se mueve): un pedido de volver atrás, o cómo terminó el tuyo. */
   lane?: LaneNotice | null
   /** Tocar las vidas (las tuyas o las del rival) abre la calculadora de vidas del duelo. Sin esto no se tocan (el duelo automático: las lleva el núcleo). */
@@ -306,7 +300,7 @@ const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
  * cada vida va en su chapa y su esquina (las pone la pantalla: `RivalLife` en `corner` y `DuelLife` en `life`) y el turno debajo de los íconos; con laterales, las chapas las pone la barra en los mismos
  * lugares (la del rival arriba a la derecha, la tuya abajo a la izquierda).
  */
-export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRematch, onLeave, onAbandon, onConcede, inOptions = false, onReconnect, log, resultOpen = false, rivalSignal = null, rivalSignalKey, mySignal = null, mySignalKey, chat, lane = null, onOpenLife, turnNumber = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null), extraSettings, resultReason }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRematch, onLeave, onAbandon, onConcede, inOptions = false, onReconnect, resultOpen = false, rivalSignal = null, rivalSignalKey, mySignal = null, mySignalKey, lane = null, onOpenLife, turnNumber = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null), extraSettings, resultReason }: DuelBarProps) {
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
   // Reconectar, Rendirse y Salir se tocan poco (y los dos últimos arruinan un duelo si se aprietan sin querer): en el celular van juntos detrás de un solo botón; en escritorio, a la vista.
@@ -317,10 +311,6 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
 
   useHostToasts(toastHost, rails)
   const [moreOpen, setMoreOpen] = useState(false)
-  // El celular (`phoneDuelLayout`): la barra es sólo la fila de los íconos, con la chapa del rival; la tuya va abajo y los avisos flotan sobre tu mano (los pone la pantalla).
-  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
-  // Con un aviso puesto sobre la línea del registro, esa línea no se ve (la misma fila: el campo no se mueve).
-  const laneOpen = lane !== null
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const result = duelResult(life.lp, snapshot.conceded)
@@ -334,8 +324,6 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
       {turn === 'mine' ? t('duel.bar.yourTurnN', { turn: turnNumber }) : t('duel.bar.theirTurnN', { name: rivalName, turn: turnNumber })}
     </span>
   )
-  const myLife = <DuelLife snapshot={snapshot} myName={myName} onOpen={onOpenLife} signal={mySignal} signalKey={mySignalKey} />
-  const rivalLife = <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} />
 
   const dialogs = (
     <>
@@ -404,7 +392,6 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   // El reloj de la ronda: tocarlo lo pausa. Lleva su propio segundo (`RoundClock`).
   const clockButton = <RoundClock timer={life.timer} limitMin={snapshot.settings.limitMin} onToggle={onToggleClock} />
   // Cuántos miran y cómo va el Match (en el marcador, debajo del turno y más bajos: el marcador no crece).
-  const hasChips = snapshot.watchers > 0 || snapshot.series.match
   const chips = (pad = 'py-1') => (
     <>
       {snapshot.watchers > 0 ? (
@@ -500,63 +487,26 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   }
 
   return (
-    // Hasta 1100 px: arriba la fila de los íconos (la hamburguesa, el reloj y, a la derecha, el chat, deshacer, el ⋯ y salir: a 360 px entran 304 px), debajo el marcador y la línea del registro
-    // (en el celular flota sobre el borde de arriba de la mano del rival: no ocupa lugar).
+    // Hasta 1100 px (celular y tableta, la misma barra): la fila de los íconos (la hamburguesa, el reloj, la chapa del rival y, a la derecha, deshacer, el ⋯ y salir: a 360 px entran 304 px). La tuya va
+    // abajo, con la botonera y el chat; los avisos y el resultado flotan debajo de la barra, sobre la mano del rival (no ocupan lugar).
     <div className="relative flex flex-col gap-1.5 px-0.5 pt-1.5">
       <div className="flex h-11 min-w-0 items-center gap-1.5 max-[339px]:gap-1">
         {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
         <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
         {clockButton}
-        {/* En el celular, la chapa del rival antes de los íconos (la tuya va abajo, con la botonera). */}
-        {phone ? (
-          <span data-bar-seat="" className={cx(BAR_SEAT, 'ml-auto')}>
-            <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} badge compact active={turn !== 'mine'} />
-          </span>
-        ) : null}
-        <span className={cx('-mr-2 flex shrink-0 items-center', !phone && 'ml-auto')}>
-          {phone ? null : chat}
+        <span data-bar-seat="" className={cx(BAR_SEAT, 'ml-auto')}>
+          <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} badge compact active={turn !== 'mine'} />
+        </span>
+        <span className="-mr-2 flex shrink-0 items-center">
           {undo}
           {actions}
         </span>
       </div>
-      {phone ? (
-        // El resultado flota debajo de la barra, sobre la mano del rival: la barra no crece y el campo no se mueve.
-        result && !resultOpen ? (
-          <div className="absolute inset-x-0.5 top-full z-20 mt-1">
-            <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} reason={resultReason} />
-          </div>
-        ) : null
-      ) : (
-        <>
-      {/* El marcador, plano (Gastón, 2026-10-27, como en «Jugar solo automático»): «VOS 8000 · Turno de Ana · 3 · ANA 8000». Las vidas son botones de 44 px en el manual (la calculadora); los chips de
-          quién mira y del Match, debajo del turno, sin agrandarlo. */}
-      <div data-testid="duel-score" className="flex min-h-11 min-w-0 items-center gap-2 px-1">
-        {myLife}
-        <span className="grid min-w-0 flex-1 justify-items-center gap-0.5">
-          {turnLine('max-w-full text-center leading-tight')}
-          {hasChips ? <span className="flex max-w-full items-center justify-center gap-1.5 overflow-hidden">{chips('py-0')}</span> : null}
-        </span>
-        {rivalLife}
-      </div>
-
-      {/* Lo que pasó va debajo del marcador. Un aviso se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve). En un celular en vertical la línea no ocupa lugar (`-mb-11`): flota
-          sobre el borde de arriba de la mano del rival, así no queda una franja vacía cuando todavía no pasó nada (Gastón, 2026-10-20: «evita el espacio muerto»). Con el resultado puesto, la tira ocupa
-          este mismo lugar: la mesa no se corre cuando termina el duelo. */}
-      {log ? (
-        <div className={cx('relative max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11', Boolean(result) && !resultOpen && 'hidden')}>
-          <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
-            {log}
-          </div>
-          {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
-        </div>
-      ) : null}
       {result && !resultOpen ? (
-        <div className="max-sm:relative max-sm:z-20 max-sm:-mb-11">
+        <div className="absolute inset-x-0.5 top-full z-20 mt-1">
           <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} reason={resultReason} />
         </div>
       ) : null}
-        </>
-      )}
 
       {alert}
       {dialogs}
@@ -576,7 +526,7 @@ const laneKey = (lane: LaneNotice, name: string) => (lane.kind === 'looking' ? `
  * **Se saca deslizándolo** (Gastón, 2026-11-12: «no se pueden eliminar deslizandolos a la izquierda o derecha como antes»): uno sin botones se arrastra de costado (`useSwipeAway`; con teclado, Supr) y no
  * vuelve hasta que la línea diga otra cosa. Uno con botones no se desliza: se contesta.
  */
-export function DuelLine({ lane, rivalName, log = null }: { lane: LaneNotice | null; rivalName: string; log?: ReactNode }) {
+export function DuelLine({ lane, rivalName }: { lane: LaneNotice | null; rivalName: string }) {
   const replay = useContext(MatReplayContext)
   const key = lane ? laneKey(lane, rivalName) : null
   // El aviso que se sacó; otro aviso (o ninguno) lo olvida.
@@ -589,9 +539,6 @@ export function DuelLine({ lane, rivalName, log = null }: { lane: LaneNotice | n
 
   return (
     <div data-testid="duel-line" className="relative h-full">
-      <div inert={shown !== null} className={cx('h-full', shown && 'invisible')}>
-        {log}
-      </div>
       {shown && !laneAsks(shown) ? (
         <div
           tabIndex={0}
@@ -645,53 +592,6 @@ export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpe
         <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} feed={feed} fill />
       </SideDrawer>
     </>
-  )
-}
-
-interface DuelLogTickerProps {
-  feed: readonly FeedEntry[]
-  onOpen: () => void
-}
-
-/**
- * Las dos últimas jugadas del registro (lo último que pasó, con el punto del color de quien lo hizo), sobre el campo en el celular. Lo escrito no sale acá (Gastón, 2026-10-20: «el mensaje de arriba no debe
- * aparecer, no es necesario»): al otro le llega como un mensaje entrante y en el contador del chat, y en la línea salía dos veces. Tocarla abre el chat con el registro entero. Sin nada que mostrar deja el lugar reservado.
- * **Se saca con el dedo** (Gastón, 2026-10-21: «estos carteles no los puedo swipear para eliminarlos y debería poder»): arrastrarla de costado la manda para ese lado (`useSwipeAway`; con teclado, Supr);
- * queda el lugar reservado y la próxima jugada la vuelve a mostrar, con lo nuevo solo.
- */
-export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
-  const events = feed.filter((entry): entry is Extract<FeedEntry, { kind: 'event' }> => entry.kind === 'event')
-  // Lo último que había cuando se sacó el cartel: lo que viene después es lo que se muestra.
-  const [seen, setSeen] = useState<string | null>(null)
-  const lines = events.slice(seen === null ? 0 : events.findIndex((entry) => entry.id === seen) + 1).slice(-2)
-  const swipe = useSwipeAway(() => setSeen(events.at(-1)?.id ?? null))
-
-  // Sin nada todavía se reserva el lugar: la primera jugada no corre el campo (regla 7 del sistema de diseño).
-  if (lines.length === 0) return <div aria-hidden="true" className="min-h-11" />
-
-  return (
-    <button
-      type="button"
-      aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`}
-      aria-keyshortcuts="Delete"
-      title={t('duel.log.dismiss')}
-      // En el celular llena la línea (alto fijo), traslúcida al 88 % en alfa plano y con su borde.
-      className="flex h-full min-h-11 w-full min-w-0 cursor-pointer touch-pan-y items-center gap-2 rounded-control px-1 text-left transition-[transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none max-sm:pointer-events-auto max-sm:border max-sm:border-border-subtle max-sm:bg-card-background/88 max-sm:px-3"
-      style={swipe.style}
-      {...swipe.props}
-      onClick={onOpen}
-    >
-      <span className="grid min-w-0 flex-1 gap-0.5">
-        {lines.map((line) => (
-          <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">
-            <i aria-hidden="true" className={cx('size-1.5 shrink-0', line.side === 'mine' ? 'bg-accent' : 'bg-info')} />
-            {line.frame ? <TypeMark kind={line.frame} /> : null}
-            <span className="min-w-0 truncate">{line.text}</span>
-          </span>
-        ))}
-      </span>
-      <Icon name="chevrons-left" size={16} className="shrink-0 rotate-90 text-soft" />
-    </button>
   )
 }
 

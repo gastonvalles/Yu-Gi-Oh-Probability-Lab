@@ -431,7 +431,6 @@ export const duel = {
   'duel.log.mineGained': 'Ganás {amount} LP ({lp})',
   'duel.log.rivalLost': '{name} pierde {amount} LP ({lp})',
   'duel.log.rivalGained': '{name} gana {amount} LP ({lp})',
-  'duel.log.open': 'Abrir el registro de jugadas',
   'duel.log.dismiss': 'Deslizá de costado para sacar el aviso',
   'duel.chat.title': 'Chat con {name}',
   'duel.chat.empty': 'Escribile a tu rival para avisarle algo o decirle que podés responder.',

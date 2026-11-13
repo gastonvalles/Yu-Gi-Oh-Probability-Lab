@@ -90,7 +90,8 @@ beforeEach(() => {
   window.history.replaceState(null, '', '#duel')
   HTMLElement.prototype.setPointerCapture = () => {}
   HTMLElement.prototype.scrollIntoView = () => {}
-  window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  // Escritorio (desde 1101 px): ahí el turno se dice con texto en la barra (hasta 1100 px lo dice sólo el borde de la chapa).
+  window.matchMedia = ((query: string) => ({ matches: query.includes('reduce') || query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
 
 afterEach(() => {

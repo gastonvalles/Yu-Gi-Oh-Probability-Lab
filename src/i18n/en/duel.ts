@@ -414,7 +414,6 @@ export const duel: Translated<typeof es> = {
   'duel.log.mineGained': 'You gain {amount} LP ({lp})',
   'duel.log.rivalLost': '{name} loses {amount} LP ({lp})',
   'duel.log.rivalGained': '{name} gains {amount} LP ({lp})',
-  'duel.log.open': 'Open the play log',
   'duel.log.dismiss': 'Swipe sideways to dismiss',
   'duel.chat.open': 'Chat',
   'duel.chat.title': 'Chat with {name}',

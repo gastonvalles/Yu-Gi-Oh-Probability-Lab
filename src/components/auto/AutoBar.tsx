@@ -9,9 +9,8 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { Presence } from '../../app/use-presence'
 import { t, type MessageKey } from '../../i18n'
 import { BAR_SEAT, LaneBanner, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
-import { LifeBadge, LifeScore } from '../duel/LifeScore'
-import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
-import { MAT_BAR_ROW, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext, useMatTableItems } from '../probability/MatBarActions'
+import { LifeBadge } from '../duel/LifeScore'
+import { MAT_BAR_ROW, MatExitButton, MatRulesContext, MatSaveContext, MatUndoContext, useMatTableItems } from '../probability/MatBarActions'
 import { PaletteSwitcher } from '../ui/PaletteSwitcher'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -65,19 +64,16 @@ export interface AutoOptions {
 
 interface AutoBarProps {
   rivalName: string
-  /** Los puntos de vida de los dos: planos (`LifeScore`) en el marcador debajo de los íconos hasta 1100 px y, con laterales, las chapas (`LifeBadge`: la del rival arriba a la derecha, la tuya abajo a la izquierda). En escritorio sin laterales van en las esquinas del campo: las pone la pantalla. */
+  /** Los puntos de vida de los dos, en las chapas (`LifeBadge`) de los laterales (la del rival arriba a la derecha, la tuya abajo a la izquierda). Sin laterales las pone la pantalla: en la fila de arriba y abajo hasta 1100 px y en las esquinas del campo en escritorio. */
   life: { mine: number; theirs: number }
   /** Si la mesa va con laterales (las vidas, en el izquierdo): sin ellos, la pantalla pone las vidas en la mesa. */
   onRails?: (rails: boolean) => void
-  /** El turno del duelo (desde 1) y si es tuyo. */
-  turn: number
+  /** Si el turno es tuyo (el borde grueso de la chapa de quien juega). */
   myTurn: boolean
   /** La flecha de «Volver a Jugar», como en la práctica. */
   onExit: () => void
   /** Lo que se apoya sobre la línea del registro (el núcleo resolviendo, la cadena con «No responder»): la misma fila, sin sumar alto. */
   lane?: LaneNotice | null
-  /** La línea del registro (sólo en el celular; `DuelLogTicker`). */
-  log?: ReactNode
   /** El celular: la chapa del rival (sus vidas), a la derecha de la fila. */
   seat?: ReactNode
   /** El celular repasando: «Volver al duelo», en el lugar de la chapa del rival (y no en un aviso sobre tu mano). */
@@ -298,32 +294,20 @@ export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps
 
 /**
  * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace: la flecha de «Volver a Jugar» a la
- * izquierda y, sólo en escritorio, Deshacer a la derecha (`MatUndoContext`: hasta 1100 px va abajo, en la botonera). Sin ⋯: todo lo demás va en el ⚙ de abajo (`AutoDock`). En el celular, la chapa del
- * rival a la derecha (repasando, «Volver al duelo» en su lugar). El turno, dicho una sola vez y sólo hasta 1100 px («Tu turno · 3», en el color de quién es; desde 1101 px lo dice la chapa de quien juega y la fase, sólo el botón del campo) y las vidas: hasta 1100 px, planas (`LifeScore`) en el marcador debajo
- * de los íconos («VOS 8000 · Tu turno · 1 · RIVAL 8000»); en escritorio, las chapas (`LifeBadge`) en los mismos lugares con laterales o sin ellos: la del rival arriba a la derecha y la tuya abajo a la izquierda (sin laterales las pone la pantalla en las esquinas del campo). Hasta 1100 px la línea del registro va
- * debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se
+ * izquierda y, sólo en escritorio, Deshacer a la derecha (`MatUndoContext`: hasta 1100 px va abajo, en la botonera). Sin ⋯: todo lo demás va en el ⚙ de abajo (`AutoDock`). Hasta 1100 px (celular y
+ * tableta, la misma barra): la hamburguesa, la flecha y, a la derecha, la chapa del rival (repasando, «Volver al duelo» en su lugar); los avisos los pone la mesa debajo. El turno no se dice con texto: lo
+ * dice el borde grueso de la chapa de quien juega (`LifeBadge` con `active`), en los mismos lugares con laterales o sin ellos. Nada de esto suma alto cuando aparece o se va: el campo no se
  * mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, lane = null, log, seat, back }: AutoBarProps) {
+export function AutoBar({ rivalName, life, onRails, myTurn, onExit, lane = null, seat, back }: AutoBarProps) {
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const rails = useDuelRails()
   // La píldora de las salidas va antes de la chapa del rival (toma el lugar libre).
   const rules = useContext(MatRulesContext)
   // Deshacer, sólo en escritorio: lo arma la mesa (hasta 1100 px va en la botonera de abajo).
   const undo = useContext(MatUndoContext)
-  // Repasando un combo en el celular: el paso va en el segundo renglón del aviso (la mesa lo da; los botones y la línea de tiempo quedan abajo).
-  const replay = useContext(MatReplayContext)
 
   useLayoutEffect(() => onRails?.(rails), [rails, onRails])
-  const laneOpen = lane !== null
-  // El turno, una sola vez (Gastón, 2026-10-27): sin el chip «Turno N» ni la píldora de la fase.
-  const turnLine = (className: string) => (
-    <span data-testid="auto-turn" className={cx('min-w-0 truncate text-lead font-bold max-[359px]:text-body', myTurn ? 'text-accent' : 'text-info-soft', className)}>
-      {turn > 0 ? (myTurn ? t('auto.bar.turnMine', { turn }) : t('duel.bar.theirTurnN', { name: rivalName, turn })) : null}
-    </span>
-  )
-
   // Con laterales (escritorio ancho), las piezas van a la grilla de la mesa como las de `DuelBar`: arriba a la izquierda la flecha y las vidas, y los avisos debajo; arriba a la derecha los íconos
   // (de 40 px, como los de `DuelBar`: el lateral más angosto tiene lugar para cinco por fila).
   if (rails) {
@@ -378,32 +362,14 @@ export function AutoBar({ rivalName, life, onRails, turn, myTurn, onExit, lane =
         <MatExitButton onExit={onExit} />
         {rules}
         {/* En el celular, a la derecha, la chapa del rival; repasando, «Volver al duelo» en su lugar (lo único de la barra que no se mira mientras repasás; nada flota sobre tu mano). */}
-        {phone && back ? (
+        {back ? (
           <Button variant="secondary" size="sm" className={cx('shrink-0', !rules && 'ml-auto')} onClick={back}>
             {t('auto.review.back')}
           </Button>
-        ) : phone && seat ? (
+        ) : seat ? (
           <span data-bar-seat="" className={cx(BAR_SEAT, !rules && 'ml-auto')}>{seat}</span>
         ) : null}
       </div>
-      {/* En el celular la barra es sólo esta fila: las vidas del rival van en ella, las tuyas en tu chapa (abajo) y los avisos van debajo de ella (los pone la mesa). */}
-      {phone ? null : (
-        <>
-          {/* El marcador, plano (Gastón, 2026-10-27, opción A; de 640 a 1100 px): «VOS 8000 · Tu turno · 1 · RIVAL 8000». La fase, en el botón del campo. */}
-          <div data-testid="auto-score" className="flex min-h-10 min-w-0 items-center gap-2 px-1">
-            <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
-            {turnLine('flex-1 text-center')}
-            <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} />
-          </div>
-          {/* La línea del registro, con el aviso encima (la misma fila); sin registro, su lugar igual queda (el primer aviso no corre nada). */}
-          <div className="relative max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11">
-            <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
-              {log ?? <div aria-hidden="true" className="min-h-11" />}
-            </div>
-            {lane ? <LaneBanner lane={lane} rivalName={rivalName} detail={replay?.step} /> : null}
-          </div>
-        </>
-      )}
     </div>
   )
 }

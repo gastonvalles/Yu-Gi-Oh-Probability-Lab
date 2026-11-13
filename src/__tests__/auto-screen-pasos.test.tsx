@@ -249,15 +249,17 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(handCard('Droll')).toBeInTheDocument()
     expect(inHand('Called by the Grave')).toBeNull()
     expect(rivalMonster()).toBeNull()
-    expect(lane()).toHaveTextContent('Repasás “Línea Droll”Mano inicial')
+    // Hasta 1100 px el repaso no lleva aviso: «Volver al duelo» va en la barra, en el lugar de la chapa del rival.
+    expect(lane()).toBeNull()
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Volver al duelo' })).toBeInTheDocument()
     // Nada que jugar: ni el botón de fases ni el menú de una carta, ni tocar la mesa adelanta el duelo.
     expect(phaseButton()).toBeDisabled()
     act(() => vi.advanceTimersByTime(1400 + 5))
     expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Droll' })).toBeInTheDocument()
     // En el celular el replay va partido (opción B): el aviso dice qué paso se mira y abajo van los botones y, debajo de ellos, la línea de tiempo con la lista.
     // «Volver al duelo» es secundario (lavanda: no compite con el botón grande) y la carta grande va sin cartel (el paso ya se lee arriba).
-    expect(lane()).toHaveTextContent('Repasás “Línea Droll”1 de 2 · Invocación Normal de Droll')
-    expect(within(lane()!).getByRole('button', { name: 'Volver al duelo' })).toHaveClass('bg-lavender')
+    expect(lane()).toBeNull()
+    expect(screen.getByRole('button', { name: 'Volver al duelo' })).toHaveClass('bg-lavender')
     const timeline = document.querySelector<HTMLElement>('[data-replay-timeline]')!
     // Abajo, con los botones, y después de ellos (Gastón, 2026-10-29: «chips de replay debajo del reproductor»).
     expect(timeline.closest('[data-mat-float]')).not.toBeNull()
@@ -274,7 +276,7 @@ describe('auto-screen · repasar en la misma mesa', () => {
     fireEvent.click(within(panel()).getByRole('radio', { name: /Pasos/ }))
     expect(steps()).toEqual(['2Activás el efecto de Imperm', '1Invocación Normal de Droll', '0Mano inicial'])
 
-    fireEvent.click(within(lane()!).getByRole('button', { name: 'Volver al duelo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al duelo' }))
     expect(replayControls()).toBeNull()
     expect(within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(handCard('Called by the Grave')).toBeInTheDocument()
@@ -293,7 +295,8 @@ describe('auto-screen · repasar en la misma mesa', () => {
     fireEvent.click(within(panel()).getByRole('button', { name: /^1/ }))
     expect(handCard('Ash Blossom')).toBeInTheDocument()
     expect(replayControls()).toBeNull()
-    expect(lane()).toHaveTextContent('Repasás tus jugadas: el duelo te espera donde lo dejaste.')
+    expect(lane()).toBeNull()
+    expect(screen.getByRole('button', { name: 'Volver al duelo' })).toBeInTheDocument()
     // Ni el tiempo ni tocar la mesa lo mueven: la lista sigue siendo la de antes y la cinta del núcleo no cambia.
     step()
     step()
@@ -302,10 +305,10 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(fake.getSnapshot().mineActions).toEqual([...START, SUMMON, to('battle')])
 
     fireEvent.click(within(panel()).getByRole('button', { name: /^2/ }))
-    expect(lane()).toHaveTextContent('Repasás tus jugadas')
+    expect(screen.getByRole('button', { name: 'Volver al duelo' })).toBeInTheDocument()
     // El último paso es ahora: vuelve al duelo, que sigue a su ritmo.
     fireEvent.click(within(panel()).getByRole('button', { name: /^3/ }))
-    expect(lane()).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Volver al duelo' })).toBeNull()
     expect(inHand('Ash Blossom')).toBeNull()
     step()
     expect(steps()[0]).toBe('4Pasás a la Battle Phase')

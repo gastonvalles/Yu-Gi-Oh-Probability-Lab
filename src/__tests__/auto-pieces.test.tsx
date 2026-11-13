@@ -346,7 +346,7 @@ describe('PickBand', () => {
     expect(group).toHaveAttribute('data-auto-panel', 'floating')
     expect(group).toHaveTextContent('Cementerio · 3')
     // La bandeja: una sola fila de cartas de 1/6 del ancho (con pocas no se agrandan); con más de seis, se desliza.
-    expect(within(group).getByRole('listbox')).toHaveClass('grid-flow-col', 'auto-cols-[calc((100%-2.5rem)/6)]', 'overflow-x-auto')
+    expect(within(group).getByRole('listbox')).toHaveClass('grid-flow-col', 'auto-cols-[min(calc((100%-2.5rem)/6),4.5rem)]', 'overflow-x-auto')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
     expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Cancelar', 'Listo'])
     expect(within(group).getByRole('button', { name: 'Listo' })).toBeDisabled()
@@ -728,7 +728,6 @@ describe('AutoBar', () => {
   const props = {
     rivalName: 'Rival',
     life: { mine: 8000, theirs: 7000 },
-    turn: 3,
     myTurn: true,
     chain: 'ask' as const,
     place: 'ask' as const,
@@ -752,16 +751,18 @@ describe('AutoBar', () => {
     window.matchMedia = matchMedia
   })
 
-  it('arriba, sin ⋯ (Gastón, 2026-11-12: «compite con el de configuración»; todo va en el ⚙ de abajo): hasta 1100 px sólo la flecha de «Volver a Jugar» (Deshacer va en la botonera); debajo (de 640 a 1100 px), el marcador plano', () => {
+  it('arriba, sin ⋯ (Gastón, 2026-11-12: «compite con el de configuración»; todo va en el ⚙ de abajo): hasta 1100 px sólo la flecha de «Volver a Jugar» (Deshacer va en la botonera); la misma barra en el celular y en la tableta', () => {
     const onExit = vi.fn()
     render(<AutoBar {...props} onExit={onExit} />)
     const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
 
     expect(names(within(toolbar).getAllByRole('button'))).toEqual(['Volver a Jugar'])
     expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
-    // Sin el chip «Turno 3» ni la píldora de la fase: el turno una vez, entre las dos vidas (jsdom no es un celular: es el ancho de una tablet).
-    expect(screen.getByTestId('auto-score')).toHaveTextContent('Vos8000Tu turno · 3Rival7000')
+    // Sin marcador plano, sin el renglón «Tu turno · 3», sin el chip «Turno 3» ni la píldora de la fase (jsdom no es un celular: es el ancho de una tableta, que lleva la misma barra).
+    expect(screen.queryByTestId('auto-score')).toBeNull()
+    expect(screen.queryByTestId('auto-turn')).toBeNull()
     expect(screen.queryByText('Turno 3')).toBeNull()
+    expect(screen.queryByText(/Tu turno/)).toBeNull()
 
     fireEvent.click(within(toolbar).getByRole('button', { name: 'Volver a Jugar' }))
     expect(onExit).toHaveBeenCalledTimes(1)
@@ -794,27 +795,19 @@ describe('AutoBar', () => {
     expect(screen.getByRole('toolbar', { name: 'Mesa' })).toBeInTheDocument()
   })
 
-  it('de 640 a 1100 px, debajo de los íconos va el marcador plano: tus vidas, el turno una sola vez y las del rival; la fase no va en la barra (la dice el botón del campo)', () => {
-    const { rerender } = render(<AutoBar {...props} />)
-    const score = screen.getByTestId('auto-score')
+  it('de 640 a 1100 px (tableta) es la barra del celular: la chapa del rival a la derecha de la fila (`seat`), sin marcador plano, sin el turno dicho con texto ni la fase', () => {
+    const { rerender } = render(<AutoBar {...props} seat={<span data-testid="seat" />} />)
 
-    expect(score).toHaveTextContent('Vos8000Tu turno · 3Rival7000')
-    expect(within(score).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
-    expect(within(score).getByRole('group', { name: 'Puntos de vida de Rival: 7000' })).toBeInTheDocument()
-    expect(screen.getByTestId('auto-turn')).toHaveClass('text-accent')
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByTestId('seat')).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    expect(screen.queryByTestId('auto-score')).toBeNull()
+    expect(screen.queryByTestId('auto-turn')).toBeNull()
     expect(screen.queryByTestId('auto-phase')).toBeNull()
-    expect(screen.queryByText('Turno 3')).toBeNull()
-    rerender(<AutoBar {...props} myTurn={false} turn={4} />)
-    expect(screen.getByTestId('auto-turn')).toHaveTextContent('Turno de Rival · 4')
-    expect(screen.getByTestId('auto-turn')).toHaveClass('text-info-soft')
+    rerender(<AutoBar {...props} myTurn={false} seat={<span data-testid="seat" />} />)
+    expect(screen.queryByText(/Turno de Rival/)).toBeNull()
   })
 
   it('en escritorio sin laterales las vidas no van en la barra (van planas en las esquinas del campo: las pone la pantalla) y no hay renglón del turno (lo dice la chapa de quien juega), ni chip ni fase; a la derecha, sólo Deshacer (lo pone la mesa), sin ⋯', () => {
-    const { unmount } = render(<AutoBar {...props} />)
-
-    expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
-    unmount()
-
     desktop()
     render(
       <MatUndoContext value={<button type="button" aria-label="Deshacer" />}>
@@ -920,6 +913,7 @@ describe('AutoBar', () => {
 
   it('la línea: «resolviendo» con «Cancelar» recién a los 1,5 s; la cadena con «No responder», enmarcada; sin botones, sólo informa', () => {
     vi.useFakeTimers()
+    desktop()
     const onCancel = vi.fn()
     const onPass = vi.fn()
     const { container, rerender } = render(<AutoBar {...props} lane={{ kind: 'thinking', onCancel }} />)

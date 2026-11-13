@@ -58,6 +58,8 @@ afterEach(() => {
 
 describe('la pantalla del duelo', () => {
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
     createRoom(host)
@@ -165,6 +167,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('rendirse: pide confirmación, termina el duelo para los dos y la revancha de los dos vuelve a la sala con todo de cero', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const { host, guest } = startDuel()
     openTable(host, guest)
 
@@ -547,7 +551,6 @@ describe('la pantalla del duelo', () => {
     click(host, 'End Phase')
     flush()
     expect(phase(guest)).toBe('End Phase')
-    expect(within(guest.container).queryByText(/^Tu turno( · \d+)?$/)).not.toBeInTheDocument()
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest)
     expect(phaseChip(guest)).toBeDisabled()
     expect(phaseChip(guest)).toHaveAccessibleName('Fases: End Phase')
@@ -558,7 +561,7 @@ describe('la pantalla del duelo', () => {
     // Ana lo termina: ahí sí pasa el turno, Beto ve el cartel y roba, y ahora las fases son de él.
     confirmEndTurn()
     expect(within(host.container).getAllByText('Turno de Beto').length).toBeGreaterThan(0)
-    expect(within(guest.container).getAllByText(/^Tu turno( · \d+)?$/).length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-lp="mine"]')).toHaveAttribute('data-active', 'true')
     expect(phase(guest)).toBe('Draw Phase')
     expect(phase(host)).toBe('Draw Phase')
     expect(banner(guest)).toContain('Tu turno')
@@ -820,13 +823,12 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(ask()).getByRole('button', { name: 'Seguir jugando' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(phase(guest)).toBe('End Phase')
-    expect(within(guest.container).queryByText(/^Tu turno( · \d+)?$/)).not.toBeInTheDocument()
 
     // Para darle el turno a Beto hay que volver a tocar el botón de la End Phase (ya no abre las fases: pregunta).
     fireEvent.click(phaseChip(host))
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
     confirmEndTurn()
-    expect(within(guest.container).getAllByText(/^Tu turno( · \d+)?$/).length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-lp="mine"]')).toHaveAttribute('data-active', 'true')
     expect(phase(guest)).toBe('Draw Phase')
     expect(phaseChip(guest)).toHaveAttribute('data-active', 'true')
     expect(phaseChip(host)).toHaveAttribute('data-active', 'false')
@@ -858,35 +860,25 @@ describe('la pantalla del duelo', () => {
 
     fireEvent.click(pass(host)!)
     letPass()
-    expect(within(guest.container).getAllByText(/^Tu turno( · \d+)?$/).length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-lp="mine"]')).toHaveAttribute('data-active', 'true')
     expect(pass(host)).not.toBeInTheDocument()
   })
 
-  it('el registro del duelo: lo escrito, el comienzo de cada turno y lo que hizo cada uno van en orden en el chat, y la línea sobre el campo muestra lo último que se jugó (no lo escrito: eso le llega como un mensaje) y lo abre', () => {
+  it('el registro del duelo: lo escrito, el comienzo de cada turno y lo que hizo cada uno van en orden en el chat', () => {
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)
 
-    // Sin nada que mostrar, la línea del registro no ocupa lugar.
-    expect(within(host.container).queryByRole('button', { name: 'Abrir el registro de jugadas' })).not.toBeInTheDocument()
-
-    // Ana invoca y pasa el turno y Beto escribe: la línea de Ana muestra lo último que jugó ella y no lo escrito (eso le llega como un mensaje entrante y en el contador del chat; en la línea salía dos veces).
-    const summoned = summonFirst(host)
+    // Ana invoca y pasa el turno y Beto escribe: el registro de Ana lleva lo que jugó y lo escrito, en orden.
+    summonFirst(host)
     flush()
     passTurn(host)
-    click(guest, 'Chat')
+    click(guest, /^Chat/)
     const guestChat = () => within(screen.getByRole('dialog', { name: 'Chat con Ana' }))
     fireEvent.change(guestChat().getByLabelText('Escribí un mensaje'), { target: { value: 'Dale, mi turno' } })
     fireEvent.click(guestChat().getByRole('button', { name: 'Enviar' }))
     flush()
-    fireEvent.keyDown(document, { key: 'Escape' })
-    const line = within(host.container).getByRole('button', { name: /^Abrir el registro de jugadas: / })
-    expect(line).toHaveTextContent(summoned)
-    expect(line).not.toHaveTextContent('Dale, mi turno')
-
-    // Tocarla abre el chat, con lo jugado, el comienzo del turno y lo escrito en el orden en que pasó.
-    click(host, /^Abrir el registro de jugadas/)
-    const log = within(within(screen.getByRole('dialog', { name: 'Chat con Beto' })).getByRole('log'))
-    const rows = log.getAllByRole('listitem').map((row) => row.textContent)
+    // El chat lleva lo jugado, el comienzo del turno y lo escrito en el orden en que pasó.
+    const rows = within(guestChat().getByRole('log')).getAllByRole('listitem').map((row) => row.textContent)
     expect(rows.at(-2)).toBe('Turno 2 · Beto')
     expect(rows.at(-1)).toContain('Dale, mi turno')
   })

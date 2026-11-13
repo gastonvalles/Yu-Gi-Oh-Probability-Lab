@@ -10,7 +10,7 @@ import type { DuelConnect } from '../app/use-duel'
 import { DuelScreen } from '../components/duel/DuelScreen'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
-import { createDuelHarness, asSocket, cardsById, closeMore, effectMonster, fakeRooms, hasSave, mainIds, monsters, render, rulesDialog, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
+import { createDuelHarness, asDesktop, asSocket, cardsById, closeMore, effectMonster, fakeRooms, hasSave, mainIds, monsters, render, rulesDialog, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
 
 // La pantalla del duelo arma dos mesas completas por prueba: sola cada una tarda un par de segundos, pero con toda la suite corriendo a la vez alguna pasaba los 5 s de siempre (la de «atacar» fallaba una de cada tantas corridas).
 vi.setConfig({ testTimeout: 20_000 })
@@ -353,6 +353,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('un Match se elige al crear la sala y las dos pantallas muestran el marcador en la mesa', () => {
+    // Escritorio: ahí la barra dice el turno, el Match y el registro (hasta 1100 px lo dicen la chapa y el chat).
+    asDesktop()
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
@@ -984,8 +986,8 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     flush()
     expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
-    expect(within(host.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
-    expect(within(guest.container).getByText(/^Turno de Ana · \d+$/)).toBeInTheDocument()
+    expect(host.container.querySelector('[data-lp="mine"]')).toHaveAttribute('data-active', 'true')
+    expect(guest.container.querySelector('[data-lp="theirs"]')).toHaveAttribute('data-active', 'true')
 
     // El anfitrión pierde 1000: el invitado lo ve en la tarjeta del rival.
     // Un dígito sin 0 se entiende en centenas: "1" y «000» es 1000.
@@ -1067,8 +1069,7 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(attackBanner(guest)).toBeDefined()
     expect(within(host.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
-    // Y queda anotado en el registro de Beto (la línea sobre el campo).
-    expect(within(guest.container).getByRole('button', { name: /^Abrir el registro de jugadas: Ana te ataca directo/ })).toHaveTextContent('Ana te ataca directo')
+    // Y queda anotado en el registro de Beto (en el chat; la línea sobre el campo ya no existe).
     expect(strikes()).toHaveLength(2)
     // Ana la tira de su monstruo (50, 350) a la barra de vida del rival (50, 10); en la mesa de Beto, el monstruo de Ana (50, 150) cae sobre la barra propia (50, 510).
     expect(flights()).toEqual({ from: ['50px,150px', '50px,350px'], to: ['50px,10px', '50px,510px'] })

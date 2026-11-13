@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { COMPACT_FIELD_MEDIA_QUERY, mediumDuelFieldStyle, phoneDuelLayout } from '../components/probability/compact-field'
-import { THEIR_HAND } from '../components/duel/their-hand'
+import { COMPACT_FIELD_MEDIA_QUERY, matDuelLayout, phoneDuelLayout } from '../components/probability/compact-field'
 
 /** Lo que la mesa le pasa (`PracticeMat`): la barra (la fila de los íconos con las vidas del rival) y el hueco de la columna, y abajo tu fila con el margen. */
 const APP = { bar: 58, bottom: 68 }
@@ -80,51 +79,28 @@ describe('el duelo en el celular: geometría fija (`phoneDuelLayout`)', () => {
 })
 
 
-/** De 640 a 1100 px lo que no es campo suma 421 px (las barras, tu mano y sus márgenes; ver `mediumDuelFieldStyle`); el campo son cinco filas de casillas y cuatro huecos de 4 px. */
-const MEDIUM_CHROME = 421
-
-/** Lo que mide la columna con la casilla que da la fórmula para ese alto (y el lugar de la mano del rival que queda). */
-function mediumColumn(tilted: boolean, height: number) {
-  const style = mediumDuelFieldStyle(tilted) as Record<string, string | number>
-  const [, chrome, divisor] = (/100dvh - ([\d.]+)rem\) \/ (\d+)\)/.exec(style['--cell-m'] as string) ?? []).map(Number) as [number, number, number]
-  const cell = Math.max(56, (height - chrome * 16) / divisor)
-  const shift = /calc\(([\d.]+)rem - 2 \* var/.exec(String(style.marginTop))
-  const top = shift ? Number(shift[1]) * 16 - 2 * cell : (style.marginTop as number)
-
-  return { cell, total: MEDIUM_CHROME + top + 5 * cell + 16 }
-}
-
-describe('el campo del duelo de 640 a 1100 px (tablet, ventana angosta)', () => {
-  it('la casilla sale del ancho y del alto (nunca menos de 56 px) y el campo se centra', () => {
-    const tilted = mediumDuelFieldStyle(true) as Record<string, string | number>
-    const flat = mediumDuelFieldStyle(false) as Record<string, string | number>
-
-    expect(tilted['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.5rem, calc((100dvh - 37rem) / 3)))')
-    expect(tilted.width).toBe('calc(var(--cell-m) * 6.3714 + 1.5rem)')
-    expect(tilted.marginInline).toBe('auto')
-    expect(tilted.marginTop).toBe('calc(9.5rem - 2 * var(--cell-m))')
-    expect(flat['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.5rem, calc((100dvh - 34rem) / 5)))')
-    expect(flat.marginTop).toBe(THEIR_HAND.mobile.room)
+describe('la mesa móvil hasta 1100 px, celular y tableta (`matDuelLayout`)', () => {
+  it('en el celular es el de siempre, a todo el ancho', () => {
+    for (const [width, height] of SIZES) for (const tilted of [false, true]) expect(matDuelLayout(width, height, { tilted, ...APP })).toEqual({ ...phoneDuelLayout(width, height, { tilted, ...APP }), width })
   })
 
-  it('el campo y tu mano entran en la pantalla: en 3D a 1100 × 760 (antes el campo terminaba en y = 1097) y de arriba a 900 de alto', () => {
-    expect(mediumColumn(true, 760)).toEqual({ cell: 56, total: 757 })
-    expect(mediumColumn(false, 900).total).toBeLessThanOrEqual(900)
+  it('desde 640 px el campo se angosta hasta que sus filas tienen el alto de una carta y entra entero en el alto, con la mano debajo', () => {
+    for (const [width, height] of [[768, 1024], [820, 1180], [1024, 768], [1100, 760], [640, 900]] as const) {
+      for (const tilted of [false, true]) {
+        const layout = matDuelLayout(width, height, { tilted, ...APP })
+
+        expect(layout.width).toBeLessThanOrEqual(width)
+        expect(layout.fieldWidth).toBeLessThanOrEqual(layout.width)
+        // La casilla tiene forma de carta (la fila, de una carta: más no entra) y el campo no pasa de la altura de la pantalla.
+        expect(layout.row).toBeGreaterThanOrEqual(layout.cell * 1.4612 * 0.99)
+        expect(layout.bottomTop).toBeCloseTo(height - APP.bottom, 5)
+        expect(layout.rivalTop).toBeGreaterThanOrEqual(APP.bar - 1)
+      }
+    }
   })
 
-  it('sin la fila de abajo («Jugar solo automático» con el marcador arriba) lo que no es campo baja de 37 a 30,5 rem en 3D y de 34 a 27,5 de arriba: la casilla crece con el alto que se libera', () => {
-    const tilted = mediumDuelFieldStyle(true, false) as Record<string, string | number>
-    const flat = mediumDuelFieldStyle(false, false) as Record<string, string | number>
-
-    expect(tilted['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.5rem, calc((100dvh - 30.5rem) / 3)))')
-    // De arriba la casilla baja hasta 52 px: a 900 × 700 la columna no scrollea.
-    expect(flat['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.25rem, calc((100dvh - 27.5rem) / 5)))')
-    expect(tilted).toMatchObject({ width: 'calc(var(--cell-m) * 6.3714 + 1.5rem)', marginTop: 'calc(9.5rem - 2 * var(--cell-m))' })
-  })
-
-  it('con el marcador de 44 px (el duelo por enlace) suma 4 px: 30,75 rem en 3D (a 1100 × 760 la columna scrolleaba 1 px); con la fila de abajo, nada', () => {
-    expect((mediumDuelFieldStyle(true, false, true) as Record<string, string>)['--cell-m']).toContain('calc((100dvh - 30.75rem) / 3)')
-    expect((mediumDuelFieldStyle(false, false, true) as Record<string, string>)['--cell-m']).toContain('calc((100dvh - 27.75rem) / 5)')
-    expect(mediumDuelFieldStyle(true, true, true)).toEqual(mediumDuelFieldStyle(true))
+  it('en vertical y en 3D, a 768 × 1024, el campo usa casi todo el ancho; en apaisada se angosta, no se sale del alto', () => {
+    expect(matDuelLayout(768, 1024, { tilted: true, ...APP }).fieldWidth).toBeGreaterThan(650)
+    expect(matDuelLayout(1024, 768, { tilted: true, ...APP }).fieldWidth).toBeLessThan(500)
   })
 })

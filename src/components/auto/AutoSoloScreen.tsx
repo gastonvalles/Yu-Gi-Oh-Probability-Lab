@@ -29,7 +29,6 @@ import { ResultHero, ResultPeek } from '../duel/DuelBanner'
 import { DuelLine, type LaneNotice } from '../duel/DuelBar'
 import { LethalBlow } from '../duel/LethalBlow'
 import { LifeBadge } from '../duel/LifeScore'
-import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { RivalSheet } from '../duel/RivalRow'
 import { PileGroupContext } from '../probability/MatDialogs'
@@ -408,14 +407,14 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     }),
     [prefs.chain, prefs.place, restart, newHand, openSave, openLog, openManual, kind, facedown, handtraps, botName, status, gaveUp, giveUp],
   )
-  const turn = reviewing ? asks.state.turn : asks.turn
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
   const { turnMine, lane } = asks
   // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
   // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 20 px sobre el borde de la mano (`-mt-5`, la chapa: la fila no crece y el campo no se corre). Con
-  // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
-  // En el celular, las chapas: la del rival a la derecha de la barra (`seat`) y la tuya abajo a la izquierda con el turno; el aviso va debajo de la barra.
-  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
+  // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, la del rival en la barra y la tuya abajo, sin fila de abajo de la mesa (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
+  // Hasta 1100 px (celular y tableta), las chapas: la del rival a la derecha de la barra (`seat`) y la tuya abajo a la izquierda con el turno; el aviso va debajo de la barra.
+  // Hasta 1100 px (celular y tableta): la misma mesa, con las chapas, la botonera de abajo y los avisos arriba; un solo corte (1101 px).
+  const phone = !useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const seated = docked || phone
   const myLife = useMemo(
     () =>
@@ -432,8 +431,8 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   // Repasando en el celular, «Volver al duelo» va en la barra, en el lugar de la chapa del rival (y el aviso del repaso no sale en la línea).
   const back = phone && reviewing ? asks.review.back : undefined
   const header = useMemo(
-    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} lane={lane} {...(phone ? { seat: corner } : {})} {...(back ? { back } : {})} />,
-    [rivalName, life, turn, turnMine, onExit, lane, phone, corner, back],
+    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} myTurn={turnMine} onExit={onExit} lane={lane} {...(phone ? { seat: corner } : {})} {...(back ? { back } : {})} />,
+    [rivalName, life, turnMine, onExit, lane, phone, corner, back],
   )
   // La línea, sólo con un aviso o un momento (invocar, atacar, el daño: `duel-moment.ts`, 1,5 s), debajo de la barra; sin ellos no hay nada. El momento sólo se dice: nada lo espera.
   const moment = useMoment(asks.matSession, snap.initial, reviewing, cardsById, nameOf)

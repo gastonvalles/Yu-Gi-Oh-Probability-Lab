@@ -275,12 +275,12 @@ export function usePicked(cards: readonly PickCard[], max: number) {
 /** Hasta cuántas cartas van en una fila de la bandeja sin deslizar. */
 export const BAND_MAX = 6
 /**
- * La bandeja de los carteles del automático: una sola fila de cartas de 1/6 del ancho (a 390 px, ~56 px; nunca se agrandan con pocas), centradas, y con más de seis se desliza de costado. En la
+ * La bandeja de los carteles del automático: una sola fila de cartas de 1/6 del ancho (a 390 px, ~56 px; con tope de 72 px en la tableta; nunca se agrandan con pocas), centradas, y con más de seis se desliza de costado. En la
  * ventana, crecen y se achican con ella (`AutoPanel`: `--fit-h`, `--card-cap`): el ancho se reparte entre las que hay (`--n`, hasta 5: lo pone `PickGrid`) y, por debajo de 4 rem, se desliza.
  * Mide lo que miden las cartas: sin alto fijo.
  */
 export const TRAY =
-  'grid-flow-col auto-cols-[calc((100%-2.5rem)/6)] justify-center-safe overflow-x-auto overscroll-x-contain pb-1 group-data-[window]/panel:auto-cols-[clamp(4rem,min(calc((100cqw_-_1.5rem_-_(var(--n,1)_-_1)*0.5rem)/var(--n,1)),var(--fit-h)),var(--card-cap))]!'
+  'grid-flow-col auto-cols-[min(calc((100%-2.5rem)/6),4.5rem)] justify-center-safe overflow-x-auto overscroll-x-contain pb-1 group-data-[window]/panel:auto-cols-[clamp(4rem,min(calc((100cqw_-_1.5rem_-_(var(--n,1)_-_1)*0.5rem)/var(--n,1)),var(--fit-h)),var(--card-cap))]!'
 /** Entre cuántas se reparte el ancho de la bandeja en la ventana (`TRAY`): las que hay, hasta 5 (más, se desliza). */
 const TRAY_N = ['[--n:1]', '[--n:2]', '[--n:3]', '[--n:4]', '[--n:5]'] as const
 /** El contador «1 de 2» (a la derecha del título), sólo cuando el total es mayor que 1 (nunca «1/1» ni «0 de 1»). */

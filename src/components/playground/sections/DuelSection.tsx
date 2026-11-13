@@ -20,13 +20,12 @@ import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { LethalBlow } from '../../duel/LethalBlow'
 import { Button } from '../../ui/Button'
-import { BAR_SEAT, DuelLine, DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
+import { BAR_SEAT, DuelLine, type LaneNotice } from '../../duel/DuelBar'
 import { LifeBadge } from '../../duel/LifeScore'
 import { OptionsGear } from '../../auto/AutoBar'
 import { ChainStage, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { IconButton } from '../../ui/IconButton'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
-import type { FeedEntry } from '../../duel/use-duel-feed'
 import { TurnDial } from '../../duel/TurnDial'
 import { TURN_BANK_MS, type TurnClock } from '../../../app/duel-clock'
 import type { RoomsApi } from '../../../app/duel-rooms'
@@ -125,7 +124,6 @@ export function DuelSection() {
       <LobbyArenaSamples />
       <LobbyOfflineSample />
 
-      <LogTickerSpecimen />
       <TurnDialSamples />
 
       <BannerSamples />
@@ -133,10 +131,6 @@ export function DuelSection() {
   )
 }
 
-const SEAT_FEED: readonly FeedEntry[] = [
-  { id: 's1', kind: 'event', side: 'theirs', text: 'Ana activa Infinite Impermanence' },
-  { id: 's2', kind: 'event', side: 'theirs', text: 'Ana niega a Sky Striker Ace - Raye hasta el final del turno' },
-]
 const SEAT_CHAIN: ChainNoticeRow[] = [
   { number: 1, who: 'Vos', mine: true, name: 'Sky Striker Mobilize - Engage!', art: 'https://images.ygoprodeck.com/images/cards_small/63166095.jpg', state: 'chained' },
   { number: 2, who: 'Ana', mine: false, name: 'Ash Blossom & Joyous Spring', art: 'https://images.ygoprodeck.com/images/cards_small/14558127.jpg', state: 'chained' },
@@ -153,7 +147,7 @@ function SeatsAndLineSample({ duel }: { duel: ReturnType<typeof sampleDuel> }) {
   const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
   const mineTurn = turn !== 'rival'
   const lane: LaneNotice | null = line === 'notice' ? { kind: 'undoAsked', onAllow: () => {}, onDeny: () => {} } : line === 'moment' ? { kind: 'ask', text: 'Gene-Warped Warwolf ataca a Sky Striker Ace - Zeke', actions: [] } : null
-  const content = line === 'chain' ? <ChainStage rows={SEAT_CHAIN} current={-1} /> : lane ? <DuelLine lane={lane} rivalName="Ana" log={<DuelLogTicker feed={SEAT_FEED} onOpen={() => {}} />} /> : null
+  const content = line === 'chain' ? <ChainStage rows={SEAT_CHAIN} current={-1} /> : lane ? <DuelLine lane={lane} rivalName="Ana" /> : null
   const rival = <LifeBadge name="Ana" label="Rival" life={life.theirs} compact active={!mineTurn} />
   const mine = <LifeBadge name="Vos" label="Vos" life={life.mine} mine active={mineTurn} />
   const buttons = (
@@ -1181,47 +1175,3 @@ function RivalStrip({ side, open, onToggle }: { side: DuelSideView; open: boolea
   )
 }
 
-const TICKER_PLAYS = ['Barajás el deck', 'Invocación Normal de Medius the Pure', 'Atacás a Mulcharmy Purulia con Ash Blossom & Joyous Spring', 'Activás Called by the Grave', 'Robás una carta']
-
-/** El cartel del registro con jugadas de muestra: «Agregar una jugada» suma una (alternando entre las tuyas y las del rival) y se ve cómo vuelve el cartel que se sacó. */
-function LogTickerSpecimen() {
-  const [feed, setFeed] = useState<readonly FeedEntry[]>([
-    { id: 'e1', kind: 'event', side: 'theirs', text: 'Ana hace una Invocación Normal' },
-    { id: 'e2', kind: 'event', side: 'mine', text: TICKER_PLAYS[0]! },
-  ])
-  const [opened, setOpened] = useState(0)
-
-  return (
-    <Specimen
-      title="Registro sobre el campo"
-      layout="column"
-      note={
-        <>
-          Las dos últimas jugadas, con el punto del color de quien las hizo, sobre el campo en el celular. <strong>Se sacan con el dedo</strong>: arrastralas de costado (o con Supr desde el teclado) y se van; el lugar queda reservado y la próxima jugada las vuelve a mostrar, con lo nuevo solo. Un toque abre el registro entero. Archivos: <Tag>duel/DuelBar.tsx</Tag> <Tag>app/use-swipe-away.ts</Tag>
-        </>
-      }
-    >
-      <div className="grid w-full max-w-sm gap-3">
-        <div className="rounded-card border border-border-subtle bg-card-background p-2">
-          <DuelLogTicker feed={feed} onOpen={() => setOpened((count) => count + 1)} />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              setFeed((current) => {
-                const n = current.length + 1
-
-                return [...current, { id: `e${n}`, kind: 'event', side: n % 2 === 0 ? 'mine' : 'theirs', text: TICKER_PLAYS[n % TICKER_PLAYS.length]! }]
-              })
-            }
-          >
-            Agregar una jugada
-          </Button>
-          <Tag>{`Se abrió el registro: ${opened}`}</Tag>
-        </div>
-      </div>
-    </Specimen>
-  )
-}
