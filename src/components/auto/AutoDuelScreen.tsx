@@ -23,8 +23,8 @@ import { showToastMessage } from '../../app/use-toast-message'
 import { getLocale, t } from '../../i18n'
 import { TurnOrderBanner } from '../duel/DuelBanner'
 import { TurnDial } from '../duel/TurnDial'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLine, DuelLogTicker, RivalLife, type LaneNotice } from '../duel/DuelBar'
-import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLine, RivalLife, type LaneNotice } from '../duel/DuelBar'
+import { MOBILE_DUEL_MEDIA_QUERY } from '../probability/compact-field'
 import { DuelChatPanel } from '../duel/DuelChat'
 import { DuelPause } from '../duel/DuelPause'
 import { LethalBlow } from '../duel/LethalBlow'
@@ -571,11 +571,10 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     </>
   )
   // El celular: las chapas, la línea (el registro con el aviso encima) y el chat en la botonera de abajo, no en la barra.
-  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
+  const phone = useMediaQuery(MOBILE_DUEL_MEDIA_QUERY)
   // El ⚙ de abajo a la derecha: Opciones (la vista 3D, los menús flotantes, lo de arriba y Rendirse al final: el mismo `concede` de la sala).
   const gear = <OptionsGear concede={{ onConcede: duel.concede, text: t('duel.bar.concedeText', { name: rivalName }), disabled: result !== null || !snapshot.peerPresent }}>{settings}</OptionsGear>
   const chatToggle = <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} tile={phone} />
-  const logTicker = <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />
   // Un duelo que sigue a uno manual arranca en el turno 1 del núcleo: se le suma lo que llevaban las mesas de arranque (en uno de cero, nada).
   const turnNumber = Math.max(1, snap.overlay.turn) + duelTurnNumber(snap.initial.mine, snap.initial.theirs) - 1
   // Lo del pase a manual en la línea: la espera (con «Cancelar pedido») y el corte. Lo que hay que contestar del núcleo va antes.
@@ -604,14 +603,12 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         myName={myName}
         mySignal={signals.mine}
         mySignalKey={signals.mineKey}
-        chat={docked ? undefined : chatToggle}
         onToggleClock={duel.toggleClock}
         onRematch={onRematch}
         onLeave={onLeave}
         onAbandon={onAbandon}
         inOptions
         onReconnect={duel.reconnect}
-        log={docked ? undefined : logTicker}
         resultOpen={resultOpen}
         rivalSignal={rivalSignal}
         rivalSignalKey={signals.theirsKey}
@@ -630,7 +627,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
       </span>
     ) : null,
     ...(docked ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} badge active={!asks.turnMine} /> } : {}),
-    ...(docked ? {} : { scoreInHeader: true, scoreTall: true }),
+    ...(docked ? {} : { scoreInHeader: true }),
     ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: <>{chatToggle}{gear}</> } : { dock: gear }),
     tools: null,
     // El chat: en escritorio, fijo a la derecha (con las reacciones); hasta 1100 px, en su panel (lo abre su botón de la barra), con las reacciones.

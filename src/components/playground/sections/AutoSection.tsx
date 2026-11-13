@@ -20,13 +20,13 @@ import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { AskWhy } from '../../duel/AskWhy'
-import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
+import { LifeTile, type LaneNotice } from '../../duel/DuelBar'
 import { TheirHand } from '../../duel/DuelTable'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { BotDeckEditor } from '../../duel/BotDeckEditor'
 import { BotDeckSheet } from '../../duel/BotDeckSheet'
 import { SoloScreen } from '../../duel/SoloScreen'
-import { LifeBadge, LifeScore } from '../../duel/LifeScore'
+import { LifeBadge } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatUndoContext } from '../../probability/MatBarActions'
 import { CardMenu, type MenuItem } from '../../probability/MatDialogs'
@@ -196,7 +196,7 @@ export function AutoSection() {
       <BarActionsSample />
       <RulesPillSample />
       <LifePlateSample />
-      <LifeScoreSample />
+      <LifeBadgeSample />
       <DockSample />
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La barra de la práctica (la flecha y los íconos de <Tag>MatBarActions</Tag>) con lo propio del automático: el engranaje (en la mesa de escritorio va en la botonera), el turno, una sola vez, y las vidas planas (hasta 1100 px, en el marcador; con laterales, en el izquierdo; en escritorio sin ellos, en las esquinas del campo). La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
       <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «Pasar». Va enmarcado en ámbar. El engranaje abre «Más opciones» (respuestas, la casilla, «Rival» con «Cambiar rival» y, con el bot, «Mostrar la mano del bot» —con handtraps, «A ciegas»; en la del núcleo resolviendo es el pasivo y dice que no juega—, «Reiniciar el mismo duelo» y «Jugar en modo manual»); en escritorio se lleva con el mouse por su título, como todo diálogo de la mesa. Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
@@ -976,15 +976,15 @@ function LifePlateSample() {
 }
 
 /**
- * El marcador de «Jugar solo automático» hasta 1100 px (`LifeScore` en `AutoBar`): tus vidas, el turno una sola vez y las del rival, planos; debajo, las chapas de escritorio (`LifeBadge`), cada una en su esquina.
- * «Recibir 1000» baja las del rival de verdad (el conteo y el golpe: la sacudida, el número que se infla, el fogonazo y el «−N» que sube); el otro botón cambia el turno y su color.
+ * Las chapas de «Jugar solo automático» (`LifeBadge`, las mismas del celular, la tableta y el escritorio): la del rival arriba a la derecha y la tuya abajo a la izquierda, con el borde grueso de quien tiene el turno.
+ * «Recibir 1000» baja las del rival de verdad (el conteo y el golpe: la sacudida, el número que se infla, el fogonazo y el «−N» que sube); el otro botón cambia el turno.
  */
-function LifeScoreSample() {
+function LifeBadgeSample() {
   const [theirs, setTheirs] = useState(8000)
   const [mineTurn, setMineTurn] = useState(true)
 
   return (
-    <Specimen title="LifeScore · el marcador y las esquinas" layout="column" className="col-span-full" note={<>Plano, sin caja, chapa ni barra (Gastón, 2026-10-27: las placas «no le gustan»): el nombre chico en el color del dueño (<Tag>PLAYER_COLOR</Tag>: lavanda vos, ámbar el rival) y el número blanco, lo que decide: 24 px, en el marcador de la barra (de 640 a 1100 px). En escritorio, con laterales o sin ellos, van siempre las chapas (<Tag>LifeBadge</Tag>, debajo): la del rival arriba a la derecha y la tuya abajo a la izquierda, con el golpe adentro de la caja (el fogonazo del plano se salía de la columna). Cuenta hasta el valor nuevo; al bajar, el golpe (se sacude, el número se infla, un fogonazo rojo y el «−N» sube) y al subir, un fogonazo verde; en 2000 o menos queda rojo y late, y en 0, rojo. El turno va una vez (en el medio del marcador o debajo de los íconos), en el color de quién es; la fase la dice el botón del campo. Archivo: <Tag>duel/LifeScore.tsx</Tag></>}>
+    <Specimen title="LifeBadge · las chapas del duelo" layout="column" className="col-span-full" note={<>Una sola chapa en todos los anchos (Gastón, 2026-11-12: «ya tenemos una vida visible»): en caja, con el borde grueso de quien juega, que dice el turno sin texto. Cuenta hasta el valor nuevo; al bajar, el golpe (se sacude, el número se infla, un fogonazo rojo y el «−N» entra en la caja) y al subir, un fogonazo verde; en 2000 o menos queda rojo y late, y en 0, rojo. La fase la dice el botón del campo. Archivo: <Tag>duel/LifeScore.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => setTheirs((life) => Math.max(0, life - 1000))}>
           Recibir 1000
@@ -995,14 +995,6 @@ function LifeScoreSample() {
         <Button variant="tertiary" size="sm" onClick={() => setMineTurn((mine) => !mine)}>
           {mineTurn ? 'Pasar al turno del rival' : 'Volver a tu turno'}
         </Button>
-      </div>
-      <div className="relative isolate w-full max-w-sm overflow-hidden rounded-card border border-border-subtle px-2 py-3">
-        <MatScene className="absolute inset-0 -z-10" />
-        <div className="flex min-h-10 min-w-0 items-center gap-2 px-1">
-          <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={3200} mine />
-          <span className={cx('min-w-0 flex-1 truncate text-center text-lead font-bold', mineTurn ? 'text-accent' : 'text-info-soft')}>{mineTurn ? t('auto.bar.turnMine', { turn: 1 }) : t('duel.bar.theirTurnN', { name: t('duel.bar.rival'), turn: 2 })}</span>
-          <LifeScore name={t('duel.bar.rival')} label={t('duel.bar.rivalTag')} life={theirs} />
-        </div>
       </div>
       <div className="relative isolate grid h-44 w-full max-w-md content-between overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
@@ -1152,11 +1144,9 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
       <AutoBar
         rivalName={t('duel.bar.rival')}
         life={life}
-        turn={3}
         myTurn={kind === 'chain'}
         onExit={() => setPassed((count) => count + 1)}
         lane={lane}
-        log={<DuelLogTicker feed={[{ id: 'e1', kind: 'event', side: 'mine', text: 'Activás Branded Fusion' }]} onOpen={() => undefined} />}
       />
     </MatUndoContext>
   )

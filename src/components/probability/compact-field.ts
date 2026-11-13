@@ -1,8 +1,7 @@
-import type { CSSProperties } from 'react'
-import { THEIR_HAND } from '../duel/their-hand'
-
-/** El celular en vertical: menos de 640 px de ancho (el corte `sm` de Tailwind), donde la geometría del duelo es fija (`phoneDuelLayout`). El campo tiene siete columnas en todos los anchos. */
+/** El celular en vertical: menos de 640 px de ancho (el corte `sm` de Tailwind). El campo tiene siete columnas en todos los anchos. */
 export const COMPACT_FIELD_MEDIA_QUERY = '(max-width: 639.98px)'
+/** La mesa del duelo sin escritorio: hasta 1100 px (celular y tableta) lleva la misma geometría fija (`matDuelLayout`), las chapas, la botonera de abajo y los avisos arriba. Es el complemento de `DESKTOP_DECK_BUILDER_MEDIA_QUERY`: un solo corte. */
+export const MOBILE_DUEL_MEDIA_QUERY = '(max-width: 1100.98px)'
 
 /** La orilla de la columna (`max-sm:px-1`) y el hueco entre casillas (`max-sm:gap-0.75`) en el celular. */
 const PHONE_EDGE = 4
@@ -104,27 +103,18 @@ export function phoneDuelLayout(width: number, height: number, { tilted, bar, bo
   }
 }
 
-/**
- * El campo del duelo de 640 a 1100 px (tablet, laptop chica, ventana angosta): siete columnas, como en escritorio, pero sin `--cell`, así que la casilla salía del ancho (169 px a 1100 × 760) y el campo
- * terminaba en y = 1097, con tu mano fuera de la pantalla. Ahora la casilla es la más grande que cabe a lo ancho **y** deja el campo y tu mano enteros en el alto (nunca menos de 56 px: ahí la columna scrollea).
- * Lo que no es campo, medido a 640, 900 y 1100 px: la barra de arriba (144 px) y el aire hasta el grupo (8), tu mano (153 y 8 de aire), el margen del grupo (48), la barra de abajo (44) y sus 16 px: 421 px.
- * - Vista 3D (26°, perspectiva de 900 px): la inclinación deja arriba del campo una franja vacía de unos `2 × casilla - 50 px` (exacto de 60 a 120 px de casilla, 20 px de menos a 160); se le quita al
- *   lugar de la mano del rival (`marginTop`, puede ser negativo: esa franja no se ve ni se toca), así el campo se ve a 102 px del grupo como en la vista de arriba. Total: 589 px + 3 casillas (37 rem, con aire).
- * - Vista de arriba: el lugar de la mano del rival queda como estaba; total 539 px + 5 casillas (34 rem).
- * Sin la fila de abajo (`bottomRow: false`, «Jugar solo automático» con el marcador arriba, 2026-10-27) se van el margen del grupo, la barra y sus 16 px (108 px) y el marcador suma 2: 30,5 y 27,5 rem
- * (medido a 768 × 1024, 900 × 700, 1024 × 768, 1100 × 760 y 1100 × 900, sin scroll); con el marcador de 44 px (`tallScore`, el duelo por enlace), 4 px más.
- * El `%` del ancho y del `marginTop` es el ancho de la columna (sin la barra de scroll).
- */
-export function mediumDuelFieldStyle(tilted: boolean, bottomRow = true, tallScore = false): CSSProperties {
-  const rest = (bottomRow ? (tilted ? 37 : 34) : tilted ? 30.5 : 27.5) + (!bottomRow && tallScore ? 0.25 : 0)
-  // De arriba son cinco filas: sin la fila de abajo la casilla baja hasta 52 px, o a 900 × 700 la columna scrollearía 11 px.
-  const floor = !bottomRow && !tilted ? '3.25rem' : '3.5rem'
-  const cell = `min(calc((100% - 1.5rem) / 6.3714), max(${floor}, calc((100dvh - ${rest}rem) / ${tilted ? 3 : 5})))`
+/** Desde este ancho el campo ya no ocupa toda la columna: se angosta hasta que sus casillas tengan forma de carta (el celular, más angosto, va a todo el ancho). */
+const TABLET_FROM = 640
+const TABLET_NARROWEST = 360
 
-  return {
-    '--cell-m': cell,
-    width: 'calc(var(--cell-m) * 6.3714 + 1.5rem)',
-    marginInline: 'auto',
-    marginTop: tilted ? 'calc(9.5rem - 2 * var(--cell-m))' : THEIR_HAND.mobile.room,
-  } as CSSProperties
+/**
+ * `phoneDuelLayout` en todos los anchos de la mesa móvil. Hasta 639 px, el de siempre (a todo el ancho). Desde 640 px (tableta), a todo el ancho las casillas saldrían más anchas que una carta (la fila
+ * la limita el alto): se angosta de a 8 px, como el visor de replays, hasta que sus filas tengan el alto de una carta, y el campo y las manos quedan centrados en ese ancho. Devuelve también el ancho usado.
+ */
+export function matDuelLayout(width: number, height: number, options: PhoneDuelOptions): PhoneDuelLayout & { width: number } {
+  let w = width
+  let layout = phoneDuelLayout(w, height, options)
+  if (width >= TABLET_FROM) while (w > TABLET_NARROWEST && layout.row < layout.cell * CARD_RATIO * 0.99) layout = phoneDuelLayout((w -= 8), height, options)
+
+  return { ...layout, width: w }
 }
