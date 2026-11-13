@@ -147,9 +147,8 @@ const SIDE_COLUMN = 0.6857
 /** Una carta: 421 × 614. */
 const CARD_ASPECT = 614 / 421
 
-/** La grilla de siete columnas de la mesa del celular, centrada a lo ancho de `width` y con el borde de arriba de su primera fila en `top`. */
-export function fieldGrid(width: number, top: number): Pick<VideoLayout, 'unit' | 'cell' | 'cellAt'> {
-  const unit = width / PHONE_WIDTH
+/** La grilla de siete columnas de la mesa del celular, `unit` px por px del celular, centrada a lo ancho de `width` y con el borde de arriba de su primera fila en `top`. */
+export function fieldGrid(width: number, top: number, unit = width / PHONE_WIDTH): Pick<VideoLayout, 'unit' | 'cell' | 'cellAt'> {
   const cell = PHONE.cell * unit
   const row = PHONE.row * unit
   const gap = PHONE_GAP * unit
@@ -172,20 +171,32 @@ export function fieldGrid(width: number, top: number): Pick<VideoLayout, 'unit' 
 export function videoLayout(width: number): VideoLayout {
   const s = width / BASE_W
   const box = (x: number, y: number, w: number, h: number): Rect => ({ x: x * s, y: y * s, w: w * s, h: h * s })
+  // Entre las vidas (hasta 104) y el texto (desde 1120, con 4 de aire): la mano del rival, 6 px del celular, el campo, 8 y tu mano, cada mano con lo que suben o bajan las puntas
+  // de su abanico (`handSlots`: 1/16 de su alto). El campo se angosta lo que haga falta para que entren las manos del tamaño de la mesa.
+  const handPerUnit = (HAND_PER_CELL * PHONE.cell * 86) / 59
+  const unit = (1012 / (PHONE.fieldHeight + 6 + 8 + handPerUnit * (1 + RIVAL_HAND) * (17 / 16))) * s
+  const hand = handPerUnit * unit
+  const rival = hand * RIVAL_HAND
+  const fieldTop = 104 * s + (rival * 17) / 16 + 6 * unit
 
-  // Las cinco filas de la mesa (793 px a 720) entre la mano del rival y la tuya, que cuelga 8 px debajo del campo.
   return {
     scale: s,
     score: box(24, 20, 672, 84),
-    // La mano del rival a 0,8 de la tuya (104 px), como en la mesa.
-    theirHand: box(64, 108, 592, 83),
-    myHand: box(64, 1000, 592, 104),
+    theirHand: { x: 64 * s, y: fieldTop - 6 * unit - rival, w: 592 * s, h: rival },
+    myHand: { x: 64 * s, y: fieldTop + PHONE.fieldHeight * unit + 8 * unit, w: 592 * s, h: hand },
     text: box(24, 1120, 672, 120),
     footer: box(24, 1244, 672, 28),
-    ...fieldGrid(width, 196 * s),
+    ...fieldGrid(width, fieldTop, unit),
     middle: 2,
   }
 }
+
+/**
+ * La carta de tu mano mide 1,53 casillas de ancho, como en la mesa del celular (a 369×800: carta de 82 px, casilla de 54); la del rival, 0,8 de la tuya (`RIVAL_SCALE` de la mesa).
+ * Así el video es la mesa del celular entera (con márgenes a los costados: el lienzo 9:16 es más ancho que un celular) y no un campo grande con manos chicas.
+ */
+const HAND_PER_CELL = 1.53
+const RIVAL_HAND = 0.8
 
 /** El rectángulo de la mesa (todas sus casillas): ahí van la placa, la carta grande y el cartel. */
 export function fieldRect(cells: readonly Rect[]): Rect {

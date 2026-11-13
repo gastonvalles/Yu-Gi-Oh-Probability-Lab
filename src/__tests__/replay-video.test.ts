@@ -59,7 +59,9 @@ describe('el diseño del cuadro', () => {
     expect(first.x).toBeCloseTo(720 - (end.x + end.w))
     expect(first.y).toBeGreaterThan(layout.theirHand.y + layout.theirHand.h)
     expect(end.y + end.h).toBeLessThan(layout.myHand.y)
-    expect(layout.myHand.y + layout.myHand.h).toBeLessThan(layout.text.y)
+    // Con lo que bajan las puntas del abanico (1/16 del alto), tu mano no pisa el texto ni la del rival las vidas.
+    expect(layout.myHand.y + (layout.myHand.h * 17) / 16).toBeLessThan(layout.text.y)
+    expect(layout.theirHand.y - layout.theirHand.h / 16).toBeGreaterThanOrEqual(layout.score.y + layout.score.h - 0.01)
     expect(layout.footer.y + layout.footer.h).toBeLessThanOrEqual(1280)
     expect(videoLayout(1080).cellAt(4, 6)).toEqual({ x: expect.closeTo(end.x * 1.5, 6), y: expect.closeTo(end.y * 1.5, 6), w: expect.closeTo(end.w * 1.5, 6), h: expect.closeTo(end.h * 1.5, 6) })
   })
@@ -67,8 +69,11 @@ describe('el diseño del cuadro', () => {
   it('el campo es la mesa del celular (`phoneDuelLayout` a 390 px) escalada: siete columnas, casillas con forma de carta, las pilas a los costados del ancho de su columna', () => {
     const layout = videoLayout(720)
     const phone = phoneDuelLayout(PHONE_WIDTH, 844, { tilted: false, bar: 0, bottom: 0 })
-    const k = 720 / PHONE_WIDTH
-    expect(layout.unit).toBeCloseTo(k)
+    const k = layout.unit
+    // Angostado para que la carta de tu mano mida 1,53 casillas de ancho, como en la mesa a 369×800 (y la del rival, 0,8 de la tuya).
+    expect(k).toBeLessThan(720 / PHONE_WIDTH)
+    expect((layout.myHand.h * 59) / 86 / (phone.cell * k)).toBeCloseTo(1.53)
+    expect(layout.theirHand.h / layout.myHand.h).toBeCloseTo(0.8)
     // Las del centro: el ancho de la casilla y el alto de la fila (una carta), a 3 px; el campo, del ancho del de la mesa y centrado.
     const center = [1, 2, 3, 4, 5].map((col) => layout.cellAt(0, col))
     for (const rect of center) expect([rect.w / k, rect.h / k]).toEqual([expect.closeTo(phone.cell, 6), expect.closeTo(phone.row, 6)])
