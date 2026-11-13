@@ -1,8 +1,9 @@
-import { chainDwell, stepsUpTo, type ChainStep } from '../../../app/auto/chain-feed'
+import type { ChainStep } from '../../../app/auto/chain-feed'
 import { replayChainSteps, type DuelReplay } from '../../../app/duel-replay'
 import { safeFileName, type SharedCombo } from '../../../app/combo-share'
 import type { MatAction } from '../../../app/practice-mat'
 import type { SavedCombo } from '../../../app/saved-combos'
+import { chainDwell, stepsUpTo } from '../../auto/ChainNotice'
 import { titleOf } from '../duel-replay-text'
 
 /**

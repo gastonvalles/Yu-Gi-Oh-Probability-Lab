@@ -58,7 +58,7 @@ const mix = (a: number, b: number, e: number) => a + (b - a) * e
 const rgba = (rgb: string, alpha: number) => `rgb(${rgb} / ${alpha})`
 
 /** Una animación por cuadros clave (como un `@keyframes`): el valor en `p` (0 a 1), con `ease` en cada tramo. */
-function keyed(p: number, keys: readonly (readonly [number, number])[], ease: (x: number) => number = easeOut): number {
+export function keyed(p: number, keys: readonly (readonly [number, number])[], ease: (x: number) => number = easeOut): number {
   if (p <= keys[0]![0]) return keys[0]![1]
   for (let index = 1; index < keys.length; index += 1) {
     const [at, value] = keys[index]!
@@ -100,7 +100,7 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
@@ -146,8 +146,11 @@ function ring(ctx: Ctx, rect: Rect, tone: string, width: number, p: number, roun
   ctx.globalAlpha = 1
 }
 
-/** Lo que dibuja cada efecto de una jugada, con sus tiempos. `start`: cuándo empieza la jugada (ms de video). */
-export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight[], assets: VideoAssets, speed: VideoSpeed, start: number, kind: 'duel' | 'combo'): Overlay[] {
+/**
+ * Lo que dibuja cada efecto de una jugada, con sus tiempos. `start`: cuándo empieza la jugada (ms de video). `chain`: el replay trae la cadena (el duelo automático): lo que se
+ * activa no sale grande, lo dice la escena de la cadena (`video-chain.ts`), como en el reproductor.
+ */
+export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight[], assets: VideoAssets, speed: VideoSpeed, start: number, kind: 'duel' | 'combo', chain = false): Overlay[] {
   const { effects, action, actor } = after
   if (!effects || !action || actor === null) return []
   const s = after.layout.scale
@@ -164,7 +167,7 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
   }
 
   // La carta grande del centro: activar, mostrar o declarar; en un combo, lo que mueve cada paso (sale de su lugar, se da vuelta si sale del deck o del Extra).
-  const spot = effects.spotlight && effects.spotlight.kind !== 'target' && effects.spotlight.kind !== 'attack' ? { ids: effects.spotlight.ids ?? [effects.spotlight.id], kind: effects.spotlight.kind as SpotlightKind | ShowcaseKind, flip: false } : null
+  const spot = effects.spotlight && effects.spotlight.kind !== 'target' && effects.spotlight.kind !== 'attack' && !(chain && effects.spotlight.kind === 'activate') ? { ids: effects.spotlight.ids ?? [effects.spotlight.id], kind: effects.spotlight.kind as SpotlightKind | ShowcaseKind, flip: false } : null
   const stage = spot ?? (kind === 'combo' && effects.showcase ? { ids: effects.showcase.ids, kind: effects.showcase.kind, flip: effects.showcase.flip === true } : null)
   if (stage) {
     const cards = stage.ids.flatMap((id) => {

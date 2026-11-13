@@ -43,6 +43,18 @@ export interface VideoTheme {
   cardRgb?: string
   foregroundRgb?: string
   fieldLineRgb?: string
+  /** Los de la escena de la cadena y sus medallones (`--color-chain-*`, iguales en las dos paletas). */
+  chain: ChainColors
+}
+
+export interface ChainColors {
+  glow: string
+  flash: string
+  burst: string
+  veil: string
+  metal: string
+  metalHi: string
+  metalLo: string
 }
 
 /** Los colores del sitio, de sus variables CSS (los mismos del tema índigo de la app). */
@@ -74,6 +86,7 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     cardRgb: v('--card-background-rgb'),
     foregroundRgb: v('--foreground-rgb'),
     fieldLineRgb: v('--field-line-rgb'),
+    chain: { glow: v('--color-chain-glow'), flash: v('--color-chain-flash'), burst: v('--color-chain-burst'), veil: v('--color-chain-veil'), metal: v('--color-chain-metal'), metalHi: v('--color-chain-metal-hi'), metalLo: v('--color-chain-metal-lo') },
   }
 }
 
