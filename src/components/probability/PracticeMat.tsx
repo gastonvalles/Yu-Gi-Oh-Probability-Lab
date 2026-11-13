@@ -645,6 +645,12 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
   }
 }
 
+/** Lo que la banda de la fase muestra y cómo avisa que terminó con eso (`PhaseBand.onIdle`). */
+interface BandCue {
+  cue: PhaseCue | null
+  idle: () => void
+}
+
 /**
  * Lo que se monta en la tarea siguiente al dibujo de la jugada (las cartas grandes del centro y el cartel de la fase): `useDeferredValue` dibuja sólo este hijo, aparte, y la tarea del
  * toque queda para la mesa y los vuelos. Se ve un cuadro después del despegue; lo que se va solo, igual.
@@ -907,10 +913,16 @@ function PracticeMatBody({
 
     return own && rival ? (own.key >= rival.key ? own : rival) : (own ?? rival)
   }, [banner, rivalNotice, dueling])
-  // Si hay un cartel en curso: hasta que la banda dice que terminó con la fase de ahora (`onIdle`). Una fase nueva lo es desde el dibujo en que llega (la banda la toma un cuadro
-  // después, `Deferred`). En el automático, mientras tanto tus cartas no abren su menú y la pantalla no pregunta ni muestra la jugada siguiente (`onBanding`).
-  const [idleFor, setIdleFor] = useState<PhaseCue | null>(null)
-  const bandBusy = idleFor !== phaseCue
+  // Si hay un cartel en curso: hasta que la banda dice que terminó con el aviso de ahora (`onIdle`). Cada cambio de `phaseCue` es un aviso nuevo, también quedarse sin fase (la
+  // banda sigue con su reloj): cuenta desde el dibujo en que llega (la banda lo toma un cuadro después, `Deferred`). En el automático, mientras tanto tus cartas no abren su menú y
+  // la pantalla no pregunta ni muestra la jugada siguiente (`onBanding`).
+  const [idleFor, setIdleFor] = useState<BandCue | null>(null)
+  const bandCue = useMemo(() => {
+    const now: BandCue = { cue: phaseCue, idle: () => setIdleFor(now) }
+
+    return now
+  }, [phaseCue])
+  const bandBusy = idleFor !== bandCue
   const onBanding = duel?.onBanding
   // Lo leen los toques (no la dibuja de nuevo: un cambio de la banda no rehace los oyentes de las cartas).
   const banding = useRef(false)
@@ -3248,7 +3260,7 @@ function PracticeMatBody({
           {pileCell('banished', 'ban')}
 
           {/* Cambio de fase: la banda cruza el campo por la fila del medio, del color de quien juega (`PhaseBand`), en la práctica, repasando un combo y en los duelos; en un duelo, el pase antes con «Cambio de turno». */}
-          <Deferred value={phaseCue}>{(cue) => <PhaseBand cue={cue} onIdle={setIdleFor} />}</Deferred>
+          <Deferred value={bandCue}>{({ cue, idle }) => <PhaseBand cue={cue} onIdle={idle} />}</Deferred>
           {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
           {announcement ? (
             <span

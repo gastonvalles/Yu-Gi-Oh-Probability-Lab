@@ -90,6 +90,25 @@ describe('auto-screen · tu DP y tu SP pasan solas; desde la Main Phase 1, las f
     expect(fake.answers).toEqual([])
   })
 
+  it('el cartel manda, no el aviso: con «Cambio de turno» y su fase todavía a la vista cuando el aviso de tu pase ya se fue de la mesa, no se juega (TI-275)', () => {
+    const fake = renderAuto()
+
+    core(() => fake.events([to('end'), to('draw', true)]))
+    core(() => fake.ask(IDLE))
+    step()
+    step()
+    expect(band()).toHaveAttribute('data-turn')
+    // «Cambio de turno» (1250 ms) y detrás su Draw Phase (850): casi al final, la mesa ya no tiene el aviso de la fase y la banda sigue.
+    for (let ms = 0; ms < TURN_BAND_MS + PHASE_BAND_MS - 150; ms += 50) act(() => vi.advanceTimersByTime(50))
+    expect(band()).not.toBeNull()
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+    expect(phaseButton()).toBeDisabled()
+    bandOver()
+    expect(band()).toBeNull()
+    expect(phaseButton()).toBeEnabled()
+  })
+
   it('con «Cambio de turno» o el cartel de una fase a la vista, tocar una carta de tu mano no abre su menú ni juega (ni se guarda el toque); cuando se va, sí (TI-275)', () => {
     const fake = renderAuto()
 

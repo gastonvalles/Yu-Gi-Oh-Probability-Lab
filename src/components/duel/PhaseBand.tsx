@@ -92,9 +92,10 @@ const fromSide = (fromLeft: boolean, leaving: boolean) =>
  * de quien empieza (1250 ms), y después, una detrás de la otra, la banda de la fase más nueva (la Draw Phase, o la que ya llegó mientras tanto). Tu End Phase en un duelo (`settle`) espera
  * `PHASE_BAND_SETTLE_MS`: si pasa el turno, no sale. Se ubica sola en la fila `p2` de la grilla del campo (va adentro de él, debajo de la cadena y de las preguntas, que son otra capa), no ataja
  * toques y lleva su propio reloj, así que quien la monta puede sacar `cue` cuando quiera. Con movimiento reducido, sólo aparece y se va. Sólo `translate` y `opacity`.
- * `onIdle`: ya no hay cartel en curso (ni a la vista ni tu End Phase esperando para entrar) con este `cue`; el automático no deja jugar hasta oírlo de la fase de ahora.
+ * `onIdle`: ya no hay cartel en curso (ni a la vista ni tu End Phase esperando para entrar) con este `cue`; se vuelve a llamar con otro `cue` u otro `onIdle`. El automático no deja
+ * jugar hasta oírlo del aviso de ahora.
  */
-export function PhaseBand({ cue, hold = false, onIdle }: { cue: PhaseCue | null; hold?: boolean; onIdle?: (cue: PhaseCue | null) => void }) {
+export function PhaseBand({ cue, hold = false, onIdle }: { cue: PhaseCue | null; hold?: boolean; onIdle?: () => void }) {
   const [shown, setShown] = useState<PhaseCue | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [turn, setTurn] = useState<PhaseCue | null>(null)
@@ -170,7 +171,7 @@ export function PhaseBand({ cue, hold = false, onIdle }: { cue: PhaseCue | null;
   // Antes de pintar: quien espera a la banda no ve ni un cuadro sin ella.
   const busy = turn !== null || shown !== null || pending !== null
   useLayoutEffect(() => {
-    if (!busy) onIdle?.(cue)
+    if (!busy) onIdle?.()
   }, [busy, cue, onIdle])
 
   const gone = (out: boolean, done: () => void) => (event: TransitionEvent<HTMLDivElement>) => {
