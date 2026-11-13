@@ -478,9 +478,8 @@ export function medalTracks(snapshots: readonly Snapshot[]): MedalTrack[] {
 }
 
 const onAt = (list: ReadonlyArray<{ t: number; on: boolean }>, now: number) => list.filter((item) => item.t <= now).at(-1)
-/** `pulse` de Tailwind con la palabra `ease-in-out` de CSS (simétrica): de lleno a la mitad y de vuelta. */
-const cssEaseInOut = bezierEase('cubic-bezier(0.42, 0, 0.58, 1)')
-const pulseAt = (p: number) => keyed(p - Math.floor(p), [[0, 1], [0.5, 0.5], [1, 1]], cssEaseInOut)
+/** `pulse` de Tailwind: de lleno a la mitad y de vuelta, con la curva de ida y vuelta del proyecto (`EASE_IN_OUT`). */
+const pulseAt = (p: number) => keyed(p - Math.floor(p), [[0, 1], [0.5, 0.5], [1, 1]], easeInOut)
 
 /** Un medallón en el momento `now`: el aro de cadena sobre el fondo, su número blanco con luz celeste y, negado, tachado en rojo. */
 export function drawMedal(ctx: Ctx, track: MedalTrack, now: number, layout: VideoLayout, assets: VideoAssets, speed: VideoSpeed) {
