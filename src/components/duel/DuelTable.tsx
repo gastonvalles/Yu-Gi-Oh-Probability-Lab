@@ -14,6 +14,7 @@ import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
+import { IconButton } from '../ui/IconButton'
 import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from '../probability/MatFx'
 import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_TITLES } from '../probability/MatDialogs'
@@ -76,6 +77,13 @@ interface DuelTableProps {
   className?: string
   /** Lo que va adentro de la grilla del campo, encima de las casillas (la banda de la fase, que se ubica sola en la fila del medio). */
   children?: ReactNode
+  /**
+   * La fase como en la mesa que se juega (el replay de un duelo): la caja de la fase al medio del campo (`p2`, la misma `IconButton` `tile`: lima en el turno de abajo, lila en el del otro), de sólo
+   * lectura, en vez de la tira de las seis siglas.
+   */
+  centerPhase?: boolean
+  /** La caja del campo en el duelo del celular (`phoneDuelLayout`: filas, ancho, alto y las variables de las casillas con forma de carta); lleva `data-phone`. */
+  phoneStyle?: CSSProperties | undefined
 }
 
 type Owner = 'mine' | 'theirs'
@@ -111,28 +119,38 @@ const zoneLabel = (owner: Owner, spot: MatSpot, index: number) => {
 
 const CARD_SHADOW = 'shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]'
 
-export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', className, children }: DuelTableProps) {
+export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', className, children, centerPhase = false, phoneStyle }: DuelTableProps) {
   const showMine = show !== 'theirs'
   const showTheirs = show !== 'mine'
   const rows = [...(showTheirs ? THEIR_ROWS : []), middleRow(showTheirs, showMine), ...(showMine ? MINE_ROWS : [])]
   const phase = (turn === 'mine' ? mine : theirs).state.phase
   const hand = theirs.handCount
+  const now = PHASES.find((entry) => entry.id === phase)
 
   return (
     <div className={cx('grid gap-1.5', className)}>
       {showTheirs && hand !== undefined ? <TheirHand count={hand} align="start" medals={theirs.medals?.get('hand') ?? null} /> : null}
-      <div role="group" aria-label={t('duel.table.label')} className={GRID} style={{ '--areas': rows.join(' ') } as CSSProperties}>
+      <div role="group" aria-label={t('duel.table.label')} data-phone={phoneStyle ? '' : undefined} className={cx(GRID, phoneStyle && 'max-sm:gap-0.75')} style={{ '--areas': rows.join(' '), ...phoneStyle } as CSSProperties}>
         {showTheirs ? <SideCells side={theirs} owner="theirs" /> : null}
         {[0, 1].map((index) => (
           <SharedZone key={index} area={`emz${index + 1}`} index={index} mine={mine} theirs={theirs} />
         ))}
-        {[0, 2, 4].map((start, index) => (
-          <div key={start} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
-            {PHASES.slice(start, start + 2).map((entry) => (
-              <PhaseTag key={entry.id} short={entry.short} name={entry.name} active={phase === entry.id} />
-            ))}
+        {centerPhase ? (
+          // La de la mesa (`PracticeMat`, `p2`): cuadrada, del lado menor de su casilla y con 44 px de piso; no se toca (es un replay).
+          <div className="relative grid min-h-0 min-w-0 place-items-center [container-type:size]" style={{ gridArea: 'p2' }}>
+            <IconButton tone="tile" size="sm" tabIndex={-1} aria-disabled="true" aria-label={t('duel.phase.current', { phase: now?.name ?? '' })} data-active={turn === 'mine'} disabled={turn !== 'mine'} className="pointer-events-none size-[100cqmin]! min-h-11 min-w-11 border-2! text-lead font-extrabold leading-none">
+              {now?.short}
+            </IconButton>
           </div>
-        ))}
+        ) : (
+          [0, 2, 4].map((start, index) => (
+            <div key={start} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
+              {PHASES.slice(start, start + 2).map((entry) => (
+                <PhaseTag key={entry.id} short={entry.short} name={entry.name} active={phase === entry.id} />
+              ))}
+            </div>
+          ))
+        )}
         {showMine ? <SideCells side={mine} owner="mine" /> : null}
         {children}
       </div>
@@ -175,8 +193,11 @@ export function TheirHand({
   onCardHover,
   medals,
   align = 'center',
+  below = false,
 }: {
   count: number
+  /** Debajo del campo (la mano de abajo en el replay de un duelo): el abanico espejado, como la tuya en la mesa (el centro más alto, las puntas bajan) y colgado del borde de arriba. */
+  below?: boolean
   /** Los medallones de lo que activó desde la mano (duelo automático, al resolver): sobre el abanico. */
   medals?: readonly ChainMedal[] | null
   /** Cómo la pone su lugar: centrada (encima del campo de la mesa) o arrimada a la izquierda (en una grilla: `DuelTable`, la vista del espectador). */
@@ -264,8 +285,8 @@ export function TheirHand({
               // La marca que busca el barajado del rival: no depende del rol del abanico (`img` o `group`, según se pueda tocar).
               data-their-card=""
               // El ancho manda y el alto sale de la proporción de la carta (nunca los dos fijos).
-              className={cx('pointer-events-auto absolute bottom-0 left-0 block aspect-[421/614] overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
-              style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${-raise}px) rotate(${-fanAngle(index, shown, 2.2)}deg)` }}
+              className={cx('pointer-events-auto absolute left-0 block aspect-[421/614] overflow-hidden', below ? 'top-0' : 'bottom-0', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
+              style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${below ? raise : -raise}px) rotate(${(below ? 1 : -1) * fanAngle(index, shown, 2.2)}deg)` }}
             >
               {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
               {card?.public ? <i aria-hidden="true" data-public="" className="pointer-events-none absolute inset-0 border-2 border-warning motion-safe:animate-pulse-twice" /> : null}

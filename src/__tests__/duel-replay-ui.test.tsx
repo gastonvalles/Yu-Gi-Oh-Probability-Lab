@@ -57,6 +57,26 @@ describe('la pantalla del replay de un duelo', () => {
     expect(screen.getByText('Vista de espectador')).toBeInTheDocument()
   })
 
+  it('se ve como la mesa del duelo: la caja de la fase al medio (sin la tira de siglas), las dos chapas con el borde de quien tiene el turno y las dos manos', () => {
+    const { container } = render(<DuelReplayScreen replay={replayOf('public')} onClose={() => {}} actions={[]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    // El remolino de la mesa de fondo.
+    expect(container.querySelector('.mat-scene')).not.toBeNull()
+    // Una sola caja de la fase, la de quien tiene el turno (abajo: lima), que no se toca; ninguna sigla suelta.
+    const phase = screen.getByRole('button', { name: 'Fase actual: Main Phase 1' })
+    expect(phase).toHaveAttribute('data-active', 'true')
+    expect(phase).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByText('DP')).toBeNull()
+    // Las chapas de la mesa: la de Ana (su turno) con el borde grueso; sin el marcador de antes.
+    const badges = [...container.querySelectorAll('[data-life-score]')]
+    expect(badges).toHaveLength(2)
+    expect(screen.queryByTestId('replay-score')).toBeNull()
+    // Las dos manos en abanico: la de arriba y la de abajo.
+    expect(container.querySelectorAll('[data-rival-drop="hand"]')).toHaveLength(2)
+  })
+
   it('cada cambio de fase sale con la banda de la mesa, del color de quien la pasa (Ana, violeta; Beto, lima), al reproducir o con «Siguiente»; saltar con la línea de tiempo no lo repite', () => {
     vi.useFakeTimers()
     const replay = buildDuelReplay({

@@ -59,6 +59,7 @@ import { ReplayModal } from './ReplayModal'
 import { textLink } from '../ui/typography'
 import { titleOf } from './duel-replay-text'
 import { DuelReplayScreen } from './DuelReplayScreen'
+import { ReplayOverlay } from './ReplayLayer'
 import { ReplayVideoDialog } from './ReplayVideo'
 import { keepReplay } from './SaveReplayDialog'
 import { YourDuels } from './YourDuels'
@@ -225,16 +226,18 @@ export function ReplaysScreen(props: ReplaysScreenProps = {}) {
 
     return (
       <>
-        <DuelReplayScreen
-          key={link}
-          replay={replay}
-          onClose={duels.close}
-          shared={duels.opened.shared ? { onSave: duels.saveOpened } : undefined}
-          actions={[
-            ...(linkFits(link.length, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => void shareReplayLink(replay, title, link).then((outcome) => tellShared(outcome, video)) }] : []),
-            { label: t('meta.duels.video.download'), icon: 'download', onSelect: video },
-          ]}
-        />
+        <ReplayOverlay label={t('meta.duels.viewer', { title })} onClose={duels.close}>
+          <DuelReplayScreen
+            key={link}
+            replay={replay}
+            onClose={duels.close}
+            shared={duels.opened.shared ? { onSave: duels.saveOpened } : undefined}
+            actions={[
+              ...(linkFits(link.length, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => void shareReplayLink(replay, title, link).then((outcome) => tellShared(outcome, video)) }] : []),
+              { label: t('meta.duels.video.download'), icon: 'download', onSelect: video },
+            ]}
+          />
+        </ReplayOverlay>
         <ReplayVideoDialog subject={duels.filming ? { kind: 'duel', replay: duels.filming } : null} onClose={duels.stopFilming} />
       </>
     )

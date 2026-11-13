@@ -182,84 +182,6 @@ export function plateOf(scene: Scene): Rect {
   return { x: field.x - dx, y: field.y - dy, w: field.w + 2 * dx, h: field.h + 2 * dy }
 }
 
-/** La placa del campo (`mat-plate`): levantada con su sombra, luz violeta en el medio, dos aros finos, un brillo cruzado, doble filo y el marco de esquinas y rombos. */
-function paintPlate(ctx: Ctx, scene: Scene, theme: VideoTheme) {
-  const s = scene.layout.scale
-  const r = plateOf(scene)
-  const radius = 18 * s
-  ctx.save()
-  ctx.shadowColor = 'rgb(0 0 0 / 0.7)'
-  ctx.shadowBlur = 46 * s
-  ctx.shadowOffsetY = 24 * s
-  const base = ctx.createLinearGradient(0, r.y, 0, r.y + r.h)
-  base.addColorStop(0, rgba(theme.cardRgb, 0.92))
-  base.addColorStop(1, rgba(theme.backgroundRgb, 0.96))
-  ctx.fillStyle = base
-  roundRect(ctx, r, radius)
-  ctx.fill()
-  ctx.restore()
-  ctx.save()
-  roundRect(ctx, r, radius)
-  ctx.clip()
-  const cx = r.x + r.w / 2
-  const cy = r.y + r.h / 2
-  ellipse(ctx, r, cx, cy, r.w * 0.74, r.h * 0.64, [[0, rgba(theme.primaryHoverRgb, 0.4)], [0.55, rgba(theme.primaryRgb, 0.14)], [0.8, rgba(theme.primaryRgb, 0)]])
-  const far = Math.hypot(r.w / 2, r.h / 2)
-  ctx.lineWidth = far * 0.006
-  for (const [at, alpha] of [[0.196, 0.18], [0.336, 0.12]] as const) {
-    ctx.strokeStyle = rgba(theme.accentRgb, alpha)
-    ctx.beginPath()
-    ctx.arc(cx, cy, far * at, 0, Math.PI * 2)
-    ctx.stroke()
-  }
-  // El brillo cruzado (112°) y la sombra de adentro, abajo.
-  const angle = (112 - 90) * (Math.PI / 180)
-  const half = (Math.abs(r.w * Math.cos(angle)) + Math.abs(r.h * Math.sin(angle))) / 2
-  const sheen = ctx.createLinearGradient(cx - Math.cos(angle) * half, cy - Math.sin(angle) * half, cx + Math.cos(angle) * half, cy + Math.sin(angle) * half)
-  sheen.addColorStop(0.36, rgba(theme.foregroundRgb, 0))
-  sheen.addColorStop(0.5, rgba(theme.foregroundRgb, 0.06))
-  sheen.addColorStop(0.64, rgba(theme.foregroundRgb, 0))
-  ctx.fillStyle = sheen
-  ctx.fillRect(r.x, r.y, r.w, r.h)
-  const bottom = ctx.createLinearGradient(0, r.y + r.h - 70 * s, 0, r.y + r.h)
-  bottom.addColorStop(0, 'rgb(0 0 0 / 0)')
-  bottom.addColorStop(1, 'rgb(0 0 0 / 0.38)')
-  ctx.fillStyle = bottom
-  ctx.fillRect(r.x, r.y + r.h - 70 * s, r.w, 70 * s)
-  ctx.restore()
-  ctx.lineWidth = 1.5 * s
-  ctx.strokeStyle = rgba(theme.primaryHoverRgb, 0.34)
-  roundRect(ctx, r, radius)
-  ctx.stroke()
-  const inset = 16 * s
-  const inner = { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - 2 * inset }
-  ctx.strokeStyle = rgba(theme.accentRgb, 0.15)
-  roundRect(ctx, inner, radius - 8 * s)
-  ctx.stroke()
-  // Las esquinas (dos líneas en L) y los rombos de arriba y abajo.
-  const arm = 36 * s
-  ctx.strokeStyle = rgba(theme.accentRgb, 0.8)
-  ctx.lineWidth = 3.5 * s
-  for (const [x, y, dx, dy] of [[inner.x, inner.y, 1, 1], [inner.x + inner.w, inner.y, -1, 1], [inner.x, inner.y + inner.h, 1, -1], [inner.x + inner.w, inner.y + inner.h, -1, -1]] as const) {
-    ctx.beginPath()
-    ctx.moveTo(x + dx * arm, y)
-    ctx.lineTo(x, y)
-    ctx.lineTo(x, y + dy * arm)
-    ctx.stroke()
-  }
-  const stud = 11 * s
-  for (const y of [r.y, r.y + r.h]) {
-    ctx.save()
-    ctx.translate(cx, y)
-    ctx.rotate(Math.PI / 4)
-    ctx.fillStyle = theme.background
-    ctx.fillRect(-stud / 2 - 5 * s, -stud / 2 - 5 * s, stud + 10 * s, stud + 10 * s)
-    ctx.fillStyle = rgba(theme.accentRgb, 0.95)
-    ctx.fillRect(-stud / 2, -stud / 2, stud, stud)
-    ctx.restore()
-  }
-}
-
 /**
  * El arte de la Magia de Campo de fondo de una mitad del campo (`mat-field-art`): cubre la mitad (`object-fit: cover`, un poco por arriba del medio) y se desvanece en todos sus
  * bordes, más hacia la fila del medio (`top`: la mitad de arriba, del rival). Se recorta una vez; `alpha` es su fundido (la mesa lo deja al 60 %).
@@ -416,17 +338,40 @@ function drawSlot(ctx: Ctx, slot: SceneSlot, assets: VideoAssets, s: number, hid
   }
 }
 
-/** La placa de vidas de un lado: el nombre chico y las vidas grandes, en el color de su dueño (violeta claro el tuyo, ámbar el del rival). */
-function drawScore(ctx: Ctx, rect: Rect, name: string, lp: number, color: string, align: 'left' | 'right', assets: VideoAssets, s: number) {
-  const x = align === 'left' ? rect.x : rect.x + rect.w
-  ctx.textAlign = align
+/**
+ * La chapa de vidas de un lado, como la de la mesa (`LifeBadge`): recta, carbón al 82 %, con el borde de su dueño (3 px la de quien tiene el turno; la otra, tenue de 1 px), arriba la etiqueta con el
+ * nombre (violeta con texto blanco la de abajo, lima con texto carbón la de arriba) y abajo el número grande.
+ */
+function drawScore(ctx: Ctx, rect: Rect, name: string, lp: number, mine: boolean, active: boolean, assets: VideoAssets, s: number) {
+  const { theme } = assets
+  const [fill, ink] = mine ? [theme.primary, '#ffffff'] : [theme.info, theme.background]
+  ctx.font = `700 ${16 * s}px ${FONT}`
+  const tag = wrap(ctx, name.toUpperCase(), rect.w * 0.3, 1)[0]!
+  const tagW = ctx.measureText(tag).width + 12 * s
+  ctx.font = `800 ${40 * s}px ${FONT}`
+  const w = Math.max(tagW, ctx.measureText(String(lp)).width) + 20 * s
+  const h = 76 * s
+  const x = mine ? rect.x : rect.x + rect.w - w
+  const y = rect.y
+  ctx.fillStyle = rgba(theme.backgroundRgb, 0.82)
+  ctx.fillRect(x, y, w, h)
+  const line = (active ? 3 : 1) * s
+  ctx.lineWidth = line
+  ctx.strokeStyle = active ? fill : rgba(theme.fieldLineRgb, 0.25)
+  ctx.strokeRect(x + line / 2, y + line / 2, w - line, h - line)
+  const inner = mine ? x + 10 * s : x + w - 10 * s
+  ctx.fillStyle = fill
+  ctx.fillRect(mine ? inner : inner - tagW, y + 8 * s, tagW, 20 * s)
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = ink
+  ctx.font = `700 ${16 * s}px ${FONT}`
+  ctx.fillText(tag, mine ? inner + tagW / 2 : inner - tagW / 2, y + 19 * s)
+  ctx.textAlign = mine ? 'left' : 'right'
   ctx.textBaseline = 'alphabetic'
-  ctx.fillStyle = assets.theme.muted
-  ctx.font = `600 ${20 * s}px ${FONT}`
-  ctx.fillText(wrap(ctx, name, rect.w * 0.3, 1)[0]!, x, rect.y + 26 * s)
-  ctx.fillStyle = color
-  ctx.font = `700 ${40 * s}px ${FONT}`
-  ctx.fillText(String(lp), x, rect.y + 72 * s)
+  ctx.fillStyle = theme.foreground
+  ctx.font = `800 ${40 * s}px ${FONT}`
+  ctx.fillText(String(lp), inner, y + 66 * s)
 }
 
 /** El arte de campo de un lado en un momento: cuál y cuánto se ve (0 a 1: su fundido de entrada o de salida). */
@@ -551,11 +496,11 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
   const full = { x: 0, y: 0, w: scene.width, h: scene.height }
 
   layer(ctx, assets, `mesa:${scene.width}:${Math.round(plateOf(scene).y)}:${Math.round(plateOf(scene).h)}`, full, (target) => {
+    // Sin placa: como en la mesa, las casillas son transparentes y se ve el fondo a través.
     paintScene(target, scene, theme)
-    paintPlate(target, scene, theme)
   })
 
-  // El arte de la Magia de Campo de cada lado, encima de la placa y debajo de las casillas.
+  // El arte de la Magia de Campo de cada lado, encima del fondo y debajo de las casillas.
   scene.sides.forEach((side, index) => {
     const shown = fields?.[index] ?? (side.fieldArt ? [{ src: side.fieldArt, alpha: 1 }] : [])
     for (const art of shown) {
@@ -564,15 +509,10 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
     }
   })
 
-  // Las casillas: un hueco oscuro con su línea, como en la mesa.
+  // Las casillas, como en la mesa (`CELL_LOOK`): rectas, sin relleno y con la línea fina del campo al 50 %.
   ctx.lineWidth = 1.5 * s
-  for (const r of scene.cells) {
-    roundRect(ctx, r, 8 * s)
-    ctx.fillStyle = rgba(theme.backgroundRgb, 0.12)
-    ctx.fill()
-    ctx.strokeStyle = rgba(theme.fieldLineRgb, 0.3)
-    ctx.stroke()
-  }
+  ctx.strokeStyle = rgba(theme.fieldLineRgb, 0.5)
+  for (const r of scene.cells) ctx.strokeRect(r.x, r.y, r.w, r.h)
 
   scene.sides.forEach((side, index) => {
     for (const slot of side.slots) {
@@ -594,8 +534,7 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
   ctx.shadowColor = theme.info
   ctx.shadowBlur = 14 * s
   for (const r of moving ? [] : scene.focus) {
-    roundRect(ctx, { x: r.x - 4 * s, y: r.y - 4 * s, w: r.w + 8 * s, h: r.h + 8 * s }, 8 * s)
-    ctx.stroke()
+    ctx.strokeRect(r.x - 4 * s, r.y - 4 * s, r.w + 8 * s, r.h + 8 * s)
   }
   ctx.restore()
 
@@ -612,8 +551,9 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
     ctx.font = `600 ${20 * s}px ${FONT}`
     ctx.fillText(wrap(ctx, scene.heading.subtitle, layout.score.w, 1)[0]!, layout.score.x, layout.score.y + 70 * s)
   } else {
-    drawScore(ctx, layout.score, mine.name, lp?.[0] ?? mine.lp, theme.accent, 'left', assets, s)
-    drawScore(ctx, layout.score, theirs.name, lp?.[1] ?? theirs.lp, theme.infoSoft, 'right', assets, s)
+    // Las chapas de la mesa (el borde grueso dice de quién es el turno) y, entre ellas, el turno.
+    drawScore(ctx, layout.score, mine.name, lp?.[0] ?? mine.lp, true, scene.turn === 0, assets, s)
+    drawScore(ctx, layout.score, theirs.name, lp?.[1] ?? theirs.lp, false, scene.turn === 1, assets, s)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = scene.turn === 0 ? theme.accent : theme.infoSoft
