@@ -3665,7 +3665,7 @@ function PracticeMatBody({
         {duel?.prompt ? (
           <div ref={promptLayerRef} data-testid="duel-prompt-layer" data-spot="extra" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] flex flex-col items-center justify-end px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
-            <div ref={promptRef} className="pointer-events-auto flex min-h-0 w-[min(24rem,100%)] max-w-full flex-col has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
+            <div ref={promptRef} className="pointer-events-auto flex min-h-0 w-[min(24rem,100%)] max-w-full flex-col has-data-leaving:pointer-events-none has-data-minimized:w-auto">
               <LayerBackContext value={layerBack}>{duel.prompt}</LayerBackContext>
             </div>
           </div>

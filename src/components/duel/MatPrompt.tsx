@@ -7,7 +7,6 @@ import { matCardPositionKey, touchOr, useDraggableOffset } from '../../app/use-d
 import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
 import { BottomSheet, useSheetHost } from '../ui/BottomSheet'
-import { cx } from '../ui/cx'
 import { PromptHandle } from '../ui/SheetHandle'
 
 interface MatPromptProps {
@@ -15,20 +14,11 @@ interface MatPromptProps {
   label: string
   /** La fila de arriba (lo que es y la pregunta). */
   head: ReactNode
-  /** Sólo en escritorio: a la derecha de la cabeza; no suma un renglón (el modo de respuesta). */
-  aside?: ReactNode
   children: ReactNode
   /** `data-prompt`: qué pregunta es (la mesa y las pruebas la buscan por esto). */
   kind: string
-  /** Más ancho (`data-prompt-row`: una banda con cartas). */
-  row?: boolean
-  role?: 'status' | 'group'
-  labelledBy?: string
-  /** Al abrirse (y al reabrirlo), el foco va a esto (un selector adentro del cartel). */
-  focus?: string
   /** Escape lo minimiza: sólo si Escape no hace otra cosa (en una cadena es «No responder»; con «Cancelar», cancela). */
   escape?: boolean
-  className?: string
 }
 
 /**
@@ -42,7 +32,7 @@ interface MatPromptProps {
  * Siempre abre entero: sólo lo minimiza la persona. Minimizado es de esta decisión (quien lo usa le da una `key` por decisión: las repreguntas de la misma lo actualizan en el lugar y una nueva abre entera).
  * Lleva `data-minimized` minimizado (en el celular, `data-lowered`). Contestado, sale (va dentro de un `Presence`).
  */
-export function MatPrompt({ label, head, aside, children, kind, row = false, role = 'status', labelledBy, focus, escape = false, className }: MatPromptProps) {
+export function MatPrompt({ label, head, children, kind, escape = false }: MatPromptProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const leaving = useLeaving()
   const host = useSheetHost()
@@ -56,12 +46,10 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
 
   useEscapeKey(() => setFold(true), desktop && escape && !minimized && !leaving)
   useEffect(() => {
-    const target = minimized && desktop ? '[data-prompt-show]' : focus
+    if (minimized && desktop) ref.current?.querySelector<HTMLElement>('[data-prompt-show]')?.focus({ preventScroll: true })
+  }, [minimized, desktop])
 
-    if (target) ref.current?.querySelector<HTMLElement>(target)?.focus({ preventScroll: true })
-  }, [minimized, focus, desktop])
-
-  const attrs = { role, 'aria-labelledby': labelledBy, 'data-prompt': kind, ...(row ? { 'data-prompt-row': '' } : {}) }
+  const attrs = { role: 'status', 'data-prompt': kind }
   // La cabeza: lo que es y la pregunta (sin fase ni turno: cada dato, una vez). Bajada en el celular no se repite: queda la tira con la pregunta corta.
   const top = (
     <div className="grid min-w-0 flex-1 gap-1">
@@ -70,13 +58,12 @@ export function MatPrompt({ label, head, aside, children, kind, row = false, rol
   )
   const view = desktop ? (
     minimized ? (
-      <PromptHandle ref={ref} role={role} aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} move={move.head} {...move.root} />
+      <PromptHandle ref={ref} role="status" aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} move={move.head} {...move.root} />
     ) : (
       // Entre grupos, 8 px (no 12): en una ventana baja cada píxel es de la carta.
-      <div ref={ref} {...attrs} {...move.root} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
+      <div ref={ref} {...attrs} {...move.root} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter">
         <div {...swipe} title={t('duel.prompt.move')} className="flex cursor-grab touch-none select-none items-center gap-2 active:cursor-grabbing">
           {top}
-          {aside}
         </div>
         {/* Más alto que lo que hay arriba de la fila Extra, el cuerpo se desplaza (la fila de arriba, con minimizar, queda a la vista). Llega hasta el borde del cartel (`-mx-4`, y 4 px arriba y abajo): lo que
             se desplaza no corta el aro del foco ni una fila de botones que no entra en 360 px. La fila de acciones (lo último, si hay algo antes) queda siempre a la vista, abajo, y opaca de borde a borde:
