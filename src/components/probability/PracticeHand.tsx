@@ -29,7 +29,8 @@ import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
-import { ChainBadge, FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, VOIDED_ART, chainLinkLabel, fxVars } from './MatFx'
+import type { TallyView } from '../../app/auto/tally'
+import { ChainBadge, FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, tallyLabel } from './MatFx'
 import { CARD_BACK, glowFrame } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
@@ -99,6 +100,8 @@ interface PracticeHandProps {
   links?: ReadonlyMap<string, ChainBadgeData>
   /** Los medallones de la cadena de lo activado desde la mano, al resolver (`medalsOf`): van sobre la mano. */
   medals?: readonly ChainMedal[]
+  /** En el duelo automático, lo que cuenta una carta de tu mano (Nibiru: `tally.ts`), por id: su número arriba a la derecha (`TallyChip`). */
+  tallies?: ReadonlyMap<string, TallyView>
   /** Las que no brillan se oscurecen (una salida o un problema del Lab; en un duelo, no: la mano sigue a la vista). */
   dimUnlit: boolean
   /** Mano no jugable: las cartas se ven grises. */
@@ -155,7 +158,7 @@ const siblingIndex = (element: HTMLElement) => (element.parentElement ? Array.pr
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
  */
-export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowOf, links, medals, dimUnlit, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowOf, links, medals, tallies, dimUnlit, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   // El tamaño de la carta sale de la mano inicial (no cambia al jugar o robar), pero la separación, el abanico y el centrado salen de las cartas que hay: al salir una, las que quedan se vuelven a centrar.
@@ -391,6 +394,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
             flash={flashing ? flash : null}
             targeted={targeted.has(card.id)}
             link={links?.get(card.id) ?? null}
+            tally={tallies?.get(card.id) ?? null}
             selected={selected}
             getDeckRect={deckRect}
             flyIn={dealsFromDeck ? dealsFromDeck(card.id) : true}
@@ -428,6 +432,8 @@ interface HandCardProps {
   targeted: boolean
   /** Sus eslabones en la cadena a la vista: van en su nombre (la insignia la dibuja la mano). */
   link: ChainBadgeData | null
+  /** Lo que cuenta (Nibiru en el duelo automático), o null: el número de arriba a la derecha y en su nombre. */
+  tally: TallyView | null
   selected: boolean
   getDeckRect: () => DOMRect | null
   /** false: la carta llega de otro lado de la mesa (la trae el vuelo entre zonas), sin el reparto desde el mazo. */
@@ -453,6 +459,7 @@ const HandCard = memo(function HandCard({
   flash,
   targeted,
   link,
+  tally,
   selected,
   getDeckRect,
   flyIn,
@@ -540,7 +547,8 @@ const HandCard = memo(function HandCard({
   }, [])
 
   const frame = glowFrame(glow)
-  const label = targeted ? t('practice.card.targeted', { name: card.name }) : card.name
+  const named = tallyLabel(card.name, tally)
+  const label = targeted ? t('practice.card.targeted', { name: named }) : named
   const style: CSSProperties = {
     width: layout.cardWidth,
     // Arrastrada, la posición la escribe `PracticeHand` por el ref en cada cuadro: React no la toca (y al soltar vuelve a poner la de reposo).
@@ -587,6 +595,7 @@ const HandCard = memo(function HandCard({
         limitBadgeSize="sm"
       />
       <div ref={backRef} data-back className={CARD_BACK} aria-hidden="true" />
+      {tally && state !== 'dragging' ? <TallyChip tally={tally} /> : null}
       {selected ? <FxFrame tone="cyan" /> : null}
       {frame ? <FxFrame {...frame} /> : null}
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}

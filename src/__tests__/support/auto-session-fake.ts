@@ -5,6 +5,7 @@
 import type { Adapter, CardRef, CorePlace, Side } from '../../app/auto/adapter'
 import type { AutoSession, AutoSnapshot, SessionFault } from '../../app/auto/auto-session'
 import { LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../../app/auto/protocol'
+import { NO_TALLY } from '../../app/auto/tally'
 import { createMatState, type MatAction, type MatPile, type MatPos, type MatState } from '../../app/practice-mat'
 import type { MatCard } from '../../components/probability/PracticeMat'
 import { card } from './practice-mat-harness'
@@ -102,13 +103,13 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
   const states = statesOf(cards)
   const listeners = new Set<() => void>()
   const sideOf = (controller: Seat): Side => (controller === 0 ? 'mine' : 'theirs')
-  const overlay: Adapter['overlay'] = { stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [8000, 8000], turn: 1, turnPlayer: 0, phase: 4, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null], cause: null }
+  const overlay: Adapter['overlay'] = { stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [8000, 8000], turn: 1, turnPlayer: 0, phase: 4, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null], cause: null, tally: NO_TALLY }
   const adapter: Adapter = {
     initial: { mine: states.mine, theirs: states.theirs },
     mine: states.mine,
     theirs: { initial: states.theirs, acts: [], state: states.theirs, known: {} },
     overlay,
-    apply: () => ({ mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [], lp: [], hands: [] }),
+    apply: () => ({ mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [], lp: [], hands: [], tally: [] }),
     idAt: (place: CorePlace) => cards.find((spot) => spot.side === sideOf(place.controller) && spot.location === place.location && spot.sequence === place.sequence)?.id ?? null,
     locationOf: (ref: CardRef) => {
       const spot = cards.find((entry) => entry.side === ref.side && entry.id === ref.id)
@@ -129,6 +130,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     chainSteps: [],
     lifeSteps: [],
     handShuffles: [],
+    tallySteps: [],
     mine: states.mine,
     theirs: states.theirs,
     overlay: adapter.overlay,

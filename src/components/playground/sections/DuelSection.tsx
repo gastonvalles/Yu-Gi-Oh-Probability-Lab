@@ -13,6 +13,7 @@ import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
 import { RivalExtraDeck } from '../../duel/RivalExtraDeck'
 import { DEFAULT_RIVAL_EXTRA, HANDTRAP_CATALOG, type ExtraPick, type HandtrapConfig } from '../../../app/handtraps'
 import type { PickStat } from '../../../app/auto/ask-ui'
+import type { TallyView } from '../../../app/auto/tally'
 import type { ChainMedal } from '../../../app/card-glow'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { DuelOffline } from '../../duel/DuelOffline'
@@ -103,6 +104,7 @@ export function DuelSection() {
       <FieldArtSample duel={duel} />
       <ChainBadgeSample duel={duel} />
       <StatTagSample duel={duel} />
+      <TallySample duel={duel} />
       <MaterialSamples />
       <HoldSample />
       <ShuffleSamples />
@@ -293,6 +295,45 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
     >
       <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'solve', label: 'Resolviendo' }, { value: 'off', label: 'Sin cadena' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
+    </Specimen>
+  )
+}
+
+/**
+ * Lo que cuenta una carta en el duelo automático (`TallyChip`; Angelechy Shatranga, los efectos de monstruo del rival): el número arriba a la derecha de la carta en las Mágicas y Trampas, de los dos
+ * lados; en el umbral, en ámbar con su aro. «Sumar uno» lo sube con su rebote.
+ */
+function TallySample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
+  const [count, setCount] = useState(2)
+  const sides = useMemo(() => {
+    // La Mágica boca arriba de cada lado hace de Shatranga.
+    const tally = (side: DuelSideView): ReadonlyMap<string, TallyView> => new Map(side.state.st.flatMap((placed) => (placed && placed.pos !== 'set' ? [[placed.id, { count, limit: 5, counts: 'effects' as const }]] : [])))
+
+    return { mine: { ...duel.mine, tallies: tally(duel.mine) }, theirs: { ...duel.theirs, tallies: tally(duel.theirs) } }
+  }, [duel, count])
+
+  return (
+    <Specimen
+      title="Lo que cuenta una carta"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          Cartas como Angelechy Shatranga (efectos de monstruo del rival) o Nibiru (Invocaciones del rival, en tu mano) llevan su número arriba a la derecha, derecho y en carbón como la placa del ATK/DEF, visible para los dos. Al llegar a su umbral, ámbar con su aro: «ojo». Cada número nuevo entra con un rebote corto (quieto con movimiento reducido); lo que se lee va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>TallyChip</Tag>), <Tag>app/auto/tally.ts</Tag>
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" onClick={() => setCount((value) => value + 1)}>
+          Sumar uno
+        </Button>
+        <Button variant="tertiary" onClick={() => setCount(0)}>
+          Volver a 0
+        </Button>
+      </div>
+      <div className="mx-auto w-full max-w-[24.375rem] [--cell:3.57rem]">
+        <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
+      </div>
     </Specimen>
   )
 }

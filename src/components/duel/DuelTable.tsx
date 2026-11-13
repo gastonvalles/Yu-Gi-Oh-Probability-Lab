@@ -1,6 +1,7 @@
 import { useContext, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
+import type { TallyView } from '../../app/auto/tally'
 import { pileLinksOf, type ChainBadgeData, type ChainMedal } from '../../app/card-glow'
 import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
@@ -15,7 +16,7 @@ import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { IconButton } from '../ui/IconButton'
-import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel } from '../probability/MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel, tallyLabel } from '../probability/MatFx'
 import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZONE_CARD, ZoneLines } from '../probability/PracticeMat'
@@ -63,6 +64,8 @@ export interface DuelSideView {
   links?: ReadonlyMap<string, ChainBadgeData>
   /** Los medallones de la cadena al resolver, por lugar (`medalsOf`): van donde se activó cada eslabón (la casilla, aunque quede vacía; la pila; la mano). */
   medals?: ReadonlyMap<string, readonly ChainMedal[]>
+  /** Lo que cuentan sus cartas (el duelo automático, `talliesOf`: Angelechy Shatranga), por id: el número de arriba a la derecha (`TallyChip`) y en su nombre. */
+  tallies?: ReadonlyMap<string, TallyView>
 }
 
 /** Qué se dibuja: los dos campos, sólo el propio o sólo el del rival (para elegir entre uno y otro en una pantalla chica). */
@@ -445,7 +448,8 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   const link = side.links?.get(placed.id)
   const picked = side.pickStats?.get(placed.id)
   const stat = picked ?? side.stats?.get(placed.id) ?? null
-  const named = picked ? pickStatLabel(label, picked) : stat ? statLabel(label, stat) : label
+  const tally = side.tallies?.get(placed.id) ?? null
+  const named = tallyLabel(picked ? pickStatLabel(label, picked) : stat ? statLabel(label, stat) : label, tally)
 
   return (
     <>
@@ -475,6 +479,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         {targeted ? <TargetMark /> : null}
         {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: named })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
         {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white">{placed.counters}</span> : null}
+        {tally ? <TallyChip tally={tally} /> : null}
       </div>
       {spot === 'mz' || spot === 'emz' ? <StatTag stat={stat} /> : null}
     </>

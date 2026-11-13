@@ -1,6 +1,7 @@
 import { cloneElement, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type Ref, type RefObject } from 'react'
 
 import type { PickStat } from '../../app/auto/ask-ui'
+import type { TallyView } from '../../app/auto/tally'
 import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
 import { printedBadge, statShift } from '../../app/field-stats'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
@@ -325,6 +326,33 @@ export function StatTag({ stat, className }: { stat: PickStat | null; className?
         ) : null}
       </span>
     </>
+  )
+}
+
+/** Lo que cuenta una carta (`tally.ts`), en una frase: «Efectos de monstruo del rival este turno: 3 de 5». La línea del visor. */
+export const tallyText = ({ counts, count, limit }: TallyView) => t(`auto.tally.${counts}`, { count, limit })
+
+/** El nombre de una carta que cuenta algo, con lo que cuenta: el número de la mesa es decorativo y esto es lo que se lee. */
+export const tallyLabel = (name: string, tally: TallyView | null | undefined) => (tally ? t('auto.tally.label', { name, what: tallyText(tally) }) : name)
+
+/**
+ * El número que cuenta una carta (Angelechy Shatranga en las Mágicas y Trampas, Nibiru en tu mano: `tally.ts`), arriba a la derecha (los contadores van a la izquierda), en carbón como la placa del
+ * ATK/DEF y derecho también en el campo del rival. Al llegar a su umbral, en ámbar con su aro: «ojo», el rival ya no puede (Shatranga) o vos ya podés (Nibiru). Cada número nuevo entra con un rebote
+ * corto (`animate-pop`: la `key` es el número); con movimiento reducido, quieto. Sólo se mira: lo que se lee va en el nombre de la carta (`tallyLabel`).
+ */
+export function TallyChip({ tally }: { tally: TallyView }) {
+  const reached = tally.count >= tally.limit
+
+  return (
+    <span
+      key={tally.count}
+      aria-hidden="true"
+      data-tally={tally.count}
+      data-tally-reached={reached ? 'true' : 'false'}
+      className={cx('pointer-events-none absolute right-0.5 top-0.5 z-2 grid h-4.5 min-w-4.5 animate-pop place-items-center bg-background/92 px-0.5 text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', reached ? 'text-warning-soft ring-2 ring-warning' : 'text-foreground ring-1 ring-border-subtle')}
+    >
+      {tally.count}
+    </span>
   )
 }
 

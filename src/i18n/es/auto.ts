@@ -497,4 +497,8 @@ export const auto = {
   'auto.why.limits': 'También rige (puede no ser la causa):',
   'auto.why.mismatch': '¿No coincide con lo que esperabas?',
   'auto.limits.label': { one: '{count} restricción activa', other: '{count} restricciones activas' },
+  // Lo que cuenta una carta (Angelechy Shatranga, Nibiru): la línea del visor y, con el nombre, lo que se lee de la carta en la mesa.
+  'auto.tally.effects': 'Efectos de monstruo del rival este turno: {count} de {limit}',
+  'auto.tally.summons': 'Invocaciones del rival este turno: {count} (se activa con {limit})',
+  'auto.tally.label': '{name}. {what}',
 } as const

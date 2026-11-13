@@ -4,6 +4,7 @@ import { nowStat, type PickStat } from '../field-stats'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
 import { spotOf, type Adapter, type AutoOverlay, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
 import type { AskWhyView } from './ask-why'
+import type { TallyView } from './tally'
 import { passivePolicy } from './policies'
 import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
 
@@ -247,6 +248,8 @@ export interface AutoLink {
   cardPick: { label: string; eligible: ReadonlySet<string>; chosen: readonly string[]; onToggle: (id: string) => void; done: { label: string; onSelect: () => void } | null; cancel: (() => void) | null; stats?: ReadonlyMap<string, PickStat> } | null
   /** El ATK/DEF de ahora de tus monstruos boca arriba del campo, siempre (`fieldStatsOf`): la etiqueta de cada uno. Estable por valor: cambia sólo si cambia un número. */
   stats?: ReadonlyMap<string, PickStat>
+  /** Lo que cuentan tus cartas boca arriba en las Mágicas y Trampas y las de tu mano (`talliesOf`), por id: su número. Estable por valor. */
+  tallies?: ReadonlyMap<string, TallyView>
   /** De qué carta es lo que se elige en la mesa o en el visor (una casilla, cartas) y si es su costo o su efecto (`ask-why.ts`): la línea `AskWhy`, con lo que se pide. */
   why?: AskWhyView | null
   /** El visor de pilas con sólo las candidatas (una búsqueda en el deck); `many` como `PileMany`. */

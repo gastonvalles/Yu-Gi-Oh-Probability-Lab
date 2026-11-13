@@ -82,6 +82,19 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
     expect(screen.queryByText('Field')).toBeNull()
   })
 
+  it('lo que cuenta la carta (el duelo automático) va en una línea debajo de sus números; en su umbral, en ámbar', () => {
+    const view = render(<DuelCardDock peek={peek(blue)} tally={{ count: 3, limit: 5, counts: 'effects' }} />)
+    const line = () => document.querySelector('[data-tally-line]')
+
+    expect(line()).toHaveTextContent('Efectos de monstruo del rival este turno: 3 de 5')
+    expect(line()).toHaveClass('text-info')
+    view.rerender(<DuelCardDock peek={peek(blue)} tally={{ count: 5, limit: 5, counts: 'summons' }} />)
+    expect(line()).toHaveTextContent('Invocaciones del rival este turno: 5 (se activa con 5)')
+    expect(line()).toHaveClass('text-warning-soft')
+    view.rerender(<DuelCardDock peek={peek(blue)} />)
+    expect(line()).toBeNull()
+  })
+
   it('se inclina en 3D hacia el mouse y vuelve al irse', async () => {
     render(<DuelCardDock peek={peek(blue)} />)
 
