@@ -44,6 +44,15 @@ const panel = () => screen.getByRole('region', { name: 'Pasos y combos' })
 /** La lista de pasos (la última jugada arriba y la mano inicial al final), como la lee quien mira: el número y la frase (sin el botón de la nota de un combo guardado). */
 const stepButtons = (list: HTMLElement) => within(list).getAllByRole('button').filter((button) => button.hasAttribute('data-divider'))
 const steps = () => stepButtons(within(panel()).getByRole('list', { name: 'Jugadas' })).map((button) => button.textContent)
+const band = () => document.querySelector('[data-fx="banner"]')
+/**
+ * Una jugada que llega con el cartel de una fase a la vista espera a que se vaya y sale enseguida, en orden (TI-275: con un cartel en curso no se juega). Se avanza de a poco hasta que
+ * la lista la anota, y se devuelve si en ese momento el cartel seguía.
+ */
+const untilListed = (count: number) => {
+  for (let ms = 0; steps().length < count && ms < 3_000; ms += 50) act(() => vi.advanceTimersByTime(50))
+  return band() !== null
+}
 
 describe('auto-screen · los pasos de la práctica', () => {
   it('la mano de apertura es el paso 0 («Mano inicial») y la lista crece con lo que la mesa cuenta, no antes: la SP y la M1 que pasan solas y lo que juega el núcleo', () => {
@@ -70,7 +79,11 @@ describe('auto-screen · los pasos de la práctica', () => {
     // Lo que el núcleo cuenta llega a la lista al ritmo de la mesa (un paso por vez).
     core(() => fake.events([SUMMON, to('battle')]))
     expect(steps()).toHaveLength(3)
+    // Llega con el cartel de la Main Phase 1 a la vista: espera a que se vaya (no se pierde ni se adelanta).
+    expect(band()).not.toBeNull()
     step()
+    expect(steps()).toHaveLength(3)
+    expect(untilListed(4)).toBe(false)
     expect(steps()[0]).toBe('3Invocación Normal de Ash Blossom')
     expect(inHand('Ash Blossom')).toBeNull()
     step()
@@ -153,7 +166,9 @@ describe('auto-screen · guardar combos', () => {
     expect(saveButton()).toBeDisabled()
     core(() => fake.events([to('standby'), to('main1'), SUMMON]))
     core(() => fake.ask(IDLE))
-    for (let n = 0; n < 3; n += 1) step()
+    for (let n = 0; n < 2; n += 1) step()
+    // La Invocación, detrás del cartel de la Main Phase 1 (TI-275).
+    expect(untilListed(4)).toBe(false)
     expect(saveButton()).toBeEnabled()
     fireEvent.click(saveButton())
     const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })
