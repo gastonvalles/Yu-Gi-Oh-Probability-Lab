@@ -18,6 +18,10 @@ export const common = {
   'common.palette': 'Colores',
   'common.palette.carbon': 'Carbón',
   'common.palette.indigo': 'Índigo',
+  // La calidad de los efectos (`app/effects.ts`): Livianos, para un celular flojo.
+  'common.effects': 'Efectos',
+  'common.effects.full': 'Completos',
+  'common.effects.lite': 'Livianos',
   'common.selectPlaceholder': 'Elegir',
   'common.selectCount': { one: '{count} elegido', other: '{count} elegidos' },
   'common.siteDescription': 'Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!: armá tu deck, clasificá cartas y medí su consistencia.',

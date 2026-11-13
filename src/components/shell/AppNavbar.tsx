@@ -3,7 +3,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { PaletteSwitcher } from '../ui/PaletteSwitcher'
+import { EffectsSwitcher, PaletteSwitcher } from '../ui/PaletteSwitcher'
 import { AppBrand } from './AppBrand'
 
 interface AppNavbarProps {
@@ -60,6 +60,7 @@ export function AppNavbar({ collapsed, onToggleCollapsed, onSearch, onMascots, c
           <Icon name="paw" size={22} />
         </IconButton>
         <PaletteSwitcher />
+        <EffectsSwitcher />
         <LanguageSwitcher />
       </div>
     </header>

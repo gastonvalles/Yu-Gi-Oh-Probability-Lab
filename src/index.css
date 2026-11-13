@@ -1969,11 +1969,25 @@
 }
 
 /*
- * «Impacto Ligero»: el prototipo de sensación de juego (sólo en /playground, `playground/sections/GameFeelSection.tsx`). Todavía no es regla: lo decide Gastón, y por eso va
+ * «Efectos: Livianos» (☰, `app/effects.ts`): `data-effects='lite'` en el html. `fx-lite:` esconde o apaga lo que sobra en un celular flojo (los destellos de más, la sacudida, la
+ * mezcla aditiva); la respuesta al toque no cambia.
+ */
+@custom-variant fx-lite (&:where([data-effects='lite'], [data-effects='lite'] *));
+
+/*
+ * «Impacto Ligero»: el kit de sensación de juego (el rebote de los botones ya es de `ui/`; lo demás, todavía sólo en /playground, `playground/sections/GameFeelSection.tsx`). Va
  * junto y aparte. Todo en el compositor (`scale`, `translate`, `rotate`, `opacity`); lo que se mezcla en aditivo (`mix-blend-plus-lighter`) es una capa quieta que sólo cambia su
  * opacidad y su escala. `static`: los tokens salen siempre en `:root`, porque el JS de la muestra los lee de ahí (la Web Animations API no resuelve `var()`).
  */
 @theme static {
+  /*
+   * Los colores de los efectos (los del documento de Gastón: «dorados, cian eléctrico y rojo intenso»), no de la interfaz: botones, fondos y texto siguen con la paleta (Carbón o Índigo) y
+   * éstos no cambian con ella. Destello: la luz que pasa o estalla (el brillo en reposo, las chispas). Energía: lo que une o se expande (el anillo de impacto, los cortes). Impacto: lo que golpea o se rompe.
+   */
+  --color-fx-destello: #ffcf4a;
+  --color-fx-energia: #2ee6ff;
+  --color-fx-impacto: #ff3b4e;
+
   /* El rebote con pasada (el «Ease-Out-Back» del documento): un 10 % más allá y vuelve. Para lo que entra entero (una pantalla, un número que golpea). */
   --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
   /* El rebote de un botón al soltarlo, de 90 % a 100 % pasando por 108 % (marcado) o 104 % (suave): por tramos (`linear()`), porque un cubic-bezier no se pasa un 80 %. */

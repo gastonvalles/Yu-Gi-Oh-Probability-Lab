@@ -4,7 +4,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { PaletteSwitcher } from '../ui/PaletteSwitcher'
+import { EffectsSwitcher, PaletteSwitcher } from '../ui/PaletteSwitcher'
 import { MiniGuide } from './MiniGuide'
 import { AppBrand } from './AppBrand'
 import { mascotsNavItem, searchNavItem, type NavGroup } from './nav-model'
@@ -25,12 +25,13 @@ interface AppSidebarProps {
   className?: string
 }
 
-/** Abajo del todo del menú (y del cajón del celular): el idioma y los colores. Las mascotas van arriba de esto, como una preferencia más (abren su modal). */
+/** Abajo del todo del menú (y del cajón del celular): el idioma, los colores y los efectos. Las mascotas van arriba de esto, como una preferencia más (abren su modal). */
 export function MenuTools({ className }: { className?: string }) {
   return (
     <div className={cx('flex flex-wrap items-center justify-between gap-2', className)}>
       <LanguageSwitcher />
       <PaletteSwitcher />
+      <EffectsSwitcher />
     </div>
   )
 }
