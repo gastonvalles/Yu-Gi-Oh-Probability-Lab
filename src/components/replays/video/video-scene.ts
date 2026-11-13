@@ -4,7 +4,7 @@ import { replayCodes } from '../../../app/duel-replay-share'
 import { matEffects, type MatEffects, type ShowcaseKind, type SpotlightKind } from '../../../app/mat-effects'
 import { describeStep } from '../../../app/mat-step-info'
 import { KIND_KEY, ORIGIN_KEY, routeOf } from '../../../app/mat-step-text'
-import { isToken, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
+import { FOREIGN_PREFIX, isToken, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
 import { artOfDrawId, passcodeOfDrawId } from '../../duel/duel-art'
 import { phoneDuelLayout } from '../../probability/compact-field'
@@ -367,7 +367,7 @@ export function sideSlots(state: MatState, layout: VideoLayout, rows: Rows, top:
   ]
 }
 
-/** Las cartas que nombra una jugada (en un lote, las de todas sus partes); `other` las que son del otro lado (a quién ataca). */
+/** Las cartas que nombra una jugada (en un lote, las de todas sus partes); `other` las que son del otro lado (a quién ataca; la que se le da, ya en su campo). */
 export function actionIds(action: MatAction): { own: string[]; other: string[] } {
   if (action.type === 'batch') {
     const parts = action.actions.map(actionIds)
@@ -380,7 +380,7 @@ export function actionIds(action: MatAction): { own: string[]; other: string[] }
     ...(action.type === 'summon' ? action.materials : []),
     ...(action.type === 'attach' ? [action.to] : []),
   ]
-  return { own, other: action.type === 'attack' && action.target ? [action.target] : [] }
+  return { own, other: action.type === 'attack' && action.target ? [action.target] : action.type === 'give' ? [`${FOREIGN_PREFIX}${action.id}`] : [] }
 }
 
 /**

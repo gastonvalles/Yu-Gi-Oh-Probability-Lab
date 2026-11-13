@@ -7,7 +7,8 @@ import type { WireAct } from '../app/mat-public'
 import { createMatState, type MatAction } from '../app/practice-mat'
 import { comboChainSteps, comboTheirsAt, createSavedCombo, migrateSavedCombo, type SavedCombo } from '../app/saved-combos'
 import { comboScenes } from '../components/replays/video/video-combo'
-import { placeRect } from '../components/replays/video/video-scene'
+import { placeRect, replayScenes } from '../components/replays/video/video-scene'
+import { buildDuelReplay } from '../app/duel-replay'
 import { chainMs, chainTimeline, frameDurations, subjectChain } from '../components/replays/video/video-timeline'
 
 // Un combo de «Jugar solo automático» contra el bot pasivo: la mano de apertura (plegada), paso a la Main, invoco h0, le doy h1 (un Kaiju: el rival lo toma en su zona 3) y activo h2,
@@ -119,6 +120,29 @@ describe('el combo de «Jugar solo automático» guarda el campo del rival y la 
     expect(card(3)?.rect).toEqual(placeRect(scenes[3]!.layout, 1, 'mz:2'))
     // Su mano robada, de dorso.
     expect(scenes[3]!.sides[1].hand.map((slot) => slot.card?.faceDown)).toEqual([true, true, true, true, true])
+  })
+
+  it('el video: la jugada de darle la carta la marca con el aro ámbar en el campo del rival (en el combo y en el duelo)', () => {
+    const combo = recorded()
+    const scenes = [...comboScenes(combo, combo.names, 720)]
+    const given = placeRect(scenes[3]!.layout, 1, 'mz:2')
+
+    expect(scenes[3]!.focus).toContainEqual(given)
+    // El duelo: le doy h1 y el rival la toma en su zona 3 en su propio paso, el siguiente (en el de darla todavía no está allá); ése la marca.
+    const replay = buildDuelReplay({
+      mode: 'solo-auto',
+      view: 'public',
+      players: ['Ana', 'Beto'],
+      starter: 0,
+      mine: { initial: { ...opening, hand: [...hand], deck: opening.deck.filter((id) => !hand.includes(id)) }, actions: [{ type: 'give', id: h1, auto: true }] },
+      theirs: { initial: theirsInitial, acts: [{ action: { type: 'take', id: `f.${h1}`, zone: 'mz', index: 2, pos: 'atk' }, reveal: {} }] },
+      order: ['mine', 'theirs'],
+      life: [{ at: 0, lp: [8000, 8000] }],
+      nameOf: (code) => `Carta ${code}`,
+    })
+    const duel = [...replayScenes(replay, 720)]
+
+    expect(duel.map((scene) => scene.focus.some((rect) => rect.x === given.x && rect.y === given.y))).toEqual([false, false, true])
   })
 
   it('la línea de tiempo del video: la jugada con la cadena dura lo que tarda en contarse (`chainMs`) y sus momentos salen en `chainTimeline`, como en el video de un duelo', () => {
