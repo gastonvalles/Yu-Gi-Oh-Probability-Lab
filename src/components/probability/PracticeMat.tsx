@@ -904,15 +904,19 @@ function PracticeMatBody({
   // cambios de turno (`turn`: antes, «Cambio de turno»); el primer turno no tiene pase.
   const rivalNotice = duel?.notice
   const dueling = Boolean(duel)
+  // El aviso del rival más nuevo que llegó: cuando se va, tu fase de antes (que la mesa todavía guarda) no vuelve como si fuera nueva; si volvía, «Cambio de turno» cruzaba otra vez y
+  // tapaba sus jugadas 2 s. Si volvía o no dependía de cuándo se borra el aviso de tu mesa (`BANNER_MS`, con `Date.now()`), no del reloj del duelo.
+  const [rivalSeen, setRivalSeen] = useState(0)
+  if (rivalNotice && rivalNotice.key > rivalSeen) setRivalSeen(rivalNotice.key)
   const phaseCue = useMemo<PhaseCue | null>(() => {
     // Un pase deja el turno 2 o más: el arranque de la mesa (de 0 a 1) no es un cambio de turno.
     const passed = dueling && banner?.turn != null && banner.turn > 1
     // Tu End Phase en un duelo espera antes de entrar (`settle`): el pase suele seguirla enseguida y entonces no sale.
-    const own: PhaseCue | null = banner ? { key: banner.key, phase: banner.phase, side: passed ? 'theirs' : 'mine', turn: passed, settle: dueling && !passed && banner.phase === 'end' } : null
+    const own: PhaseCue | null = banner && banner.key >= rivalSeen ?{ key: banner.key, phase: banner.phase, side: passed ? 'theirs' : 'mine', turn: passed, settle: dueling && !passed && banner.phase === 'end' } : null
     const rival: PhaseCue | null = rivalNotice ? { key: rivalNotice.key, phase: rivalNotice.phase, side: rivalNotice.label ? 'mine' : 'theirs', turn: Boolean(rivalNotice.label) } : null
 
     return own && rival ? (own.key >= rival.key ? own : rival) : (own ?? rival)
-  }, [banner, rivalNotice, dueling])
+  }, [banner, rivalNotice, rivalSeen, dueling])
   // Si hay un cartel en curso: hasta que la banda dice que terminó con el aviso de ahora (`onIdle`). Cada cambio de `phaseCue` es un aviso nuevo, también quedarse sin fase (la
   // banda sigue con su reloj): cuenta desde el dibujo en que llega (la banda lo toma un cuadro después, `Deferred`). En el automático, mientras tanto tus cartas no abren su menú y
   // la pantalla no pregunta ni muestra la jugada siguiente (`onBanding`).
