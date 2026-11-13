@@ -128,7 +128,7 @@ export function TokensSection() {
         title="Efectos: Completos o Livianos"
         note={
           <>
-            <Tag>EffectsSwitcher</Tag> (en <Tag>ui/PaletteSwitcher</Tag>), al lado de los colores en el ☰ y en la barra de escritorio. «Livianos» es para un celular flojo: menos destellos a la vez, sin
+            <Tag>EffectsSwitcher</Tag> (en <Tag>ui/PaletteSwitcher</Tag>), al lado de los colores en el ☰ del celular y al pie del menú lateral de escritorio (abierto; en la barra de arriba no entra). «Livianos» es para un celular flojo: menos destellos a la vez, sin
             sacudida ni mezcla aditiva y la misma respuesta al toque. Se guarda y se aplica con <Tag>data-effects</Tag> en el html (la variante <Tag>fx-lite:</Tag>). Los tres colores de los efectos
             (<Tag>fx-destello</Tag>, <Tag>fx-energia</Tag>, <Tag>fx-impacto</Tag>) están entre los tokens de abajo y no cambian con la paleta.
           </>

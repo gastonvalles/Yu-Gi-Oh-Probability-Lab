@@ -86,7 +86,12 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
             ) : null}
             <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="shrink-0 pb-3" />
             {/* Las preferencias, bajo una sola línea: las mascotas (una fila como las de los destinos, que se queda en la columna de íconos al contraer) y el idioma. */}
-            {withNavbar ? null : (
+            {withNavbar ? (
+              // Con barra de arriba, los efectos van acá: en la barra no entran (aplastaban la marca y el buscador). Contraído, se desvanecen como el idioma.
+              <div className="shrink-0 border-t border-nav-raised pb-3 pt-2 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none">
+                <EffectsSwitcher />
+              </div>
+            ) : (
             <div className="shrink-0 border-t border-nav-raised pb-3 pt-2">
               <NavButton item={mascotsNavItem()} active={false} onSelect={onSelect} />
               {/* Contraído, el idioma se desvanece y no se puede tocar ni enfocar; el renglón conserva su alto. */}
