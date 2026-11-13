@@ -125,7 +125,7 @@ describe('el combo de «Jugar solo automático» guarda el campo del rival y la 
   it('el video: la jugada de darle la carta la marca con el aro ámbar en el campo del rival (en el combo y en el duelo)', () => {
     const combo = recorded()
     const scenes = [...comboScenes(combo, combo.names, 720)]
-    const given = placeRect(scenes[3]!.layout, 1, 'mz:2')
+    const given = placeRect(scenes[3]!.layout, 1, 'mz:2')!
 
     expect(scenes[3]!.focus).toContainEqual(given)
     // El duelo: le doy h1 y el rival la toma en su zona 3 en su propio paso, el siguiente (en el de darla todavía no está allá); ése la marca.
