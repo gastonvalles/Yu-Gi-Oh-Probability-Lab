@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildDuelReplay } from '../app/duel-replay'
 import type { SavedReplay } from '../app/duel-replay-share'
 import { createMatState } from '../app/practice-mat'
+import { HAND_TOP_ROOM, PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, matDuelLayout } from '../components/probability/compact-field'
 import { DuelReplayScreen } from '../components/replays/DuelReplayScreen'
 import { YourDuels } from '../components/replays/YourDuels'
 
@@ -79,6 +80,37 @@ describe('la pantalla del replay de un duelo', () => {
     // Las dos manos en abanico: la de arriba y la de abajo (con la marca de la mano propia: de ahí salen sus vuelos).
     expect(container.querySelectorAll('[data-rival-drop="hand"]')).toHaveLength(1)
     expect(container.querySelectorAll('[data-drop="hand"]')).toHaveLength(1)
+  })
+
+  it('hasta 1100 px el campo y las manos son los del duelo (`matDuelLayout` con la barra y la fila de la mesa): mismo lugar, mismas filas, mismas cartas de mano; los controles van en esas dos franjas', () => {
+    const size = { innerWidth: window.innerWidth, innerHeight: window.innerHeight }
+    for (const [width, height, phone] of [[369, 800, true], [390, 844, true], [768, 1024, false]] as const) {
+      window.matchMedia = ((query: string) => ({ matches: (phone && query.includes('639')) || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+      Object.assign(window, { innerWidth: width, innerHeight: height })
+      try {
+        const { container, unmount } = render(<DuelReplayScreen replay={replayOf('public')} onClose={() => {}} actions={[]} />)
+        const mat = matDuelLayout(width, height, { tilted: false, bar: PHONE_DUEL_BAR, bottom: PHONE_DUEL_BOTTOM })
+        const table = screen.getByRole('group', { name: 'Mesa del duelo' })
+        expect(table).toHaveAttribute('data-phone')
+        expect(table.style.width).toBe(`${mat.fieldWidth}px`)
+        expect(table.style.height).toBe(`${mat.fieldHeight}px`)
+        expect(table.style.gridTemplateRows).toBe(`repeat(5, ${mat.row}px)`)
+        const top = (selector: string) => Number.parseFloat((container.querySelector(selector)!.parentElement as HTMLElement).style.top)
+        expect(top('[data-rival-drop="hand"]')).toBeCloseTo(mat.rivalTop, 3)
+        // La grilla va dentro de la caja de `DuelTable`, y ésa en su lugar.
+        expect(Number.parseFloat(table.parentElement!.parentElement!.style.top)).toBeCloseTo(mat.fieldTop, 3)
+        expect(top('[data-drop="hand"]')).toBeCloseTo(mat.handTop + HAND_TOP_ROOM, 3)
+        // La mano de abajo, de la carta de la mesa; la de arriba, a 0,8.
+        const card = (selector: string) => Number.parseFloat((container.querySelector(`${selector} [data-their-card]`) as HTMLElement).style.width)
+        expect(card('[data-drop="hand"]')).toBeCloseTo(mat.handCard, 3)
+        expect(card('[data-rival-drop="hand"]')).toBeCloseTo(mat.rivalCard, 3)
+        // En el celular, «Volver al principio» va en el menú (la fila no tiene más ancho); en la tableta, en la fila.
+        expect(screen.queryByRole('button', { name: 'Volver al principio' }) === null).toBe(phone)
+        unmount()
+      } finally {
+        Object.assign(window, size)
+      }
+    }
   })
 
   it('en escritorio el campo es el de la mesa del duelo en escritorio (casillas cuadradas, sin `data-phone`) y llena el alto: a 1440×900, una casilla de más de 70 px', () => {

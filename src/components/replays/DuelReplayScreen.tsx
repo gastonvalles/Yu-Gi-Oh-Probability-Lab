@@ -15,7 +15,7 @@ import { DuelTable, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { LifeBadge } from '../duel/LifeScore'
 import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { TheirHandSize } from '../duel/their-hand'
-import { COMPACT_FIELD_MEDIA_QUERY, phoneDuelLayout } from '../probability/compact-field'
+import { COMPACT_FIELD_MEDIA_QUERY, HAND_TOP_ROOM, PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, matDuelLayout, phoneFieldStyle } from '../probability/compact-field'
 import { MatScene } from '../probability/MatArena'
 import { Spotlight } from '../probability/MatFx'
 import { ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from '../probability/ReplayBar'
@@ -159,13 +159,14 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   useLayoutEffect(() => {
     const node = stageRef.current
     if (!node) return
-    const measure = () => setStage({ width: node.clientWidth || window.innerWidth, height: node.clientHeight || Math.max(0, window.innerHeight - 200) })
+    // Hasta 1100 px el lugar es la pantalla entera (la geometría del duelo); en escritorio, lo que dejan la barra y los controles.
+    const measure = () => setStage({ width: node.clientWidth || window.innerWidth, height: node.clientHeight || Math.max(0, window.innerHeight - (desktop ? 200 : 0)) })
     measure()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(measure)
     observer.observe(node)
     return () => observer.disconnect()
-  }, [])
+  }, [desktop])
   const names = [playerName(replay, 0), playerName(replay, 1)] as const
 
   const describe = useCallback(
@@ -255,10 +256,137 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   const title = titleOf(replay)
   const result = cursor >= total ? replayResultText(replay) : null
 
+  // Las chapas de la mesa: hasta 1100 px, la del rival chica (en la barra) y la de abajo grande (en tu fila), como en el duelo; en escritorio, las dos grandes.
   const badge = (side: ReplaySide, place: 'top' | 'bottom') => (
-    <LifeBadge name={names[side]} label={names[side]} life={frame.lp[side]} mine={place === 'bottom'} color={side === 0 ? 'mine' : 'theirs'} active={frame.turn === side} compact={!desktop} />
+    <LifeBadge name={names[side]} label={names[side]} life={frame.lp[side]} mine={place === 'bottom'} color={side === 0 ? 'mine' : 'theirs'} active={frame.turn === side} compact={!desktop && place === 'top'} />
   )
-  const field = stage ? fieldLayout(stage.width, stage.height, phone, desktop) : null
+  const field = stage && desktop ? fieldLayout(stage.width, stage.height) : null
+  // Hasta 1100 px, la geometría del duelo del celular y la tableta (`matDuelLayout`, con la barra y la fila de abajo de la mesa): el campo y las dos manos quedan donde están en el duelo, y los
+  // controles van en esas dos franjas.
+  const mat = stage && !desktop ? matDuelLayout(stage.width, stage.height, { tilted: false, bar: PHONE_DUEL_BAR, bottom: PHONE_DUEL_BOTTOM }) : null
+  const viewLabel = replay.view === 'mine' ? t('meta.duels.withHand', { name: names[0] }) : t('meta.duels.public')
+  const flip = () => setFlipped((current) => !current)
+  const transport = {
+    total,
+    cursor,
+    playing,
+    playLabel,
+    speed,
+    onTogglePlay: () => {
+      if (!playing && cursor >= total) setCursor(0)
+      setPlaying((current) => !current)
+    },
+    onPrevious: () => jump(Math.max(0, cursor - 1)),
+    onNext: () => {
+      const next = Math.min(total, cursor + 1)
+
+      setPlaying(false)
+      setCursor(next)
+      announce(cursor, next)
+    },
+    onSpeed: setSpeed,
+  }
+
+  // El número de la jugada en su renglón y la frase entera en hasta dos, con el alto de dos siempre reservado: ni una jugada más larga ni los nombres que llegan después mueven el campo.
+  const stepLine = (
+    <p data-testid="replay-step" className="m-0 grid min-w-0 flex-1 text-body text-foreground" aria-live={playing ? 'off' : 'polite'}>
+      <span className="truncate text-micro font-semibold text-muted tabular-nums">{cursor === 0 ? t('meta.duels.start') : result ? `${t('meta.duels.step', { n: cursor, total })} · ${result}` : t('meta.duels.step', { n: cursor, total })}</span>
+      <span data-testid="replay-step-text" className="line-clamp-2 min-h-[2lh] leading-tight">
+        {cursor > 0 ? describe(cursor) : null}
+      </span>
+    </p>
+  )
+  const table = (style: CSSProperties | undefined) => (
+    <DuelTable mine={bottomView} theirs={{ ...topView, handCount: undefined }} turn={frame.turn === bottom ? 'mine' : 'theirs'} centerPhase phoneStyle={style}>
+      {/* La banda espera a que se vaya la carta grande (no se lee partida detrás), y la carta va sin cartel: el texto del paso está en los controles. */}
+      <PhaseBand cue={banner} hold={activation !== null} />
+      {activation ? (
+        <Spotlight
+          key={activation.key}
+          kind="activate"
+          cards={[{ id: activation.id, name: cardName(replay, frame, activation.side)(activation.id), art: view(activation.side).artOf(activation.id), back: realOf(replay, frame, activation.side, activation.id) === undefined }]}
+          className="absolute inset-0 z-[120]"
+        />
+      ) : null}
+      {/* La cadena en grande, sobre el campo como en el duelo (`ChainStage`: su velo tapa la pantalla). */}
+      {chainStage ? (
+        <div data-testid="replay-chain" className="pointer-events-none absolute inset-0 z-[125] flex items-center justify-center">
+          <ChainStage key={chainStage.key} rows={chainRows} current={chainStage.current} done={chainStage.done} />
+        </div>
+      ) : null}
+    </DuelTable>
+  )
+  const topHand = <TheirHand count={topView.handCount ?? 0} medals={topView.medals.get('hand') ?? null} label={t('meta.duels.hand', { name: names[top], count: topView.handCount ?? 0 })} />
+  const bottomHand = <TheirHand below count={bottomView.handCount ?? 0} medals={bottomView.medals.get('hand') ?? null} label={openHand ? t('meta.duels.handShown', { name: names[bottom], cards: openHand.map((card) => card.name).join(', ') }) : t('meta.duels.hand', { name: names[bottom], count: bottomView.handCount ?? 0 })} {...(openHand ? { cards: openHand } : {})} />
+  const back = (
+    <IconButton tone="flat" size="sm" className="-ml-1 shrink-0" aria-label={backLabel} title={backLabel} onClick={onClose}>
+      <Icon name="arrow-left" />
+    </IconButton>
+  )
+
+  if (!desktop) {
+    // Celular y tableta: la pantalla del duelo. Arriba, en la barra (58 px): volver, la jugada, el menú (dar vuelta la mesa; en el celular, volver al principio) y la chapa del rival a la derecha.
+    // Abajo, en tu fila (68 px): tu chapa a la izquierda y, a su derecha, la línea de tiempo sobre los botones. El campo y las manos, en el lugar fijo de `matDuelLayout`; nada les saca alto.
+    const items: OverflowItem[] = [
+      { label: t('duel.watch.flip'), icon: 'swap', checked: flipped, onSelect: flip },
+      ...(phone ? [{ label: t('practice.replay.restart'), icon: 'skip-back' as const, onSelect: () => jump(0) }] : []),
+      ...actions,
+    ]
+
+    return (
+      <div className="mat-square relative isolate h-full min-h-0 overflow-hidden bg-background **:rounded-none!" role="region" aria-label={t('meta.duels.viewer', { title })}>
+        <MatScene className="absolute inset-0 -z-10" />
+        <div className="absolute inset-x-0 top-0 z-20 flex min-w-0 items-center gap-1.5 px-2" style={{ height: PHONE_DUEL_BAR }}>
+          {back}
+          {stepLine}
+          <span className="sr-only">{viewLabel}</span>
+          {/* Compartido: guardarlo, en la barra (una franja más le sacaría alto al campo). Guardado, se queda en su lugar y lo dice. */}
+          {shared || wasShared ? (
+            <span role="region" aria-label={t('meta.duels.shared')} className="flex shrink-0">
+              {shared ? (
+                <IconButton tone="primary" size="sm" aria-label={t('meta.duels.saveShared')} title={t('meta.duels.saveShared')} onClick={shared.onSave}>
+                  <Icon name="save" />
+                </IconButton>
+              ) : (
+                <IconButton tone="raised" size="sm" aria-label={t('meta.duels.savedShared')} title={t('meta.duels.savedShared')} disabled>
+                  <Icon name="check" />
+                </IconButton>
+              )}
+            </span>
+          ) : null}
+          <OverflowMenu label={t('meta.duels.more', { title })} items={items} />
+          <span className="-mr-1 flex shrink-0">{badge(top, 'top')}</span>
+        </div>
+        {/* Sin tocar (`pointer-events-none`): los controles de las franjas quedan por encima; el campo sí se toca. */}
+        <div ref={stageRef} className="pointer-events-none absolute inset-0">
+          {stage ? <ReplayFlights key={`${flights}:${bottom}`} containerRef={stageRef} bottom={bottomView} top={topView} layout={`${stage.width}x${stage.height}`} /> : null}
+          {mat && stage ? (
+            <>
+              <div className="absolute inset-x-0 flex justify-center" style={{ top: mat.rivalTop }}>
+                <TheirHandSize value={{ cardWidth: mat.rivalCard, maxWidth: mat.rivalWidth, room: mat.rivalRoom }}>{topHand}</TheirHandSize>
+              </div>
+              <div className="pointer-events-auto absolute inset-x-0 flex justify-center" style={{ top: mat.fieldTop }}>
+                {table(phoneFieldStyle(mat))}
+              </div>
+              {/* Tu mano, como en la mesa (`PracticeHand`): sus cartas bajan `HAND_TOP_ROOM` desde su caja y se abren a lo ancho de la columna (sin su orilla de 4 px). */}
+              <div className="absolute inset-x-0 flex justify-center" style={{ top: mat.handTop + HAND_TOP_ROOM }}>
+                <TheirHandSize value={{ cardWidth: mat.handCard, maxWidth: stage.width - 8, room: mat.handHeight - HAND_TOP_ROOM }}>{bottomHand}</TheirHandSize>
+              </div>
+            </>
+          ) : null}
+        </div>
+        {mat ? (
+          <div className="absolute inset-x-0 bottom-0 z-20 flex items-start gap-1.5 px-1.5 pb-[env(safe-area-inset-bottom,0px)]" style={{ top: mat.bottomTop }}>
+            {badge(bottom, 'bottom')}
+            <div className="grid min-w-0 flex-1">
+              <ReplayTimeline slim marks={marks} cursor={cursor} describe={describe} onSeek={jump} />
+              <ReplayTransport {...transport} {...(phone ? {} : { onRestart: () => jump(0) })} />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className="mat-square relative isolate flex h-full min-h-0 flex-col overflow-hidden bg-background **:rounded-none!" role="region" aria-label={t('meta.duels.viewer', { title })}>
@@ -287,95 +415,39 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
           </div>
         </div>
       ) : null}
-      <div className="flex h-11 min-w-0 shrink-0 items-center gap-1.5 px-2 min-[1101px]:px-4">
-        <IconButton tone="flat" size="sm" className="-ml-1 shrink-0" aria-label={backLabel} title={backLabel} onClick={onClose}>
-          <Icon name="arrow-left" />
-        </IconButton>
+      <div className="flex h-11 min-w-0 shrink-0 items-center gap-1.5 px-4">
+        {back}
         <span className="min-w-0 flex-1 truncate text-body font-bold text-foreground">{title}</span>
-        <span className="inline-flex min-w-0 shrink items-center gap-1 bg-tint/8 px-2 py-1 text-micro font-semibold text-muted" title={replay.view === 'mine' ? t('meta.duels.withHand', { name: names[0] }) : t('meta.duels.public')}>
+        <span className="inline-flex min-w-0 shrink items-center gap-1 bg-tint/8 px-2 py-1 text-micro font-semibold text-muted" title={viewLabel}>
           <Icon name={replay.view === 'mine' ? 'hand' : 'eye'} size={14} className="shrink-0" />
-          <span className="truncate max-[639px]:sr-only">{replay.view === 'mine' ? t('meta.duels.withHand', { name: names[0] }) : t('meta.duels.public')}</span>
+          <span className="truncate">{viewLabel}</span>
         </span>
-        {/* En el celular, la chapa de arriba va en la barra (como en la mesa); en escritorio, al costado de su mano, afuera del campo. */}
-        {desktop ? null : badge(top, 'top')}
         <span className="-mr-1 flex shrink-0 items-center">
-          <IconButton tone="flat" size="sm" aria-label={t('duel.watch.flip')} title={t('duel.watch.flip')} onClick={() => setFlipped((current) => !current)}>
+          <IconButton tone="flat" size="sm" aria-label={t('duel.watch.flip')} title={t('duel.watch.flip')} onClick={flip}>
             <Icon name="swap" />
           </IconButton>
           {actions.length > 0 ? <OverflowMenu label={t('meta.duels.more', { title })} items={actions} /> : null}
         </span>
       </div>
 
-      {/* La mesa: las dos manos y el campo, que llena el alto que queda entre la barra y los controles (en el celular, la geometría del duelo: `phoneDuelLayout`). */}
+      {/* La mesa: las dos manos y el campo, que llena el alto que queda entre la barra y los controles. */}
       <div ref={stageRef} className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-1">
         {stage ? <ReplayFlights key={`${flights}:${bottom}`} containerRef={stageRef} bottom={bottomView} top={topView} layout={`${stage.width}x${stage.height}`} /> : null}
         {field ? (
           <div className="relative flex flex-col items-center" style={{ gap: field.gap }}>
-            {desktop ? <div className="absolute left-full top-0 z-20 ml-3">{badge(top, 'top')}</div> : null}
-            <TheirHandSize value={field.top}>
-              <TheirHand count={topView.handCount ?? 0} medals={topView.medals.get('hand') ?? null} label={t('meta.duels.hand', { name: names[top], count: topView.handCount ?? 0 })} />
-            </TheirHandSize>
-            <div style={field.box}>
-              <DuelTable mine={bottomView} theirs={{ ...topView, handCount: undefined }} turn={frame.turn === bottom ? 'mine' : 'theirs'} centerPhase phoneStyle={field.phone}>
-                {/* La banda espera a que se vaya la carta grande (no se lee partida detrás), y la carta va sin cartel: el texto del paso está debajo. */}
-                <PhaseBand cue={banner} hold={activation !== null} />
-                {activation ? (
-                  <Spotlight
-                    key={activation.key}
-                    kind="activate"
-                    cards={[{ id: activation.id, name: cardName(replay, frame, activation.side)(activation.id), art: view(activation.side).artOf(activation.id), back: realOf(replay, frame, activation.side, activation.id) === undefined }]}
-                    className="absolute inset-0 z-[120]"
-                  />
-                ) : null}
-                {/* La cadena en grande, sobre el campo como en el duelo (`ChainStage`: su velo tapa la pantalla). */}
-                {chainStage ? (
-                  <div data-testid="replay-chain" className="pointer-events-none absolute inset-0 z-[125] flex items-center justify-center">
-                    <ChainStage key={chainStage.key} rows={chainRows} current={chainStage.current} done={chainStage.done} />
-                  </div>
-                ) : null}
-              </DuelTable>
-            </div>
-            <TheirHandSize value={field.bottom}>
-              <TheirHand below count={bottomView.handCount ?? 0} medals={bottomView.medals.get('hand') ?? null} label={openHand ? t('meta.duels.handShown', { name: names[bottom], cards: openHand.map((card) => card.name).join(', ') }) : t('meta.duels.hand', { name: names[bottom], count: bottomView.handCount ?? 0 })} {...(openHand ? { cards: openHand } : {})} />
-            </TheirHandSize>
-            {desktop ? <div className="absolute bottom-0 right-full z-20 mr-3">{badge(bottom, 'bottom')}</div> : null}
+            <div className="absolute left-full top-0 z-20 ml-3">{badge(top, 'top')}</div>
+            <TheirHandSize value={field.top}>{topHand}</TheirHandSize>
+            <div style={field.box}>{table(undefined)}</div>
+            <TheirHandSize value={field.bottom}>{bottomHand}</TheirHandSize>
+            <div className="absolute bottom-0 right-full z-20 mr-3">{badge(bottom, 'bottom')}</div>
           </div>
         ) : null}
       </div>
 
-      {/* Abajo, como en el repaso de un combo: la jugada en una línea (con tu chapa en el celular), los botones y la línea de tiempo. */}
-      <div className="mx-auto grid w-full max-w-3xl shrink-0 gap-1 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4">
-        <div className="flex min-h-11 min-w-0 items-center gap-2">
-          {desktop ? null : badge(bottom, 'bottom')}
-          {/* El número de la jugada en su renglón y la frase entera en hasta dos, con el alto de dos siempre reservado: ni una jugada más larga ni los nombres que llegan después mueven el campo. */}
-          <p data-testid="replay-step" className="m-0 grid min-w-0 flex-1 text-body text-foreground" aria-live={playing ? 'off' : 'polite'}>
-            <span className="truncate text-micro font-semibold text-muted tabular-nums">{cursor === 0 ? t('meta.duels.start') : result ? `${t('meta.duels.step', { n: cursor, total })} · ${result}` : t('meta.duels.step', { n: cursor, total })}</span>
-            <span data-testid="replay-step-text" className="line-clamp-2 min-h-[2lh] leading-tight">
-              {cursor > 0 ? describe(cursor) : null}
-            </span>
-          </p>
-        </div>
-        <ReplayTransport
-          total={total}
-          cursor={cursor}
-          playing={playing}
-          playLabel={playLabel}
-          speed={speed}
-          onTogglePlay={() => {
-            if (!playing && cursor >= total) setCursor(0)
-            setPlaying((current) => !current)
-          }}
-          onRestart={() => jump(0)}
-          onPrevious={() => jump(Math.max(0, cursor - 1))}
-          onNext={() => {
-            const next = Math.min(total, cursor + 1)
-
-            setPlaying(false)
-            setCursor(next)
-            announce(cursor, next)
-          }}
-          onSpeed={setSpeed}
-        />
+      {/* Abajo, como en el repaso de un combo: la jugada, los botones y la línea de tiempo. */}
+      <div className="mx-auto grid w-full max-w-3xl shrink-0 gap-1 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+        <div className="flex min-h-11 min-w-0 items-center gap-2">{stepLine}</div>
+        <ReplayTransport {...transport} onRestart={() => jump(0)} />
         {/* La línea de tiempo, debajo de los botones (como la del repaso en el celular). */}
         <ReplayTimeline marks={marks} cursor={cursor} describe={describe} onSeek={jump} />
       </div>
@@ -387,44 +459,22 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
 const FAN_ROOM = 10
 /** Una carta: 1 : 1,4612. */
 const CARD_RATIO = 1.4612
-/** Fuera del celular, el campo más ancho que se prueba (de ahí se angosta de a 8 px hasta que sus filas tengan el alto de una carta) y el más angosto. */
-const WIDEST = 1000
-const NARROWEST = 360
 /** En escritorio: el hueco entre casillas de la mesa (`min-[1101px]:gap-2`) y tu carta de la mano, en casillas. */
 const DESK_GAP = 8
 const DESK_HAND = 0.9
 
 /**
- * El campo y las manos que entran en el lugar de la mesa (`width` × `height`, medido), con la geometría del duelo del celular hasta 1100 px (`phoneDuelLayout`, la misma de la mesa): casillas con
- * forma de carta y un solo contorno (`data-phone`), la mano de arriba a 0,8 de la de abajo. En el celular, a todo el ancho; desde 640 px, el ancho más grande cuyas filas entran con el alto de una carta.
- * En escritorio, la de la mesa del duelo en escritorio (casillas cuadradas): con las de carta, el alto que dejan la barra y los controles daba un campo angosto, más chico que el del duelo.
+ * El campo y las manos que entran en el lugar de la mesa en escritorio (`width` × `height`, medido): los de la mesa del duelo en escritorio (casillas cuadradas, `--cell`, sin `data-phone`) con huecos de
+ * 8 px, tu mano de 0,9 casillas y la de arriba a 0,8 de ella; la casilla, la más grande que entra a lo ancho y a lo alto (5 filas, las dos manos con su abanico y los dos huecos).
  */
-function fieldLayout(width: number, height: number, phone: boolean, desktop: boolean) {
-  if (desktop) {
-    // Desde 1101 px, como la mesa del duelo en escritorio: casillas cuadradas (`--cell`, sin `data-phone`) con huecos de 8 px, tu mano de 0,9 casillas y la de arriba a 0,8 de ella;
-    // la casilla, la más grande que entra a lo ancho y a lo alto (5 filas, las dos manos con su abanico y los dos huecos).
-    const cell = Math.min((width - 8 - 6 * DESK_GAP) / 6.3714, (height - 4 * DESK_GAP - 2 * DESK_GAP - FAN_ROOM - 8) / (5 + (DESK_HAND + DESK_HAND * 0.8) * CARD_RATIO))
-    const fieldWidth = cell * 6.3714 + 6 * DESK_GAP
-    const hand = cell * DESK_HAND
-    return {
-      gap: DESK_GAP,
-      top: { cardWidth: hand * 0.8, maxWidth: fieldWidth * 0.8, room: hand * 0.8 * CARD_RATIO + 8 },
-      bottom: { cardWidth: hand, maxWidth: fieldWidth, room: hand * CARD_RATIO + FAN_ROOM },
-      box: { width: fieldWidth, '--cell': `${cell}px` } as CSSProperties,
-      phone: undefined,
-    }
-  }
-  const at = (w: number) => phoneDuelLayout(w, height, { tilted: false, bar: 0, bottom: 0 })
-  let w = phone ? width : Math.min(width, WIDEST)
-  let layout = at(w)
-  while (!phone && w > NARROWEST && layout.row < layout.cell * CARD_RATIO * 0.99) layout = at((w -= 8))
-
+function fieldLayout(width: number, height: number) {
+  const cell = Math.min((width - 8 - 6 * DESK_GAP) / 6.3714, (height - 4 * DESK_GAP - 2 * DESK_GAP - FAN_ROOM - 8) / (5 + (DESK_HAND + DESK_HAND * 0.8) * CARD_RATIO))
+  const fieldWidth = cell * 6.3714 + 6 * DESK_GAP
+  const hand = cell * DESK_HAND
   return {
-    gap: layout.gap,
-    top: { cardWidth: layout.rivalCard, maxWidth: layout.rivalWidth, room: layout.rivalRoom },
-    bottom: { cardWidth: layout.handCard, maxWidth: w - 8, room: layout.handCard * CARD_RATIO + FAN_ROOM },
-    box: { width: layout.fieldWidth } as CSSProperties,
-    // El hueco de 3 px y la casilla (`--cell`, las columnas desde 1101 px) son los de la cuenta, en todos los anchos.
-    phone: { width: layout.fieldWidth, height: layout.fieldHeight, gap: 3, gridTemplateRows: `repeat(5, ${layout.row}px)`, '--cell': `${layout.cell}px`, '--zone-aspect': 'auto', '--pile-width': '100%', '--pile-align': 'center', '--field-card': `${layout.card}px`, '--field-card-top': `${layout.cardTop}px` } as CSSProperties,
+    gap: DESK_GAP,
+    top: { cardWidth: hand * 0.8, maxWidth: fieldWidth * 0.8, room: hand * 0.8 * CARD_RATIO + 8 },
+    bottom: { cardWidth: hand, maxWidth: fieldWidth, room: hand * CARD_RATIO + FAN_ROOM },
+    box: { width: fieldWidth, '--cell': `${cell}px` } as CSSProperties,
   }
 }

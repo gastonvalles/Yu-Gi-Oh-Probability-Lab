@@ -32,9 +32,11 @@ import type { ChainBadgeData, ChainMedal } from '../../app/card-glow'
 import type { TallyView } from '../../app/auto/tally'
 import { ChainBadge, FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, tallyLabel } from './MatFx'
 import { CARD_BACK, glowFrame } from './practice-styles'
+import { HAND_TOP_ROOM } from './compact-field'
+import { HAND_FAN_RISE } from '../duel/their-hand'
 
-/** Espacio sobre las cartas: el abanico sube un poco en el centro. */
-const TOP_ROOM = 8
+/** Espacio sobre las cartas: el abanico sube un poco en el centro (el replay de un duelo pone su mano de abajo en el mismo lugar). */
+const TOP_ROOM = HAND_TOP_ROOM
 /** Espacio bajo las cartas: el abanico baja en los extremos y las cartas inclinadas sobresalen. */
 const FAN_ROOM = 22
 const DRAG_THRESHOLD = 6
@@ -362,7 +364,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
   const onCardKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>, id: string) => latest.current.handleKeyDown(event, id), [])
   const deckRect = useCallback(() => latest.current.getDeckRect(), [])
   /** El lugar de la carta `index` en el abanico, en reposo: un poco más abajo y más inclinada cuanto más lejos del centro. */
-  const restTransform = (index: number) => `translate3d(${slotLeft(layout, index)}px, ${TOP_ROOM + Math.abs(index - (count - 1) / 2) ** 2 * 1.6}px, 0) rotate(${fanAngle(index, count, fanDegrees)}deg)`
+  const restTransform = (index: number) => `translate3d(${slotLeft(layout, index)}px, ${TOP_ROOM + Math.abs(index - (count - 1) / 2) ** 2 * HAND_FAN_RISE}px, 0) rotate(${fanAngle(index, count, fanDegrees)}deg)`
 
   return (
     <div

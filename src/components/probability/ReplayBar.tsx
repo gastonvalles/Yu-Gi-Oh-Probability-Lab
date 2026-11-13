@@ -318,11 +318,12 @@ export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playL
  * El replay partido, abajo (Gastón, 2026-10-27, opción B: «dónde estás arriba, los botones abajo»): lo que se toca seguido en un renglón de 48 px, al alcance del pulgar: volver al principio a la
  * izquierda, anterior, el botón grande y siguiente al medio, y la velocidad a la derecha. Todos de 44 px con el dedo (el grande, 48). La línea de tiempo va debajo (`ReplayTimeline`; Gastón, 2026-10-29).
  */
-export const ReplayTransport = memo(function ReplayTransport({ total, cursor, playing, playLabel, speed, onTogglePlay, onRestart, onPrevious, onNext, onSpeed, className }: TransportProps) {
+export const ReplayTransport = memo(function ReplayTransport({ total, cursor, playing, playLabel, speed, onTogglePlay, onRestart, onPrevious, onNext, onSpeed, className }: Omit<TransportProps, 'onRestart'> & { onRestart?: (() => void) | undefined }) {
   return (
     // Todos de 44 px también con el mouse o un toque que el navegador no marca como grueso ([&_button]: los de anterior, siguiente, volver al principio y la velocidad).
+    // Sin `onRestart` (el replay de un duelo en el celular, que lo lleva en su menú), sin volver al principio.
     <div role="group" aria-label={t('practice.replay.controls')} className={cx('flex items-center gap-2 [&_button]:min-h-11 [&_button]:min-w-11', className)}>
-      <RestartButton cursor={cursor} onRestart={onRestart} />
+      {onRestart ? <RestartButton cursor={cursor} onRestart={onRestart} /> : null}
       <span className="mx-auto flex items-center gap-2">
         <StepButtons total={total} cursor={cursor} playing={playing} playLabel={playLabel} onTogglePlay={onTogglePlay} onPrevious={onPrevious} onNext={onNext} />
       </span>
@@ -331,11 +332,14 @@ export const ReplayTransport = memo(function ReplayTransport({ total, cursor, pl
   )
 })
 
-/** El replay partido, debajo de los botones: la línea de tiempo (44 px de alto para tocarla) y, a su derecha, la lista de pasos (en el replay de un duelo, sin ella). */
-export const ReplayTimeline = memo(function ReplayTimeline({ marks, cursor, describe, onSeek, onOpenSteps, className }: TimelineRowProps) {
+/**
+ * El replay partido, debajo de los botones: la línea de tiempo (44 px de alto para tocarla) y, a su derecha, la lista de pasos (en el replay de un duelo, sin ella). `slim`: de 20 px, sobre los
+ * botones del replay de un duelo en el celular (va en la franja de la botonera del duelo, que no tiene más alto); se toca también 12 px más arriba, en el aire que la mano deja bajo sus cartas.
+ */
+export const ReplayTimeline = memo(function ReplayTimeline({ marks, cursor, describe, onSeek, onOpenSteps, className, slim = false }: TimelineRowProps & { slim?: boolean }) {
   return (
     <div className={cx('flex items-center gap-1.5', className)}>
-      <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className="h-11" />
+      <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className={slim ? "h-5 before:absolute before:inset-x-0 before:-top-3 before:bottom-0 before:content-['']" : 'h-11'} />
       {onOpenSteps ? <StepsButton onOpenSteps={onOpenSteps} /> : null}
     </div>
   )

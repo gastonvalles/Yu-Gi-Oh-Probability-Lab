@@ -98,7 +98,7 @@ import { AskWhy } from '../duel/AskWhy'
 import { PhaseBand, type PhaseCue } from '../duel/PhaseBand'
 import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND, THEIR_HAND_CARDS, TheirHandSize } from '../duel/their-hand'
-import { matDuelLayout } from './compact-field'
+import { PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, matDuelLayout, phoneFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, LayerBackContext, NoPlays, PILE_TITLES, PileStripContext, PileViewer, PileYieldContext, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatScene, PickMarks } from './MatArena'
@@ -161,12 +161,6 @@ const REVIEW_HAND: CSSProperties = { transform: 'translateY(4px) scale(0.72)', t
 /** Con el replay partido, el campo y tu mano suben lo que mide la línea de tiempo (44 px, pegada a los botones: sus pastillas ya llevan aire): ella pasó de arriba (debajo del aviso) a abajo, debajo de los botones. También es una transformación. */
 const REVIEW_LIFT = '-translate-y-11'
 
-/**
- * El duelo en el celular (`phoneDuelLayout`), medido: la barra, sólo la fila de los íconos con las vidas del rival (50 px) y el hueco de la columna (8); y abajo tu fila (tu chapa y la botonera,
- * 60 px) con el margen de la columna (8).
- */
-const PHONE_BAR = 58
-const PHONE_BOTTOM = 68
 const onResize = (listener: () => void) => {
   window.addEventListener('resize', listener)
   return () => window.removeEventListener('resize', listener)
@@ -945,10 +939,10 @@ function PracticeMatBody({
   const isDuel = Boolean(duel)
   // El duelo en el celular: geometría fija, sacada sólo del tamaño de la pantalla (`phoneDuelLayout`): el campo y tu mano no se mueven con nada de lo que aparece.
   const [screenWidth, screenHeight] = screen.split('x').map(Number) as [number, number]
-  const phone = bare ? matDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_BAR, bottom: PHONE_BOTTOM }) : null
+  const phone = bare ? matDuelLayout(screenWidth, screenHeight, { tilted: view === '3d', bar: PHONE_DUEL_BAR, bottom: PHONE_DUEL_BOTTOM }) : null
   // La caja del campo: arriba, el lugar de la mano del rival (en 3D, menos lo que la perspectiva baja su borde); las filas con forma de carta y la carta de adentro, por variables (ver `CELL`).
   const phoneField = phone
-    ? ({ width: phone.fieldWidth, height: phone.fieldHeight, marginInline: 'auto', marginTop: phone.rivalRoom + phone.rivalGap - phone.drop, gridTemplateRows: `repeat(5, ${phone.row}px)`, '--zone-aspect': 'auto', '--pile-width': '100%', '--pile-align': 'center', '--field-card': `${phone.card}px`, '--field-card-top': `${phone.cardTop}px` } as CSSProperties)
+    ? ({ ...phoneFieldStyle(phone), marginInline: 'auto', marginTop: phone.rivalRoom + phone.rivalGap - phone.drop } as CSSProperties)
     : null
   // La mano del rival, a 0,8 de la tuya (`TheirHand` la lee).
   const [rivalCard, rivalWidth, rivalRoom] = phone ? [phone.rivalCard, phone.rivalWidth, phone.rivalRoom] : [0, 0, 0]
@@ -3127,7 +3121,7 @@ function PracticeMatBody({
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        {/* En el celular el grupo va pegado abajo, sobre tu fila de 60 px (`mb-15`, en `PHONE_BOTTOM`), y cada pieza mide lo que dice `phoneDuelLayout`: su lugar sale sólo del alto de la pantalla. */}
+        {/* En el celular el grupo va pegado abajo, sobre tu fila de 60 px (`mb-15`, en `PHONE_DUEL_BOTTOM`), y cada pieza mide lo que dice `phoneDuelLayout`: su lugar sale sólo del alto de la pantalla. */}
         <div ref={groupRef} className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative flex flex-col', phone ? 'mt-auto mb-15' : 'my-auto gap-2', deskLine && '@container', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
         {/* Escritorio sin laterales: las vidas del rival en la esquina de arriba a la derecha, apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren
             nada. En el celular van en la barra de arriba (las pone la pantalla). */}
