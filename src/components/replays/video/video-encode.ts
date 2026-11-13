@@ -6,11 +6,11 @@ import { playerName, replayResultText, titleOf } from '../duel-replay-text'
 import { muxMp4, type Mp4Sample } from './mp4-mux'
 import { EASE_OUT, UI_ANIMATION_MS, bezierEase } from '../../../app/motion'
 import { drawBanner, drawFlight, drawFrame, loadFieldArt, loadVideoAssets, type FieldLayer } from './video-draw'
-import { dealOverlays, flightsOf, freshTargets, lifeOf, overlaysOf, replaceOverlays, targetOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
+import { dealOverlays, flightsOf, freshTargets, lifeOf, overlaysOf, replaceOverlays, shiftAt, targetOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
 import { movingKeys, transitionOf } from './video-motion'
 import { comboArtUrls, comboRowLook, comboScenes, resolveComboNames } from './video-combo'
 import { chainLayers, replayRowLook, type RowLook } from './video-chain'
-import { artUrls, replayScenes, videoLayout, type Scene } from './video-scene'
+import { artUrls, fieldRect, replayScenes, videoLayout, type Scene } from './video-scene'
 import { bitrateFor, VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
 import { FPS, frameDurations, frameOf, paceOf, subjectChain, type VideoChoice, type VideoSpeed, type VideoSubject } from './video-timeline'
 
@@ -227,6 +227,7 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
       }
       const moving = flights.length > 0 ? { keys: movingKeys(flights.map((flight) => flight.motion)), before: before! } : undefined
       const landed = Math.max(0, ...flights.map((flight) => flight.delay + flight.duration))
+      const shaken = fieldRect(scene.cells)
       let drawnBase = ''
       let clean = false
 
@@ -252,6 +253,9 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
         const animated = flying || alive.length > 0 || field !== null
         if (animated || !clean) {
           ctx.drawImage(base, 0, 0)
+          // La sacudida de un impacto: el campo dibujado, corrido unos px (vuelve a su lugar); lo demás de la mesa y lo de encima, quieto.
+          const [dx, dy] = shiftAt(alive, now)
+          if (dx !== 0 || dy !== 0) ctx.drawImage(base, shaken.x, shaken.y, shaken.w, shaken.h, shaken.x + dx, shaken.y + dy, shaken.w, shaken.h)
           if (flying) for (const flight of flights) drawFlight(ctx, flight, ms, assets, scene.layout.scale)
           for (const overlay of alive) overlay.draw(ctx, (now - overlay.start) / overlay.duration)
           clean = !animated

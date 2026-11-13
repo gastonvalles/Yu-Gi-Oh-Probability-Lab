@@ -165,7 +165,8 @@ describe('lo que anima la mesa, en el video', () => {
   it('la banda de la fase, la carta grande de lo que mueve cada paso (como al reproducir el combo), el destello cuando la carta toca la zona; al cementerio, sin carta grande', () => {
     expect(kinds(stepFx(1).overlays)).toEqual(['banner'])
     const summon = stepFx(2)
-    expect(kinds(summon.overlays)).toEqual(['landing', 'stage'])
+    // Con el impacto de la mesa (el aro y la sacudida), cuando la carta toca.
+    expect(kinds(summon.overlays)).toEqual(['impact', 'landing', 'shake', 'stage'])
     const flight = summon.flights.find((each) => each.motion.key === `0:${h0}`)!
     expect(summon.overlays.find((overlay) => overlay.kind === 'landing')!.start).toBeCloseTo(2000 + flight.delay + flight.duration * MESA.landingAt)
     // Colocar boca abajo no hace ruido; la handtrap del rival se muestra grande; ir al cementerio, no; la ficha aparece con su destello, sin vuelo que esperar.

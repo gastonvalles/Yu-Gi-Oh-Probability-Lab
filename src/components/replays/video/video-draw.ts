@@ -47,6 +47,8 @@ export interface VideoTheme {
   fieldLineRgb?: string
   /** Los de la escena de la cadena y sus medallones (`--color-chain-*`, iguales en las dos paletas). */
   chain: ChainColors
+  /** Los del impacto de la mesa (`--color-fx-*`): el destello dorado y el aro cian de energía. */
+  fx: { destello: string; energia: string }
 }
 
 export interface ChainColors {
@@ -91,6 +93,7 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     fieldLineRgb: v('--field-line-rgb'),
     // i18n-ignore: nombres de variables CSS (`metal-lo`), no texto.
     chain: { glow: v('--color-chain-glow'), flash: v('--color-chain-flash'), burst: v('--color-chain-burst'), veil: v('--color-chain-veil'), metal: v('--color-chain-metal'), metalHi: v('--color-chain-metal-hi'), metalLo: v('--color-chain-metal-lo') },
+    fx: { destello: v('--color-fx-destello'), energia: v('--color-fx-energia') },
   }
 }
 

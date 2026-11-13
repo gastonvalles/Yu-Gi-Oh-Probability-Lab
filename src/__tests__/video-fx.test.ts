@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+import { HITSTOP_MS } from '../app/card-weight'
+import { FLASH_MS, RING_MS, SHAKES } from '../app/field-impact'
 import { DELTA_MS, lifeCountMs } from '../app/life-effects'
 import { DEAL_LAND_AT, FIRST_DEAL_MS, NEXT_DEAL_MS } from '../app/deal-flight'
 import { DECK_SHUFFLE_MS, HAND_SHUFFLE_MS } from '../app/shuffle-fx'
@@ -8,7 +12,7 @@ import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, flightMs as mesaFlightMs } fr
 import { PHASE_BAND_MS, TURN_BAND_MS } from '../components/duel/PhaseBand'
 import { IMPACT_MS } from '../components/probability/AttackFx'
 import { SPOTLIGHT_TRAVEL_MS, STAGE_TONE as MESA_STAGE_TONE } from '../components/probability/MatFx'
-import { flightMs, lifeMs, MESA, RIFFLE, STAGE_TONE } from '../components/replays/video/video-fx'
+import { flightMs, IMPACT, lifeMs, MESA, RIFFLE, STAGE_TONE } from '../components/replays/video/video-fx'
 
 // El video copia los tiempos y los colores de la mesa (para no cargarla con React): que sigan siendo los mismos.
 describe('el video anima con los tiempos y los colores de la mesa', () => {
@@ -22,5 +26,18 @@ describe('el video anima con los tiempos y los colores de la mesa', () => {
 
   it('el color de la carta grande y del destello de cada jugada', () => {
     expect(STAGE_TONE).toEqual(MESA_STAGE_TONE)
+  })
+
+  it('el impacto (`field-impact.ts`): los tiempos del aro, del destello y de la pausa del golpe, sus medidas y la sacudida', () => {
+    expect(MESA).toMatchObject({ ring: RING_MS, flash: FLASH_MS, hitstop: HITSTOP_MS })
+    expect(IMPACT.shakes).toEqual(SHAKES)
+    // Las medidas y los cuadros van en las clases y en `animate` de la mesa: que sigan diciendo lo mismo.
+    const source = readFileSync(join(process.cwd(), 'src/app/field-impact.ts'), 'utf8')
+    const { ring, flash } = IMPACT
+    expect(source).toContain(`size-${ring.size / 4} rounded-full border-${ring.border} border-fx-energia`)
+    expect(source).toContain(`{ scale: '${ring.from}', opacity: ${ring.alpha} }, { scale: '${ring.to}', opacity: 0 }`)
+    expect(source).toContain(`size-${flash.size / 4} rounded-full bg-radial from-fx-destello/${flash.alpha * 100} to-transparent to-${flash.stop * 100}%`)
+    expect(source).toContain(`{ scale: '${flash.from}', opacity: 0 }, { opacity: 1, offset: ${flash.peak} }, { scale: '${flash.to}', opacity: 0 }`)
+    expect(source.match(/easing: EASE_OUT/g)).toHaveLength(2)
   })
 })
