@@ -185,7 +185,7 @@ export interface ReplayFrame {
  * La cadena del replay como la leen la escena y los medallones (`chainFeed`, `medalsOf`), desde el lado que va abajo (`bottom`: «mine»): `at` en jugadas del replay. Sin el id de
  * las cartas (`card: null`): la escena va por passcode y los medallones por lugar.
  */
-export function replayChainSteps(replay: DuelReplay, bottom: ReplaySide): ChainStep[] {
+export function replayChainSteps(replay: Pick<DuelReplay, 'chain'>, bottom: ReplaySide): ChainStep[] {
   const sideOf = (side: ReplaySide) => (side === bottom ? 'mine' : 'theirs')
 
   return (replay.chain ?? []).map(({ link, ...item }) =>

@@ -8,11 +8,11 @@ import { EASE_OUT, UI_ANIMATION_MS, bezierEase } from '../../../app/motion'
 import { drawBanner, drawFlight, drawFrame, loadFieldArt, loadVideoAssets, type FieldLayer } from './video-draw'
 import { dealOverlays, flightsOf, lifeOf, overlaysOf, replaceOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
 import { movingKeys, transitionOf } from './video-motion'
-import { comboArtUrls, comboScenes, resolveComboNames } from './video-combo'
-import { chainOverlays } from './video-chain'
+import { comboArtUrls, comboRowLook, comboScenes, resolveComboNames } from './video-combo'
+import { chainLayers, replayRowLook, type RowLook } from './video-chain'
 import { artUrls, replayScenes, videoLayout, type Scene } from './video-scene'
 import { bitrateFor, VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
-import { FPS, frameDurations, frameOf, type VideoSpeed, type VideoSubject } from './video-timeline'
+import { FPS, frameDurations, frameOf, subjectChain, type VideoSpeed, type VideoSubject } from './video-timeline'
 
 /**
  * El video de un replay o un combo, entero en el navegador: cada cuadro se pinta en un lienzo, `VideoEncoder` (WebCodecs) lo codifica en H.264 y `mp4-mux.ts` arma el .mp4.
@@ -61,12 +61,13 @@ const contextOf = (canvas: HTMLCanvasElement | OffscreenCanvas) => {
   return ctx
 }
 
-/** Lo que cambia entre un duelo y un combo: las escenas, las imágenes a cargar, el título y el cierre. */
+/** Lo que cambia entre un duelo y un combo: las escenas, las imágenes a cargar, el título, el cierre y cómo se ve cada carta de la cadena. */
 interface Plan {
   scenes: Iterable<Scene>
   arts: string[]
   intro: { title: string; subtitle: string }
   outro: { title: string; subtitle: string } | null
+  rowLook: RowLook
 }
 
 /** Lo más que se esperan los nombres antes de dibujar: un pedido colgado no frena el video (lo que no llegó dice «Carta»). */
@@ -85,6 +86,7 @@ async function duelPlan(original: DuelReplay): Promise<Plan> {
     arts: artUrls(replay),
     intro: { title, subtitle: replay.view === 'mine' ? t('meta.duels.withHand', { name: playerName(replay, 0) }) : t('meta.duels.public') },
     outro: replay.steps.length > 0 ? { title, subtitle: replayResultText(replay) } : null,
+    rowLook: replayRowLook(replay),
   }
 }
 
@@ -97,6 +99,7 @@ async function comboPlan(combo: Extract<VideoSubject, { kind: 'combo' }>['combo'
     arts: comboArtUrls(combo),
     intro: { title: combo.name, subtitle: combo.deckName ? `${combo.deckName} · ${plays}` : plays },
     outro: combo.actions.length > 0 ? { title: combo.name, subtitle: t('meta.duels.video.comboEnd') } : null,
+    rowLook: comboRowLook(names),
   }
 }
 
@@ -187,9 +190,10 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
   }
 
   try {
-    // La cadena guardada (el duelo automático): su escena y sus medallones, con los tiempos de todo el video; lo que se activa no sale grande (lo dice la escena).
-    const chained = subject.kind === 'duel' && Boolean(subject.replay.chain?.length)
-    let live: Overlay[] = subject.kind === 'duel' ? chainOverlays(subject.replay, starts, speed, videoLayout(VIDEO_WIDTH), assets) : []
+    // La cadena guardada (el duelo automático, o un combo grabado ahí): su escena y sus medallones, con los tiempos de todo el video; lo que se activa no sale grande (lo dice la escena).
+    const chain = subjectChain(subject)
+    const chained = chain.length > 0
+    let live: Overlay[] = chainLayers(chain, plan.rowLook, starts, speed, videoLayout(VIDEO_WIDTH), assets)
     let before: Scene | null = null
     let slice = performance.now()
     const scenes = plan.scenes[Symbol.iterator]()

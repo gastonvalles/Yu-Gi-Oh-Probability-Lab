@@ -556,12 +556,14 @@ function medalRuns(tracks: readonly MedalTrack[], videoEnd: number, speed: Video
 }
 
 /** Lo que la cadena dibuja en el video de un duelo (`starts`: dónde empieza cada tramo): una capa por cada escena y otra por cada tramo con medallones. Sin cadena guardada, nada. */
-export function chainOverlays(replay: DuelReplay, starts: readonly number[], speed: VideoSpeed, layout: VideoLayout, assets: VideoAssets): Overlay[] {
-  const steps = replayChainSteps(replay, 0)
+export const chainOverlays = (replay: DuelReplay, starts: readonly number[], speed: VideoSpeed, layout: VideoLayout, assets: VideoAssets): Overlay[] =>
+  chainLayers(replayChainSteps(replay, 0), replayRowLook(replay), starts, speed, layout, assets)
+
+/** Lo mismo con la cadena ya leída desde quien grabó (`steps`) y cómo se ve cada carta (`look`): la del replay de un duelo o la de un combo (`comboRowLook`). */
+export function chainLayers(steps: readonly ChainStep[], look: RowLook, starts: readonly number[], speed: VideoSpeed, layout: VideoLayout, assets: VideoAssets): Overlay[] {
   if (steps.length === 0) return []
   const snapshots = chainSnapshots(steps, starts, speed)
   const geo = stageGeometry(layout)
-  const look = replayRowLook(replay)
   const videoEnd = starts.at(-1)!
   const tracks = medalTracks(snapshots)
   const span = (start: number, end: number, kind: Overlay['kind'], paint: (ctx: Ctx, now: number) => void): Overlay => ({ kind, start, duration: end - start, draw: (ctx, p) => paint(ctx, start + p * (end - start)) })

@@ -48,7 +48,7 @@ import {
 } from '../../app/practice-mat'
 import { growHand, handFloor, handInset, mergeHandOrder } from '../../app/practice-hand-layout'
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
-import { comboBranches, comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, stepBranchesOf, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
+import { comboBranches, comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, stepBranchesOf, writeSavedCombos, type ComboExtras, type SavedCombo } from '../../app/saved-combos'
 import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
@@ -305,6 +305,8 @@ export interface DuelMatLink {
   menus?: { Card: ComponentType<AutoCardSheetProps> }
   /** El duelo automático tiene una pregunta abierta en un cartel de abajo (`AutoPanel`): en el celular gana ella, y la ficha y el visor de una pila ceden sin cerrarse. */
   asking?: boolean
+  /** «Jugar solo automático»: lo que un combo guardado hasta el paso `count` suma del duelo (el campo del rival y la cadena, sólo si hacen falta: `comboExtrasFromAuto`). */
+  comboExtras?: (count: number) => ComboExtras
 }
 
 interface PracticeMatProps {
@@ -2255,7 +2257,9 @@ function PracticeMatBody({
   // Guardar es una foto de lo que se ve, hasta el paso de ahora; nunca una jugada (en automático, la mesa no despacha). Lo que contó el núcleo en vivo queda marcado (`auto`): no un
   // combo guardado que se está repasando.
   const saveCombo = (name: string) => {
-    const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf, auto: Boolean(duel?.auto) && !session.replay }, combos)
+    const live = Boolean(duel?.auto) && !session.replay
+    const extras = live ? duel?.comboExtras?.(session.cursor) : undefined
+    const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf, auto: live, ...(extras ? { extras } : {}) }, combos)
     const next = [...combos, combo]
     writeSavedCombos(next)
     setCombos(next)
