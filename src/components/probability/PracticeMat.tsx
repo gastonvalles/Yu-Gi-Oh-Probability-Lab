@@ -110,6 +110,7 @@ import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
 import { PracticeMatPanel, SharedComboBar } from './PracticeMatPanel'
+import { useComboScene } from './combo-scene'
 import { ReplayVideoDialog } from '../replays/ReplayVideo'
 import { createPanelSteps } from './panel-steps'
 import { ReplayBar, ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from './ReplayBar'
@@ -2309,6 +2310,10 @@ function PracticeMatBody({
   const stepBranches = useMemo(() => (reviewed && practice ? stepBranchesOf(comboBranches(combos), reviewed) : undefined), [reviewed, practice, combos])
   // Las notas que se ven: las del guardado o, en uno que llegó por enlace (que no se edita hasta guardarlo), las suyas.
   const stepNotes = reviewed ? reviewed.notes : shared?.combo.actions === session.actions ? shared.combo.notes : undefined
+  // Un combo grabado en «Jugar solo automático» con el campo del rival o la cadena (`theirs`, `chain`), se abra por donde se abra (el enlace, Replays, «Tus combos»): la mesa manual los dibuja
+  // con las piezas del repaso del automático (`useComboScene`). `scene` es lo que se ve del rival y de la cadena: el del duelo o, sin duelo, el del combo; sin ellos, la práctica de siempre.
+  const comboScene = useComboScene(duel ? null : (reviewed ?? (shared?.combo.actions === session.actions ? shared.combo : null)), session.cursor, nameOf, artById)
+  const scene = duel ?? comboScene
   const noteStep = useCallback(
     (index: number, note: string) => {
       if (!reviewed) return
@@ -2416,12 +2421,12 @@ function PracticeMatBody({
   // Las cartas con la mira: las que marqué yo y las que marcó el rival (de las pilas enteras y de la mano, también se marca lo de adentro).
   const rivalMarks = duel?.marksOnMine
   // Las cartas que brillan: en un duelo, lo que podés hacer (celeste) y lo que se activa (ámbar); si no hay nada de eso, las de la salida o el problema del Lab (que oscurecen al resto).
-  const glowSets = useMemo(() => ({ can: duel?.respond, act: duel?.act, aim: duel?.aim }), [duel?.respond, duel?.act, duel?.aim])
+  const glowSets = useMemo(() => ({ can: duel?.respond, act: scene?.act, aim: duel?.aim }), [duel?.respond, scene?.act, duel?.aim])
   const duelLit = Boolean(glowSets.can?.size || glowSets.act?.size || glowSets.aim)
   const glowKindOf = useCallback((id: string): GlowKind | null => (duelLit ? glowOf(id, glowSets) : highlighted.has(id) ? (highlightKind ?? 'opening') : null), [duelLit, glowSets, highlighted, highlightKind])
   const dimUnlit = !duelLit && highlighted.size > 0
   const deckGlow = pileGlowOf(state.deck, glowSets)
-  const deckLink = pileLinksOf(state.deck, duel?.links)
+  const deckLink = pileLinksOf(state.deck, scene?.links)
   const targetedIds = useMemo(() => new Set([...state.targeted, ...(rivalMarks?.cards ?? [])]), [state.targeted, rivalMarks])
   // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
   // En el celular la hoja tapa la mano: una carta de la mano no se levanta (quedaba encima de los botones); la del campo sí lleva el marco.
@@ -2480,7 +2485,7 @@ function PracticeMatBody({
             stat={fieldStats.get(shown.id) ?? null}
             pickStat={duel?.auto?.cardPick?.stats?.get(shown.id) ?? null}
             targeted={targetedIds.has(shown.id)}
-            link={duel?.links?.get(shown.id) ?? null}
+            link={scene?.links?.get(shown.id) ?? null}
             selected={selectedId === shown.id}
             hold={holdPlay(shown.id) !== null}
             still={isAuto}
@@ -2494,8 +2499,8 @@ function PracticeMatBody({
             {scaleHere ?? '?'}
           </span>
         ) : null}
-        {!shown && spot === 'emz' && duel ? duel.sharedZone(index) : null}
-        <Presence>{duel?.medals?.get(drop) ? <ChainBadge medals={duel.medals.get(drop)!} /> : null}</Presence>
+        {!shown && spot === 'emz' && scene ? scene.sharedZone(index) : null}
+        <Presence>{scene?.medals?.get(drop) ? <ChainBadge medals={scene.medals.get(drop)!} /> : null}</Presence>
         {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
       </div>
     )
@@ -2515,7 +2520,7 @@ function PracticeMatBody({
     // Una carta marcada como objetivo adentro (se vea o no: no es siempre la de arriba) lleva la mira sobre la casilla.
     const marked = state[pile].some((id) => targetedIds.has(id)) || (rivalMarks?.piles.includes(pile) ?? false)
     const pileGlow = pileGlowOf(state[pile], glowSets)
-    const link = pileLinksOf(state[pile], duel?.links)
+    const link = pileLinksOf(state[pile], scene?.links)
     const label = `${PILE_TITLES[pile]}: ${count}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`
 
     return (
@@ -2544,7 +2549,7 @@ function PracticeMatBody({
           {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
           {marked ? <TargetMark key={`mira:${shown}`} /> : null}
         </span>
-        <Presence>{duel?.medals?.get(pile) ? <ChainBadge medals={duel.medals.get(pile)!} /> : null}</Presence>
+        <Presence>{scene?.medals?.get(pile) ? <ChainBadge medals={scene.medals.get(pile)!} /> : null}</Presence>
       </button>
     )
   }
@@ -2693,11 +2698,11 @@ function PracticeMatBody({
       column.removeEventListener('scroll', later)
       cancelAnimationFrame(frame)
     }
-  }, [stripOpen, fieldNode, view, rails, isDuel, duel?.chain])
+  }, [stripOpen, fieldNode, view, rails, isDuel, scene?.chain])
 
   // La capa de la cadena (`duel.chain`, hasta 1100 px): sobre el campo que se ve (en 3D, el inclinado), centrada en él. La llena la cadena en grande (lámina C); deja pasar los toques.
   const chainRef = useRef<HTMLDivElement | null>(null)
-  const hasChain = Boolean(duel?.chain)
+  const hasChain = Boolean(scene?.chain)
 
   useLayoutEffect(() => {
     const layer = chainRef.current
@@ -3117,25 +3122,26 @@ function PracticeMatBody({
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
           data-phone={phone ? '' : undefined}
-          className={cx(!duel && 'min-[1101px]:my-auto', !duel && (hasRivalStrip ? RIVAL_STRIP_FIELD : 'min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]'), "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] max-sm:gap-0.75 data-phone:gap-0.75 min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]',
+          // Con el campo del rival de un combo (`comboScene`), las cinco filas entran en el alto de la práctica.
+          className={cx(!duel && 'min-[1101px]:my-auto', !duel && (hasRivalStrip ? RIVAL_STRIP_FIELD : comboScene ? 'min-[1101px]:[--cell:max(4rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-24rem)/5),15rem))]' : 'min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]'), "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] max-sm:gap-0.75 data-phone:gap-0.75 min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]',
             // Las áreas: en la práctica, escritas acá; en un duelo las arma la pantalla (`duel.areas`, por variable). Siete columnas en todos los anchos, también en el celular.
-            duel ? '[grid-template-areas:var(--areas)]' : "[grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck']",
+            scene ? '[grid-template-areas:var(--areas)]' : "[grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck']",
           )}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
           // En el celular, la caja de `phoneField`.
-          style={duel ? ({ '--areas': duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : deskLine ? DESKTOP_AUTO_CELL : 'max(3.5rem, min(12rem, calc((100dvh - 30.8rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP - rise : THEIR_HAND.mobile.room } : null), ...(phone ? phoneField : null) } as CSSProperties) : undefined}
+          style={duel ? ({ '--areas': duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : deskLine ? DESKTOP_AUTO_CELL : 'max(3.5rem, min(12rem, calc((100dvh - 30.8rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP - rise : THEIR_HAND.mobile.room } : null), ...(phone ? phoneField : null) } as CSSProperties) : comboScene ? ({ '--areas': comboScene.areas, marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } as CSSProperties) : undefined}
         >
           {/* Tu magia de campo boca arriba: su arte de fondo, sólo en tu mitad (la del rival va en `duel.opponent`). Sale de la mesa, no de la carta que espera en la zona a que se elija cómo sale. */}
           <FieldArt side="mine" src={fieldArtSrc(state.field, artById)} />
           {/* La mano del rival queda arriba del borde del campo, centrada (inclinada con él en la vista 3D: `TheirHand` se endereza), sin tapar nada de él. En el celular, tu mano espejada a 0,8. */}
-          {duel?.rivalHand ? (
+          {scene?.rivalHand ? (
             <div className="absolute bottom-full left-1/2 z-10 -translate-x-1/2" style={{ marginBottom: phone ? phone.rivalGap : isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
-              <TheirHandSize value={rivalSize}>{duel.rivalHand}</TheirHandSize>
+              <TheirHandSize value={rivalSize}>{scene.rivalHand}</TheirHandSize>
             </div>
           ) : null}
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
-          {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
+          {scene ? scene.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
           {/* La fila del medio, de izquierda a derecha: el reloj de turnos (`p1`, entre el Banish del rival y la Zona Extra de monstruos), el botón de la fase de ahora al medio del campo (`p2`, entre las
               dos Zonas Extra: Gastón, 2026-11-12, «el botón de fases anterior estaba bien, debe estar en el medio»), que al tocarlo muestra todas, y en `p3` el + (la práctica y el manual) o las
               restricciones (el automático). Un solo lugar para las fases, en todos los anchos y los duelos. */}
@@ -3219,7 +3225,7 @@ function PracticeMatBody({
             ) : null}
             <PileBadge count={state.deck.length} />
             {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
-            <Presence>{duel?.medals?.get('deck') ? <ChainBadge medals={duel.medals.get('deck')!} /> : null}</Presence>
+            <Presence>{scene?.medals?.get('deck') ? <ChainBadge medals={scene.medals.get('deck')!} /> : null}</Presence>
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
@@ -3272,8 +3278,8 @@ function PracticeMatBody({
             maxCardWidth={phone ? phone.handCard : isDesktop ? (deskLine ? deskHand.cardWidth : duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
             glowOf={glowKindOf}
-            {...(duel?.links?.size ? { links: duel.links } : {})}
-            {...(duel?.medals?.get('hand') ? { medals: duel.medals.get('hand')! } : {})}
+            {...(scene?.links?.size ? { links: scene.links } : {})}
+            {...(scene?.medals?.get('hand') ? { medals: scene.medals.get('hand')! } : {})}
             dimUnlit={dimUnlit}
             muted={muted}
             flash={flash}
@@ -3614,9 +3620,9 @@ function PracticeMatBody({
       <SheetHost yieldTo={pileSheet && !pileShelved ? 'hide' : choosing ? 'grip' : null}>
       {/* La cadena (duelo automático), en todos los anchos: una capa centrada sobre el campo que se ve (la ubica `chainRef`; en escritorio, sobre la columna del medio, sin el detalle ni los pasos), que
           deja pasar los toques; sólo lo suyo los recibe. */}
-      {duel?.chain ? (
+      {scene?.chain ? (
         <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute inset-x-0 top-0 z-[125] flex items-center justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
-          {duel.chain}
+          {scene.chain}
         </div>
       ) : null}
 
