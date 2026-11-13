@@ -33,12 +33,20 @@ export function ReplayOverlay({ label, onClose, children }: { label: string; onC
   )
 }
 
+/** Encima de la capa (`z-160`): los hijos del `body` con `data-fx`. */
+const FX_ABOVE = ['*:data-fx:z-170!']
+
 function Layer({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEscapeKey(onClose, true)
   useBodyScrollLock(true)
   useEffect(() => ref.current?.focus(), [])
+  // Los efectos de la mesa que se dibujan en el `body` (el impacto de `field-impact.ts`, la espada de `AttackFx`) van encima de esta capa mientras está abierta: si no, quedaban detrás.
+  useEffect(() => {
+    document.body.classList.add(...FX_ABOVE)
+    return () => document.body.classList.remove(...FX_ABOVE)
+  }, [])
 
   return (
     <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label} data-testid="replay-layer" className="fixed inset-0 z-160 bg-background outline-none">

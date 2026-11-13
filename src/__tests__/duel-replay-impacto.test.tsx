@@ -12,6 +12,7 @@ import { createMatState } from '../app/practice-mat'
 import type { Strike } from '../components/probability/AttackFx'
 import { landingDelay } from '../components/probability/MatFx'
 import { DuelReplayScreen } from '../components/replays/DuelReplayScreen'
+import { ReplayLayer } from '../components/replays/ReplayLayer'
 
 // El impacto de verdad dibuja por el DOM y la Web Animations API (jsdom no la tiene): acá se mira qué decide el replay y con qué lo llama.
 vi.mock('../app/field-impact', async (original) => ({ ...(await original<typeof import('../app/field-impact')>()), impactOn: vi.fn() }))
@@ -78,6 +79,13 @@ describe('los impactos de la mesa en el replay de un duelo', () => {
     expect(screen.getByTestId('strike').getAttribute('data-from')).not.toBe('')
     next()
     expect(screen.getByTestId('strike')).toHaveAttribute('data-to', 'mine')
+  })
+
+  it('a pantalla completa (la capa del replay, `z-160`), el impacto y la espada, que van en el `body`, quedan encima mientras está abierta', () => {
+    const { unmount } = render(<ReplayLayer replay={replay} onClose={() => {}} />)
+    expect(document.body).toHaveClass('*:data-fx:z-170!')
+    unmount()
+    expect(document.body).not.toHaveClass('*:data-fx:z-170!')
   })
 
   it('saltar (atrás, al principio) no trae impacto; con movimiento reducido, tampoco la espada', () => {
