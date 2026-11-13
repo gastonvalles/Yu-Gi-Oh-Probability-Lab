@@ -1591,7 +1591,6 @@
   /* El texto (y el pulgar del interruptor) sobre un relleno lima: el carbón del fondo (13,59:1; el blanco sobre lima no se lee, 1,30:1). */
   --color-info-foreground: var(--accent-foreground);
   --color-field-line: var(--field-line);
-  --color-handtrap: var(--handtrap);
   --color-nav: var(--nav);
   --color-nav-raised: var(--nav-raised);
   --color-nav-active: var(--nav-active);
@@ -1646,7 +1645,6 @@
     --field-line-rgb: 255 255 255;
 
     /* El Extra Deck y los monstruos Sincro y Enlace: el azul de siempre (las zonas del deck son categorías y se distinguen por color). */
-    --handtrap: #3b82f6;
     --handtrap-rgb: 59 130 246;
     /* Bien / listo: un verde agua (~166°) que se separa del verde del EVA-01 (101°); siempre con ícono o texto. */
     --success: #2edcb4;
