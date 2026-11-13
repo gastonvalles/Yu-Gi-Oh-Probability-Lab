@@ -265,7 +265,8 @@ export function AutoPanel({ kind, label, titleId: givenId, strip, head, top, asi
     : inline
       ? 'relative mx-auto w-full max-w-155 border border-primary/60'
       : cx(
-        'fixed inset-x-0 bottom-0 z-[130] max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] border-t border-primary/60 shadow-overlay',
+        // En la tableta (hasta 1100 px), de ancho máximo razonable y centrada (el celular, hasta 619 px, la lleva a todo el ancho).
+        'fixed inset-x-0 bottom-0 z-[130] mx-auto max-w-155 min-[640px]:border-x max-h-[calc(100dvh-var(--panel-ceiling,50dvh))] border-t border-primary/60 shadow-overlay',
         'pb-[env(safe-area-inset-bottom,0px)]',
         // Una sola hoja abajo en el celular: lo que abrís con una pregunta abierta (la ficha, el visor de una pila) va encima y la esconde sin cerrarla; al cerrarlo, vuelve. Lo que ya estaba
         // abierto cuando llegó la pregunta, al revés, queda guardado debajo de ella (`PracticeMat`).

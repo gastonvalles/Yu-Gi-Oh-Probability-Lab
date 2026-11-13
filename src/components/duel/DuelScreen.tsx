@@ -61,7 +61,6 @@ import { CardMenu, PILE_TITLES, PileViewer, type PileMany } from '../probability
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelCalculator } from './DuelCalculator'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLine, RivalLife, type LaneNotice } from './DuelBar'
-import { MOBILE_DUEL_MEDIA_QUERY } from '../probability/compact-field'
 import { ResumeAutoSetting, useResumeLane, type ResumeAuto } from './ResumeAuto'
 import { useManualReplay } from './ManualReplay'
 import { DuelCardDock, type CardPeek } from './DuelCardDock'
@@ -1742,7 +1741,8 @@ function useMarkNotice(snapshot: DuelSnapshot) {
 function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deckName, onRematch, onLeave, onAbandon, resume }: { duel: Duel; snapshot: DuelSnapshot; /** La sala: el registro se guarda con ella (recargar no lo borra). */ room: string; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onRematch: () => void; onLeave: () => void; onAbandon: () => void; /** Una sala con reglas automáticas que pasó a manual: pedir seguir en automático (`ResumeAuto`). */ resume?: ResumeAuto }) {
   const { mine, initial, actions, theirs } = snapshot
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  const phone = useMediaQuery(MOBILE_DUEL_MEDIA_QUERY)
+  // Hasta 1100 px (celular y tableta): la misma mesa, con las chapas, la botonera de abajo y los avisos arriba; un solo corte (1101 px).
+  const phone = !useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   // Tocar una carta o una pila del rival (o su mano) abre un menú con una sola jugada: marcarla (o quitarle la marca) como objetivo, y él lo ve en lo suyo.
   const [markMenu, setMarkMenu] = useState<{ target: MarkTarget; rect: DOMRect; place: string } | null>(null)

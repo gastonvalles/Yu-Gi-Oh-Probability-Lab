@@ -129,6 +129,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('quien mira entra con el enlace de espectador, sin deck ni nombre, ve a los dos jugadores y no puede tocar nada', () => {
+    // Escritorio: ahí la barra dice cuántos miran (hasta 1100 px, la barra es la del celular y no lo dice).
+    asDesktop()
     const { host, guest } = startDuel()
     openTable(host, guest)
 
@@ -636,7 +638,8 @@ describe('la pantalla del duelo', () => {
 
     const hand = cardsOf(guest)
     expect(hand).toHaveLength(4)
-    expect(within(guest.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
+    // El turno es de quien tiene el borde grueso en su chapa (hasta 1100 px no hay texto del turno).
+    expect(guest.container.querySelector('[data-lp="mine"]')).toHaveAttribute('data-active', 'true')
 
     // La pestaña se recarga: se cierra la pantalla y se vuelve a abrir en la misma sala (el rol queda en la pestaña).
     guest.unmount()
@@ -648,7 +651,7 @@ describe('la pantalla del duelo', () => {
     expect(cardsOf(reloaded)).toEqual(hand)
     expect(zoneOf(reloaded, 'Zona de monstruo 1').getByLabelText(summoned)).toBeInTheDocument()
     expect(within(reloaded.container).getByRole('button', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
-    expect(within(reloaded.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
+    expect(reloaded.container.querySelector('[data-lp="mine"]')).toHaveAttribute('data-active', 'true')
     // El anfitrión sigue con su mano y ve la de quien recargó, con la carta invocada y las vidas de antes.
     expect(handOf(host).getAllByRole('listitem')).toHaveLength(5)
     expect(within(host.container).getAllByRole('img', { name: 'Mano del rival: 4' })).toHaveLength(1)
@@ -797,16 +800,16 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
   })
 
-  it('la barra de arriba no parte sus filas hasta 1100 px: el reloj, el chat, el ⋯ y salir van juntos (deshacer va abajo, donde llega el pulgar); debajo, el marcador con tus vidas, el turno una vez y las del rival', () => {
+  it('la barra de arriba no parte sus filas hasta 1100 px (celular y tableta): el reloj, la chapa del rival, el ⋯ y salir van juntos (deshacer y el chat van abajo, donde llega el pulgar); sin marcador plano ni el turno dicho con texto', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
     const bar = within(host.container)
     const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).closest('div')!
 
-    // Reloj, chat, el ⋯ (la vista, los sonidos, reconectar, rendirse) y salir: la misma fila, de 44 px, que no se parte.
+    // Reloj, el ⋯ (la vista, los sonidos, reconectar, rendirse) y salir: la misma fila, de 44 px, que no se parte.
     const top = rowOf(/^Reloj de la ronda/)
-    for (const name of ['Chat', 'Más opciones', 'Salir del duelo']) expect(top).toContainElement(bar.getByRole('button', { name }))
+    for (const name of ['Más opciones', 'Salir del duelo']) expect(top).toContainElement(bar.getByRole('button', { name }))
     // Deshacer (Gastón, 2026-11-12: «debería estar abajo, no arriba»): abajo a la derecha, de 44 px.
     expect(top).not.toContainElement(bar.getByRole('button', { name: 'Deshacer' }))
     expect(bar.getByRole('button', { name: 'Deshacer' }).closest('[data-mat-float]')).not.toBeNull()
@@ -814,13 +817,11 @@ describe('la pantalla del duelo', () => {
     expect(top).toHaveClass('h-11')
     expect(top).not.toHaveClass('flex-wrap')
 
-    // El marcador: otra fila, con las dos vidas (botones de 44 px que abren la calculadora) y el turno una sola vez, con su número; sin la píldora de la fase.
-    const score = bar.getByTestId('duel-score')
-    expect(score).not.toBe(top)
-    expect(within(score).getAllByRole('button', { name: /^Puntos de vida de .*Abrir la calculadora de vidas$/ })).toHaveLength(2)
-    expect(within(score).getAllByRole('button', { name: /^Puntos de vida de / })[0]).toHaveClass('min-h-11', 'min-w-11')
-    expect(within(score).getByTestId('duel-turn')).toHaveTextContent(/^Tu turno · 1$/)
-    expect(score).not.toHaveTextContent(/Draw/)
+    // La chapa del rival va en la misma fila (sus vidas abren la calculadora) y tus vidas abajo, en tu chapa, con el chat y Deshacer a la derecha; ni marcador plano ni «Tu turno · 1» (lo dice el borde de la chapa de quien juega).
+    expect(within(top).getAllByRole('button', { name: /^Puntos de vida de / })).toHaveLength(1)
+    expect(bar.queryByTestId('duel-score')).toBeNull()
+    expect(bar.queryByTestId('duel-turn')).toBeNull()
+    expect(bar.getByRole('button', { name: /^Chat/ }).closest('[data-mat-float]')).not.toBeNull()
     expect(top).not.toHaveTextContent(/Draw/)
     // La fase, sólo en el botón del campo y con su sigla de dos letras (el nombre lo oye el lector de pantalla); al tocarlo, la línea de fases con los nombres.
     expect(phaseChip(host)).toHaveAccessibleName('Fases: Draw Phase')
@@ -1102,7 +1103,7 @@ describe('la pantalla del duelo', () => {
     sendFromChat(guest, 'Continuá')
     flush()
     expect(bubble(guest, 'mine')).toHaveTextContent('👍')
-    expect(bubble(guest, 'mine')).toHaveClass('text-display', 'top-full')
+    expect(bubble(guest, 'mine')).toHaveClass('text-display', 'bottom-full')
     expect(bubble(host, 'theirs')).toBeNull()
     expect(rivalEmoji(host)).toBeNull()
     expect(incoming()).toEqual([expect.objectContaining({ message: '👍', rival: 'Beto' })])

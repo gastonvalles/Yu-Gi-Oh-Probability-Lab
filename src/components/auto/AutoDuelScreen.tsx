@@ -24,7 +24,6 @@ import { getLocale, t } from '../../i18n'
 import { TurnOrderBanner } from '../duel/DuelBanner'
 import { TurnDial } from '../duel/TurnDial'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLine, RivalLife, type LaneNotice } from '../duel/DuelBar'
-import { MOBILE_DUEL_MEDIA_QUERY } from '../probability/compact-field'
 import { DuelChatPanel } from '../duel/DuelChat'
 import { DuelPause } from '../duel/DuelPause'
 import { LethalBlow } from '../duel/LethalBlow'
@@ -571,7 +570,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     </>
   )
   // El celular: las chapas, la línea (el registro con el aviso encima) y el chat en la botonera de abajo, no en la barra.
-  const phone = useMediaQuery(MOBILE_DUEL_MEDIA_QUERY)
+  // Hasta 1100 px (celular y tableta): la misma mesa, con las chapas, la botonera de abajo y los avisos arriba; un solo corte (1101 px).
+  const phone = !useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // El ⚙ de abajo a la derecha: Opciones (la vista 3D, los menús flotantes, lo de arriba y Rendirse al final: el mismo `concede` de la sala).
   const gear = <OptionsGear concede={{ onConcede: duel.concede, text: t('duel.bar.concedeText', { name: rivalName }), disabled: result !== null || !snapshot.peerPresent }}>{settings}</OptionsGear>
   const chatToggle = <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} tile={phone} />

@@ -29,7 +29,6 @@ import { ResultHero, ResultPeek } from '../duel/DuelBanner'
 import { DuelLine, type LaneNotice } from '../duel/DuelBar'
 import { LethalBlow } from '../duel/LethalBlow'
 import { LifeBadge } from '../duel/LifeScore'
-import { MOBILE_DUEL_MEDIA_QUERY } from '../probability/compact-field'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { RivalSheet } from '../duel/RivalRow'
 import { PileGroupContext } from '../probability/MatDialogs'
@@ -414,7 +413,8 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 20 px sobre el borde de la mano (`-mt-5`, la chapa: la fila no crece y el campo no se corre). Con
   // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, la del rival en la barra y la tuya abajo, sin fila de abajo de la mesa (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
   // Hasta 1100 px (celular y tableta), las chapas: la del rival a la derecha de la barra (`seat`) y la tuya abajo a la izquierda con el turno; el aviso va debajo de la barra.
-  const phone = useMediaQuery(MOBILE_DUEL_MEDIA_QUERY)
+  // Hasta 1100 px (celular y tableta): la misma mesa, con las chapas, la botonera de abajo y los avisos arriba; un solo corte (1101 px).
+  const phone = !useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const seated = docked || phone
   const myLife = useMemo(
     () =>

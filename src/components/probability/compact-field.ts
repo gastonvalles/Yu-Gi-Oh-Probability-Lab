@@ -1,7 +1,5 @@
 /** El celular en vertical: menos de 640 px de ancho (el corte `sm` de Tailwind). El campo tiene siete columnas en todos los anchos. */
 export const COMPACT_FIELD_MEDIA_QUERY = '(max-width: 639.98px)'
-/** La mesa del duelo sin escritorio: hasta 1100 px (celular y tableta) lleva la misma geometría fija (`matDuelLayout`), las chapas, la botonera de abajo y los avisos arriba. Es el complemento de `DESKTOP_DECK_BUILDER_MEDIA_QUERY`: un solo corte. */
-export const MOBILE_DUEL_MEDIA_QUERY = '(max-width: 1100.98px)'
 
 /** La orilla de la columna (`max-sm:px-1`) y el hueco entre casillas (`max-sm:gap-0.75`) en el celular. */
 const PHONE_EDGE = 4

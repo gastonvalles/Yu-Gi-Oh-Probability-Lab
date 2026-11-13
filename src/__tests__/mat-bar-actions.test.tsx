@@ -250,7 +250,7 @@ describe('la barra de la mesa es una sola', () => {
     expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
   })
 
-  it('de 640 a 1100 px (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo (↶ ≡ ⚙ van a la derecha de la franja de tu mano), el botón de la fase sólo con su sigla y los avisos van arriba', () => {
+  it('de 640 a 1100 px (la tableta) es la mesa del celular: tu chapa abajo y la del rival en la barra, sin marcador plano ni el turno dicho con texto, ↶ ≡ ⚙ a la derecha, el botón de la fase sólo con su sigla y los avisos van arriba', () => {
     const original = window.matchMedia
 
     onTestFinished(() => {
@@ -258,20 +258,23 @@ describe('la barra de la mesa es una sola', () => {
     })
     window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
     renderAuto()
-    const score = screen.getByTestId('auto-score')
 
+    expect(screen.queryByTestId('auto-score')).toBeNull()
+    expect(screen.queryByTestId('auto-turn')).toBeNull()
     // El `body` lo dice (hasta 1100 px los avisos van arriba: index.css).
     expect(document.body.dataset.duel).toBe('solo')
     // El botón de la fase, sólo con su sigla de dos letras en todos los anchos (Gastón, 2026-10-27); el nombre completo lo oye el lector de pantalla.
     expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ })).toHaveTextContent(/^(DP|SP|M1|BP|M2|EP)$/)
     expect(screen.getByRole('button', { name: /^Fases: / })).toHaveClass('size-11')
 
-    expect(within(score).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
-    expect(within(score).getByRole('group', { name: 'Puntos de vida de Rival: 8000' })).toBeInTheDocument()
+    const seat = document.querySelector<HTMLElement>('[data-mat-seat]')!
+
+    expect(within(seat).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toHaveAttribute('data-life-badge')
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('group', { name: 'Puntos de vida de Rival: 8000' })).toHaveAttribute('data-life-badge')
     expect(document.querySelector('[data-corner]')).toBeNull()
     expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
     expect(screen.queryByTestId('auto-phase')).toBeNull()
-    // Sin fila de abajo ni ⋯: Deshacer, «Pasos y combos» y el ⚙, a la derecha de la franja de abajo de tu mano.
+    // Sin ⋯: Deshacer, «Pasos y combos» y el ⚙, a la derecha de tu fila de abajo.
     const steps = screen.getByRole('button', { name: 'Pasos y combos' })
 
     expect([...steps.parentElement!.children].map((element) => element.getAttribute('aria-label'))).toEqual(['Deshacer', 'Pasos y combos', 'Botonera del duelo'])
