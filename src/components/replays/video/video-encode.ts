@@ -6,7 +6,7 @@ import { playerName, replayResultText, titleOf } from '../duel-replay-text'
 import { muxMp4, type Mp4Sample } from './mp4-mux'
 import { EASE_OUT, UI_ANIMATION_MS, bezierEase } from '../../../app/motion'
 import { drawBanner, drawFlight, drawFrame, loadFieldArt, loadVideoAssets, type FieldLayer } from './video-draw'
-import { dealOverlays, flightsOf, freshTargets, lifeOf, overlaysOf, replaceOverlays, shiftAt, targetOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
+import { dealOverlays, dealtKeys, flightsOf, freshTargets, lifeOf, overlaysOf, replaceOverlays, shiftAt, targetOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
 import { movingKeys, transitionOf } from './video-motion'
 import { comboArtUrls, comboRowLook, comboScenes, resolveComboNames } from './video-combo'
 import { chainLayers, replayRowLook, type RowLook } from './video-chain'
@@ -199,6 +199,8 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
     const manual = subject.kind === 'duel' ? subject.replay.mode === 'link' : !chained && !subject.combo.auto
     let live: Overlay[] = chainLayers(chain, plan.rowLook, starts, speed, videoLayout(VIDEO_WIDTH), assets)
     let before: Scene | null = null
+    // Las manos se reparten como en el replay: al empezar, las que ya están; la primera de un lado que arranca vacía (el automático), con su robo. La del rival, sólo en un duelo.
+    let toDeal: (0 | 1)[] = subject.kind === 'duel' ? [0, 1] : [0]
     let slice = performance.now()
     const scenes = plan.scenes[Symbol.iterator]()
     let scene: Scene | null = null
@@ -211,18 +213,22 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
       const outro = index === durations.length - 1 && index > 0
       let flights: Flight[] = []
       let life: ReturnType<typeof lifeOf> = null
+      const dealing = toDeal.filter((side) => scene!.sides[side].hand.length > 0)
+      toDeal = toDeal.filter((side) => !dealing.includes(side))
+      const dealt = new Set(dealtKeys(scene, dealing))
       if (before && before !== scene) {
-        flights = flightsOf(transitionOf(before, scene), scene.layout.scale, speed, durations[index]!)
+        flights = flightsOf(transitionOf(before, scene).filter((motion) => !dealt.has(motion.key)), scene.layout.scale, speed, durations[index]!)
         live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind, chained, manual), start)
         live.push(...targetOverlays(before, scene, start, durations[index]!, speed))
         life = lifeOf(before, scene, speed)
+        if (dealing.length > 0) live.push(...dealOverlays(scene, assets, speed, dealing, start))
       }
       const fresh = before && before !== scene ? freshTargets(before, scene) : undefined
       const shown = scene
       // El arte de una Magia de Campo que aparece se baja antes de pintarla (una vez por carta).
       for (const side of scene.sides) if (side.fieldArt) await loadFieldArt(side.fieldArt, assets, signal)
       const fields = fieldFade(before, scene, speed)
-      if (index === 0) live.push(...dealOverlays(scene, assets, speed), titleOverlay((target, alpha) => drawBanner(target, shown, plan.intro, assets, alpha), 0, durations[0]! + TITLE_FADE_MS, TITLE_FADE_MS, false))
+      if (index === 0) live.push(...dealOverlays(scene, assets, speed, dealing), titleOverlay((target, alpha) => drawBanner(target, shown, plan.intro, assets, alpha), 0, durations[0]! + TITLE_FADE_MS, TITLE_FADE_MS, false))
       if (outro && plan.outro) {
         const banner = plan.outro
         live.push(titleOverlay((target, alpha) => drawBanner(target, shown, banner, assets, alpha, true), start, durations[index]!, TITLE_FADE_MS, true))

@@ -6,19 +6,22 @@ import { describe, expect, it } from 'vitest'
 import { HITSTOP_MS } from '../app/card-weight'
 import { ARRIVAL, ARRIVAL_CLASS, HIT_MS, SACRIFICE, SECOND_AT, SECOND_MS, SHAKES } from '../app/field-impact'
 import { DELTA_MS, lifeCountMs } from '../app/life-effects'
-import { DEAL_LAND_AT, FIRST_DEAL_MS, NEXT_DEAL_MS } from '../app/deal-flight'
+import { DEAL_LAND_AT, DEAL_MS, FIRST_DEAL_MS, NEXT_DEAL_MS } from '../app/deal-flight'
+import { buildDuelReplay } from '../app/duel-replay'
+import { createMatState } from '../app/practice-mat'
+import { replayScenes } from '../components/replays/video/video-scene'
 import { DECK_SHUFFLE_MS, HAND_SHUFFLE_MS } from '../app/shuffle-fx'
 import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, flightMs as mesaFlightMs } from '../app/use-card-flights'
 import { PHASE_BAND_MS, TURN_BAND_MS } from '../components/duel/PhaseBand'
 import { IMPACT_MS } from '../components/probability/AttackFx'
 import { SPOTLIGHT_TRAVEL_MS, STAGE_TONE as MESA_STAGE_TONE } from '../components/probability/MatFx'
-import { flightMs, IMPACT, impactOverlays, lifeMs, MESA, RIFFLE, sacrificeOverlay, STAGE_TONE } from '../components/replays/video/video-fx'
+import { dealOverlays, dealtKeys, flightMs, IMPACT, impactOverlays, lifeMs, MESA, RIFFLE, sacrificeOverlay, STAGE_TONE } from '../components/replays/video/video-fx'
 import { fakeAssets } from './support/video-fakes'
 
 // El video copia los tiempos y los colores de la mesa (para no cargarla con React): que sigan siendo los mismos.
 describe('el video anima con los tiempos y los colores de la mesa', () => {
   it('vuelos, carta grande, banda de fase, barajado, ataque y vidas', () => {
-    expect(MESA).toMatchObject({ flight: FLIGHT_MS, stagger: FLIGHT_STAGGER_MS, landingAt: LANDING_AT, travel: SPOTLIGHT_TRAVEL_MS, shuffle: DECK_SHUFFLE_MS, handShuffle: HAND_SHUFFLE_MS, firstDeal: FIRST_DEAL_MS, nextDeal: NEXT_DEAL_MS, dealLandAt: DEAL_LAND_AT, impact: IMPACT_MS, delta: DELTA_MS, banner: PHASE_BAND_MS, turnBanner: TURN_BAND_MS })
+    expect(MESA).toMatchObject({ flight: FLIGHT_MS, stagger: FLIGHT_STAGGER_MS, landingAt: LANDING_AT, travel: SPOTLIGHT_TRAVEL_MS, shuffle: DECK_SHUFFLE_MS, handShuffle: HAND_SHUFFLE_MS, firstDeal: FIRST_DEAL_MS, nextDeal: NEXT_DEAL_MS, deal: DEAL_MS, dealLandAt: DEAL_LAND_AT, impact: IMPACT_MS, delta: DELTA_MS, banner: PHASE_BAND_MS, turnBanner: TURN_BAND_MS })
     // Los planes del riffle (copiados de `shuffle-fx.ts`, que no los exporta): que sumen lo mismo que su barajado.
     for (const [plan, total] of [[RIFFLE.deck, DECK_SHUFFLE_MS], [RIFFLE.hand, HAND_SHUFFLE_MS]] as const) expect(plan.openFrom + plan.openSpan + plan.open).toBe(total)
     for (const distance of [0, 120, 300, 600, 900]) expect(flightMs(distance)).toBe(mesaFlightMs(distance))
@@ -97,5 +100,20 @@ describe('el video anima con los tiempos y los colores de la mesa', () => {
     for (const p of [0, 0.2, 0.44, 0.6, 1]) overlay.draw(ctx as never, p)
     expect(styles).toContain(fakeAssets.theme.fx.material)
     expect(styles).toContain(fakeAssets.theme.fx.llegada.pendulum)
+  })
+
+  it('el reparto al empezar: las dos manos, cada una desde su deck que se baraja, con los tiempos de la mesa', () => {
+    const deck = (prefix: string) => Array.from({ length: 20 }, (_, i) => `${prefix}${i + 1}`)
+    const replay = buildDuelReplay({ mode: 'link', view: 'public', players: ['Ana', 'Beto'], starter: 0, mine: { initial: createMatState(deck('card-14558127-'), [], 5), actions: [] }, theirs: { initial: createMatState(deck('c'), [], 5), acts: [] }, order: [], life: [{ at: 0, lp: [8000, 8000] }], nameOf: () => undefined })
+    const [scene] = [...replayScenes(replay, 720)]
+    const assets = { ...fakeAssets, back: {} as never }
+    const overlays = dealOverlays(scene!, assets, 1)
+    expect(overlays.map((overlay) => overlay.kind)).toEqual(['shuffle', 'deal', 'shuffle', 'deal'])
+    expect(overlays[3]!.hides).toEqual(dealtKeys(scene!, [1]))
+    expect(overlays[3]!.hides).toHaveLength(5)
+    expect(overlays[1]!.duration).toBe(FIRST_DEAL_MS + 4 * NEXT_DEAL_MS + DEAL_MS)
+    // El combo (un solo jugador) reparte sólo la suya; la primera mano del automático, desde su robo.
+    expect(dealOverlays(scene!, assets, 1, [0]).map((overlay) => overlay.kind)).toEqual(['shuffle', 'deal'])
+    expect(dealOverlays(scene!, assets, 1.25, [1], 900).every((overlay) => overlay.start === 900)).toBe(true)
   })
 })
