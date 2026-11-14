@@ -53,6 +53,9 @@ describe('la cadena en grande', () => {
     expect(document.querySelectorAll('[data-chain-flash]')).toHaveLength(1)
     expect(cards()[2]!.querySelector('[data-chain-flash]')).toHaveClass('animate-fx-flash', 'motion-reduce:hidden')
     expect(cards()[2]!.querySelector('[data-chain-glow]')).toHaveClass('animate-fx-flash', 'motion-reduce:hidden')
+    // Sólo la que espera respuesta late (su marco, no la carta).
+    expect(document.querySelectorAll('[data-chain-wait]')).toHaveLength(1)
+    expect(cards()[2]!.querySelector('[data-chain-wait]')).toHaveClass('animate-chain-wait', 'motion-reduce:hidden')
     expect(document.querySelector('[data-chain-dim]')).toHaveClass('animate-chain-veil', 'motion-reduce:hidden')
     const number = (card: HTMLElement) => card.querySelector<HTMLElement>('[data-chain-number]')
     expect(cards().map((card) => number(card)?.dataset.chainNumber)).toEqual(['1', '2', '3'])
@@ -261,10 +264,21 @@ describe('la cadena en grande', () => {
     expect(at(1)).toHaveClass('starting:opacity-0', 'starting:scale-75', 'motion-reduce:transition-opacity')
     expect(at(1)!.style.translate).toBe('-12px 0')
     expect(at(2)!.style.translate).toBe('12px 0')
+    // El que resuelve crece 0,75 → 0,87 → 1 (también con «Livianos») con un brillo corto (sin «Livianos»); con movimiento reducido, nada.
+    expect(at(2)!.querySelector('.animate-chain-resolve')).toHaveClass('motion-reduce:animate-none')
+    expect(at(2)!.querySelector('[data-chain-glint]')).toHaveClass('animate-chain-glint', 'fx-lite:hidden', 'motion-reduce:hidden')
+    expect(at(1)!.querySelector('.animate-chain-resolve, [data-chain-glint]')).toBeNull()
+    // El que espera su turno late; el que resuelve, no.
+    expect(at(1)!.querySelector('.animate-chain-wait')).toHaveClass('motion-reduce:animate-none')
+    expect(at(2)!.querySelector('.animate-chain-wait')).toBeNull()
     expect(document.querySelector('[data-flipbook]')).toBeNull()
     // Negado: lo cruza el corte (un flipbook), sin «Livianos» ni movimiento reducido.
     view.rerender(<ChainBadge medals={[{ ...medal(1), voided: true }, medal(2)]} />)
     expect(at(1)!.querySelector('[data-flipbook]')).toHaveClass('fx-lite:hidden', 'motion-reduce:hidden')
+    // Y parpadea cuatro veces (también con «Livianos»: es información) tras un destello celeste (sin «Livianos»); con movimiento reducido, nada.
+    expect(at(1)!.querySelector('.animate-chain-void')).toHaveClass('motion-reduce:animate-none')
+    expect(at(1)!.querySelector('[data-chain-void-flash]')).toHaveClass('animate-chain-void-flash', 'fx-lite:hidden', 'motion-reduce:hidden')
+    expect(at(1)!.querySelector('.animate-chain-wait')).toBeNull()
     view.rerender(<ChainBadge medals={[medal(1)]} />)
     expect(at(1)!.style.translate).toBe('0px 0')
     const leaving = document.querySelector('[data-chain-medal-leaving="2"]')

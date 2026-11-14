@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-3-cadena-con-gestos",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "La cadena avisa quién espera, quién resuelve y a quién negaron",
+        "novedades": [
+          "Mientras armás la cadena, la última carta late despacio: es la que espera respuesta.",
+          "Al resolver, los números de los eslabones que faltan laten sobre sus cartas, y el que resuelve crece con un brillo corto.",
+          "Cuando niegan un eslabón, su número parpadea cuatro veces antes de quedar tachado.",
+          "Lo mismo se ve en el replay de un duelo, al repasar un combo y en el video que descargás."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "La cadena dura lo mismo que antes.",
+          "Con «Efectos: Livianos» no hay brillo ni destello. Con «reducir movimiento», nada de esto: la negación se lee por la tacha."
+        ]
+      },
+      "en": {
+        "title": "The chain shows who waits, who resolves and who got negated",
+        "novedades": [
+          "While you build the chain, the last card pulses slowly: it is the one waiting for a response.",
+          "On resolution, the numbers of the links still to go pulse over their cards, and the one resolving grows with a short glow.",
+          "When a link is negated, its number blinks four times before it stays crossed out.",
+          "The same shows in a duel replay, when reviewing a combo and in the video you download."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "The chain lasts as long as before.",
+          "With «Effects: Light» there is no glow or flash. With «reduce motion», none of this: the negation reads by its strike-through."
+        ]
+      }
+    },
+    {
       "id": "2026-11-14-2-invocacion-con-entrada",
       "date": "2026-11-14",
       "tags": [

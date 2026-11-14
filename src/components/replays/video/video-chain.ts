@@ -1,5 +1,5 @@
 import type { ChainFeed, ChainRow, ChainStep } from '../../../app/auto/chain-feed'
-import { medalsOf } from '../../../app/card-glow'
+import { CHAIN_BEAT_MS, medalsOf } from '../../../app/card-glow'
 import { replayChainSteps, type DuelReplay, type ReplaySide } from '../../../app/duel-replay'
 import { EASE_OUT, bezierEase, easeInOut } from '../../../app/motion'
 import { t } from '../../../i18n'
@@ -304,7 +304,7 @@ export function stageGeometry(layout: VideoLayout): StageGeometry {
 export type RowLook = (row: ChainRow) => { art: string | null; name: string }
 
 /** Una carta de la escena en su pose: el estallido detrás (la nueva), el halo blanco, la carta, el destello amarillo (la nueva), las esquinas atadas y el número en la esquina de afuera. */
-function drawStageCard(ctx: Ctx, row: ChainRow, pose: StagePose, geo: StageGeometry, side: Side, born: number | null, assets: VideoAssets, look: RowLook) {
+function drawStageCard(ctx: Ctx, row: ChainRow, pose: StagePose, geo: StageGeometry, side: Side, born: number | null, assets: VideoAssets, look: RowLook, wait = 0) {
   const { w, h } = geo.card
   const u = geo.unit
   const colors = assets.theme.chain
@@ -356,6 +356,12 @@ function drawStageCard(ctx: Ctx, row: ChainRow, pose: StagePose, geo: StageGeome
         g.strokeStyle = '#fff'
         g.lineWidth = 2 * u
         g.strokeRect(-w / 2 - u, -h / 2 - u, w + 2 * u, h + 2 * u)
+      })
+      // La que espera respuesta late (`data-chain-wait`: `-inset-1 border-2 border-chain-glow`, con `wait` de opacidad).
+      faded(g, wait, () => {
+        g.strokeStyle = colors.glow
+        g.lineWidth = 2 * u
+        g.strokeRect(-w / 2 - 3 * u, -h / 2 - 3 * u, w + 6 * u, h + 6 * u)
       })
       // El destello amarillo alrededor (`-inset-2 border-4`).
       if (born !== null && born < 1)
@@ -444,7 +450,8 @@ export function drawStage(ctx: Ctx, episode: StageEpisode, now: number, geo: Sta
       // La nueva entra ya inclinada (`starting:` no toca su `transform`).
       const pose = newest ? mixPose({ ...START_POSE, tiltX: to.tiltX, tiltY: to.tiltY }, to, easeInOut(clamp((now - episode.mounts[index]! - ms(STAGE_MS.newest)) / ms(STAGE_MS.move)))) : mixPose(stagePoseOf(depth - 1, count - 1), to, easeInOut(clamp((now - changed) / ms(STAGE_MS.move))))
       const born = newest && !hidden ? (now - episode.mounts[index]!) / ms(STAGE_MS.flash) : null
-      if (pose.opacity > 0) drawStageCard(ctx, episode.rows[index]!, pose, geo, sideOf(depth, mirror), born, assets, look)
+      const wait = newest && !hidden ? pulseAt((now - episode.mounts[index]!) / ms(CHAIN_BEAT_MS.wait)) : 0
+      if (pose.opacity > 0) drawStageCard(ctx, episode.rows[index]!, pose, geo, sideOf(depth, mirror), born, assets, look, wait)
     }
 
     // La cadena entre carta y carta, por delante: la de ahora entra cuando las cartas llegaron, la de los lugares de antes se apaga y, al resolverse, se corta en el medio.
@@ -465,9 +472,9 @@ export const replayRowLook = (replay: DuelReplay): RowLook => (row) => ({ art: r
 
 /**
  * Los medallones de `ChainBadge`: de 36 px (`size-9`) en el viewBox de 40, corridos 24 px si hay varios en un lugar (`MEDAL_STEP_PX`); entran creciendo desde 0,75, se van creciendo
- * hasta 1,25 mientras se apagan y se reacomodan, todo en 200 ms (`duration-200`); el que se resuelve late (`animate-pulse`: 2 s, a la mitad de opacidad).
+ * hasta 1,25 mientras se apagan y se reacomodan, todo en 200 ms (`duration-200`); sus gestos (latir, crecer al resolver, parpadear negado), con `CHAIN_BEAT_MS` (`medalGesture`).
  */
-export const MEDAL = { size: 36, step: 24, fade: 200, pulse: 2000 } as const
+export const MEDAL = { size: 36, step: 24, fade: 200 } as const
 
 /** Un medallón de principio a fin: dónde va (lado y lugar de `medalPlaceOf`), cuándo entra y se va, cuándo cambia de lugar entre los de su casilla y cuándo empieza o deja de latir. */
 export interface MedalTrack {
@@ -536,13 +543,24 @@ export function drawMedal(ctx: Ctx, track: MedalTrack, now: number, layout: Vide
   // Se reacomoda entre los de su casilla (un `translate` de 200 ms); el que se va, desde donde estaba.
   const at = track.xs.filter((item) => item.t <= now).length - 1
   const x = at > 0 ? mix(track.xs[at - 1]!.x, track.xs[at]!.x, easeOut(clamp((now - track.xs[at]!.t) / fade))) : track.xs[0]!.x
-  const since = out > 0 ? undefined : onAt(track.resolving, now)
-  const beat = since?.on ? pulseAt((now - since.t) / (MEDAL.pulse / speed)) : 1
+  const { beat, pop, glint, flash } = out > 0 ? STILL : medalGesture(track, now, speed)
   const k = (MEDAL.size * layout.unit) / 40
   const colors = assets.theme.chain
-  faded(ctx, alpha * beat, () => {
+  const place = () => {
     ctx.translate(rect.x + rect.w / 2 + x * layout.unit, rect.y + rect.h / 2)
     ctx.scale(scale * k, scale * k)
+    ctx.translate(-20, -20)
+  }
+  // El destello celeste de la negación, encima y sin parpadear (`-inset-2`: 8 px de más por lado).
+  const flashLayer = () =>
+    faded(ctx, alpha * flash, () => {
+      place()
+      softDisc(ctx, 40.9, colors.glow, 1)
+    })
+  faded(ctx, alpha * beat, () => {
+    place()
+    ctx.translate(20, 20)
+    ctx.scale(pop, pop)
     ctx.translate(-20, -20)
     ctx.fillStyle = assets.theme.background
     ctx.beginPath()
@@ -582,7 +600,43 @@ export function drawMedal(ctx: Ctx, track: MedalTrack, now: number, layout: Vide
     ctx.shadowBlur = 4 * layout.unit * scale
     ctx.fillStyle = '#fff'
     ctx.fillText(String(track.number), 20, 21)
+    ctx.shadowBlur = 0
+    // El brillo al resolver (`inset-0`, blanco al 25 %).
+    if (glint > 0) softDisc(ctx, 28.3, '#fff', 0.25 * glint)
   })
+  if (flash > 0) flashLayer()
+}
+
+/** `bg-radial from-… from-30% to-transparent to-70%` centrado en el medallón (20, 20), con el radio de la esquina de su caja (`r`, en unidades del viewBox de 40). */
+function softDisc(ctx: Ctx, r: number, color: string, alpha: number) {
+  const gradient = ctx.createRadialGradient(20, 20, 0.3 * r, 20, 20, 0.7 * r)
+  gradient.addColorStop(0, color)
+  gradient.addColorStop(1, 'transparent')
+  faded(ctx, alpha, () => {
+    ctx.fillStyle = gradient
+    ctx.fillRect(20 - r, 20 - r, 2 * r, 2 * r)
+  })
+}
+
+const STILL = { beat: 1, pop: 1, glint: 0, flash: 0 }
+
+/**
+ * Los gestos de un medallón en `now`, como en la mesa (`ChainBadge`, `CHAIN_BEAT_MS`): negado, parpadea cuatro veces tras el destello; resolviendo, crece 0,75 → 0,87 → 1 con su brillo;
+ * esperando su turno, late desde que entró. `beat` es su opacidad; `pop`, su escala; `glint` y `flash`, las capas.
+ */
+export function medalGesture(track: MedalTrack, now: number, speed: VideoSpeed) {
+  const ms = (value: number) => value / speed
+  const voided = onAt(track.voided, now)
+  const resolving = onAt(track.resolving, now)
+  if (voided?.on) {
+    const blinks = ((now - voided.t) / ms(CHAIN_BEAT_MS.void)) * 4
+    return { ...STILL, beat: blinks < 4 ? keyed(blinks - Math.floor(blinks), [[0, 1], [0.5, 0], [1, 1]], easeInOut) : 1, flash: 1 - clamp((now - voided.t) / ms(CHAIN_BEAT_MS.flash)) }
+  }
+  if (resolving?.on) {
+    const p = (now - resolving.t) / ms(CHAIN_BEAT_MS.resolve)
+    return { ...STILL, pop: keyed(p, [[0, 0.75], [0.5, 0.87], [1, 1]]), glint: keyed(p, [[0, 0], [CHAIN_BEAT_MS.glint / CHAIN_BEAT_MS.resolve, 1], [1, 0]]) }
+  }
+  return { ...STILL, beat: pulseAt((now - track.enter) / ms(CHAIN_BEAT_MS.wait)) }
 }
 
 /** Los tramos en que hay algún medallón a la vista (de que entra el primero a que termina de irse el último): una capa por tramo. */

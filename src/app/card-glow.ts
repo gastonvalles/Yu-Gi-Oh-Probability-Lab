@@ -78,6 +78,12 @@ export interface ChainMedal {
   resolving: boolean
 }
 
+/**
+ * Los tres gestos de la cadena, medidos en Master Duel (ms; las animaciones `chain-*` de `index.css` los usan y un test los compara, el video los importa): la marca que espera late
+ * (`wait`, el `pulse` de 1 a 0,5); la que resuelve crece 0,75 → 0,87 → 1 (`resolve`) con un brillo que sube en `glint`; la negada parpadea cuatro veces (`void`) tras un destello (`flash`).
+ */
+export const CHAIN_BEAT_MS = { wait: 1333, resolve: 517, glint: 100, void: 450, flash: 50 } as const
+
 /** `LOCATION` del núcleo (`auto/protocol.ts`; el test los compara), copiados como `FROM_HAND`: la pila o la mano de cada lugar. */
 export const MEDAL_PILES: Readonly<Record<number, string>> = { 1: 'deck', 2: 'hand', 16: 'gy', 32: 'banished', 64: 'extra' }
 const MZONE = 4

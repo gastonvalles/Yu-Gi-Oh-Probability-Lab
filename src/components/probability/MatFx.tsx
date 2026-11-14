@@ -192,7 +192,9 @@ const medalOffsets = (medals: readonly ChainMedal[]) => new Map(medals.map((meda
 /**
  * Los medallones de la cadena (Master Duel, al resolver): uno por eslabón, centrados en el lugar donde se activó (la casilla, aunque quede vacía; la pila; la mano: quien lo usa pone
  * la caja), corridos si son varios. Cada uno es un aro de cadena (redondo: es una ficha, como las de los contadores; va en SVG) con su número adentro, blanco con luz celeste
- * y el aro del metal de la escena (la misma familia que `ChainStage`), de 36 px. El que se resuelve late; sólo el negado o sin efecto se tacha en rojo (al quedar así, lo cruza el corte: `CUT`, un flipbook). No ataja toques; sólo se mira
+ * y el aro del metal de la escena (la misma familia que `ChainStage`), de 36 px. Los gestos de Master Duel (`CHAIN_BEAT_MS`): los que esperan su turno laten (de 1 a 0,5 cada 1333 ms,
+ * todos juntos); el que se resuelve deja de latir y crece 0,75 → 0,87 → 1 con un brillo corto; el negado o sin efecto parpadea cuatro veces tras un destello celeste y queda tachado en
+ * rojo (al quedar así, lo cruza el corte: `CUT`, un flipbook). Con «Livianos», sin el brillo ni el destello. No ataja toques; sólo se mira
  * (`aria-hidden`): el eslabón va en el nombre de la carta (`chainLinkLabel`). Se van del último al primero, a medida que se resuelven (`medalsOf`).
  * - **Suave** (Gastón: «la animación de las cadenas debe ser smooth»): cada uno entra creciendo con opacidad y, al resolverse, se rompe (crece y se apaga, `MEDAL_OUT_MS`) en vez
  *   de desaparecer; los que quedan en el mismo lugar se reacomodan con `translate` (cada uno, en su lugar por número), sin saltar. El último de un lugar sale igual si quien lo usa
@@ -239,7 +241,8 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
             out && 'scale-125 opacity-0',
           )}
         >
-          <span className={cx('grid size-full place-items-center', resolving && !out && 'animate-pulse motion-reduce:animate-none')}>
+          {/* Al quedar negado, el medallón parpadea cuatro veces (`animate-chain-void`) tras un destello celeste corto, encima (Master Duel lo da azul `#1300ff`, que sobre el carbón no se ve). */}
+          <span className={cx('grid size-full place-items-center motion-reduce:animate-none', !out && (voided ? 'animate-chain-void' : resolving ? 'animate-chain-resolve' : 'animate-chain-wait'))}>
             <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
               <circle cx={20} cy={20} r={18} className="fill-background" />
               {MEDAL_RING.map((angle, i) =>
@@ -252,7 +255,10 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
               {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
             </svg>
             <span className="relative text-lead font-extrabold leading-none tabular-nums text-white text-shadow-md text-shadow-chain-glow">{number}</span>
+            {/* Al resolver, el brillo corto (Master Duel: +0,2 en 100 ms): la opacidad de una capa, sin `filter`. */}
+            {resolving && !voided && !out ? <span data-chain-glint="" className="absolute inset-0 animate-chain-glint bg-radial from-white/25 from-30% to-transparent to-70% fx-lite:hidden motion-reduce:hidden" /> : null}
           </span>
+          {voided && !out ? <span data-chain-void-flash="" className="absolute -inset-2 animate-chain-void-flash bg-radial from-chain-glow from-30% to-transparent to-70% fx-lite:hidden motion-reduce:hidden" /> : null}
           {/* Al quedar negado, el corte (un flipbook) pasa por donde queda la tacha. */}
           {voided && !out ? <Flipbook book={CUT} className="absolute -inset-2" /> : null}
         </span>
