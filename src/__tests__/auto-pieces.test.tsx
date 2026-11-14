@@ -613,6 +613,18 @@ describe('CardPicker', () => {
     expect(onCancel).toHaveBeenCalledTimes(2)
   })
 
+  it('eligiendo materiales, las elegidas laten en violeta (una capa que sólo cambia su opacidad, quieta con «Livianos» y nada con movimiento reducido); las otras no', () => {
+    render(<CardPicker title="Elegí los materiales" cards={CARDS} min={1} max={2} onPick={() => {}} material />)
+    const list = screen.getByRole('listbox', { name: 'Cartas para elegir' })
+    fireEvent.click(within(list).getByRole('option', { name: /Albaz/ }))
+    expect(list.querySelectorAll('[data-material]')).toHaveLength(1)
+    expect(within(list).getByRole('option', { name: /Albaz/ }).querySelector('[data-material]')).toHaveClass('animate-fx-material', 'fx-lite:animate-none', 'motion-reduce:hidden', 'rounded-full')
+    cleanup()
+    render(<CardPicker title="Elegí qué agregar a tu mano" cards={CARDS} min={1} max={2} onPick={() => {}} />)
+    fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: /Albaz/ }))
+    expect(document.querySelector('[data-material]')).toBeNull()
+  })
+
   it('de varios lugares: por lugar (la mano primero, después en el orden que llegan), un chip por carta y el lugar en el nombre accesible; también en inglés', () => {
     const onPick = vi.fn()
     const cards: PickCard[] = [

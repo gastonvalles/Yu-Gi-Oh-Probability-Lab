@@ -4,7 +4,7 @@ import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../a
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
 import { NO_TALLIES, NO_TALLY, talliesOf } from '../../app/auto/tally'
 import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
-import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { ATTACK_TARGET_HINT, askView, effectAskText, isMaterialPick, itemsInto, listOrder, openAsk, optionsTitle as optionsTitleOf, pickStatsOf, pickTitle, respondOffer, respondTitle, step, yesNoText, zoneTitle, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { comboExtrasFromAuto } from '../../app/auto/auto-replay'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, nextShown, stepsUpTo, type ChainRow, type ChainStep } from '../../app/auto/chain-feed'
@@ -858,6 +858,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       done: pick.done ? { label: t('auto.pick.done'), onSelect: () => gesture({ kind: 'done' }) } : null,
       cancel: shown?.cancelable ? () => gesture({ kind: 'cancel' }) : null,
       stats: pickStatsOf(state, ids([...pick.eligible, ...pick.chosen]), myStats, myCard),
+      ...(isMaterialPick(shown?.title) ? { material: true as const } : {}),
     }
   }, [pick, list, pickLabel, shown, gesture, state, myStats, myCard])
   // La casilla de una jugada que todavía no entró a la cadena (activar o invocar desde tu mano): `select_place` no trae `can_cancel`, así que «Cancelar» vuelve a antes de la jugada con el mismo
@@ -1381,6 +1382,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         done: list.done,
         // Eligiendo varias (también un `select_unselect_card`, que se contesta de a una), cada copia es una carta aparte.
         apart: list.max > 1,
+        material: isMaterialPick(shown?.title),
         onInspect: inspectListed,
         onToggle: (key: string) => gesture(key.startsWith(CATALOG_KEY) ? { kind: 'announce', code: Number(key.slice(CATALOG_KEY.length)) } : { kind: 'pick', index: listKeys.indexOf(key) }),
         ...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {}),

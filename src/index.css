@@ -2097,6 +2097,8 @@
   --animate-feel-flash: feel-flash 260ms var(--ease-out) both;
   /* El número de la cadena que golpea la pantalla: entra grande y se clava con pasada. */
   --animate-feel-hit: feel-hit 220ms var(--ease-out-back) both;
+  /* El latido de un material elegido (`MATERIAL_MARK`): de 1 a 0,5 cada 800 ms (1,25 Hz; el de Master Duel, a 8 Hz, pasa el límite de tres destellos por segundo), mientras se elige. */
+  --animate-fx-material: pulse 800ms ease-in-out infinite;
 
   @keyframes feel-ring {
     from {

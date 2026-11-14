@@ -109,7 +109,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, SPOTLIGHT_TONE, landingDelay, Spotlight, SpotlightSwap, StatTag, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel, tallyLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, MATERIAL_MARK, SPOTLIGHT_TONE, landingDelay, Spotlight, SpotlightSwap, StatTag, TallyChip, TargetMark, VOIDED_ART, chainLinkLabel, fxVars, pickStatLabel, statLabel, tallyLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
@@ -2559,7 +2559,9 @@ function PracticeMatBody({
   const materialZones = picking?.kind === 'materials' && !picking.zone ? freeTargets(state, monsterZones(true), duel?.rivalEmz) : []
   // Eligiendo la zona, los Sacrificios o materiales ya confirmados siguen marcados: su zona se libera y también se puede elegir.
   const leaving = picking?.kind === 'zone' ? (picking.action.type === 'tribute' ? picking.action.tributes : picking.action.type === 'summon' ? picking.action.materials : []) : []
-  const chosenLabel = duel?.auto?.cardPick ? t('auto.pick.chosen') : picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
+  // Eligiendo materiales (de la mesa o del núcleo), las elegidas laten (`MATERIAL_MARK`).
+  const materialPick = duel?.auto?.cardPick ? duel.auto.cardPick.material === true : picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon')
+  const chosenLabel = duel?.auto?.cardPick ? t('auto.pick.chosen') : materialPick ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
   // Las cartas con la mira: las que marqué yo y las que marcó el rival (de las pilas enteras y de la mano, también se marca lo de adentro).
   const rivalMarks = duel?.marksOnMine
   // Las cartas que brillan: en un duelo, lo que podés hacer (celeste) y lo que se activa (ámbar); si no hay nada de eso, las de la salida o el problema del Lab (que oscurecen al resto).
@@ -2636,6 +2638,7 @@ function PracticeMatBody({
             onOpen={(rect) => openCard(shown.id, rect)}
           />
         ) : null}
+        {chosen && materialPick ? <span aria-hidden="true" data-material="" className={MATERIAL_MARK} /> : null}
         {scaleHere !== undefined ? (
           <span aria-hidden="true" data-scale={scaleHere ?? ''} className="pointer-events-none absolute bottom-0.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-tag bg-background/85 px-1 text-micro font-bold leading-tight tabular-nums text-white">
             <span className={cx('size-1.5 rotate-45', gem)} />
