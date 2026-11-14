@@ -46,13 +46,11 @@ describe('el video anima con los tiempos y los colores de la mesa', () => {
     expect(source).toContain(`rounded-full border-${wave.border} border-fx-destello outline-${wave.twin} outline-black/40`)
     expect(source).toContain(`h-${hit.lines.width / 4} w-${hit.lines.length / 4} origin-left bg-fx-destello`)
     expect(source).toContain(`size-${hit.dust.size / 4} rounded-full bg-fx-destello`)
-    expect(source).toContain(`LINE_RADIUS = ${hit.lines.radius}`)
-    expect(source).toContain(`DUST_RADIUS = ${hit.dust.radius}`)
-    expect(source).toContain(`CHARGE_SIZE = { w: ${IMPACT.charge.w}, h: ${IMPACT.charge.h} }`)
+    expect(source).toContain(`border-${IMPACT.charge.border} border-fx-destello bg-fx-destello/${IMPACT.charge.alpha * 100}`)
   })
 
   it('el golpe en el lienzo: aro dorado con la curva «puñetazo» y su gemela, la segunda onda 200 ms después y, si es fuerte, la onda que cruza la pantalla; al ritmo del video', () => {
-    const theme = { fx: { destello: '#ffcf4a', energia: '#2ee6ff' } } as Parameters<typeof impactOverlays>[3]
+    const theme = { fx: { destello: '#ffcf4a', energia: '#2ee6ff' } } as unknown as Parameters<typeof impactOverlays>[4]
     const light = impactOverlays(10, 10, 'light', 1, theme, 1000, 1050, 1.25, true)
     const strong = impactOverlays(10, 10, 'strong', 1, theme, 1000, 1050, 1.25, true)
     const summon = impactOverlays(10, 10, 'light', 1, theme, 1000, 1000, 1.25)

@@ -118,12 +118,18 @@ export const SECOND_MS = 460
 const SECOND = 'pointer-events-none absolute left-0 top-0 opacity-0'
 const LINE = 'absolute -mt-px h-0.5 w-3 origin-left bg-fx-destello outline-1 outline-black/40'
 const DUST = 'absolute -ml-0.75 -mt-0.75 size-1.5 rounded-full bg-fx-destello outline-1 outline-black/40'
-const LINE_RADIUS = 40
-const DUST_RADIUS = 36
-const LINE_ANGLES = Array.from({ length: 8 }, (_, i) => 22.5 + i * 45)
-const DUST_ANGLES = Array.from({ length: 6 }, (_, i) => 30 + i * 60)
-const LINES_FRAMES: Keyframe[] = [{ scale: '1.6', opacity: 0 }, { scale: '1.1', opacity: 1, offset: 0.25 }, { scale: '0.6', opacity: 0 }]
-const DUST_FRAMES: Keyframe[] = [{ scale: '0.5', opacity: 0 }, { scale: '1', opacity: 0.9, offset: 0.25 }, { scale: '1.4', opacity: 0 }]
+export const LINE_RADIUS = 40
+export const DUST_RADIUS = 36
+export const LINE_ANGLES = Array.from({ length: 8 }, (_, i) => 22.5 + i * 45)
+export const DUST_ANGLES = Array.from({ length: 6 }, (_, i) => 30 + i * 60)
+/** Los cuadros de cada grupo (`[offset, scale, opacity]`, con `EASE_OUT`): las líneas se cierran, el polvo se abre. El video los lee de acá. */
+export const SECOND_KEYS = {
+  lines: [[0, 1.6, 0], [0.25, 1.1, 1], [1, 0.6, 0]],
+  dust: [[0, 0.5, 0], [0.25, 1, 0.9], [1, 1.4, 0]],
+} as const satisfies Record<string, ReadonlyArray<readonly [number, number, number]>>
+const framesOf = (keys: ReadonlyArray<readonly [number, number, number]>): Keyframe[] => keys.map(([offset, scale, opacity]) => ({ offset, scale: `${scale}`, opacity }))
+const LINES_FRAMES = framesOf(SECOND_KEYS.lines)
+const DUST_FRAMES = framesOf(SECOND_KEYS.dust)
 
 /**
  * El golpe fuerte (un ataque directo, el golpe letal, lo que sale del Extra Deck): una onda que cruza toda la pantalla (en Master Duel, 17 cartas; acá, la diagonal de la ventana),
@@ -228,7 +234,7 @@ export function ringAt(x: number, y: number, delay = 0, { hit = false, strong = 
  * opaco hasta la mitad, y el polvo que llega desde `DUST_FROM` cartas hasta su centro. Corre sobre la embestida que ya existe (`ms`, hasta el impacto) y la sigue (`dx`, `dy`, lo que se
  * adelanta la carta), así el ataque no dura más. Con «Livianos», sin polvo; con movimiento reducido, nada.
  */
-const CHARGE_SIZE = { w: 1.22, h: 1.14 }
+export const CHARGE_SIZE = { w: 1.22, h: 1.14 }
 const CHARGE_GLOW = 'pointer-events-none absolute border-2 border-fx-destello bg-fx-destello/35 opacity-0'
 const CHARGE_DUST = 'absolute -ml-0.75 -mt-0.75 size-1.5 rounded-full bg-fx-destello outline-1 outline-black/40 opacity-0'
 const DUST_FROM = 0.75

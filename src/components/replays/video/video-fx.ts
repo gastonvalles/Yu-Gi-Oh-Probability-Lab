@@ -1,4 +1,4 @@
-import { shakeOf, type Shake } from '../../../app/field-impact'
+import { CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LINE_RADIUS, SECOND_AT, SECOND_KEYS, SECOND_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, punchAt, shakeOf, type Shake } from '../../../app/field-impact'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
@@ -59,6 +59,20 @@ export const IMPACT = {
     light: { path: [[0, 0], [3, -2], [-3, 1.5], [2, 1], [-1, -0.5], [0, 0]], ms: 180 },
     strong: { path: [[0, 0], [5, -3], [-5, 2], [4, 2], [-2, -1.5], [1, 0.5], [0, 0]], ms: 240 },
   },
+  /**
+   * El golpe de un ataque (`ringAt` con `hit`), dorado y con la curva «puñetazo» (`punchAt`): el aro (`size-36`, `border-3`, su gemela un contorno de 2 px), el destello aditivo
+   * (`size-40`) sobre su halo negro (`size-44`, libre hasta el 30 %), las líneas (`h-0.5 w-3`) y el polvo (`size-1.5`) de la segunda onda. Los radios, ángulos y cuadros los lee de
+   * `field-impact.ts`.
+   */
+  hit: {
+    ring: { size: 144, border: 3, twin: 2 },
+    flash: { size: 160, twin: 176, alpha: 0.9, stop: 0.7, hole: 0.3 },
+    lines: { width: 2, length: 12 },
+    dust: { size: 6 },
+  },
+  /** La onda de pantalla completa (`border-4`, contorno de 4 px) y la carga del ataque (`border-2`, relleno al 35 %). */
+  wave: { border: 4, twin: 4 },
+  charge: { border: 2, alpha: 0.35 },
 } as const
 
 /** Lo que dura un vuelo de `distance` (en px del lienzo de referencia de 720): como `flightMs` de la mesa. */
@@ -245,7 +259,7 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const score = after.layout.score
     const to = target ?? { x: actor === 0 ? score.x + score.w - 60 * s : score.x + 60 * s, y: actor === 0 ? score.y + 50 * s : field.y + field.h }
     // Al conectar, el impacto de la mesa (`AttackFx`): el aro y el destello donde pega y, pasada la pausa del golpe, la sacudida (fuerte si es directo, leve contra una carta).
-    if (from) out.push(attackOverlay(from, to, after.layout.cell, s, at(0), speed), ...impactOverlays(to.x, to.y, shakeOf({ attack: target ? 'card' : 'direct' }), after.layout.unit, theme, at(MESA.impact), at(MESA.impact + MESA.hitstop), speed))
+    if (from) out.push(attackOverlay(from, to, after.layout.cell, s, at(0), speed), ...impactOverlays(to.x, to.y, shakeOf({ attack: target ? 'card' : 'direct' }), after.layout.unit, theme, at(MESA.impact), at(MESA.impact + MESA.hitstop), speed, true))
   }
 
   // Lo que cambiaron las vidas, abajo del número («−1000», rojo; lo que sube, verde): las vidas cuentan aparte (`lifeOf`).
@@ -624,6 +638,7 @@ function handFrameOverlay(area: Rect, s: number, start: number, speed: VideoSpee
 
 function attackOverlay(from: Pose, to: { x: number; y: number }, cell: number, s: number, start: number, speed: VideoSpeed): Overlay {
   const tone = FX_RGB.red
+  const gold = FX_RGB.gold
   const len = Math.hypot(to.x - from.x, to.y - from.y)
   const angle = Math.atan2(to.y - from.y, to.x - from.x)
   return {
@@ -658,11 +673,31 @@ function attackOverlay(from: Pose, to: { x: number; y: number }, cell: number, s
       ctx.fill()
       ctx.restore()
       ctx.globalAlpha = 1
-      // El impacto.
+      // La carga (`chargeOn`): hasta el impacto, el marco dorado de la carta que ataca (opaco hasta la mitad) y el polvo que converge hacia ella.
+      if (ms < MESA.impact) {
+        const c = ms / MESA.impact
+        const [w, h] = [from.w * CHARGE_SIZE.w, from.h * CHARGE_SIZE.h]
+        ctx.globalAlpha = c < 0.5 ? 1 : 2 - 2 * c
+        ctx.fillStyle = rgba(gold, IMPACT.charge.alpha)
+        ctx.fillRect(from.x - w / 2, from.y - h / 2, w, h)
+        ctx.strokeStyle = rgba(gold, 1)
+        ctx.lineWidth = IMPACT.charge.border * s
+        ctx.strokeRect(from.x - w / 2, from.y - h / 2, w, h)
+        ctx.globalAlpha = keyed(c, [[0, 0], [0.2, 0.9], [0.6, 0.9], [1, 0]], (v) => v)
+        const reach = from.w * 0.75 * (1 - easeOut(c))
+        ctx.fillStyle = rgba(gold, 1)
+        for (let i = 0; i < 6; i += 1) {
+          ctx.beginPath()
+          ctx.arc(from.x + Math.cos((i * Math.PI) / 3) * reach, from.y + Math.sin((i * Math.PI) / 3) * reach, 3 * s, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.globalAlpha = 1
+      }
+      // El impacto, dorado como en la mesa (el rojo queda para el rayo y la espada).
       const hit = ms - MESA.impact
       if (hit > 0) {
-        if (hit < 560) flash(ctx, to.x, to.y, cell / 2, tone, hit / 560)
-        ring(ctx, { x: to.x - cell / 2, y: to.y - cell / 2, w: cell, h: cell }, tone, 3 * s, hit / 720, true)
+        if (hit < 560) flash(ctx, to.x, to.y, cell / 2, gold, hit / 560)
+        ring(ctx, { x: to.x - cell / 2, y: to.y - cell / 2, w: cell, h: cell }, gold, 3 * s, hit / 720, true)
       }
     },
   }
@@ -672,13 +707,15 @@ const swing = bezierEase(EASE_IN_OUT)
 
 /**
  * El impacto de la mesa en el lienzo (`ringAt` y `shakeField` de `field-impact.ts`, con `IMPACT`): en `(x, y)` a los `ringAt` ms, el aro cian y el destello dorado aditivo; a los
- * `shakeAt`, la sacudida del campo. `k`: px del lienzo por px del celular. En el video no hay «Livianos»: va completo.
+ * `shakeAt`, la sacudida del campo. `hit` (un ataque): el golpe dorado con la curva «puñetazo», su gemela oscura y la segunda onda (`IMPACT.hit`). Si sacude fuerte, además, la onda
+ * que cruza el lienzo. `k`: px del lienzo por px del celular. En el video no hay «Livianos»: va completo.
  */
-export function impactOverlays(x: number, y: number, shake: Shake, k: number, theme: VideoAssets['theme'], ringAt: number, shakeAt: number, speed: VideoSpeed): Overlay[] {
+export function impactOverlays(x: number, y: number, shake: Shake, k: number, theme: VideoAssets['theme'], ringAt: number, shakeAt: number, speed: VideoSpeed, hit = false): Overlay[] {
   const { ring, flash } = IMPACT
-  const total = Math.max(MESA.ring, MESA.flash)
+  const total = hit ? Math.max(HIT_MS, SECOND_AT + SECOND_MS) : Math.max(MESA.ring, MESA.flash)
   // `from-fx-destello` a `to-transparent`: el mismo color, sin alfa (un degradé a `transparent` se oscurece en el lienzo).
   const clear = /^#[0-9a-f]{6}$/i.test(theme.fx.destello) ? `${theme.fx.destello}00` : 'transparent'
+  const strong = shake === 'strong'
   const out: Overlay[] = [
     {
       kind: 'impact',
@@ -686,6 +723,11 @@ export function impactOverlays(x: number, y: number, shake: Shake, k: number, th
       duration: total / speed,
       draw: (ctx, p) => {
         const ms = p * total
+        if (strong) drawWave(ctx, x, y, k, theme.fx.destello, ms / WAVE_MS)
+        if (hit) {
+          drawHit(ctx, x, y, k, theme.fx.destello, clear, ms)
+          return
+        }
         const r = clamp(ms / MESA.ring)
         if (r < 1) {
           const e = easeOut(r)
@@ -723,6 +765,92 @@ export function impactOverlays(x: number, y: number, shake: Shake, k: number, th
   const [xs, ys] = [axis(0), axis(1)]
   out.push({ kind: 'shake', start: shakeAt, duration: ms / speed, draw: () => {}, shift: (p) => [keyed(p, xs, swing), keyed(p, ys, swing)] })
   return out
+}
+
+const TWIN = 'rgb(0 0 0 / 0.4)'
+
+/** Un aro con su gemela oscura afuera (el contorno de la mesa): primero el negro, más ancho, y encima el dorado. */
+function twinRing(ctx: Ctx, x: number, y: number, radius: number, border: number, twin: number, color: string) {
+  ctx.lineWidth = border + 2 * twin
+  ctx.strokeStyle = TWIN
+  ctx.beginPath()
+  ctx.arc(x, y, radius + twin / 2, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.lineWidth = border
+  ctx.strokeStyle = color
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.stroke()
+}
+
+/** La onda de pantalla completa del golpe fuerte (`WAVE_*`): lineal, de la diagonal del lienzo. */
+function drawWave(ctx: Ctx, x: number, y: number, k: number, color: string, w: number) {
+  if (w <= 0 || w >= 1) return
+  const scale = WAVE_FROM + (1 - WAVE_FROM) * w
+  const { border, twin } = IMPACT.wave
+  ctx.globalAlpha = w < WAVE_HOLD ? 1 : (1 - w) / (1 - WAVE_HOLD)
+  twinRing(ctx, x, y, (Math.hypot(ctx.canvas.width, ctx.canvas.height) / 2) * scale, border * k * scale, twin * k * scale, color)
+  ctx.globalAlpha = 1
+}
+
+/** El golpe de un ataque en `ms` desde el impacto: la gemela del destello, el aro y el destello aditivo con la curva «puñetazo» y, a los `SECOND_AT`, las líneas y el polvo. */
+function drawHit(ctx: Ctx, x: number, y: number, k: number, color: string, clear: string, ms: number) {
+  const { ring, flash, lines, dust } = IMPACT.hit
+  const h = ms / HIT_MS
+  if (h > 0 && h < 1) {
+    const { scale, alpha } = punchAt(h)
+    // El halo negro (libre en el centro) debajo del destello.
+    const twinR = (flash.twin / 2) * k * scale
+    const halo = ctx.createRadialGradient(x, y, 0, x, y, twinR * Math.SQRT2)
+    halo.addColorStop(flash.hole, 'rgb(0 0 0 / 0)')
+    halo.addColorStop(0.5, TWIN)
+    halo.addColorStop(flash.stop, 'rgb(0 0 0 / 0)')
+    ctx.globalAlpha = alpha
+    ctx.fillStyle = halo
+    ctx.beginPath()
+    ctx.arc(x, y, twinR, 0, Math.PI * 2)
+    ctx.fill()
+    twinRing(ctx, x, y, ((ring.size - ring.border) / 2) * k * scale, ring.border * k * scale, ring.twin * k * scale, color)
+    const radius = (flash.size / 2) * k * scale
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * Math.SQRT2)
+    glow.addColorStop(0, color)
+    glow.addColorStop(flash.stop, clear)
+    ctx.globalAlpha = flash.alpha * alpha
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalCompositeOperation = 'source-over'
+  }
+  const s = (ms - SECOND_AT) / SECOND_MS
+  if (s > 0 && s < 1) {
+    const at = (keys: ReadonlyArray<readonly [number, number, number]>, index: 1 | 2) => keyed(s, keys.map((key) => [key[0], key[index]] as const))
+    // Las líneas se cierran hacia el centro (su gemela, el trazo negro más ancho debajo).
+    const ls = at(SECOND_KEYS.lines, 1)
+    ctx.globalAlpha = at(SECOND_KEYS.lines, 2)
+    for (const [width, style] of [[lines.width + 2, TWIN], [lines.width, color]] as const) {
+      ctx.lineWidth = width * k * ls
+      ctx.strokeStyle = style
+      ctx.beginPath()
+      for (const angle of LINE_ANGLES) {
+        const [cos, sin] = [Math.cos((angle * Math.PI) / 180), Math.sin((angle * Math.PI) / 180)]
+        ctx.moveTo(x + cos * LINE_RADIUS * k * ls, y + sin * LINE_RADIUS * k * ls)
+        ctx.lineTo(x + cos * (LINE_RADIUS + lines.length) * k * ls, y + sin * (LINE_RADIUS + lines.length) * k * ls)
+      }
+      ctx.stroke()
+    }
+    // El polvo se abre.
+    const ds = at(SECOND_KEYS.dust, 1)
+    ctx.globalAlpha = at(SECOND_KEYS.dust, 2)
+    ctx.fillStyle = color
+    for (const angle of DUST_ANGLES) {
+      ctx.beginPath()
+      ctx.arc(x + Math.cos((angle * Math.PI) / 180) * DUST_RADIUS * k * ds, y + Math.sin((angle * Math.PI) / 180) * DUST_RADIUS * k * ds, (dust.size / 2) * k * ds, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  ctx.globalAlpha = 1
 }
 
 /** Cuánto se corre el campo en `now` (ms de video): la sacudida viva, o nada. */
