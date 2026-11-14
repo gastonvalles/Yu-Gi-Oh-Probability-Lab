@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { HITSTOP_MS } from '../app/card-weight'
-import { ARRIVAL, ARRIVAL_CLASS, HIT_MS, SECOND_AT, SECOND_MS, SHAKES } from '../app/field-impact'
+import { ARRIVAL, ARRIVAL_CLASS, HIT_MS, SACRIFICE, SECOND_AT, SECOND_MS, SHAKES } from '../app/field-impact'
 import { DELTA_MS, lifeCountMs } from '../app/life-effects'
 import { DEAL_LAND_AT, FIRST_DEAL_MS, NEXT_DEAL_MS } from '../app/deal-flight'
 import { DECK_SHUFFLE_MS, HAND_SHUFFLE_MS } from '../app/shuffle-fx'
@@ -12,7 +12,8 @@ import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, flightMs as mesaFlightMs } fr
 import { PHASE_BAND_MS, TURN_BAND_MS } from '../components/duel/PhaseBand'
 import { IMPACT_MS } from '../components/probability/AttackFx'
 import { SPOTLIGHT_TRAVEL_MS, STAGE_TONE as MESA_STAGE_TONE } from '../components/probability/MatFx'
-import { flightMs, IMPACT, impactOverlays, lifeMs, MESA, RIFFLE, STAGE_TONE } from '../components/replays/video/video-fx'
+import { flightMs, IMPACT, impactOverlays, lifeMs, MESA, RIFFLE, sacrificeOverlay, STAGE_TONE } from '../components/replays/video/video-fx'
+import { fakeAssets } from './support/video-fakes'
 
 // El video copia los tiempos y los colores de la mesa (para no cargarla con React): que sigan siendo los mismos.
 describe('el video anima con los tiempos y los colores de la mesa', () => {
@@ -77,5 +78,24 @@ describe('el video anima con los tiempos y los colores de la mesa', () => {
     expect(strokes).toContain('#ffcf4a')
     expect(strokes).toContain('rgb(0 0 0 / 0.4)')
     expect(strokes).not.toContain('#2ee6ff')
+  })
+
+  it('el Sacrificio en el lienzo: los tiempos de la mesa (`SACRIFICE`), al ritmo del video, con el violeta y el círculo blanco en cada casilla que se deja', () => {
+    const overlay = sacrificeOverlay([{ x: 10, y: 10 }, { x: 80, y: 10 }], 48, fakeAssets.theme, 500, 1.25)
+    expect(overlay).toMatchObject({ kind: 'sacrifice', start: 500 })
+    expect(overlay.duration).toBeCloseTo(SACRIFICE.ms / 1.25)
+    expect(SACRIFICE.ms).toBeLessThanOrEqual(FLIGHT_MS)
+    const styles: string[] = []
+    const ctx = new Proxy({ canvas: { width: 720, height: 1280 }, createRadialGradient: () => ({ addColorStop: (_: number, color: string) => styles.push(color) }) } as Record<string, unknown>, {
+      get: (target, key) => (key in target ? target[key as string] : () => {}),
+      set: (target, key, value) => {
+        if (key === 'strokeStyle' || key === 'fillStyle') styles.push(String(value))
+        target[key as string] = value
+        return true
+      },
+    })
+    for (const p of [0, 0.2, 0.44, 0.6, 1]) overlay.draw(ctx as never, p)
+    expect(styles).toContain(fakeAssets.theme.fx.material)
+    expect(styles).toContain(fakeAssets.theme.fx.llegada.pendulum)
   })
 })

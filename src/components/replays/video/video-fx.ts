@@ -1,8 +1,8 @@
-import { ARRIVAL, CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LINE_RADIUS, SECOND_AT, SECOND_KEYS, SECOND_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, punchAt, shakeOf, type ArrivalTone, type Shake } from '../../../app/field-impact'
+import { ARRIVAL, CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LINE_RADIUS, SACRIFICE, SECOND_AT, SECOND_KEYS, SECOND_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, punchAt, shakeOf, type ArrivalTone, type Shake } from '../../../app/field-impact'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
-import { UNKNOWN_SUMMON, entranceOf, entranceTiming, landingToneOf } from '../../../app/summon-entrance'
+import { UNKNOWN_SUMMON, entranceOf, entranceTiming, landingToneOf, surePendulum } from '../../../app/summon-entrance'
 import { entranceOverlay } from './video-entrance'
 import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
@@ -129,7 +129,7 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake' | 'entrance'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake' | 'entrance' | 'sacrifice'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
@@ -181,7 +181,7 @@ function ring(ctx: Ctx, rect: Rect, tone: string, width: number, p: number, roun
  * Lo que dibuja cada efecto de una jugada, con sus tiempos. `start`: cuándo empieza la jugada (ms de video). `chain`: el replay trae la cadena (el duelo automático): lo que se
  * activa no sale grande, lo dice la escena de la cadena (`video-chain.ts`), como en el reproductor.
  */
-export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight[], assets: VideoAssets, speed: VideoSpeed, start: number, kind: 'duel' | 'combo', chain = false): Overlay[] {
+export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight[], assets: VideoAssets, speed: VideoSpeed, start: number, kind: 'duel' | 'combo', chain = false, manual = false): Overlay[] {
   const { effects, action, actor } = after
   if (!effects || !action || actor === null) return []
   const s = after.layout.scale
@@ -212,13 +212,19 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     if (cards.length > 0) out.push(stageOverlay(cards, stage.kind, stage.flip, field, assets, s, at(0), speed))
   }
 
-  // El destello de una invocación, cuando la carta toca la zona.
+  // Los Sacrificios (`sacrificeAt` de la mesa): desde donde estaba cada carta que se sacrifica, mientras vuela al Cementerio.
+  if (action.type === 'tribute' && effects.sacrifice) {
+    const poses = action.tributes.flatMap((id) => placeIn(was, id, sides)?.pose ?? [])
+    if (poses.length > 0) out.push(sacrificeOverlay(poses, ARRIVAL_UNIT * after.layout.unit, theme, at(0), speed))
+  }
+
+  // El destello de una invocación, cuando la carta toca la zona. La de Péndulo, sólo si es segura (`surePendulum`: la del duelo manual), con su llegada blanca; su escena no va en el video.
   if (effects.landing) {
     const id = 'id' in action ? action.id : null
     const pose = id ? placeIn(now, id, sides)?.pose : null
     const rect = pose ? { x: pose.x - after.layout.cell / 2, y: pose.y - after.layout.cell / 2, w: after.layout.cell, h: after.layout.cell } : after.focus[0]
     const hit = start + (effects.landing.flies && id ? landingOf(id) : 0)
-    const tone = landingToneOf(effects.landing, UNKNOWN_SUMMON)
+    const tone = landingToneOf(surePendulum(effects.landing, !manual), UNKNOWN_SUMMON)
     const entrance = action.type === 'summon' ? entranceOf(tone) : null
     const place = id ? placeIn(now, id, sides) : undefined
     if (entrance && action.type === 'summon' && place) {
@@ -743,6 +749,48 @@ export function impactOverlays(x: number, y: number, shake: Shake, k: number, th
   const [xs, ys] = [axis(0), axis(1)]
   out.push({ kind: 'shake', start: shakeAt, duration: ms / speed, draw: () => {}, shift: (p) => [keyed(p, xs, swing), keyed(p, ys, swing)] })
   return out
+}
+
+/**
+ * El Sacrificio en el lienzo (`sacrificeAt` de `field-impact.ts`, con sus números, `SACRIFICE`): en cada casilla que se deja, el círculo blanco que crece de 44 % a 100 % en 200 ms, el disco
+ * violeta (alfa 0,75 → 0,5) y la columna de luz. `unit`: el ancho de la carta en px del lienzo.
+ */
+export function sacrificeOverlay(poses: readonly { x: number; y: number }[], unit: number, theme: VideoAssets['theme'], start: number, speed: VideoSpeed): Overlay {
+  const { disc, maru, column } = SACRIFICE
+  const clear = (color: string) => (/^#[0-9a-f]{6}$/i.test(color) ? `${color}00` : 'transparent')
+  return {
+    kind: 'sacrifice',
+    start,
+    duration: SACRIFICE.ms / speed,
+    draw: (ctx, p) => {
+      const ms = p * SACRIFICE.ms
+      const m = Math.min(1, ms / maru.ms)
+      for (const { x, y } of poses) {
+        ctx.globalCompositeOperation = 'lighter'
+        ctx.globalAlpha = keyed(p, [[0, 0], [0.15, disc.from], [0.6, disc.to], [1, 0]])
+        const r = (disc.size / 2) * unit * mix(0.85, 1.05, easeOut(p))
+        const fill = ctx.createRadialGradient(x, y, 0, x, y, r)
+        fill.addColorStop(0, theme.fx.materialBrillo)
+        fill.addColorStop(0.35, theme.fx.material)
+        fill.addColorStop(0.7, clear(theme.fx.material))
+        ctx.fillStyle = fill
+        ctx.beginPath()
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+        ctx.fill()
+        const c = ms / column.ms
+        if (c < 1) {
+          ctx.globalAlpha = c < 0.3 ? c / 0.3 : (1 - c) / 0.7
+          const [w, h] = [column.w * unit * (c < 0.3 ? 1 : mix(1, 0.4, (c - 0.3) / 0.7)), column.h * unit * Math.min(1, easeOut(c / 0.3))]
+          ctx.fillStyle = theme.fx.materialBrillo
+          ctx.fillRect(x - w / 2, y - h / 2, w, h)
+        }
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.globalAlpha = ms < maru.ms ? 1 - 0.2 * m : 0.8 * (1 - (ms - maru.ms) / (SACRIFICE.ms - maru.ms))
+        twinRing(ctx, x, y, (maru.size / 2) * unit * mix(maru.from, 1, m), (2 * unit) / ARRIVAL_UNIT, (2 * unit) / ARRIVAL_UNIT, theme.fx.llegada.pendulum)
+      }
+      ctx.globalAlpha = 1
+    },
+  }
 }
 
 const TWIN = 'rgb(0 0 0 / 0.4)'

@@ -1153,8 +1153,7 @@ function PracticeMatBody({
   }
 
   /**
-   * La Invocación por Péndulo es una sola escena con todas sus cartas (`playPendulum`), pero la mesa las coloca de a una (la cola de «Invocar varias por Péndulo», o un paso por carta al
-   * reproducir): mientras falte alguna de la misma Invocación, la que llega espera escondida (`pendulumWait`, sin anillo); con la última, la escena. Cortar la cola la lanza con las que hay;
+   * La Invocación por Péndulo es una sola escena con todas sus cartas (`playPendulum`), pero la mesa las coloca de a una (la cola de «Invocar varias por Péndulo»): mientras falte alguna de la misma Invocación, la que llega espera escondida (`pendulumWait`, sin anillo); con la última, la escena. Cortar la cola la lanza con las que hay;
    * saltar o deshacer, no (vuelven a verse).
    */
   const pendulumWait = useRef<{ id: string; cell: Element; held: Animation[] }[]>([])
@@ -1199,14 +1198,14 @@ function PracticeMatBody({
     if (!landing || landingKey === undefined) return
     const cell = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(landing.spot, landing.index)}"]`) ?? null
     const placed = landing.spot === 'mz' || landing.spot === 'emz' ? state[landing.spot][landing.index] : null
-    const sure = surePendulum(landing, isAuto)
+    // Un combo guardado que se repasa (`session.replay`) no le dice a la mesa si se grabó en el automático (donde el Péndulo se deduce): ahí tampoco va.
+    const sure = surePendulum(landing, isAuto || session.replay)
     const tone = landingToneOf(sure, summonCardOf(placed?.id))
     const step = fxStep.step && 'action' in fxStep.step ? fxStep.step.action : null
     if (sure.pendulum && placed && cell && entranceAllowed()) {
       pendulumWait.current.push({ id: placed.id, cell, held: [] })
-      // ¿Falta otra de la misma Invocación? La cola tiene más sin colocar, o la jugada que sigue (reproduciendo) es otra por Péndulo.
-      const next = session.actions[session.cursor]
-      const more = (pendulumQueue?.ids.some((id) => id !== placed.id && locateCard(state, id)?.kind !== 'spot') ?? false) || (next?.type === 'place' && next.how === 'pendulum')
+      // ¿Falta otra de la misma Invocación? La cola tiene más sin colocar.
+      const more = pendulumQueue?.ids.some((id) => id !== placed.id && locateCard(state, id)?.kind !== 'spot') ?? false
       if (!more) {
         flushPendulum()
         return

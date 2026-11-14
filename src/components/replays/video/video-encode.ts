@@ -195,6 +195,8 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
     // La cadena guardada (el duelo automático, o un combo grabado ahí): su escena y sus medallones, con los tiempos de todo el video; lo que se activa no sale grande (lo dice la escena).
     const chain = subjectChain(subject)
     const chained = chain.length > 0
+    // Lo que se jugó a mano (el duelo por enlace, un combo de la práctica): lo único donde la Invocación por Péndulo es segura (`surePendulum`).
+    const manual = subject.kind === 'duel' ? subject.replay.mode === 'link' : !chained && !subject.combo.auto
     let live: Overlay[] = chainLayers(chain, plan.rowLook, starts, speed, videoLayout(VIDEO_WIDTH), assets)
     let before: Scene | null = null
     let slice = performance.now()
@@ -211,7 +213,7 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
       let life: ReturnType<typeof lifeOf> = null
       if (before && before !== scene) {
         flights = flightsOf(transitionOf(before, scene), scene.layout.scale, speed, durations[index]!)
-        live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind, chained), start)
+        live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind, chained, manual), start)
         live.push(...targetOverlays(before, scene, start, durations[index]!, speed))
         life = lifeOf(before, scene, speed)
       }
