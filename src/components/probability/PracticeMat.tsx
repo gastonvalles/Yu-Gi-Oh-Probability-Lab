@@ -1113,8 +1113,6 @@ function PracticeMatBody({
     setFieldNode(node)
   }, [])
 
-  // Las cartas del Extra Deck y las Ritual que ya entraron en este duelo (por nombre): la segunda vez, la Sincronía y el Ritual van con su entrada corta de Master Duel.
-  const entered = useRef(new Set<string>())
   /**
    * La entrada larga (`playEntrance`) de lo que sale del Extra Deck o de un Ritual, sobre su casilla: la carta (tuya, `mine`, o del rival) y el fantasma de su vuelo no se ven hasta el
    * golpe. Con «Livianos» o movimiento reducido no va: devuelve `false` y queda la llegada de siempre.
@@ -1122,9 +1120,6 @@ function PracticeMatBody({
   const enter = (tone: ArrivalTone, id: string, cell: Element, mine: boolean, materials: number, art: string | null): boolean => {
     const kind = entranceOf(tone)
     if (!kind || !entranceAllowed()) return false
-    const name = nameOf(id)
-    const short = entered.current.has(name)
-    entered.current.add(name)
     const escaped = CSS.escape(id)
     // La carta, el fantasma de su vuelo y el destello de la casilla (`LandingBurst`): la entrada trae su golpe.
     const hide = [...(sectionRef.current?.querySelectorAll(mine ? `[data-card-id="${escaped}"]` : `[data-rival-card-id="${escaped}"]`) ?? []), ...document.querySelectorAll(`[data-flight-ghost="${escaped}"]`), ...cell.querySelectorAll('[data-fx="landing"]')]
@@ -1135,7 +1130,6 @@ function PracticeMatBody({
     const [w, h] = card ? [Math.min(box.width, card.offsetWidth), Math.min(box.height, card.offsetHeight)] : [box.width, box.height]
     const played = playEntrance({
       kind,
-      short,
       cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h),
       art,
       materials,

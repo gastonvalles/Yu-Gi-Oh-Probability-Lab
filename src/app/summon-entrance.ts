@@ -55,9 +55,9 @@ export const surePendulum = <T extends { pendulum?: true }>(landing: T, unsure: 
 }
 
 /**
- * Los tiempos de cada entrada, en ms desde que arranca (las líneas de tiempo de Master Duel, a 60 cuadros): `hit`, el golpe fuerte («StrongSummon»: la carta toca su casilla, el anillo, la
- * onda y la sacudida); `end`, el duelo sigue («StartCard»). `figure`, cuándo entra la figura del tipo; `accent`, su segundo tiempo (el agujero del Xyz, las estrellas de la Sincronía, las
- * flechas del Enlace, los fuegos del Ritual); `materials`, hasta cuándo convergen los materiales. Sincronía y Ritual tienen la corta de Master Duel (`short`), que saca la intro.
+ * La línea de tiempo de la figura de cada tipo, en ms desde que arranca (las de Master Duel, a 60 cuadros; Sincronía y Ritual, la corta, sin la intro): `hit`, el golpe fuerte
+ * («StrongSummon»: la carta toca su casilla, el anillo, la onda y la sacudida); `end`, el duelo sigue («StartCard»). `figure`, cuándo entra la figura del tipo; `accent`, su segundo tiempo
+ * (el agujero del Xyz, las estrellas de la Sincronía, las flechas del Enlace, los fuegos del Ritual); `materials`, hasta cuándo convergen los materiales.
  */
 export interface EntranceTiming {
   hit: number
@@ -66,12 +66,35 @@ export interface EntranceTiming {
   accent: number
   materials: number
 }
-export const ENTRANCE: Record<EntranceKind, EntranceTiming & { short?: EntranceTiming }> = {
+export const ENTRANCE_FIGURE: Record<EntranceKind, EntranceTiming> = {
   fusion: { hit: 1817, end: 2583, figure: 0, accent: 900, materials: 1383 },
   xyz: { hit: 2683, end: 3467, figure: 0, accent: 850, materials: 1500 },
   link: { hit: 3633, end: 4117, figure: 1483, accent: 2183, materials: 1733 },
-  synchro: { hit: 4083, end: 4600, figure: 0, accent: 1850, materials: 1850, short: { hit: 2750, end: 3483, figure: 167, accent: 517, materials: 1167 } },
-  ritual: { hit: 4700, end: 5200, figure: 1333, accent: 1833, materials: 1833, short: { hit: 2367, end: 2833, figure: 167, accent: 667, materials: 1100 } },
+  synchro: { hit: 2750, end: 3483, figure: 167, accent: 517, materials: 1167 },
+  ritual: { hit: 2367, end: 2833, figure: 167, accent: 667, materials: 1100 },
+}
+
+/**
+ * Lo que dura toda entrada, sea del tipo que sea (Gastón, 2026-11-14: «todas de la misma velocidad y un poco más rápidas»): el golpe a los 1500 ms y el duelo sigue a los 2200. La figura y
+ * los materiales de cada tipo corren su línea de tiempo de Master Duel (`ENTRANCE_FIGURE`) acomodada a ese golpe (`figureAt`); lo común (`ENTRANCE_COMMON`) va a su ritmo de siempre.
+ */
+export const ENTRANCE = { hit: 1500, end: 2200 } as const
+
+/**
+ * Dónde cae, en la entrada, el momento `ms` de la línea de tiempo de la figura. Lo de antes de la revelación se comprime hasta que ella arranca (la figura ya está armada cuando aparece la
+ * carta); desde ahí (los últimos `reveal` ms hasta el golpe, y lo que sigue) va al ritmo de Master Duel.
+ */
+export function figureAt(kind: EntranceKind, ms: number): number {
+  const lead = ENTRANCE.hit - ENTRANCE_COMMON.reveal
+  const before = ENTRANCE_FIGURE[kind].hit - ENTRANCE_COMMON.reveal
+  return ms <= before ? (ms * lead) / before : lead + (ms - before)
+}
+
+/** Al revés (el video dibuja por cuadro): qué momento de la figura se ve a los `ms` de la entrada. */
+export function figureTime(kind: EntranceKind, ms: number): number {
+  const lead = ENTRANCE.hit - ENTRANCE_COMMON.reveal
+  const before = ENTRANCE_FIGURE[kind].hit - ENTRANCE_COMMON.reveal
+  return ms <= lead ? (ms * before) / lead : before + (ms - lead)
 }
 
 /**
@@ -80,16 +103,9 @@ export const ENTRANCE: Record<EntranceKind, EntranceTiming & { short?: EntranceT
  */
 export const ENTRANCE_COMMON = { veilIn: 167, veilOut: 170, veil: 0.6, reveal: 850, show: 100, fall: 567, squash: 0.93, settle: 150, overFrame: 600 } as const
 
-/** Los tiempos de una entrada: la corta (si el tipo la tiene) cuando se pide. */
-export const entranceTiming = (kind: EntranceKind, short = false): EntranceTiming => (short && ENTRANCE[kind].short) || ENTRANCE[kind]
-
-/** Lo que agrega una entrada al duelo: hasta que sigue, menos lo que ya esperaba la llegada de siempre (el vuelo hasta tocar, `landedAt`). */
-export const entranceCost = (kind: EntranceKind, landedAt: number, short = false) => Math.max(0, entranceTiming(kind, short).end - landedAt)
-
 /** Lo que hace falta para dibujar una entrada: la casilla donde cae (en la pantalla), el arte, cuántos materiales y la carta de verdad (se esconde hasta que la de la entrada la toca). */
 export interface EntranceInput {
   kind: EntranceKind
-  short?: boolean
   cell: DOMRect
   art: string | null
   materials: number
@@ -252,10 +268,10 @@ function materialsOf(kind: EntranceKind, root: HTMLElement, t: EntranceTiming, c
  * onda y la sacudida) y el brillo del marco. La carta de verdad no se ve hasta el golpe. Devuelve la animación del velo (dura hasta que el duelo sigue: su final es `onDone`), o `null` si
  * no va (`entranceAllowed`).
  */
-export function playEntrance({ kind, short = false, cell, art, materials, hide, field, onDone }: EntranceInput): Animation | null {
+export function playEntrance({ kind, cell, art, materials, hide, field, onDone }: EntranceInput): Animation | null {
   if (!entranceAllowed()) return null
 
-  const t = entranceTiming(kind, short)
+  const t = ENTRANCE
   const c = ENTRANCE_COMMON
   const root = document.createElement('div')
   root.className = ROOT
@@ -274,8 +290,13 @@ export function playEntrance({ kind, short = false, cell, art, materials, hide, 
 
   const veil = el(root, VEIL)
   const stage = el(root, STAGE)
-  figureOf(kind, stage, t, r, add)
-  materialsOf(kind, root, t, materials, r, add)
+  // La figura y los materiales, con su línea de tiempo acomodada al golpe de todas (`figureAt`): cada pieza arranca y termina donde caen su principio y su final.
+  const paced: Add = (element, frames, duration, delay, easing) => {
+    const from = figureAt(kind, delay)
+    add(element, frames, figureAt(kind, delay + duration) - from, from, easing)
+  }
+  figureOf(kind, stage, ENTRANCE_FIGURE[kind], r, paced)
+  materialsOf(kind, root, ENTRANCE_FIGURE[kind], materials, r, paced)
 
   // La revelación: el destello en el centro (de ×1 a ×2 en 500 ms; sube en 167 y se apaga en 333) y la carta que cae grande hasta su casilla.
   const reveal = t.hit - c.reveal
