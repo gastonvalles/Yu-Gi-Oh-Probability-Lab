@@ -123,15 +123,21 @@ const roundCorners = (page: Page) =>
     })
   })
 
-/** Un muestreador por cuadro: guarda el mínimo y el máximo de la `y` del campo y de tu mano desde que se llama (un salto que vuelve no se escapa). Se lee con `readYs`. */
-const watchYs = (page: Page) =>
+/**
+ * Un muestreador por cuadro: guarda el mínimo y el máximo de la `y` del campo y de tu mano desde que se llama (un salto que vuelve no se escapa). Se lee con `readYs`. Con `shake`, el campo no se
+ * muestrea mientras se sacude a propósito (`data-shaking`, la sacudida de una Invocación: 68933e13 y `docs/movimiento.md`); antes y después, sí: tiene que volver a su píxel.
+ */
+const watchYs = (page: Page, { shake = false } = {}) =>
   page.evaluate(`(() => {
     const field = ${FIELD}
     const hand = document.querySelector('[role=list][aria-label=Mano]')
     const seen = { field: [Infinity, -Infinity], hand: [Infinity, -Infinity] }
     window.__ys = seen
     const sample = () => {
-      for (const [key, node] of [['field', field], ['hand', hand]]) { const y = node.getBoundingClientRect().top; seen[key] = [Math.min(seen[key][0], y), Math.max(seen[key][1], y)] }
+      for (const [key, node] of [['field', field], ['hand', hand]]) {
+        if (${shake} && key === 'field' && node.closest('[data-shaking]')) continue
+        const y = node.getBoundingClientRect().top; seen[key] = [Math.min(seen[key][0], y), Math.max(seen[key][1], y)]
+      }
       window.__raf = requestAnimationFrame(sample)
     }
     sample()
@@ -786,7 +792,8 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
     await startAuto(page)
-    await watchYs(page)
+    // El aviso sale de una Invocación Normal, que sacude el campo a propósito (68933e13): esos cuadros no cuentan; Opciones, la paleta y el aviso, sí.
+    await watchYs(page, { shake: true })
 
     await test.step('TI-214: el conteo de cada pila es sólo un número blanco, sin cuadro ni color; el botón de fase es cuadrado (≥ 44 px)', async () => {
       const counts = await mat(page).locator('[data-drop="deck"], [data-drop="extra"], [data-drop="gy"], [data-drop="banish"]').evaluateAll((zones) =>
@@ -1053,7 +1060,12 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     await press(hero.getByRole('button', { name: 'Ver el replay', exact: true }), isMobile)
     const back = page.getByRole('button', { name: 'Volver al resultado' })
     await expect(back, 'el replay se abre con su salida «Volver al resultado»').toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('button', { name: 'Ver desde el otro lado' }), 'el replay trae los dos lados').toBeVisible()
+    // «Ver desde el otro lado» va en el menú del replay, con los controles en las franjas del duelo (b6b412ce y a269488f).
+    const more = page.getByRole('button', { name: /^Más opciones de / })
+    await press(more, isMobile)
+    await expect(page.getByRole('menuitemcheckbox', { name: 'Ver desde el otro lado' }), 'el replay trae los dos lados').toBeVisible()
+    await press(more, isMobile)
+    await expect(page.getByRole('menuitemcheckbox', { name: 'Ver desde el otro lado' }), 'el menú se cierra').toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Siguiente' }), 'el replay avanza de a un paso').toBeVisible()
     await press(page.getByRole('button', { name: 'Siguiente' }), isMobile)
     await press(back, isMobile)
@@ -1355,7 +1367,10 @@ test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-da
       const win = (await ask.boundingBox())!
       const during = await measure()
       expect(Math.abs(win.x + win.width / 2 - rest.col.cx), 'centrada en la columna del campo').toBeLessThanOrEqual(8)
-      expect(win.y, 'sin tapar el campo (empieza bajo su última fila)').toBeGreaterThanOrEqual(during.field!.b - 1)
+      // ec1c4216 (Gastón, 2026-11-12: «nada escondido»): la ventana sube sobre el campo lo que necesita para mostrar su contenido entero; su techo es el borde de arriba de la mesa.
+      const ceiling = await page.evaluate(() => document.querySelector('[data-duel-line]')!.parentElement!.getBoundingClientRect().top)
+      expect(win.y, 'sube sobre el campo hasta el borde de arriba de la mesa, nunca más').toBeGreaterThanOrEqual(ceiling - 1)
+      expect(await ask.evaluate((root) => [root, ...Array.from(root.querySelectorAll('*'))].filter((node) => /auto|scroll/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight + 1).length), 'nada escondido: la ventana muestra su contenido entero, sin desplazarse').toBe(0)
       const title = ask.getByText('Se activó «Foolish Burial». ¿Respondés?')
       await expect(title, 'la pregunta va escrita en la barra').toBeVisible()
       const violet = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.backgroundColor = 'var(--color-primary)'; document.body.append(probe); const color = getComputedStyle(probe).backgroundColor; probe.remove(); return color })
@@ -1408,38 +1423,44 @@ test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-da
 test.describe('V-02, elegir varias (muestra de /playground)', () => {
   test.beforeEach(async ({ context }) => prepare(context, true))
 
-  test('un solo cartel con las copias agrupadas («×N»), el orden numerado, el contador «N de M» y una sola principal a la derecha que se prende al completar', async ({ page, isMobile }) => {
+  // 5ee5e2fe: eligiendo varias, cada copia de una carta es una carta aparte (con un grupo ×N, el segundo toque de un select_unselect_card soltaba la copia elegida); 6e61adc5 renombró la muestra.
+  test('un solo cartel con cada copia aparte (sin «×N»), el orden numerado, el contador «N de M» y una sola principal a la derecha que se prende al completar', async ({ page, isMobile }) => {
     // Con la traza de cada toque, el celular de la prueba (×3, con toque) se cae en /playground: en celular se midió por script (390×844, con toque).
     test.skip(isMobile, 'sólo escritorio: con la traza, el celular (×3) tumba la página de /playground')
     // /playground monta sólo la sección del ancla (la del duelo automático).
     test.setTimeout(240_000)
     await page.goto('/playground#automatico')
-    // La muestra «Elegir varias · copias juntas»: su botón «Abrir la hoja» es el primero que le sigue al título.
-    const title = page.locator('h3', { hasText: 'Elegir varias · copias juntas' })
+    // La muestra «Elegir varias · cada copia aparte»: su botón «Abrir la hoja» es el primero que le sigue al título.
+    const title = page.locator('h3', { hasText: 'Elegir varias · cada copia aparte' })
     await expect(title, '/playground#automatico monta la muestra').toBeAttached({ timeout: 180_000 })
     await title.scrollIntoViewIfNeeded()
     await press(title.locator('xpath=following::button[normalize-space()="Abrir la hoja"][1]'), isMobile)
     const sheet = page.locator('[data-prompt]').filter({ hasText: 'Branded Fusion' }).first()
     await expect(sheet).toBeVisible()
-    const groups = sheet.locator('[role=option]').filter({ hasText: /×\d/ })
-    await expect(groups, 'las copias iguales van en un solo grupo cada una').toHaveCount(2)
+    // La muestra trae tres Ash Blossom, dos Ponix y un Veiler: seis cartas, sin «×N».
+    await expect(sheet.locator('[role=option]'), 'cada copia es una carta').toHaveCount(6)
+    await expect(sheet.locator('[data-pick-copies]'), 'sin «×N»').toHaveCount(0)
+    const ashes = sheet.locator('[role=option][aria-label^="Ash Blossom"]')
+    await expect(ashes, 'las tres copias de Ash Blossom, cada una aparte').toHaveCount(3)
     await expect(sheet).toContainText('0 de 3')
 
     const primary = sheet.getByRole('button').last()
     await expect(primary, 'la principal está apagada hasta completar').toBeDisabled()
     expect((await primary.boundingBox())!.x, 'la principal, a la derecha de «Cancelar»').toBeGreaterThan((await sheet.getByRole('button', { name: 'Cancelar' }).boundingBox())!.x)
     expect((await primary.boundingBox())!.height, 'alto de la principal').toBeGreaterThanOrEqual(44)
-    // Cada toque suma la próxima copia del grupo y lleva su número de orden: 1, 1·2, 1·2·3.
-    for (const [counter, order] of [['1 de 3', '1'], ['2 de 3', '1·2'], ['3 de 3', '1·2·3']] as const) {
-      await press(groups.first(), isMobile)
+    // Se eligen las tres copias de la misma carta, cada una con su número de orden: 1, 2, 3.
+    for (const [index, counter] of ['1 de 3', '2 de 3', '3 de 3'].entries()) {
+      await press(ashes.nth(index), isMobile)
       await expect(sheet).toContainText(counter)
-      await expect(groups.first()).toContainText(order)
-
+      await expect(ashes.nth(index)).toHaveAttribute('aria-selected', 'true')
+      await expect(ashes.nth(index)).toContainText(String(index + 1))
     }
     await expect(primary, 'completo: la principal se prende').toBeEnabled()
-    // Lleno, tocar el grupo suelta la última.
-    await press(groups.first(), isMobile)
+    // Tocar una copia elegida la suelta a ella sola: las otras dos siguen elegidas.
+    await press(ashes.first(), isMobile)
     await expect(sheet).toContainText('2 de 3')
+    await expect(ashes.first()).toHaveAttribute('aria-selected', 'false')
+    for (const index of [1, 2]) await expect(ashes.nth(index)).toHaveAttribute('aria-selected', 'true')
     await expect(primary).toBeDisabled()
     await expect(sheet, 'sin cabecera de fase ni de turno').not.toContainText(MENU_OWN)
   })
