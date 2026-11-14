@@ -6,7 +6,7 @@ import { matReducer, type MatAction, type MatState } from './practice-mat'
  *
  * - **Una Invocación Normal (o Colocar un monstruo) por turno.** La jugada es `place` con `how: 'normal'` o una con Sacrificios (`tribute`).
  * - **Una Invocación de Péndulo por turno.** Una sola Invocación de Péndulo trae **varios** monstruos a la vez (de la mano y del Extra Deck boca arriba) y la mesa los invoca de a uno: los que se invocan seguidos son la misma
- *   Invocación. Es otra cuando entre dos de ellas hubo algo que no es invocar (activar, atacar, cambiar de fase…). Sólo cuentan las que la mesa sabe que son de Péndulo (`how: 'pendulum'`: las del Extra Deck boca arriba).
+ *   Invocación. Es otra cuando entre dos de ellas hubo algo que no es invocar (activar, atacar, cambiar de fase…). Sólo cuentan las que la mesa sabe que son de Péndulo (`how: 'pendulum'`: la eligió quien juega o, en el automático, la marcó el núcleo).
  */
 export type TurnRule = 'normalSummon' | 'pendulumSummon'
 

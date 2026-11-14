@@ -117,8 +117,11 @@ function impactAt(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>[2],
  */
 function sacrificeStep(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>[2], from: number, to: number, bottom: ReplaySide, root: Element | null) {
   const step = to === from + 1 ? replay.steps[to - 1] : undefined
-  if (!step || step[1].type !== 'tribute' || !matEffects(duelReplayAt(replay, from, shots).states[step[0]], step[1]).sacrifice) return
-  for (const id of step[1].tributes) {
+  // La jugada `tribute` de la mesa manual, o el `move` que el núcleo marcó como Sacrificio (el automático; lo guardado en un enlace no trae la marca).
+  const action = step?.[1]
+  const ids = action?.type === 'tribute' ? action.tributes : action?.type === 'move' && action.tribute ? [action.id] : []
+  if (!step || ids.length === 0 || !matEffects(duelReplayAt(replay, from, shots).states[step[0]], step[1]).sacrifice) return
+  for (const id of ids) {
     const rect = root?.querySelector(`[${step[0] === bottom ? 'data-card-id' : 'data-rival-card-id'}="${CSS.escape(id)}"]`)?.getBoundingClientRect()
     if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
   }
@@ -266,7 +269,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     const landed = stageRef.current?.querySelector(card(impact.mine, impact.id))
     const cell = landed?.parentElement ?? null
     const side = impact.mine ? bottom : bottom === 0 ? 1 : 0
-    // La Invocación por Péndulo, sólo la del duelo manual (en el automático la deduce el adaptador): una sola escena con todas sus cartas, como en la mesa (cada carta es un paso: la que
+    // La Invocación por Péndulo, sólo la del duelo manual (uno automático pudo grabarse antes de la marca del núcleo, cuando se deducía, y no se distingue): una sola escena con todas sus cartas, como en la mesa (cada carta es un paso: la que
     // llega espera escondida mientras la jugada que sigue sea otra por Péndulo del mismo lado).
     const sure = surePendulum(impact.landing, replay.mode !== 'link')
     if (sure.pendulum && cell && landed instanceof HTMLElement && entranceAllowed()) {
