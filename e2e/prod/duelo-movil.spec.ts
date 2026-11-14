@@ -952,7 +952,8 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       expect(box.width, 'la hoja de abajo, de borde a borde').toBeGreaterThanOrEqual(viewport.width - 0.5)
       await expect(options).toHaveAttribute('data-auto-panel', 'docked')
     } else {
-      expect(box.width, 'la ventana de escritorio, de ≤ 480 px').toBeLessThanOrEqual(482)
+      // La ventana entra con un rebote que la pasa un instante (~101 %, `dialog-enter`): se mide asentada, con el mismo tope.
+      await expect.poll(async () => (await options.boundingBox())!.width, { message: 'la ventana de escritorio, de ≤ 480 px' }).toBeLessThanOrEqual(482)
       await expect(options).toHaveAttribute('data-auto-panel', 'floating')
     }
     expect(await roundCorners(page), 'Opciones: esquinas rectas').toEqual([])
