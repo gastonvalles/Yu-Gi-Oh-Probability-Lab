@@ -20,6 +20,8 @@ const CELTIC = 91152256
 const VORTEX = 69162969 // Lightning Vortex: descartar 1 (costo); destruye los boca arriba del rival
 const ENEMY = 98045062 // Enemy Controller: Sacrificar 1 monstruo (costo)
 const BEWD = 89631139
+const RITUAL_SPELL = 55761792 // Black Luster Ritual: Invocación Ritual de Black Luster Soldier sacrificando monstruos de la mano o el campo
+const BLS = 5405694 // Black Luster Soldier (Nivel 8)
 const ATTACK_FIRST_TURN = 2n
 
 type Ask = Extract<AutoEvent, { t: 'ask' }>
@@ -105,6 +107,24 @@ describe.skipIf(!hasCoreData)('las marcas del anfitrión: Péndulo y Sacrificio'
     for (const events of [mine, theirs]) {
       expect(of(events, 'move').filter((event) => event.tribute).map((event) => [event.card, event.from.location, event.to.location])).toEqual([[CELTIC, L.MZONE, L.GRAVE]])
       expect(of(events, 'summoning').map((event) => [event.code, event.tribute])).toEqual([[SKULL, true]])
+    }
+  })
+
+  it('una Invocación Ritual: los monstruos que se sacrifican (de la mano y del campo) llevan `tribute`; el Ritual no lleva marca de Invocación por Sacrificio', { timeout: 120_000 }, async () => {
+    const { mine, theirs } = await play([at(SKULL, 0, L.MZONE, 2, 1), at(CELTIC, 0, L.HAND), at(RITUAL_SPELL, 0, L.HAND), at(BLS, 0, L.HAND)], (ask, seen) => {
+      const options = idle(ask)
+
+      if (options) return of(seen, 'spsummoning').length > 0 ? 'stop' : { type: 'select_idlecmd', action: 5, index: options.activates.findIndex((card) => card.code === RITUAL_SPELL) }
+      if (ask.type === 'select_sum') return { type: ask.type, indices: ask.selects.map((_, index) => index) }
+      if (ask.type === 'select_tribute') return { type: ask.type, indices: ask.selects.map((_, index) => index).slice(0, ask.max) }
+      return pickAll(ask)
+    })
+
+    for (const events of [mine, theirs]) {
+      // Los dos sacrificados al Cementerio con la marca; lo que entra al campo (el Ritual) no.
+      expect(of(events, 'move').filter((event) => event.tribute).map((event) => [event.card, event.to.location]).sort()).toEqual([[CELTIC, L.GRAVE], [SKULL, L.GRAVE]].sort())
+      expect(of(events, 'spsummoning').map((event) => event.code)).toEqual([BLS])
+      expect(of(events, 'summoning').some((event) => event.tribute)).toBe(false)
     }
   })
 
