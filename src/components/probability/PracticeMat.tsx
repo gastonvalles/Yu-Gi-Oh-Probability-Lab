@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { frameKindOf } from '../../app/card-frame'
 import { isRivalId, rivalCardOf } from '../../app/handtraps'
-import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
+import { matEffects, type LandingTone, type MatEffects, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
 import { opaqueOfForeign } from '../../app/mat-control'
 import { SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type MenuPlace } from '../../app/mat-menu-order'
 import { isOpaqueId } from '../../app/mat-public'
@@ -63,7 +63,7 @@ import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
-import { arrivals, impactOn, shakeOf, type ArrivalTone } from '../../app/field-impact'
+import { arrivals, impactOn, sacrificeAt, shakeOf, type ArrivalTone } from '../../app/field-impact'
 import { arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, type SummonCard } from '../../app/summon-entrance'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
@@ -604,7 +604,7 @@ interface FxStep {
   initial: MatSession['initial']
   replay: MatSession['replay']
   fx: MatFx
-  step: { action: MatAction; shuffle: boolean } | { cut: true } | null
+  step: { action: MatAction; shuffle: boolean; sacrifice?: MatEffects['sacrifice'] } | { cut: true } | null
   /** Cuántos pasos barajaron el deck: su animación se repite con cada uno, en el mismo dibujo del paso (un estado aparte era otro dibujo entero de la mesa, 60 ms después). */
   shuffles: number
 }
@@ -630,7 +630,7 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
 
   return {
     ...at,
-    step: { action, shuffle: Boolean(effects.shuffle) },
+    step: { action, shuffle: Boolean(effects.shuffle), ...(effects.sacrifice ? { sacrifice: effects.sacrifice } : {}) },
     shuffles: effects.shuffle ? previous.shuffles + 1 : previous.shuffles,
     fx: {
       flash: effects.spotlight ? { ...effects.spotlight, key } : fx.flash,
@@ -1031,6 +1031,11 @@ function PracticeMatBody({
 
     if (action.type === 'attack') {
       setStrike(strikeOf({ from: `[data-card-id="${action.id}"]`, to: action.target === undefined ? undefined : `[data-rival-card-id="${action.target}"]`, direct: 'theirs', bounds: sectionRef.current }))
+    }
+    // Los Sacrificios: su efecto sale de la casilla que dejan, mientras vuelan al Cementerio.
+    for (const { spot, index } of step.sacrifice ?? []) {
+      const rect = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(spot, index)}"]`)?.getBoundingClientRect()
+      if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
     }
     // El deck se baraja con el dibujo del paso (`shuffles`); la mano, cuando está entera.
     if (step.shuffle) handShuffleRef.current = true

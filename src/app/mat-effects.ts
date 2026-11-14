@@ -28,6 +28,8 @@ export interface MatEffects {
    * de la mano (un Ritual que sale de la mano es su Invocación Ritual: `summon-entrance.ts`); `extra`: del Extra Deck sin materiales (la mesa manual), que va con el tipo de su marco.
    */
   landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; tribute?: true; hand?: true; extra?: true }
+  /** Las casillas de los monstruos que se sacrifican (la jugada `tribute`, también al Colocar): de ahí sale su efecto mientras vuelan al Cementerio (`sacrificeAt`). */
+  sacrifice?: Array<{ spot: MatSpot; index: number }>
   /** Cambio de fase: el cartel. `turn` sólo cuando empieza otro turno. */
   banner?: { phase: MatPhase; turn: number | null }
   /** Una carta entró a la mano (robada, buscada o devuelta): la mano se enmarca un instante. */
@@ -161,9 +163,16 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
       return { landing: { spot: action.zone, index: action.index, tone, flies: true, ...(hand ? { hand: true as const } : {}), ...(extra ? { extra: true as const } : {}) }, ...show([action.id], tone) }
     }
 
-    case 'tribute':
-      // Invocar por Sacrificio es una Invocación Normal; boca abajo, un Colocar.
-      return action.pos !== 'set' && changed ? { landing: { spot: action.zone, index: action.index, tone: 'normal', flies: true, tribute: true }, ...show([action.id], 'normal') } : {}
+    case 'tribute': {
+      if (!changed) return {}
+      // Los Sacrificios dejan su casilla (también al Colocar); invocar por Sacrificio es una Invocación Normal y, boca abajo, un Colocar.
+      const sacrifice = action.tributes.flatMap((id) => {
+        const where = locateCard(before, id)
+        return where?.kind === 'spot' ? [{ spot: where.spot, index: where.index }] : []
+      })
+      const sacrificed = sacrifice.length > 0 ? { sacrifice } : {}
+      return action.pos !== 'set' ? { landing: { spot: action.zone, index: action.index, tone: 'normal', flies: true, tribute: true }, ...show([action.id], 'normal'), ...sacrificed } : sacrificed
+    }
 
     case 'summon':
       return changed ? { landing: { spot: action.zone, index: action.index, tone: action.how, flies: true }, ...show([action.id], action.how) } : {}

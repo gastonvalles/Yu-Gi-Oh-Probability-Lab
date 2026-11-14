@@ -81,8 +81,10 @@ describe('los efectos de una jugada', () => {
     expect(matEffects(field, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 4, pos: 'atk' })).toEqual({
       landing: { spot: 'mz', index: 4, tone: 'normal', flies: true, tribute: true },
       showcase: { ids: ['c1'], kind: 'normal' },
+      sacrifice: [{ spot: 'mz', index: 0 }, { spot: 'mz', index: 1 }],
     })
-    expect(matEffects(field, { type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 4, pos: 'set' })).toEqual({})
+    // Al Colocar, el Sacrificio igual se ve (sin llegada).
+    expect(matEffects(field, { type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 4, pos: 'set' })).toEqual({ sacrifice: [{ spot: 'mz', index: 0 }] })
   })
 
   it('la ficha aparece de la nada y el monstruo que pasa boca arriba a ataque es una Invocación por Volteo', () => {

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ARRIVAL, HIT_MS, PUNCH, SECOND_AT, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, arrivalRingFrames, arriveAt, arrivals, chargeOn, punchAt, punchFrames, ringAt, settleShake, shakeField, shakeOf } from '../app/field-impact'
+import { ARRIVAL, HIT_MS, PUNCH, SACRIFICE, SECOND_AT, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, arrivalRingFrames, arriveAt, arrivals, chargeOn, punchAt, punchFrames, ringAt, sacrificeAt, settleShake, shakeField, shakeOf } from '../app/field-impact'
 import { EASE_ASENTAR, EASE_GOLPE } from '../app/motion'
+import { FLIGHT_MS } from '../app/use-card-flights'
 import { TOKEN_KIND, type MatState } from '../app/practice-mat'
 import { arrivalToneOf, landingToneOf, type SummonCard } from '../app/summon-entrance'
 
@@ -177,6 +178,28 @@ describe('el impacto en la mesa (field-impact)', () => {
       expect(landingToneOf({ tone: 'normal', hand: true }, card({ level: 4 }))).toBe('special')
       expect(arrivalToneOf({ from: 'extra' }, card({ synchro: true }))).toBe('synchro')
       expect(arrivalToneOf({ from: 'other', hand: true }, card({}, true))).toBe('ritual')
+    })
+
+    it('el Sacrificio: el disco violeta de 1,2 cartas, el círculo de 1,7 que crece de 44 % a 100 % en 200 ms y la columna, dentro del vuelo al Cementerio; con «Livianos», sólo el círculo', () => {
+      const calls = stubAnimate()
+      sacrificeAt(100, 200, 50)
+
+      const maru = calls.find((call) => classOf(call).includes('border-white'))!
+      expect((maru.el as HTMLElement).style.width).toBe('85px')
+      expect(maru.frames[0]).toEqual({ scale: '0.44', opacity: 1 })
+      expect(maru.frames[1]).toMatchObject({ scale: '1', offset: Math.round((200 / SACRIFICE.ms) * 1000) / 1000 })
+      const disc = calls.find((call) => classOf(call).includes('from-fx-material-brillo'))!
+      expect((disc.el as HTMLElement).style.width).toBe('60px')
+      expect(calls.some((call) => classOf(call).includes('bg-linear-to-b'))).toBe(true)
+      // No alarga el duelo: todo termina antes de que la carta llegue al Cementerio.
+      expect(Math.max(...calls.map((call) => Number(call.options.duration) + Number(call.options.delay ?? 0)))).toBeLessThanOrEqual(FLIGHT_MS)
+      for (const { frames } of calls) for (const frame of frames) expect(Object.keys(frame).filter((key) => !['scale', 'opacity', 'offset', 'easing'].includes(key))).toEqual([])
+
+      calls.length = 0
+      document.documentElement.setAttribute('data-effects', 'lite')
+      sacrificeAt(0, 0, 50)
+      expect(calls).toHaveLength(1)
+      expect(classOf(calls[0]!)).toContain('border-white')
     })
 
     it('la carga: la carta que ataca brilla dorada (opaca hasta la mitad) y el polvo converge, siguiendo la embestida; con «Livianos», sin polvo', () => {

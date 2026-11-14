@@ -2076,6 +2076,9 @@
   --color-fx-xyz-brasa: #ff8437;
   --color-fx-enlace: #0091ff;
   --color-fx-ritual: #005aff;
+  /* El material y el Sacrificio (Master Duel: la marca de «elegida como material», violeta y magenta): la carta que se sacrifica y el latido de los materiales elegidos. */
+  --color-fx-material: #aa00ff;
+  --color-fx-material-brillo: #ff00ff;
 
   /* El rebote con pasada (el «Ease-Out-Back» del documento): un 10 % más allá y vuelve. Para lo que entra entero (una pantalla, un número que golpea). */
   --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
