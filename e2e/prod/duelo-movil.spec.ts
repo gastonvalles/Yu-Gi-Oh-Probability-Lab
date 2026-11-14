@@ -1408,38 +1408,44 @@ test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-da
 test.describe('V-02, elegir varias (muestra de /playground)', () => {
   test.beforeEach(async ({ context }) => prepare(context, true))
 
-  test('un solo cartel con las copias agrupadas («×N»), el orden numerado, el contador «N de M» y una sola principal a la derecha que se prende al completar', async ({ page, isMobile }) => {
+  // 5ee5e2fe: eligiendo varias, cada copia de una carta es una carta aparte (con un grupo ×N, el segundo toque de un select_unselect_card soltaba la copia elegida); 6e61adc5 renombró la muestra.
+  test('un solo cartel con cada copia aparte (sin «×N»), el orden numerado, el contador «N de M» y una sola principal a la derecha que se prende al completar', async ({ page, isMobile }) => {
     // Con la traza de cada toque, el celular de la prueba (×3, con toque) se cae en /playground: en celular se midió por script (390×844, con toque).
     test.skip(isMobile, 'sólo escritorio: con la traza, el celular (×3) tumba la página de /playground')
     // /playground monta sólo la sección del ancla (la del duelo automático).
     test.setTimeout(240_000)
     await page.goto('/playground#automatico')
-    // La muestra «Elegir varias · copias juntas»: su botón «Abrir la hoja» es el primero que le sigue al título.
-    const title = page.locator('h3', { hasText: 'Elegir varias · copias juntas' })
+    // La muestra «Elegir varias · cada copia aparte»: su botón «Abrir la hoja» es el primero que le sigue al título.
+    const title = page.locator('h3', { hasText: 'Elegir varias · cada copia aparte' })
     await expect(title, '/playground#automatico monta la muestra').toBeAttached({ timeout: 180_000 })
     await title.scrollIntoViewIfNeeded()
     await press(title.locator('xpath=following::button[normalize-space()="Abrir la hoja"][1]'), isMobile)
     const sheet = page.locator('[data-prompt]').filter({ hasText: 'Branded Fusion' }).first()
     await expect(sheet).toBeVisible()
-    const groups = sheet.locator('[role=option]').filter({ hasText: /×\d/ })
-    await expect(groups, 'las copias iguales van en un solo grupo cada una').toHaveCount(2)
+    // La muestra trae tres Ash Blossom, dos Ponix y un Veiler: seis cartas, sin «×N».
+    await expect(sheet.locator('[role=option]'), 'cada copia es una carta').toHaveCount(6)
+    await expect(sheet.locator('[data-pick-copies]'), 'sin «×N»').toHaveCount(0)
+    const ashes = sheet.locator('[role=option][aria-label^="Ash Blossom"]')
+    await expect(ashes, 'las tres copias de Ash Blossom, cada una aparte').toHaveCount(3)
     await expect(sheet).toContainText('0 de 3')
 
     const primary = sheet.getByRole('button').last()
     await expect(primary, 'la principal está apagada hasta completar').toBeDisabled()
     expect((await primary.boundingBox())!.x, 'la principal, a la derecha de «Cancelar»').toBeGreaterThan((await sheet.getByRole('button', { name: 'Cancelar' }).boundingBox())!.x)
     expect((await primary.boundingBox())!.height, 'alto de la principal').toBeGreaterThanOrEqual(44)
-    // Cada toque suma la próxima copia del grupo y lleva su número de orden: 1, 1·2, 1·2·3.
-    for (const [counter, order] of [['1 de 3', '1'], ['2 de 3', '1·2'], ['3 de 3', '1·2·3']] as const) {
-      await press(groups.first(), isMobile)
+    // Se eligen las tres copias de la misma carta, cada una con su número de orden: 1, 2, 3.
+    for (const [index, counter] of ['1 de 3', '2 de 3', '3 de 3'].entries()) {
+      await press(ashes.nth(index), isMobile)
       await expect(sheet).toContainText(counter)
-      await expect(groups.first()).toContainText(order)
-
+      await expect(ashes.nth(index)).toHaveAttribute('aria-selected', 'true')
+      await expect(ashes.nth(index)).toContainText(String(index + 1))
     }
     await expect(primary, 'completo: la principal se prende').toBeEnabled()
-    // Lleno, tocar el grupo suelta la última.
-    await press(groups.first(), isMobile)
+    // Tocar una copia elegida la suelta a ella sola: las otras dos siguen elegidas.
+    await press(ashes.first(), isMobile)
     await expect(sheet).toContainText('2 de 3')
+    await expect(ashes.first()).toHaveAttribute('aria-selected', 'false')
+    for (const index of [1, 2]) await expect(ashes.nth(index)).toHaveAttribute('aria-selected', 'true')
     await expect(primary).toBeDisabled()
     await expect(sheet, 'sin cabecera de fase ni de turno').not.toContainText(MENU_OWN)
   })
