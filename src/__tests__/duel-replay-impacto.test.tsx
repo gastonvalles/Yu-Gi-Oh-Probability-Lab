@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildDuelReplay } from '../app/duel-replay'
 import { impactOn } from '../app/field-impact'
 import { createMatState } from '../app/practice-mat'
+import { entranceAllowed, playEntrance } from '../app/summon-entrance'
 import type { Strike } from '../components/probability/AttackFx'
 import { landingDelay } from '../components/probability/MatFx'
 import { DuelReplayScreen } from '../components/replays/DuelReplayScreen'
@@ -16,6 +17,7 @@ import { ReplayLayer } from '../components/replays/ReplayLayer'
 
 // El impacto de verdad dibuja por el DOM y la Web Animations API (jsdom no la tiene): acá se mira qué decide el replay y con qué lo llama.
 vi.mock('../app/field-impact', async (original) => ({ ...(await original<typeof import('../app/field-impact')>()), impactOn: vi.fn() }))
+vi.mock('../app/summon-entrance', async (original) => ({ ...(await original<typeof import('../app/summon-entrance')>()), entranceAllowed: vi.fn(() => false), playEntrance: vi.fn(() => null) }))
 vi.mock('../components/probability/AttackFx', async (original) => ({
   ...(await original<typeof import('../components/probability/AttackFx')>()),
   AttackFx: ({ strike }: { strike: Strike }) => <div data-testid="strike" data-from={strike.attacker.getAttribute('data-card-id') ?? ''} data-to={strike.target?.getAttribute('data-rival-card-id') ?? strike.target?.getAttribute('data-lp') ?? ''} />,
@@ -47,6 +49,8 @@ const replay = buildDuelReplay({
 
 beforeEach(() => {
   vi.mocked(impactOn).mockClear()
+  vi.mocked(playEntrance).mockClear()
+  vi.mocked(entranceAllowed).mockReturnValue(false)
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
 afterEach(cleanup)
@@ -86,6 +90,32 @@ describe('los impactos de la mesa en el replay de un duelo', () => {
     expect(document.body).toHaveClass('*:data-fx:z-170!')
     unmount()
     expect(document.body).not.toHaveClass('*:data-fx:z-170!')
+  })
+
+  it('lo que sale del Extra Deck lleva la entrada larga de la mesa (no el anillo de siempre); saltar la corta', () => {
+    const cancel = vi.fn()
+    vi.mocked(entranceAllowed).mockReturnValue(true)
+    vi.mocked(playEntrance).mockReturnValue({ cancel } as unknown as Animation)
+    const extra = createMatState(Array.from({ length: 20 }, (_, i) => `card-${14558127 + (i % 4)}-${Math.floor(i / 4) + 1}`), ['card-84013237-1'], 5)
+    const xyz = buildDuelReplay({
+      mode: 'link-auto',
+      view: 'public',
+      players: ['Ana', 'Beto'],
+      starter: 0,
+      mine: { initial: extra, actions: [{ type: 'summon', id: 'card-84013237-1', how: 'xyz', materials: [], zone: 'emz', index: 0, pos: 'atk' }] },
+      theirs: { initial: createMatState(Array.from({ length: 20 }, (_, i) => `c${i + 1}`), [], 5), acts: [] },
+      order: ['mine'],
+      life: [{ at: 0, lp: [8000, 8000] }],
+      nameOf: () => 'Carta',
+    })
+    render(<DuelReplayScreen replay={xyz} onClose={() => {}} actions={[]} startAt={0} />)
+
+    next()
+    expect(playEntrance).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(playEntrance).mock.calls[0]![0]).toMatchObject({ kind: 'xyz', art: expect.stringContaining('84013237') })
+    expect(impactOn).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+    expect(cancel).toHaveBeenCalled()
   })
 
   it('saltar (atrás, al principio) no trae impacto; con movimiento reducido, tampoco la espada', () => {

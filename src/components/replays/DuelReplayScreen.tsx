@@ -10,7 +10,7 @@ import { prefersReducedMotion } from '../../app/motion'
 import { isToken } from '../../app/practice-mat'
 import { growHand } from '../../app/practice-hand-layout'
 import { shuffleDeck } from '../../app/shuffle-fx'
-import { UNKNOWN_SUMMON, landingToneOf } from '../../app/summon-entrance'
+import { UNKNOWN_SUMMON, entranceAllowed, entranceOf, landingToneOf, playEntrance } from '../../app/summon-entrance'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
@@ -163,6 +163,9 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   const [flights, setFlights] = useState(0)
   const [shuffled, setShuffled] = useState<{ key: number; drop: 'data-drop' | 'data-rival-drop' } | null>(null)
   const [impact, setImpact] = useState<Impact | null>(null)
+  // La entrada larga de lo que sale del Extra Deck (la de la mesa): mientras dura, reproducir no avanza (la dice su velo, `onDone`).
+  const [entering, setEntering] = useState(false)
+  const entrance = useRef<Animation | null>(null)
   const [strike, setStrike] = useState<Strike | null>(null)
   const rootRef = useRef<HTMLDivElement | null>(null)
   // Lo que sacude un impacto: el campo (como en la mesa, `data-field`); las chapas, las manos y los controles, no.
@@ -239,8 +242,38 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       return
     }
     const landed = stageRef.current?.querySelector(card(impact.mine, impact.id))
-    impactOn(landed?.parentElement ?? null, fieldRef.current, shakeOf({ landing: impact.landing.tone }), landingDelay(impact.landing.flies, false), landingToneOf(impact.landing, UNKNOWN_SUMMON))
+    const cell = landed?.parentElement ?? null
+    const tone = landingToneOf(impact.landing, UNKNOWN_SUMMON)
+    // Lo que sale del Extra Deck, con la entrada larga de la mesa (`playEntrance`): reproducir espera a que termine (`entering`). Con «Livianos» o movimiento reducido, la llegada de siempre.
+    const kind = entranceOf(tone)
+    if (kind && cell && landed instanceof HTMLElement && entranceAllowed()) {
+      entrance.current?.cancel()
+      const box = cell.getBoundingClientRect()
+      const [w, h] = [Math.min(box.width, landed.offsetWidth || box.width), Math.min(box.height, landed.offsetHeight || box.height)]
+      const side = impact.mine ? bottom : bottom === 0 ? 1 : 0
+      const played = playEntrance({
+        kind,
+        cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h),
+        art: artOfDrawId(realOf(replay, frame, side, impact.id) ?? impact.id),
+        materials: frame.states[side][impact.landing.spot === 'emz' ? 'emz' : 'mz'][impact.landing.index]?.materials.length ?? 0,
+        hide: [landed, ...document.querySelectorAll(`[data-flight-ghost="${impact.id}"]`)],
+        field: fieldRef.current,
+        onDone: () => {
+          if (entrance.current !== played) return
+          entrance.current = null
+          setEntering(false)
+        },
+      })
+      if (played) {
+        entrance.current = played
+        setEntering(true)
+        return
+      }
+    }
+    impactOn(cell, fieldRef.current, shakeOf({ landing: impact.landing.tone }), landingDelay(impact.landing.flies, false), tone)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- una vez por paso (`impact`): la carta y su arte, del cuadro de ese paso
   }, [impact])
+  useEffect(() => () => entrance.current?.cancel(), [])
   useEffect(() => {
     if (!activation) return
     const timer = window.setTimeout(() => setActivation(null), ACTIVATION_MS)
@@ -257,7 +290,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
 
   // Reproducir: una jugada cada `STEP_MS` (según la velocidad) hasta el final; la cadena de una jugada se cuenta entera antes de la siguiente.
   useEffect(() => {
-    if (!playing || chainPending) return
+    if (!playing || chainPending || entering) return
     if (cursor >= total) {
       setPlaying(false)
       return
@@ -267,8 +300,10 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       announce(cursor, cursor + 1)
     }, STEP_MS / speed)
     return () => window.clearTimeout(timer)
-  }, [playing, chainPending, cursor, total, speed, replay, announce])
+  }, [playing, chainPending, entering, cursor, total, speed, replay, announce])
   const jump = (at: number) => {
+    // Saltar, sin entrada: la que estaba en curso se corta.
+    entrance.current?.cancel()
     setPlaying(false)
     setBanner(null)
     setActivation(null)

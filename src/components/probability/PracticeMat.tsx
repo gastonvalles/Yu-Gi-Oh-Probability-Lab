@@ -1434,8 +1434,17 @@ function PracticeMatBody({
       return
     }
 
-    const timer = window.setTimeout(() => onSeek(session.cursor + 1), AUTOPLAY_MS / speed)
-    return () => window.clearTimeout(timer)
+    // Con una entrada larga en curso, la jugada siguiente espera a que termine (cortada, no sigue).
+    let live = true
+    const timer = window.setTimeout(() => {
+      const busy = entrance.current
+      if (!busy) onSeek(session.cursor + 1)
+      else busy.finished.then(() => live && onSeek(session.cursor + 1), () => {})
+    }, AUTOPLAY_MS / speed)
+    return () => {
+      live = false
+      window.clearTimeout(timer)
+    }
   }, [autoplay, isDealt, session.cursor, session.actions.length, onSeek, speed])
 
   // Abrir un menú o elegir Sacrificios también pausa la reproducción: si no, los pasos seguirían avanzando por debajo de lo que se está eligiendo.
