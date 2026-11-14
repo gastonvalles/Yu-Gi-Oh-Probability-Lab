@@ -1367,7 +1367,10 @@ test.describe('M-02 / M-07 / M-08, responder (donde están el núcleo y /auto-da
       const win = (await ask.boundingBox())!
       const during = await measure()
       expect(Math.abs(win.x + win.width / 2 - rest.col.cx), 'centrada en la columna del campo').toBeLessThanOrEqual(8)
-      expect(win.y, 'sin tapar el campo (empieza bajo su última fila)').toBeGreaterThanOrEqual(during.field!.b - 1)
+      // ec1c4216 (Gastón, 2026-11-12: «nada escondido»): la ventana sube sobre el campo lo que necesita para mostrar su contenido entero; su techo es el borde de arriba de la mesa.
+      const ceiling = await page.evaluate(() => document.querySelector('[data-duel-line]')!.parentElement!.getBoundingClientRect().top)
+      expect(win.y, 'sube sobre el campo hasta el borde de arriba de la mesa, nunca más').toBeGreaterThanOrEqual(ceiling - 1)
+      expect(await ask.evaluate((root) => [root, ...Array.from(root.querySelectorAll('*'))].filter((node) => /auto|scroll/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight + 1).length), 'nada escondido: la ventana muestra su contenido entero, sin desplazarse').toBe(0)
       const title = ask.getByText('Se activó «Foolish Burial». ¿Respondés?')
       await expect(title, 'la pregunta va escrita en la barra').toBeVisible()
       const violet = await page.evaluate(() => { const probe = document.createElement('i'); probe.style.backgroundColor = 'var(--color-primary)'; document.body.append(probe); const color = getComputedStyle(probe).backgroundColor; probe.remove(); return color })
