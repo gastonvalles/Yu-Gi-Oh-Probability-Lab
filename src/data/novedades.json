@@ -1,6 +1,49 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-6-pendulo-y-sacrificio-en-automatico",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El Péndulo y el Sacrificio, también en el duelo automático",
+        "novedades": [
+          "En el duelo automático, la Invocación por Péndulo ya tiene su escena: las dos escalas, la columna de luz, el péndulo y las cartas que bajan juntas. Vale para los monstruos que salen de la mano y para los que vuelven boca arriba del Extra Deck.",
+          "El Sacrificio también destella en el duelo automático: el monstruo que se sacrifica deja su casilla con el destello violeta, en una Invocación por Sacrificio y cuando una carta pide sacrificar como costo.",
+          "El anillo rojo de la llegada ahora sale sólo cuando de verdad hubo un Sacrificio."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Un monstruo boca arriba del Extra Deck que sale por un efecto ya no se cuenta como Invocación por Péndulo: llega como una Invocación Especial.",
+          "En el duelo manual, una Invocación Normal de Nivel 5 o más hecha sin la jugada de Sacrificio ya no lleva el anillo rojo."
+        ],
+        "ojo": [
+          "El replay de un duelo automático y un combo guardado siguen sin la escena del Péndulo.",
+          "El bot todavía no invoca por Péndulo, así que esa escena sólo la vas a ver en tus jugadas.",
+          "Con «Efectos: Livianos» el Péndulo llega enseguida, con su anillo blanco. Con «reducir movimiento», nada de esto."
+        ]
+      },
+      "en": {
+        "title": "Pendulum and Tribute, now in the automatic duel too",
+        "novedades": [
+          "In the automatic duel, a Pendulum Summon now has its scene: both scales, the column of light, the pendulum and the cards dropping together. It covers monsters coming from the hand and those returning face-up from the Extra Deck.",
+          "Tributes flash in the automatic duel too: the Tributed monster leaves its zone with the violet flash, on a Tribute Summon and when a card asks for a Tribute as a cost.",
+          "The red arrival ring now shows only when there really was a Tribute."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "A face-up Extra Deck monster brought out by an effect no longer counts as a Pendulum Summon: it arrives as a Special Summon.",
+          "In a manual duel, a Normal Summon of Level 5 or higher made without the Tribute move no longer gets the red ring."
+        ],
+        "ojo": [
+          "The replay of an automatic duel and a saved combo still go without the Pendulum scene.",
+          "The bot does not Pendulum Summon yet, so you will only see that scene on your own plays.",
+          "With «Effects: Light» the Pendulum arrives right away, with its white ring. With «reduce motion», none of this."
+        ]
+      }
+    },
+    {
       "id": "2026-11-14-5-invocacion-por-pendulo",
       "date": "2026-11-14",
       "tags": [
@@ -16,7 +59,6 @@
         "comoSeUsa": [],
         "arreglos": [],
         "ojo": [
-          "En el duelo automático todavía no: ahí la Invocación por Péndulo llega como una Invocación Especial común.",
           "Mientras dura la escena nadie juega. Con «Efectos: Livianos» las cartas llegan enseguida, con un anillo blanco.",
           "El video todavía no dibuja la escena."
         ]
@@ -31,7 +73,6 @@
         "comoSeUsa": [],
         "arreglos": [],
         "ojo": [
-          "Not in the automatic duel yet: there a Pendulum Summon arrives as a regular Special Summon.",
           "While the scene lasts nobody plays. With «Effects: Light» the cards arrive right away, with a white ring.",
           "The video does not draw the scene yet."
         ]
@@ -54,8 +95,7 @@
         "arreglos": [],
         "ojo": [
           "El Sacrificio no alarga el duelo: ocurre mientras la carta viaja al Cementerio.",
-          "En el duelo automático el Sacrificio todavía no lleva el destello.",
-          "Los Sacrificios de un Ritual y los de un costo todavía no llevan el latido ni el destello.",
+          "En el duelo manual, los Sacrificios de un Ritual y los de un costo todavía no llevan el destello.",
           "Con «Efectos: Livianos» la marca de los materiales queda quieta. Con «reducir movimiento», nada de esto."
         ]
       },
@@ -70,8 +110,7 @@
         "arreglos": [],
         "ojo": [
           "The Tribute does not lengthen the duel: it happens while the card travels to the Graveyard.",
-          "In the automatic duel the Tribute does not get the flash yet.",
-          "Tributes for a Ritual and for a cost do not get the pulse or the flash yet.",
+          "In a manual duel, Tributes for a Ritual and for a cost do not get the flash yet.",
           "With «Effects: Light» the material mark stays still. With «reduce motion», none of this."
         ]
       }
