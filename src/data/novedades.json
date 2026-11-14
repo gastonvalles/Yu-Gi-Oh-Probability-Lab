@@ -1,6 +1,33 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-11-importar-archivo-primero",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Importar un deck: el archivo va primero",
+        "novedades": [
+          "Al importar un deck, las formas ahora van de la más usada a la menos: Archivo, Enlace y, última, Pegar texto.",
+          "La ventana de importar abre en «Archivo»."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": []
+      },
+      "en": {
+        "title": "Importing a deck: the file comes first",
+        "novedades": [
+          "When importing a deck, the methods now go from most to least used: File, Link and, last, Paste text.",
+          "The import window opens on «File»."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": []
+      }
+    },
+    {
       "id": "2026-11-14-10-replay-abre-por-el-comienzo",
       "date": "2026-11-14",
       "tags": [
