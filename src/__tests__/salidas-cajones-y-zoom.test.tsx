@@ -192,6 +192,8 @@ describe('el importador de decks', () => {
     const { calls, finish } = fakeAnimate()
     render(<Screen />)
 
+    // La ventana abre en «Archivo»: la lista pegada es la última forma.
+    fireEvent.click(screen.getByRole('radio', { name: 'Pegar texto' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Lista de cartas' }), { target: { value: '3 Ash Blossom & Joyous Spring' } })
     fireEvent.click(screen.getByRole('button', { name: 'Procesar texto' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Reemplazar deck actual' }))

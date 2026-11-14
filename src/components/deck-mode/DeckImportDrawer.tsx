@@ -198,7 +198,7 @@ export function DeckImportDrawer({
   const [isProcessing, setIsProcessing] = useState(false)
   const [isReplaceConfirmOpen, setIsReplaceConfirmOpen] = useState(false)
   const [isDragActive, setIsDragActive] = useState(false)
-  const [method, setMethod] = useState<ImportMethod>('text')
+  const [method, setMethod] = useState<ImportMethod>('file')
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -210,9 +210,10 @@ export function DeckImportDrawer({
   const applyButtonLabel =
     target === 'comparison' ? t('deck.import.apply.compare') : hasExistingDeck ? t('deck.import.apply.replace') : t('deck.import.apply.import')
   const methodOptions: ReadonlyArray<{ value: ImportMethod; label: string }> = [
-    { value: 'text', label: t('deck.import.pasteText') },
+    // De la más usada a la menos: el archivo, el enlace y, última, el texto pegado.
     { value: 'file', label: t('deck.import.method.file') },
     { value: 'link', label: t('deck.import.method.link') },
+    { value: 'text', label: t('deck.import.pasteText') },
   ]
 
   useEffect(() => {
@@ -223,7 +224,7 @@ export function DeckImportDrawer({
       setIsProcessing(false)
       setIsReplaceConfirmOpen(false)
       setIsDragActive(false)
-      setMethod('text')
+      setMethod('file')
       setSelectedFileName(null)
     }
   }, [isOpen])

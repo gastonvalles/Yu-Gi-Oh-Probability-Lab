@@ -47,12 +47,10 @@ describe('el importador de decks', () => {
   it('ofrece el archivo y el texto pegado como opciones parejas (no un botón suelto), y el texto se pega ahí mismo', () => {
     renderDrawer()
 
-    // Arranca en «Pegar texto» (como la hoja); «Archivo» y «Enlace» son las otras dos formas.
+    // Arranca en «Archivo»; «Enlace» y «Pegar texto» (la que menos se usa, última) son las otras dos formas.
     expect(screen.getByRole('radiogroup', { name: 'Cómo importar' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Pegar texto' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('radio', { name: 'Enlace' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('radio', { name: 'Archivo' }))
     expect(screen.getByRole('radio', { name: 'Archivo' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('aria-label') ?? radio.textContent)).toEqual(['Archivo', 'Enlace', 'Pegar texto'])
     expect(screen.getByRole('button', { name: 'Elegir un archivo' })).toBeInTheDocument()
     // Los formatos se dicen con una frase (no con pastillas que parecen botones).
     expect(screen.getByText('Acepta archivos .txt, .json y .ydk')).toBeInTheDocument()
@@ -70,7 +68,6 @@ describe('el importador de decks', () => {
 
   it('con un puntero táctil no se habla de arrastrar: las dos frases están y el CSS muestra la que corresponde', () => {
     renderDrawer()
-    fireEvent.click(screen.getByRole('radio', { name: 'Archivo' }))
 
     expect(screen.getByText('Arrastrá el archivo acá')).toHaveClass('pointer-coarse:hidden')
     expect(screen.getByText('Elegí un archivo de tu dispositivo')).toHaveClass('hidden', 'pointer-coarse:block')
@@ -131,7 +128,6 @@ describe('el importador de decks', () => {
 
   it('un archivo .ydk también pasa por la vista previa, y "Volver" no deja el archivo marcado como elegido', async () => {
     renderDrawer()
-    fireEvent.click(screen.getByRole('radio', { name: 'Archivo' }))
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File(['#main\n14558127\n14558127\n#extra\n!side\n24224830\n'], 'Mi deck.ydk', { type: 'text/plain' })
@@ -149,7 +145,6 @@ describe('el importador de decks', () => {
 
   it('Tab gira entre la X y el botón de archivo: el input invisible que abre el botón no es el "último" control', () => {
     renderDrawer()
-    fireEvent.click(screen.getByRole('radio', { name: 'Archivo' }))
 
     const dialog = screen.getByRole('dialog', { name: 'Importador de deck' })
     const close = within(dialog).getByRole('button', { name: 'Cerrar importador' })
