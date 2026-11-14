@@ -2,7 +2,8 @@ import { ARRIVAL, CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LI
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
-import { UNKNOWN_SUMMON, landingToneOf } from '../../../app/summon-entrance'
+import { UNKNOWN_SUMMON, entranceOf, entranceTiming, landingToneOf } from '../../../app/summon-entrance'
+import { entranceOverlay } from './video-entrance'
 import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
 import { drawCard, drawTargetMark, FONT, TARGET_LOCK_MS, TARGET_OUT_MS, TARGET_PING_MS, wrap, type Ctx, type VideoAssets } from './video-draw'
@@ -128,7 +129,7 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake' | 'entrance'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
@@ -217,11 +218,19 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const pose = id ? placeIn(now, id, sides)?.pose : null
     const rect = pose ? { x: pose.x - after.layout.cell / 2, y: pose.y - after.layout.cell / 2, w: after.layout.cell, h: after.layout.cell } : after.focus[0]
     const hit = start + (effects.landing.flies && id ? landingOf(id) : 0)
-    if (rect) {
+    const tone = landingToneOf(effects.landing, UNKNOWN_SUMMON)
+    const entrance = action.type === 'summon' ? entranceOf(tone) : null
+    const place = id ? placeIn(now, id, sides) : undefined
+    if (entrance && action.type === 'summon' && place) {
+      // Lo que sale del Extra Deck, con la entrada larga de la mesa (`entranceOverlay`): su golpe fuerte, a los ms de Master Duel (la jugada dura lo que la entrada: `stepMs`).
+      const blow = start + entranceTiming(entrance).hit / speed
+      out.push(entranceOverlay(entrance, place.pose, place.card, `${sides.find((side) => now.has(`${side}:${action.id}`))}:${action.id}`, action.materials.length, theme.fx.llegada[entrance], assets, after.layout.unit, s, start, speed))
+      out.push(...impactOverlays(place.pose.x, place.pose.y, 'strong', after.layout.unit, theme, blow, blow, speed, false, entrance))
+    } else if (rect) {
       out.push(landingOverlay(rect, FX_RGB[LANDING_TONE(effects.landing.tone)], s, hit, speed))
       // El impacto de la mesa (`field-impact.ts`), cuando toca: la llegada del color de su tipo desde la casilla y la sacudida del campo, del grado de la mesa (el video no sabe el
       // marco de la carta: un Ritual va como Especial).
-      out.push(...impactOverlays(rect.x + rect.w / 2, rect.y + rect.h / 2, shakeOf({ landing: effects.landing.tone }), after.layout.unit, theme, hit, hit, speed, false, landingToneOf(effects.landing, UNKNOWN_SUMMON)))
+      out.push(...impactOverlays(rect.x + rect.w / 2, rect.y + rect.h / 2, shakeOf({ landing: effects.landing.tone }), after.layout.unit, theme, hit, hit, speed, false, tone))
     }
   }
 
