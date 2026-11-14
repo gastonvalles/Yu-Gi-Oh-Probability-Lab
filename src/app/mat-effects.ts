@@ -26,8 +26,10 @@ export interface MatEffects {
   /**
    * Una carta que cae en una zona de monstruo: `flies` es que llega volando desde otro lado (el destello espera a que aterrice). `tribute`: por Sacrificio (la llegada roja); `hand`: salió
    * de la mano (un Ritual que sale de la mano es su Invocación Ritual: `summon-entrance.ts`); `extra`: del Extra Deck sin materiales (la mesa manual), que va con el tipo de su marco.
+   * `pendulum`: la jugada dice Invocación por Péndulo (`how: 'pendulum'`). Sólo es seguro en la mesa manual (lo eligió quien juega): en el automático el adaptador lo deduce de «sale boca
+   * arriba del Extra» y no se usa (`summon-entrance.ts`).
    */
-  landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; tribute?: true; hand?: true; extra?: true }
+  landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; tribute?: true; hand?: true; extra?: true; pendulum?: true }
   /** Las casillas de los monstruos que se sacrifican (la jugada `tribute`, también al Colocar): de ahí sale su efecto mientras vuelan al Cementerio (`sacrificeAt`). */
   sacrifice?: Array<{ spot: MatSpot; index: number }>
   /** Cambio de fase: el cartel. `turn` sólo cuando empieza otro turno. */
@@ -160,7 +162,8 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
       const tone = normal ? 'normal' : 'special'
 
       const extra = where?.kind === 'pile' && where.pile === 'extra'
-      return { landing: { spot: action.zone, index: action.index, tone, flies: true, ...(hand ? { hand: true as const } : {}), ...(extra ? { extra: true as const } : {}) }, ...show([action.id], tone) }
+      const pendulum = action.how === 'pendulum' ? { pendulum: true as const } : {}
+      return { landing: { spot: action.zone, index: action.index, tone, flies: true, ...(hand ? { hand: true as const } : {}), ...(extra ? { extra: true as const } : {}), ...pendulum }, ...show([action.id], tone) }
     }
 
     case 'tribute': {

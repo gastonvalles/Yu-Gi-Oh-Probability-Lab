@@ -7,17 +7,17 @@ import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { buildDuelReplay } from '../app/duel-replay'
-import { impactOn } from '../app/field-impact'
+import { impactOn, sacrificeAt } from '../app/field-impact'
 import { createMatState } from '../app/practice-mat'
-import { entranceAllowed, playEntrance } from '../app/summon-entrance'
+import { entranceAllowed, playEntrance, playPendulum } from '../app/summon-entrance'
 import type { Strike } from '../components/probability/AttackFx'
 import { landingDelay } from '../components/probability/MatFx'
 import { DuelReplayScreen } from '../components/replays/DuelReplayScreen'
 import { ReplayLayer } from '../components/replays/ReplayLayer'
 
 // El impacto de verdad dibuja por el DOM y la Web Animations API (jsdom no la tiene): acá se mira qué decide el replay y con qué lo llama.
-vi.mock('../app/field-impact', async (original) => ({ ...(await original<typeof import('../app/field-impact')>()), impactOn: vi.fn() }))
-vi.mock('../app/summon-entrance', async (original) => ({ ...(await original<typeof import('../app/summon-entrance')>()), entranceAllowed: vi.fn(() => false), playEntrance: vi.fn(() => null) }))
+vi.mock('../app/field-impact', async (original) => ({ ...(await original<typeof import('../app/field-impact')>()), impactOn: vi.fn(), sacrificeAt: vi.fn() }))
+vi.mock('../app/summon-entrance', async (original) => ({ ...(await original<typeof import('../app/summon-entrance')>()), entranceAllowed: vi.fn(() => false), playEntrance: vi.fn(() => null), playPendulum: vi.fn(() => null) }))
 vi.mock('../components/probability/AttackFx', async (original) => ({
   ...(await original<typeof import('../components/probability/AttackFx')>()),
   AttackFx: ({ strike }: { strike: Strike }) => <div data-testid="strike" data-from={strike.attacker.getAttribute('data-card-id') ?? ''} data-to={strike.target?.getAttribute('data-rival-card-id') ?? strike.target?.getAttribute('data-lp') ?? ''} />,
@@ -49,7 +49,9 @@ const replay = buildDuelReplay({
 
 beforeEach(() => {
   vi.mocked(impactOn).mockClear()
+  vi.mocked(sacrificeAt).mockClear()
   vi.mocked(playEntrance).mockClear()
+  vi.mocked(playPendulum).mockClear()
   vi.mocked(entranceAllowed).mockReturnValue(false)
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
@@ -116,6 +118,51 @@ describe('los impactos de la mesa en el replay de un duelo', () => {
     expect(impactOn).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
     expect(cancel).toHaveBeenCalled()
+  })
+
+  it('la Invocación por Péndulo del duelo manual: una sola escena con todas sus cartas (la primera espera escondida a la siguiente); en el automático, la llegada Especial de siempre; el Sacrificio sale de las cartas que se sacrifican', () => {
+    const cancel = vi.fn()
+    vi.mocked(entranceAllowed).mockReturnValue(true)
+    vi.mocked(playPendulum).mockReturnValue({ cancel } as unknown as Animation)
+    Element.prototype.animate = () => ({ cancel: vi.fn() }) as unknown as Animation
+    const [a, b, c, d] = mine.hand as [string, string, string, string]
+    const build = (mode: 'link' | 'link-auto') =>
+      buildDuelReplay({
+        mode,
+        view: 'public',
+        players: ['Ana', 'Beto'],
+        starter: 0,
+        mine: {
+          initial: mine,
+          actions: [
+            { type: 'place', id: a, zone: 'mz', index: 0, pos: 'atk', how: 'pendulum' },
+            { type: 'place', id: b, zone: 'mz', index: 1, pos: 'atk', how: 'pendulum' },
+            { type: 'tribute', id: c, tributes: [a, b], zone: 'mz', index: 2, pos: 'set' },
+            { type: 'place', id: d, zone: 'mz', index: 3, pos: 'atk', how: 'pendulum' },
+          ],
+        },
+        theirs: { initial: createMatState(Array.from({ length: 20 }, (_, i) => `c${i + 1}`), [], 5), acts: [] },
+        order: ['mine', 'mine', 'mine', 'mine'],
+        life: [{ at: 0, lp: [8000, 8000] }],
+        nameOf: () => 'Carta',
+      })
+    render(<DuelReplayScreen replay={build('link')} onClose={() => {}} actions={[]} startAt={0} />)
+    next()
+    expect(playPendulum).not.toHaveBeenCalled()
+    expect(impactOn).not.toHaveBeenCalled()
+    next()
+    expect(playPendulum).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(playPendulum).mock.calls[0]![0].cards).toHaveLength(2)
+    next()
+    expect(sacrificeAt).toHaveBeenCalledTimes(2)
+
+    cleanup()
+    vi.mocked(playPendulum).mockClear()
+    render(<DuelReplayScreen replay={build('link-auto')} onClose={() => {}} actions={[]} startAt={0} />)
+    next()
+    expect(playPendulum).not.toHaveBeenCalled()
+    expect(vi.mocked(impactOn).mock.calls[0]![4]).toBe('special')
+    delete (Element.prototype as Partial<Element>).animate
   })
 
   it('saltar (atrás, al principio) no trae impacto; con movimiento reducido, tampoco la espada', () => {
