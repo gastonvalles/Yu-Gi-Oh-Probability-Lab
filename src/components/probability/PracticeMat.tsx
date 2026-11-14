@@ -64,6 +64,7 @@ import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
 import { arrivals, impactOn, shakeOf } from '../../app/field-impact'
+import { arrivalToneOf, landingToneOf, type SummonCard } from '../../app/summon-entrance'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
@@ -817,6 +818,11 @@ function PracticeMatBody({
 
   const nameOf = useCallback((id: string) => cardOf(id).name, [cardOf])
   const kindOf = useCallback((id: string) => (isToken(id) ? TOKEN_KIND : cardKindOf(cardOf(id).apiCard)), [cardOf])
+  // Lo que pide la llegada al campo (`summon-entrance.ts`): su clase y si es un Ritual.
+  const summonCardOf = useCallback(
+    (id: string | undefined): SummonCard => (id === undefined || isToken(id) ? { kind: TOKEN_KIND, ritual: false } : { kind: kindOf(id), ritual: cardOf(id).apiCard?.frameType.toLowerCase().includes('ritual') ?? false }),
+    [kindOf, cardOf],
+  )
   // A quiénes se puede atacar (en un duelo): los monstruos del rival en el campo, nombrados sólo por su carta (Gastón, 2026-10-19: «solo el nombre»); si no la mostró, «Boca abajo». También se eligen tocándolos en el campo.
   const attackTargets = useMemo<AttackTarget[]>(
     () =>
@@ -1098,7 +1104,8 @@ function PracticeMatBody({
   useEffect(() => {
     if (!landing || landingKey === undefined) return
     const cell = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(landing.spot, landing.index)}"]`) ?? null
-    impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped))
+    const id = landing.spot === 'mz' || landing.spot === 'emz' ? state[landing.spot][landing.index]?.id : undefined
+    impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped), landingToneOf(landing, summonCardOf(id)))
     // Una vez por Invocación (su `key`).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [landingKey])
@@ -1113,7 +1120,8 @@ function PracticeMatBody({
     const [arrived, ...more] = arrivals(before, rivalState)
     if (!arrived || more.length > 0 || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
     const card = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)
-    impactOn(card?.closest('[data-rival-drop], [data-drop]') ?? null, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT))
+    impactOn(card?.closest('[data-rival-drop], [data-drop]') ?? null, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT), arrivalToneOf(arrived, summonCardOf(arrived.id)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `summonCardOf` sólo lee la carta
   }, [rivalState])
 
   // La vista 3D se agranda hasta ocupar el lugar que tiene (la inclinación le quita alto y la perspectiva, fondo): el campo con la mano del rival crece parejo desde su borde de abajo (que no se mueve, así la mano

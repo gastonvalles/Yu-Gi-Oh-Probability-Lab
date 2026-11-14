@@ -10,6 +10,7 @@ import { prefersReducedMotion } from '../../app/motion'
 import { isToken } from '../../app/practice-mat'
 import { growHand } from '../../app/practice-hand-layout'
 import { shuffleDeck } from '../../app/shuffle-fx'
+import { UNKNOWN_SUMMON, landingToneOf } from '../../app/summon-entrance'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
@@ -238,7 +239,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       return
     }
     const landed = stageRef.current?.querySelector(card(impact.mine, impact.id))
-    impactOn(landed?.parentElement ?? null, fieldRef.current, shakeOf({ landing: impact.landing.tone }), landingDelay(impact.landing.flies, false))
+    impactOn(landed?.parentElement ?? null, fieldRef.current, shakeOf({ landing: impact.landing.tone }), landingDelay(impact.landing.flies, false), landingToneOf(impact.landing, UNKNOWN_SUMMON))
   }, [impact])
   useEffect(() => {
     if (!activation) return

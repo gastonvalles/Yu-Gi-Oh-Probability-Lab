@@ -1,7 +1,8 @@
-import { CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LINE_RADIUS, SECOND_AT, SECOND_KEYS, SECOND_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, punchAt, shakeOf, type Shake } from '../../../app/field-impact'
+import { ARRIVAL, CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LINE_RADIUS, SECOND_AT, SECOND_KEYS, SECOND_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, punchAt, shakeOf, type ArrivalTone, type Shake } from '../../../app/field-impact'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
+import { UNKNOWN_SUMMON, landingToneOf } from '../../../app/summon-entrance'
 import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
 import { drawCard, drawTargetMark, FONT, TARGET_LOCK_MS, TARGET_OUT_MS, TARGET_PING_MS, wrap, type Ctx, type VideoAssets } from './video-draw'
@@ -20,7 +21,7 @@ export { STAGE_TONE }
 /**
  * Los tiempos de la mesa, copiados para no cargar la mesa (React) con el video: `FLIGHT_MS`, `FLIGHT_STAGGER_MS` y `LANDING_AT` de `use-card-flights.ts`, `SPOTLIGHT_TRAVEL_MS`
  * de `MatFx.tsx`, `DECK_SHUFFLE_MS` y `HAND_SHUFFLE_MS` de `shuffle-fx.ts`, `FIRST_DEAL_MS`, `NEXT_DEAL_MS` y `DEAL_LAND_AT` de `deal-flight.ts`, `IMPACT_MS` de `AttackFx.tsx`,
- * `DELTA_MS` de `life-effects.ts`, `PHASE_BAND_MS` y `TURN_BAND_MS` de `PhaseBand.tsx`, `RING_MS` y `FLASH_MS` de `field-impact.ts`, `HITSTOP_MS` de `card-weight.ts` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
+ * `DELTA_MS` de `life-effects.ts`, `PHASE_BAND_MS` y `TURN_BAND_MS` de `PhaseBand.tsx`, `HITSTOP_MS` de `card-weight.ts` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
  * `PracticeHand.tsx` y `STRIKE_MS` de `AttackFx.tsx`.
  */
 export const MESA = {
@@ -42,19 +43,14 @@ export const MESA = {
   impact: 300,
   strike: 1050,
   delta: 1600,
-  ring: 340,
-  flash: 260,
   hitstop: 50,
 } as const
 
 /**
- * El impacto de la mesa (`field-impact.ts`), en px del celular: el aro cian (`size-20`, `border-2`) que se abre de 0,5 a 1,8 y se apaga, el destello dorado aditivo (`size-28`,
- * `from-fx-destello/90` a transparente al 70 %) que crece de 0,6 a 1,5 con su pico al 25 %, los dos con `EASE_OUT`; y la sacudida del campo (`SHAKES`: los cuadros repartidos parejo,
- * cada vaivén con `EASE_IN_OUT`). El test vigila que sigan iguales.
+ * El impacto de la mesa (`field-impact.ts`), en px del celular: la sacudida del campo (`SHAKES`: los cuadros repartidos parejo, cada vaivén con `EASE_IN_OUT`). La llegada al campo
+ * (`arriveAt`) se lee de `ARRIVAL`. El test vigila que sigan iguales.
  */
 export const IMPACT = {
-  ring: { size: 80, border: 2, from: 0.5, to: 1.8, alpha: 0.95 },
-  flash: { size: 112, from: 0.6, to: 1.5, peak: 0.25, alpha: 0.9, stop: 0.7 },
   shakes: {
     light: { path: [[0, 0], [3, -2], [-3, 1.5], [2, 1], [-1, -0.5], [0, 0]], ms: 180 },
     strong: { path: [[0, 0], [5, -3], [-5, 2], [4, 2], [-2, -1.5], [1, 0.5], [0, 0]], ms: 240 },
@@ -223,8 +219,9 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const hit = start + (effects.landing.flies && id ? landingOf(id) : 0)
     if (rect) {
       out.push(landingOverlay(rect, FX_RGB[LANDING_TONE(effects.landing.tone)], s, hit, speed))
-      // El impacto de la mesa (`field-impact.ts`), cuando toca: el aro y el destello desde la casilla y la sacudida del campo, del grado de la mesa.
-      out.push(...impactOverlays(rect.x + rect.w / 2, rect.y + rect.h / 2, shakeOf({ landing: effects.landing.tone }), after.layout.unit, theme, hit, hit, speed))
+      // El impacto de la mesa (`field-impact.ts`), cuando toca: la llegada del color de su tipo desde la casilla y la sacudida del campo, del grado de la mesa (el video no sabe el
+      // marco de la carta: un Ritual va como Especial).
+      out.push(...impactOverlays(rect.x + rect.w / 2, rect.y + rect.h / 2, shakeOf({ landing: effects.landing.tone }), after.layout.unit, theme, hit, hit, speed, false, landingToneOf(effects.landing, UNKNOWN_SUMMON)))
     }
   }
 
@@ -706,16 +703,15 @@ function attackOverlay(from: Pose, to: { x: number; y: number }, cell: number, s
 const swing = bezierEase(EASE_IN_OUT)
 
 /**
- * El impacto de la mesa en el lienzo (`ringAt` y `shakeField` de `field-impact.ts`, con `IMPACT`): en `(x, y)` a los `ringAt` ms, el aro cian y el destello dorado aditivo; a los
+ * El impacto de la mesa en el lienzo (`arriveAt`, `ringAt` y `shakeField` de `field-impact.ts`, con `IMPACT`): en `(x, y)` a los `ringAt` ms, la llegada del color de `tone` (`drawArrival`); a los
  * `shakeAt`, la sacudida del campo. `hit` (un ataque): el golpe dorado con la curva «puñetazo», su gemela oscura y la segunda onda (`IMPACT.hit`). Si sacude fuerte, además, la onda
  * que cruza el lienzo. `k`: px del lienzo por px del celular. En el video no hay «Livianos»: va completo.
  */
-export function impactOverlays(x: number, y: number, shake: Shake, k: number, theme: VideoAssets['theme'], ringAt: number, shakeAt: number, speed: VideoSpeed, hit = false): Overlay[] {
-  const { ring, flash } = IMPACT
-  const total = hit ? Math.max(HIT_MS, SECOND_AT + SECOND_MS) : Math.max(MESA.ring, MESA.flash)
+export function impactOverlays(x: number, y: number, shake: Shake, k: number, theme: VideoAssets['theme'], ringAt: number, shakeAt: number, speed: VideoSpeed, hit = false, tone: ArrivalTone = 'special'): Overlay[] {
+  const strong = shake === 'strong'
+  const total = hit ? Math.max(HIT_MS, SECOND_AT + SECOND_MS) : arrivalMs(strong)
   // `from-fx-destello` a `to-transparent`: el mismo color, sin alfa (un degradé a `transparent` se oscurece en el lienzo).
   const clear = /^#[0-9a-f]{6}$/i.test(theme.fx.destello) ? `${theme.fx.destello}00` : 'transparent'
-  const strong = shake === 'strong'
   const out: Overlay[] = [
     {
       kind: 'impact',
@@ -723,39 +719,12 @@ export function impactOverlays(x: number, y: number, shake: Shake, k: number, th
       duration: total / speed,
       draw: (ctx, p) => {
         const ms = p * total
-        if (strong) drawWave(ctx, x, y, k, theme.fx.destello, ms / WAVE_MS)
         if (hit) {
+          if (strong) drawWave(ctx, x, y, k, theme.fx.destello, ms / WAVE_MS)
           drawHit(ctx, x, y, k, theme.fx.destello, clear, ms)
           return
         }
-        const r = clamp(ms / MESA.ring)
-        if (r < 1) {
-          const e = easeOut(r)
-          const scale = mix(ring.from, ring.to, e)
-          ctx.globalAlpha = mix(ring.alpha, 0, e)
-          ctx.strokeStyle = theme.fx.energia
-          ctx.lineWidth = ring.border * k * scale
-          ctx.beginPath()
-          ctx.arc(x, y, ((ring.size - ring.border) / 2) * k * scale, 0, Math.PI * 2)
-          ctx.stroke()
-        }
-        const f = clamp(ms / MESA.flash)
-        if (f < 1) {
-          const e = easeOut(f)
-          // `bg-radial` llega a la esquina de su caja (la mitad de la diagonal); el círculo lo recorta a su radio.
-          const radius = (flash.size / 2) * k * mix(flash.from, flash.to, e)
-          const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * Math.SQRT2)
-          glow.addColorStop(0, theme.fx.destello)
-          glow.addColorStop(flash.stop, clear)
-          ctx.globalAlpha = flash.alpha * keyed(e, [[0, 0], [flash.peak, 1], [1, 0]], (v) => v)
-          ctx.globalCompositeOperation = 'lighter'
-          ctx.fillStyle = glow
-          ctx.beginPath()
-          ctx.arc(x, y, radius, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.globalCompositeOperation = 'source-over'
-        }
-        ctx.globalAlpha = 1
+        drawArrival(ctx, x, y, ARRIVAL_UNIT * k, theme.fx.llegada[tone], strong, ms)
       },
     },
   ]
@@ -781,6 +750,68 @@ function twinRing(ctx: Ctx, x: number, y: number, radius: number, border: number
   ctx.beginPath()
   ctx.arc(x, y, radius, 0, Math.PI * 2)
   ctx.stroke()
+}
+
+/** El ancho de la carta del campo en el celular (px): la llegada se mide en cartas (`ARRIVAL`). */
+export const ARRIVAL_UNIT = 48
+/** Lo que dura la llegada: el anillo (la fuerte, su tercer anillo sale 200 ms después). */
+export const arrivalMs = (strong: boolean) => ARRIVAL.ms + (strong ? (ARRIVAL.strong.rings - 1) * ARRIVAL.strong.every : 0)
+
+/**
+ * La llegada al campo (`arriveAt` de `field-impact.ts`) en `ms` desde que la carta toca: el brillo aditivo del piso, la cruz de cuatro cuñas y el anillo con su gemela oscura; la fuerte, tres
+ * anillos más grandes y la onda. `unit`: el ancho de la carta en px del lienzo.
+ */
+export function drawArrival(ctx: Ctx, x: number, y: number, unit: number, color: string, strong: boolean, ms: number) {
+  const { glow, cross, ring } = ARRIVAL
+  const g = ms / glow.ms
+  if (g > 0 && g < 1) {
+    const radius = (glow.size / 2) * unit * mix(0.6, 1, easeOut(g))
+    const fill = ctx.createRadialGradient(x, y, 0, x, y, radius * Math.SQRT2)
+    fill.addColorStop(0, color)
+    fill.addColorStop(0.7, /^#[0-9a-f]{6}$/i.test(color) ? `${color}00` : 'transparent')
+    ctx.globalAlpha = glow.alpha * 0.6 * (g < glow.peak ? g / glow.peak : (1 - g) / (1 - glow.peak))
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.fillStyle = fill
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalCompositeOperation = 'source-over'
+  }
+  const c = ms / cross.ms
+  if (c > 0 && c < 1) {
+    const scale = c < cross.fastAt ? mix(cross.from, cross.fast, easeOut(c / cross.fastAt)) : mix(cross.fast, 1, easeOut((c - cross.fastAt) / (1 - cross.fastAt)))
+    ctx.globalAlpha = c < cross.hold ? 1 : (1 - c) / (1 - cross.hold)
+    for (const [width, style] of [[4, TWIN], [2, color]] as const) {
+      ctx.lineWidth = (width * unit) / ARRIVAL_UNIT
+      ctx.strokeStyle = style
+      ctx.beginPath()
+      for (const angle of [45, 135, 225, 315]) {
+        const [cos, sin] = [Math.cos((angle * Math.PI) / 180), Math.sin((angle * Math.PI) / 180)]
+        ctx.moveTo(x, y)
+        ctx.lineTo(x + cos * cross.reach * unit * scale, y + sin * cross.reach * unit * scale)
+      }
+      ctx.stroke()
+    }
+  }
+  const grow = strong ? ARRIVAL.strong.grow : 1
+  const rings = strong ? ARRIVAL.strong.rings : 1
+  for (let index = 0; index < rings; index += 1) {
+    const p = (ms - index * ARRIVAL.strong.every) / ARRIVAL.ms
+    if (p <= 0 || p >= 1) continue
+    const { scale, alpha } = arrivalRingAt(p)
+    ctx.globalAlpha = alpha
+    twinRing(ctx, x, y, ((ring.to * unit * grow) / 2) * scale, (2 * unit) / ARRIVAL_UNIT, (2 * unit) / ARRIVAL_UNIT, color)
+  }
+  if (strong) {
+    const { wave, waveMs, waveFrom, waveFast, waveFastAt } = ARRIVAL.strong
+    const w = ms / waveMs
+    if (w > 0 && w < 1) {
+      const scale = w < waveFastAt ? mix(waveFrom, waveFast, easeOut(w / waveFastAt)) : mix(waveFast, 1, easeOut((w - waveFastAt) / (1 - waveFastAt)))
+      ctx.globalAlpha = w < 0.5 ? 1 - 1.6 * w : 0.2 * (1 - (w - 0.5) / 0.5)
+      twinRing(ctx, x, y, (Math.min(wave * unit, Math.hypot(ctx.canvas.width, ctx.canvas.height)) / 2) * scale, (3 * unit) / ARRIVAL_UNIT, (3 * unit) / ARRIVAL_UNIT, color)
+    }
+  }
+  ctx.globalAlpha = 1
 }
 
 /** La onda de pantalla completa del golpe fuerte (`WAVE_*`): lineal, de la diagonal del lienzo. */

@@ -1,4 +1,4 @@
-import { EASE_ASENTAR, EASE_GOLPE, EASE_IN_OUT, EASE_OUT, bezierEase, cancelWhenDone, prefersReducedMotion } from './motion'
+import { EASE_ASENTAR, EASE_GOLPE, EASE_IN_OUT, EASE_LLEGADA, EASE_OUT, bezierEase, cancelWhenDone, prefersReducedMotion } from './motion'
 import type { LandingTone } from './mat-effects'
 import type { MatState } from './practice-mat'
 
@@ -64,11 +64,104 @@ export function settleShake(root: HTMLElement | null): void {
   for (const running of field?.getAnimations?.() ?? []) if (running.id === SHAKE_ID) running.finish()
 }
 
-/** La Invocación (hasta que tenga su anillo propio): el aro cian de energía y el destello dorado aditivo. */
-const RING = 'pointer-events-none absolute -ml-10 -mt-10 size-20 rounded-full border-2 border-fx-energia opacity-0'
-const FLASH = 'pointer-events-none absolute -ml-14 -mt-14 size-28 rounded-full bg-radial from-fx-destello/90 to-transparent to-70% opacity-0 mix-blend-plus-lighter'
-export const RING_MS = 340
-export const FLASH_MS = 260
+/**
+ * El color de una llegada al campo (el de Master Duel por tipo; `--color-fx-*` de `index.css`): la Normal y la Especial comparten el oro anaranjado y la de Sacrificio va en rojo; la
+ * Ritual, en azul profundo.
+ */
+export type ArrivalTone = 'special' | 'tribute' | 'fusion' | 'synchro' | 'xyz' | 'link' | 'ritual'
+
+/** Las clases de cada color, enteras (Tailwind las lee del código): el aro, la cruz y el brillo del piso. */
+export const ARRIVAL_CLASS: Record<ArrivalTone, { ring: string; bar: string; glow: string }> = {
+  special: { ring: 'border-fx-especial', bar: 'bg-fx-especial', glow: 'from-fx-especial/60' },
+  tribute: { ring: 'border-fx-sacrificio', bar: 'bg-fx-sacrificio', glow: 'from-fx-sacrificio/60' },
+  fusion: { ring: 'border-fx-fusion', bar: 'bg-fx-fusion', glow: 'from-fx-fusion/60' },
+  synchro: { ring: 'border-fx-sincronia', bar: 'bg-fx-sincronia', glow: 'from-fx-sincronia/60' },
+  xyz: { ring: 'border-fx-xyz', bar: 'bg-fx-xyz', glow: 'from-fx-xyz/60' },
+  link: { ring: 'border-fx-enlace', bar: 'bg-fx-enlace', glow: 'from-fx-enlace/60' },
+  ritual: { ring: 'border-fx-ritual', bar: 'bg-fx-ritual', glow: 'from-fx-ritual/60' },
+}
+
+/**
+ * La llegada al campo (`fxp_somldg` de Master Duel), en cartas (el ancho de la casilla): el anillo del piso va de 1,7 a 3,5 cartas en 144 ms (`--ease-llegada`) y a 4,2 en 1 s, con el
+ * alfa plena hasta los 200 ms; la cruz de cuatro cuñas a 45°, de 33 % a 74 % en 43 ms y a 100 % en 300, plena hasta los 240; el brillo del piso, 3 cartas (en Master Duel, 7: en el celular
+ * tapaba media mesa). La fuerte (`_s2`, lo que sacude fuerte): el anillo ×1,5 y tres veces (cada 100 ms), y una onda de 12,7 cartas de 7 % a 52 % en 142 ms y a 100 % en 600, con el
+ * alfa de 1 a 0,2 a la mitad. No alarga nada: el juego sigue cuando seguía y el anillo se apaga por encima.
+ */
+export const ARRIVAL = {
+  ms: 1000,
+  ring: { from: 1.7, fast: 3.5, to: 4.2, fastAt: 0.144, hold: 0.2 },
+  cross: { ms: 300, from: 0.33, fast: 0.74, fastAt: 43 / 300, hold: 0.8, reach: 0.9 },
+  glow: { size: 3, ms: 600, peak: 0.15, alpha: 0.8 },
+  strong: { grow: 1.5, rings: 3, every: 100, wave: 12.7, waveMs: 600, waveFrom: 0.07, waveFast: 0.52, waveFastAt: 142 / 600 },
+} as const
+const CROSS_ANGLES = [45, 135, 225, 315]
+const ARRIVAL_RING = 'pointer-events-none absolute rounded-full border-2 outline-2 outline-black/40 opacity-0'
+const ARRIVAL_BAR = 'absolute -mt-px h-0.5 origin-left outline-1 outline-black/40'
+const ARRIVAL_GLOW = 'pointer-events-none absolute rounded-full bg-radial to-transparent to-70% opacity-0 mix-blend-plus-lighter'
+const ARRIVAL_WAVE = 'pointer-events-none absolute rounded-full border-3 outline-3 outline-black/40 opacity-0'
+const r3 = (value: number) => Math.round(value * 1000) / 1000
+
+/** Los cuadros del anillo de la llegada (escala de su tamaño final, 4,2 cartas): rápido hasta el 80 % y lento hasta el final; el alfa, plena hasta `hold` y lineal a 0. */
+export const arrivalRingFrames = (): Keyframe[] => {
+  const { from, fast, to, fastAt, hold } = ARRIVAL.ring
+  return [
+    { scale: `${r3(from / to)}`, opacity: 1, easing: EASE_LLEGADA },
+    { scale: `${r3(fast / to)}`, opacity: 1, offset: fastAt, easing: EASE_OUT },
+    { opacity: 1, offset: hold },
+    { scale: '1', opacity: 0 },
+  ]
+}
+
+/** Lo mismo en `p` (0 a 1 de `ARRIVAL.ms`), para el video. */
+export function arrivalRingAt(p: number): { scale: number; alpha: number } {
+  const { from, fast, to, fastAt, hold } = ARRIVAL.ring
+  if (p <= 0) return { scale: from / to, alpha: 1 }
+  const scale = p < fastAt ? mix(from / to, fast / to, easeLlegada(p / fastAt)) : mix(fast / to, 1, easeOutCurve((p - fastAt) / (1 - fastAt)))
+  return { scale: Math.min(1, scale), alpha: p < hold ? 1 : Math.max(0, 1 - (p - hold) / (1 - hold)) }
+}
+
+/**
+ * La llegada al campo en `(x, y)` a los `delay` ms, del color de su tipo; `unit`, el ancho de la carta en px. Con «Livianos», sólo el anillo; `strong` (la fuerte), además, los tres
+ * anillos más grandes y la onda. Con movimiento reducido, nada.
+ */
+export function arriveAt(x: number, y: number, delay = 0, { tone = 'special', strong = false, unit = 48 }: { tone?: ArrivalTone; strong?: boolean; unit?: number } = {}): void {
+  if (!canAnimate()) return
+
+  const layer = layerAt(x, y)
+  const full = !lite()
+  const colors = ARRIVAL_CLASS[tone]
+  const parts: Array<readonly [Animation, number]> = []
+  const sized = (span: HTMLSpanElement, size: number) => {
+    const px = Math.round(size)
+    Object.assign(span.style, { width: `${px}px`, height: `${px}px`, marginLeft: `${-px / 2}px`, marginTop: `${-px / 2}px` })
+    return span
+  }
+  const add = (span: HTMLSpanElement, frames: Keyframe[], duration: number, at: number, easing?: string) =>
+    parts.push([cancelWhenDone(span.animate(frames, { duration, delay: at, ...(easing ? { easing } : {}) })), at + duration])
+
+  const grow = strong && full ? ARRIVAL.strong.grow : 1
+  const rings = strong && full ? ARRIVAL.strong.rings : 1
+  for (let index = 0; index < rings; index += 1) add(sized(spanIn(layer, `${ARRIVAL_RING} ${colors.ring}`), ARRIVAL.ring.to * unit * grow), arrivalRingFrames(), ARRIVAL.ms, delay + index * ARRIVAL.strong.every)
+
+  if (full) {
+    const { glow, cross } = ARRIVAL
+    add(sized(spanIn(layer, `${ARRIVAL_GLOW} ${colors.glow}`), glow.size * unit), [{ scale: '0.6', opacity: 0 }, { opacity: glow.alpha, offset: glow.peak }, { scale: '1', opacity: 0 }], glow.ms, delay, EASE_OUT)
+    const group = spanIn(layer, SECOND)
+    for (const angle of CROSS_ANGLES) {
+      const bar = spanIn(group, `${ARRIVAL_BAR} ${colors.bar}`)
+      bar.style.width = `${Math.round(cross.reach * unit)}px`
+      bar.style.transform = `rotate(${angle}deg)`
+    }
+    add(group, [{ scale: `${cross.from}`, opacity: 1, easing: EASE_GOLPE }, { scale: `${cross.fast}`, opacity: 1, offset: cross.fastAt, easing: EASE_OUT }, { opacity: 1, offset: cross.hold }, { scale: '1', opacity: 0 }], cross.ms, delay)
+    if (strong) {
+      const { wave, waveMs, waveFrom, waveFast, waveFastAt } = ARRIVAL.strong
+      const size = Math.min(wave * unit, Math.hypot(window.innerWidth, window.innerHeight))
+      add(sized(spanIn(layer, `${ARRIVAL_WAVE} ${colors.ring}`), size), [{ scale: `${waveFrom}`, opacity: 1, easing: EASE_LLEGADA }, { scale: `${waveFast}`, opacity: 0.6, offset: waveFastAt, easing: EASE_OUT }, { opacity: 0.2, offset: 0.5 }, { scale: '1', opacity: 0 }], waveMs, delay)
+    }
+  }
+
+  removeAfter(layer, parts)
+}
 
 /**
  * El golpe de un ataque, en dorado (el de Master Duel, `fx-destello`), y cada capa clara con su gemela oscura debajo (negro al 40 %: se lee sobre un arte claro): el aro (su gemela es
@@ -95,6 +188,8 @@ export const punchFrames = (alpha: number): Keyframe[] => [
 ]
 const easeGolpe = bezierEase(EASE_GOLPE)
 const easeAsentar = bezierEase(EASE_ASENTAR)
+const easeLlegada = bezierEase(EASE_LLEGADA)
+const easeOutCurve = bezierEase(EASE_OUT)
 const mix = (a: number, b: number, e: number) => a + (b - a) * e
 
 /** La curva «puñetazo» en `p` (0 a 1), para el video: lo mismo que `punchFrames`. */
@@ -197,11 +292,11 @@ function removeAfter(layer: Element, parts: ReadonlyArray<readonly [Animation, n
 }
 
 /**
- * El anillo de impacto en un punto de la pantalla (`x`, `y`), a los `delay` ms, en una capa fija que se quita sola. `hit` (un ataque): el golpe dorado con la curva «puñetazo»; si no
- * (una Invocación), el aro cian que se abre y se apaga. `strong` (lo que sacude fuerte): además, la onda que cruza la pantalla. Con «Livianos», sólo el aro (sin la segunda onda, la
- * de pantalla completa ni la mezcla aditiva); con movimiento reducido, nada.
+ * El golpe de un ataque en un punto de la pantalla (`x`, `y`), a los `delay` ms, en una capa fija que se quita sola: el golpe dorado con la curva «puñetazo». `strong` (lo que sacude
+ * fuerte): además, la onda que cruza la pantalla. Con «Livianos», sólo el aro (sin la segunda onda, la de pantalla completa ni la mezcla aditiva); con movimiento reducido, nada. La
+ * Invocación tiene su anillo propio (`arriveAt`).
  */
-export function ringAt(x: number, y: number, delay = 0, { hit = false, strong = false }: { hit?: boolean; strong?: boolean } = {}): void {
+export function ringAt(x: number, y: number, delay = 0, { strong = false }: { strong?: boolean } = {}): void {
   if (!canAnimate()) return
 
   const layer = layerAt(x, y)
@@ -210,21 +305,16 @@ export function ringAt(x: number, y: number, delay = 0, { hit = false, strong = 
   const add = (parent: Element, className: string, frames: Keyframe[], options: KeyframeAnimationOptions & { duration: number; delay: number }) =>
     parts.push([cancelWhenDone(spanIn(parent, className).animate(frames, options)), options.delay + options.duration])
 
-  if (hit) {
-    const timing = { duration: HIT_MS, delay }
-    if (full) add(layer, HIT_TWIN, punchFrames(1), timing)
-    add(layer, HIT_RING, punchFrames(1), timing)
-    if (full) {
-      add(layer, HIT_FLASH, punchFrames(1), timing)
-      const second = { duration: SECOND_MS, delay: delay + SECOND_AT, easing: EASE_OUT }
-      parts.push([cancelWhenDone(ringOf(layer, LINE, LINE_ANGLES, LINE_RADIUS).animate(LINES_FRAMES, second)), second.delay + SECOND_MS])
-      parts.push([cancelWhenDone(ringOf(layer, DUST, DUST_ANGLES, DUST_RADIUS).animate(DUST_FRAMES, second)), second.delay + SECOND_MS])
-    }
-  } else {
-    add(layer, RING, [{ scale: '0.5', opacity: 0.95 }, { scale: '1.8', opacity: 0 }], { duration: RING_MS, delay, easing: EASE_OUT })
-    if (full) add(layer, FLASH, [{ scale: '0.6', opacity: 0 }, { opacity: 1, offset: 0.25 }, { scale: '1.5', opacity: 0 }], { duration: FLASH_MS, delay, easing: EASE_OUT })
+  const timing = { duration: HIT_MS, delay }
+  if (full) add(layer, HIT_TWIN, punchFrames(1), timing)
+  add(layer, HIT_RING, punchFrames(1), timing)
+  if (full) {
+    add(layer, HIT_FLASH, punchFrames(1), timing)
+    const second = { duration: SECOND_MS, delay: delay + SECOND_AT, easing: EASE_OUT }
+    parts.push([cancelWhenDone(ringOf(layer, LINE, LINE_ANGLES, LINE_RADIUS).animate(LINES_FRAMES, second)), second.delay + SECOND_MS])
+    parts.push([cancelWhenDone(ringOf(layer, DUST, DUST_ANGLES, DUST_RADIUS).animate(DUST_FRAMES, second)), second.delay + SECOND_MS])
+    if (strong) parts.push(addWave(layer, delay))
   }
-  if (strong && full) parts.push(addWave(layer, delay))
 
   removeAfter(layer, parts)
 }
@@ -263,13 +353,13 @@ export function chargeOn(card: Element | null, dx: number, dy: number, ms: numbe
   removeAfter(layer, [[moving, ms]])
 }
 
-/** El impacto entero sobre un elemento (su centro): el anillo y la sacudida del campo, a los `delay` ms. */
-export function impactOn(element: Element | null, field: HTMLElement | null, shake: Shake, delay = 0): void {
+/** La llegada entera sobre una casilla (su centro): el anillo del color de su tipo (la fuerte, si sacude fuerte) y la sacudida del campo, a los `delay` ms. */
+export function impactOn(element: Element | null, field: HTMLElement | null, shake: Shake, delay = 0, tone: ArrivalTone = 'special'): void {
   if (!element) return
 
   const rect = element.getBoundingClientRect()
 
-  ringAt(rect.left + rect.width / 2, rect.top + rect.height / 2, delay, { strong: shake === 'strong' })
+  arriveAt(rect.left + rect.width / 2, rect.top + rect.height / 2, delay, { tone, strong: shake === 'strong', unit: rect.width || undefined })
   shakeField(field, shake, delay)
 }
 
@@ -277,13 +367,15 @@ export function impactOn(element: Element | null, field: HTMLElement | null, sha
  * Lo que llegó a una zona de monstruo boca arriba entre dos estados (las Invocaciones del rival, que la mesa no recibe como jugadas: sólo ve su campo cambiar), con su zona y de
  * dónde vino (del Extra Deck o de otro lado). Una carta que sólo se movió en el campo no cuenta.
  */
-export function arrivals(before: MatState, after: MatState): Array<{ id: string; spot: 'mz' | 'emz'; index: number; from: 'extra' | 'other' }> {
+export function arrivals(before: MatState, after: MatState): Array<{ id: string; spot: 'mz' | 'emz'; index: number; from: 'extra' | 'other'; hand?: true }> {
   const onField = new Set([...before.mz, ...before.emz].flatMap((placed) => (placed ? [placed.id] : [])))
-  const found: Array<{ id: string; spot: 'mz' | 'emz'; index: number; from: 'extra' | 'other' }> = []
+  const found: Array<{ id: string; spot: 'mz' | 'emz'; index: number; from: 'extra' | 'other'; hand?: true }> = []
 
   for (const spot of ['mz', 'emz'] as const) {
     after[spot].forEach((placed, index) => {
-      if (placed && placed.pos !== 'set' && !onField.has(placed.id)) found.push({ id: placed.id, spot, index, from: before.extra.includes(placed.id) ? 'extra' : 'other' })
+      if (placed && placed.pos !== 'set' && !onField.has(placed.id)) {
+        found.push({ id: placed.id, spot, index, from: before.extra.includes(placed.id) ? 'extra' : 'other', ...(before.hand.includes(placed.id) ? { hand: true as const } : {}) })
+      }
     })
   }
 

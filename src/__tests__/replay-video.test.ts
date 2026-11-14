@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildDuelReplay, duelReplayAt, type ReplayInput } from '../app/duel-replay'
+import { ARRIVAL } from '../app/field-impact'
 import type { WireAct } from '../app/mat-public'
 import { easeInOut } from '../app/motion'
 import { createMatState, type MatAction } from '../app/practice-mat'
@@ -263,7 +264,7 @@ describe('las transiciones', () => {
     const [landing, ring, shake] = (['landing', 'impact', 'shake'] as const).map((kind) => of(summon, kind))
     expect(landing!.start).toBeGreaterThan(1000)
     expect([ring!.start, shake!.start]).toEqual([landing!.start, landing!.start])
-    expect(ring!.duration).toBeCloseTo(Math.max(MESA.ring, MESA.flash) / speed)
+    expect(ring!.duration).toBeCloseTo(ARRIVAL.ms / speed)
     expect(shake!.duration).toBeCloseTo(IMPACT.shakes.light.ms / speed)
     // Hasta 3 px del celular (`layout.unit` del lienzo por cada uno), y de vuelta exacta a su lugar.
     const k = scenes[2]!.layout.unit

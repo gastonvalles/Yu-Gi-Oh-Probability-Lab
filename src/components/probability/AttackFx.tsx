@@ -418,7 +418,7 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
   useEffect(() => {
     const direct = !target || target.hasAttribute('data-lp')
 
-    ringAt(bx, by, IMPACT_MS, { hit: true, strong: direct })
+    ringAt(bx, by, IMPACT_MS, { strong: direct })
     shakeField(attacker.closest<HTMLElement>('[data-field]'), shakeOf({ attack: direct ? 'direct' : 'card' }), IMPACT_MS + HITSTOP_MS)
   }, [attacker, target, bx, by])
 

@@ -39,11 +39,11 @@ describe('los efectos de una jugada', () => {
 
   it('un monstruo que sale boca arriba a una zona cae con un destello: Normal desde la mano, Especial desde cualquier otro lado', () => {
     expect(matEffects(start(), place('a1', 2, 'atk', 'normal'))).toEqual({
-      landing: { spot: 'mz', index: 2, tone: 'normal', flies: true },
+      landing: { spot: 'mz', index: 2, tone: 'normal', flies: true, hand: true },
       showcase: { ids: ['a1'], kind: 'normal' },
     })
     expect(matEffects(start(), place('a1', 2, 'def', 'special'))).toEqual({
-      landing: { spot: 'mz', index: 2, tone: 'special', flies: true },
+      landing: { spot: 'mz', index: 2, tone: 'special', flies: true, hand: true },
       showcase: { ids: ['a1'], kind: 'special' },
     })
     // Sin `how` (combos guardados antes): desde la mano es Normal y desde el cementerio, Especial.
@@ -79,7 +79,7 @@ describe('los efectos de una jugada', () => {
     expect(matEffects(field, { type: 'summon', id: 'a1', how: 'fusion', materials: [], zone: 'emz', index: 0, pos: 'atk' })).toEqual({})
 
     expect(matEffects(field, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 4, pos: 'atk' })).toEqual({
-      landing: { spot: 'mz', index: 4, tone: 'normal', flies: true },
+      landing: { spot: 'mz', index: 4, tone: 'normal', flies: true, tribute: true },
       showcase: { ids: ['c1'], kind: 'normal' },
     })
     expect(matEffects(field, { type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 4, pos: 'set' })).toEqual({})

@@ -2062,6 +2062,20 @@
   --color-fx-destello: #ffcf4a;
   --color-fx-energia: #2ee6ff;
   --color-fx-impacto: #ff3b4e;
+  /*
+   * Los de la invocación, por tipo (los de la llegada al campo de Master Duel; `app/summon-entrance.ts`): Normal y Especial, oro anaranjado; por Sacrificio, rojo; Fusión, violeta con su
+   * calor y su frío; Sincronía, verde; Xyz, oro con su brasa; Enlace, azul; Ritual, azul profundo.
+   */
+  --color-fx-especial: #ffc58d;
+  --color-fx-sacrificio: #ff8d8d;
+  --color-fx-fusion: #b520f9;
+  --color-fx-fusion-calor: #ff3c00;
+  --color-fx-fusion-frio: #2f5bff;
+  --color-fx-sincronia: #53ff60;
+  --color-fx-xyz: #ffc95d;
+  --color-fx-xyz-brasa: #ff8437;
+  --color-fx-enlace: #0091ff;
+  --color-fx-ritual: #005aff;
 
   /* El rebote con pasada (el «Ease-Out-Back» del documento): un 10 % más allá y vuelve. Para lo que entra entero (una pantalla, un número que golpea). */
   --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -2071,6 +2085,9 @@
   /* El golpe («puñetazo», medido en Master Duel): sube al pico en el primer 9 % y se asienta encogiéndose (`PUNCH` de `app/field-impact.ts`). */
   --ease-golpe: cubic-bezier(0.1, 0.9, 0.3, 1);
   --ease-asentar: cubic-bezier(0.3, 0, 0.7, 1);
+  /* La invocación (Master Duel): el anillo de la llegada (rápido hasta el 80 % y lento hasta 1 s) y la carta del Extra Deck que cae grande (`app/summon-entrance.ts`). */
+  --ease-llegada: cubic-bezier(0.15, 0.85, 0.35, 1);
+  --ease-revelar: cubic-bezier(0.2, 0.6, 0.3, 1);
 
   /* El anillo de impacto al estampar una carta y el destello aditivo que lo acompaña (sólo con «Efectos completos»). */
   --animate-feel-ring: feel-ring 340ms var(--ease-out) both;
