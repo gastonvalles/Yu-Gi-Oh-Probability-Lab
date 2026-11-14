@@ -8,6 +8,7 @@ import { useMediaQuery } from '../../../app/use-media-query'
 import { PANEL_LIME } from '../../auto/AutoPanel'
 import { ChainStage, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { CardArt } from '../../CardArt'
+import { AttackFx, measureStrike, type Strike } from '../../probability/AttackFx'
 import { Button } from '../../ui/Button'
 import { Callout } from '../../ui/Callout'
 import { Flipbook, FlipbookFrames } from '../../ui/Flipbook'
@@ -101,6 +102,7 @@ export function GameFeelSamples() {
           <CurvesSample />
           <PressSample />
           <WeightSample />
+          <HitSample />
           <ChainSample />
           <FlipbookSample />
           <ScreenSample />
@@ -139,6 +141,8 @@ const CURVES: Curve[] = [
   { name: '--ease-out-back', ms: 220, use: 'Cambiar de pantalla y el número que golpea: se pasa un 10 % y vuelve.', fresh: true },
   { name: '--ease-rebote-marcado', ms: 280, use: 'Soltar un botón: de 90 a 100 % pasando por 108 %.', fresh: true, look: 'scale' },
   { name: '--ease-rebote-suave', ms: 280, use: 'Lo mismo, hasta 104 %.', fresh: true, look: 'scale' },
+  { name: '--ease-golpe', ms: 50, use: 'El golpe («puñetazo», de Master Duel): llega al pico en 50 ms.', fresh: true },
+  { name: '--ease-asentar', ms: 260, use: 'Después del pico, el golpe se asienta encogiéndose.', fresh: true },
   { name: 'steps(10)', ms: 333, use: 'Flipbooks: 10 cuadros a 30 por segundo.' },
 ]
 
@@ -527,6 +531,46 @@ function Impact({ onDone }: { onDone: () => void }) {
       <span aria-hidden onAnimationEnd={onDone} className="pointer-events-none absolute inset-0 m-auto size-20 rounded-full border-2 border-fx-energia animate-feel-ring motion-reduce:hidden" />
       {full ? <span aria-hidden className="pointer-events-none absolute inset-0 m-auto size-28 rounded-full bg-radial from-fx-destello/90 to-transparent to-70% mix-blend-plus-lighter animate-feel-flash motion-reduce:hidden" /> : null}
     </>
+  )
+}
+
+// ——— 3b. El golpe y el ataque ———
+
+/** El ataque de la mesa (`AttackFx`, la pieza real) entre dos cartas de muestra: a la de arriba o directo (sin vidas, llega al borde). Sacude este tablero (`data-field`). */
+function HitSample() {
+  const board = useRef<HTMLDivElement | null>(null)
+  const [strike, setStrike] = useState<Strike | null>(null)
+  const attack = (direct: boolean) => setStrike(measureStrike({ from: '[data-card-id="feel-atacante"]', ...(direct ? {} : { to: '[data-card-id="feel-objetivo"]' }), bounds: board.current }))
+
+  return (
+    <Specimen
+      title="3b · El golpe y el ataque"
+      layout="column"
+      note={
+        <>
+          Con los tiempos y los colores medidos en Master Duel: la carta que ataca brilla dorada mientras embiste (300 ms, opaca hasta la mitad) y el polvo converge hacia ella; el golpe es
+          dorado, llega al pico en 50 ms con <Tag>--ease-golpe</Tag> y se encoge a la mitad hasta los 560 ms, con una gemela oscura debajo (se lee sobre un arte claro); 200 ms después,
+          líneas y polvo. El directo suma la onda que cruza la pantalla (300 ms, lineal). Con «Livianos», sólo el aro. Archivos: <Tag>app/field-impact.ts</Tag> y <Tag>AttackFx.tsx</Tag>.
+        </>
+      }
+    >
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" icon="play" onClick={() => attack(false)}>
+          Atacar a la carta
+        </Button>
+        <Button size="sm" variant="secondary" icon="play" onClick={() => attack(true)}>
+          Ataque directo
+        </Button>
+      </div>
+      <div ref={board} data-field className="grid justify-items-center gap-12 bg-background/60 px-2 py-6">
+        {(['feel-objetivo', 'feel-atacante'] as const).map((id, index) => (
+          <span key={id} data-card-id={id} className="block aspect-[421/614] w-14 overflow-hidden bg-input">
+            <CardArt instant remoteUrl={small(HAND[index]!)} name={id} className="block h-full w-full object-cover" />
+          </span>
+        ))}
+      </div>
+      {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
+    </Specimen>
   )
 }
 
