@@ -18,6 +18,10 @@ export const EASE_SNAP = 'cubic-bezier(0.25, 1, 0.5, 1)'
 /** El golpe («puñetazo», medido en Master Duel; `PUNCH` de `field-impact.ts`): llega al pico en un par de cuadros y después se asienta con `EASE_ASENTAR`. */
 export const EASE_GOLPE = 'cubic-bezier(0.1, 0.9, 0.3, 1)'
 export const EASE_ASENTAR = 'cubic-bezier(0.3, 0, 0.7, 1)'
+/** El anillo de la llegada al campo (Master Duel): el 80 % del camino en los primeros 144 ms y el resto, lento (`ARRIVAL` de `field-impact.ts`). */
+export const EASE_LLEGADA = 'cubic-bezier(0.15, 0.85, 0.35, 1)'
+/** La carta del Extra Deck que cae grande al campo (Master Duel: de ×2 a ×1,15 en 567 ms y a ×1 en 750; `summon-entrance.ts`). */
+export const EASE_REVELAR = 'cubic-bezier(0.2, 0.6, 0.3, 1)'
 
 /**
  * La curva de un `cubic-bezier(x1, y1, x2, y2)` como función: dado el tiempo recorrido (0 a 1), devuelve cuánto del camino va hecho, como en una transición.

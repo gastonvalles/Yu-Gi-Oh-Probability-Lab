@@ -3,6 +3,7 @@ import { replayChainSteps, type DuelReplay } from '../../../app/duel-replay'
 import { safeFileName, type SharedCombo } from '../../../app/combo-share'
 import type { MatAction } from '../../../app/practice-mat'
 import { comboChainSteps, type SavedCombo } from '../../../app/saved-combos'
+import { entranceTiming } from '../../../app/summon-entrance'
 import { chainDwell, nextShown, stepsUpTo } from '../../auto/ChainNotice'
 import { titleOf } from '../duel-replay-text'
 
@@ -42,7 +43,15 @@ export const OUTRO_MS = 3000
 /** Desde cuánto se ofrece «Rápido (2×)». */
 export const LONG_VIDEO_MS = 6 * 60_000
 
-export const stepMs = (action: MatAction, speed: VideoSpeed = VIDEO_PACE, kind: VideoSubject['kind'] = 'duel') => (action.type === 'phase' ? (kind === 'combo' ? COMBO_PHASE_MS : PHASE_MS) : kind === 'combo' ? COMBO_STEP_MS : STEP_MS) / speed
+/**
+ * Lo que dura una jugada. Una Invocación del Extra Deck lleva la entrada larga de la mesa (`summon-entrance.ts`): en el replay, la jugada siguiente espera a que termine y después su
+ * `STEP_MS`; al reproducir un combo, la mesa espera lo que sea más largo.
+ */
+export const stepMs = (action: MatAction, speed: VideoSpeed = VIDEO_PACE, kind: VideoSubject['kind'] = 'duel') => {
+  const entrance = action.type === 'summon' ? entranceTiming(action.how).end : 0
+  const base = action.type === 'phase' ? (kind === 'combo' ? COMBO_PHASE_MS : PHASE_MS) : kind === 'combo' ? COMBO_STEP_MS : STEP_MS
+  return (kind === 'combo' ? Math.max(base, entrance) : base + entrance) / speed
+}
 
 /** La cadena, vista desde quien grabó (abajo en el video): la del replay de un duelo o la de un combo grabado en «Jugar solo automático» (sin ella, vacía). */
 export const subjectChain = (subject: VideoSubject): ChainStep[] => (subject.kind === 'duel' ? replayChainSteps(subject.replay, 0) : comboChainSteps(subject.combo))

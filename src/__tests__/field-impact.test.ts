@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { HIT_MS, PUNCH, SECOND_AT, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivals, chargeOn, punchAt, punchFrames, ringAt, settleShake, shakeField, shakeOf } from '../app/field-impact'
+import { ARRIVAL, HIT_MS, PUNCH, SECOND_AT, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, arrivalRingFrames, arriveAt, arrivals, chargeOn, punchAt, punchFrames, ringAt, settleShake, shakeField, shakeOf } from '../app/field-impact'
 import { EASE_ASENTAR, EASE_GOLPE } from '../app/motion'
-import type { MatState } from '../app/practice-mat'
+import { TOKEN_KIND, type MatState } from '../app/practice-mat'
+import { arrivalToneOf, landingToneOf, type SummonCard } from '../app/summon-entrance'
 
 const state = (over: Partial<MatState>): MatState => ({ ...({ deck: [], extra: [], hand: [], gy: [], banished: [], mz: [null, null, null, null, null], emz: [null, null], st: [null, null, null, null, null], field: null } as unknown as MatState), ...over })
 
@@ -90,7 +91,7 @@ describe('el impacto en la mesa (field-impact)', () => {
 
     it('un ataque a una carta: aro dorado con su gemela oscura, destello aditivo sobre una gemela negra y, 200 ms después, el polvo y las líneas; sin onda de pantalla', () => {
       const calls = stubAnimate()
-      ringAt(100, 200, 300, { hit: true })
+      ringAt(100, 200, 300)
 
       const ring = calls.find((call) => classOf(call).includes('border-fx-destello'))!
       expect(classOf(ring)).toContain('outline-black/40')
@@ -108,7 +109,7 @@ describe('el impacto en la mesa (field-impact)', () => {
 
     it('el golpe fuerte suma la onda que cruza la pantalla: lineal de 18 % a 100 % en 300 ms, con el alfa plena hasta los 165 ms', () => {
       const calls = stubAnimate()
-      ringAt(100, 200, 300, { hit: true, strong: true })
+      ringAt(100, 200, 300, { strong: true })
 
       const wave = calls.find((call) => call.el.getAttribute('data-fx') === 'wave')!
       expect(wave.options).toMatchObject({ duration: WAVE_MS, delay: 300 })
@@ -117,28 +118,65 @@ describe('el impacto en la mesa (field-impact)', () => {
       expect(wave.frames[1]).toMatchObject({ opacity: 1, offset: WAVE_HOLD })
       expect(wave.frames.at(-1)).toEqual({ scale: '1', opacity: 0 })
       expect(WAVE_MS * WAVE_HOLD).toBeCloseTo(165)
-      // Una Invocación del Extra Deck (sacude fuerte) también la lleva; su aro sigue cian.
-      calls.length = 0
-      ringAt(0, 0, 0, { strong: true })
-      expect(calls.some((call) => call.el.getAttribute('data-fx') === 'wave')).toBe(true)
-      expect(calls.some((call) => classOf(call).includes('border-fx-energia'))).toBe(true)
     })
 
     it('con «Livianos» queda sólo el aro con su curva; con movimiento reducido, nada', () => {
       const calls = stubAnimate()
       document.documentElement.setAttribute('data-effects', 'lite')
-      ringAt(0, 0, 0, { hit: true, strong: true })
+      ringAt(0, 0, 0, { strong: true })
       expect(calls).toHaveLength(1)
       expect(classOf(calls[0]!)).toContain('border-fx-destello')
+      calls.length = 0
+      arriveAt(0, 0, 0, { tone: 'xyz', strong: true })
+      expect(calls).toHaveLength(1)
+      expect(classOf(calls[0]!)).toContain('border-fx-xyz')
 
       calls.length = 0
       document.documentElement.removeAttribute('data-effects')
       const matchMedia = window.matchMedia
       window.matchMedia = ((query: string) => ({ matches: query.includes('reduce') })) as typeof window.matchMedia
-      ringAt(0, 0, 0, { hit: true, strong: true })
+      ringAt(0, 0, 0, { strong: true })
+      arriveAt(0, 0, 0, { strong: true })
       chargeOn(document.body.appendChild(document.createElement('div')), 10, 0, 300)
       window.matchMedia = matchMedia
       expect(calls).toHaveLength(0)
+    })
+
+    it('la llegada al campo (Master Duel): el anillo del color de su tipo, de 1,7 a 3,5 cartas en 144 ms y a 4,2 en 1 s, plena hasta los 200 ms; la cruz y el brillo; la fuerte, tres anillos ×1,5 y la onda', () => {
+      const calls = stubAnimate()
+      arriveAt(100, 200, 410, { tone: 'tribute', unit: 50 })
+
+      const rings = calls.filter((call) => classOf(call).includes('border-fx-sacrificio') && classOf(call).includes('border-2'))
+      expect(rings).toHaveLength(1)
+      expect((rings[0]!.el as HTMLElement).style.width).toBe('210px')
+      expect(rings[0]!.options).toMatchObject({ duration: ARRIVAL.ms, delay: 410 })
+      expect(rings[0]!.frames).toEqual(arrivalRingFrames())
+      expect(arrivalRingAt(ARRIVAL.ring.fastAt).scale * ARRIVAL.ring.to).toBeCloseTo(3.5)
+      expect(arrivalRingAt(0.2).alpha).toBe(1)
+      expect(arrivalRingAt(1)).toEqual({ scale: 1, alpha: 0 })
+      expect(calls.some((call) => classOf(call).includes('from-fx-sacrificio/60'))).toBe(true)
+      expect(calls.filter((call) => call.el.querySelectorAll('.bg-fx-sacrificio').length === 4)).toHaveLength(1)
+      // Nada fuera del compositor.
+      for (const { frames } of calls) for (const frame of frames) expect(Object.keys(frame).filter((key) => !['scale', 'opacity', 'offset', 'easing'].includes(key))).toEqual([])
+
+      calls.length = 0
+      arriveAt(0, 0, 0, { tone: 'link', strong: true, unit: 50 })
+      const strong = calls.filter((call) => classOf(call).includes('border-fx-enlace') && classOf(call).includes('border-2'))
+      expect(strong.map((call) => call.options.delay)).toEqual([0, 100, 200])
+      expect((strong[0]!.el as HTMLElement).style.width).toBe('315px')
+      expect(calls.some((call) => classOf(call).includes('border-3') && classOf(call).includes('border-fx-enlace'))).toBe(true)
+    })
+
+    it('el tipo de la llegada: el de la jugada, Ritual si sale de la mano, Sacrificio si lo dice o es una Normal de Nivel 5 o más', () => {
+      const card = (over: Partial<SummonCard['kind']> = {}, ritual = false): SummonCard => ({ kind: { ...TOKEN_KIND, ...over }, ritual })
+      expect(landingToneOf({ tone: 'xyz' }, card())).toBe('xyz')
+      expect(landingToneOf({ tone: 'special', hand: true }, card({}, true))).toBe('ritual')
+      expect(landingToneOf({ tone: 'special' }, card({}, true))).toBe('special')
+      expect(landingToneOf({ tone: 'normal', tribute: true }, card())).toBe('tribute')
+      expect(landingToneOf({ tone: 'normal', hand: true }, card({ level: 7 }))).toBe('tribute')
+      expect(landingToneOf({ tone: 'normal', hand: true }, card({ level: 4 }))).toBe('special')
+      expect(arrivalToneOf({ from: 'extra' }, card({ synchro: true }))).toBe('synchro')
+      expect(arrivalToneOf({ from: 'other', hand: true }, card({}, true))).toBe('ritual')
     })
 
     it('la carga: la carta que ataca brilla dorada (opaca hasta la mitad) y el polvo converge, siguiendo la embestida; con «Livianos», sin polvo', () => {
@@ -172,7 +210,7 @@ describe('el impacto en la mesa (field-impact)', () => {
     })
 
     expect(arrivals(before, after)).toEqual([
-      { id: 'h1', spot: 'mz', index: 2, from: 'other' },
+      { id: 'h1', spot: 'mz', index: 2, from: 'other', hand: true },
       { id: 'x1', spot: 'emz', index: 0, from: 'extra' },
     ])
   })

@@ -1,5 +1,6 @@
 import remolino from '../../../assets/duelo/remolino-medio-movil.avif'
 import remolinoIndigo from '../../../assets/duelo/remolino-medio-movil-indigo.avif'
+import type { ArrivalTone } from '../../../app/field-impact'
 import { easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
@@ -47,8 +48,8 @@ export interface VideoTheme {
   fieldLineRgb?: string
   /** Los de la escena de la cadena y sus medallones (`--color-chain-*`, iguales en las dos paletas). */
   chain: ChainColors
-  /** Los del impacto de la mesa (`--color-fx-*`): el destello dorado y el aro cian de energía. */
-  fx: { destello: string; energia: string }
+  /** Los del impacto de la mesa (`--color-fx-*`): el destello dorado, el aro cian de energía y el de la llegada al campo de cada tipo. */
+  fx: { destello: string; energia: string; llegada: Record<ArrivalTone, string> }
 }
 
 export interface ChainColors {
@@ -93,7 +94,11 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     fieldLineRgb: v('--field-line-rgb'),
     // i18n-ignore: nombres de variables CSS (`metal-lo`), no texto.
     chain: { glow: v('--color-chain-glow'), flash: v('--color-chain-flash'), burst: v('--color-chain-burst'), veil: v('--color-chain-veil'), metal: v('--color-chain-metal'), metalHi: v('--color-chain-metal-hi'), metalLo: v('--color-chain-metal-lo') },
-    fx: { destello: v('--color-fx-destello'), energia: v('--color-fx-energia') },
+    fx: {
+      destello: v('--color-fx-destello'),
+      energia: v('--color-fx-energia'),
+      llegada: { special: v('--color-fx-especial'), tribute: v('--color-fx-sacrificio'), fusion: v('--color-fx-fusion'), synchro: v('--color-fx-sincronia'), xyz: v('--color-fx-xyz'), link: v('--color-fx-enlace'), ritual: v('--color-fx-ritual') },
+    },
   }
 }
 

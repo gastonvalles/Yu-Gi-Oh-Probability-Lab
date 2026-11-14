@@ -3,7 +3,9 @@ import { flushSync } from 'react-dom'
 
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, cancelWhenDone } from '../../../app/motion'
 import { setEffects, useEffects } from '../../../app/effects'
+import { impactOn, type ArrivalTone } from '../../../app/field-impact'
 import { BURST, CUT, SPARK } from '../../../app/flipbooks'
+import { playEntrance, type EntranceKind } from '../../../app/summon-entrance'
 import { useMediaQuery } from '../../../app/use-media-query'
 import { PANEL_LIME } from '../../auto/AutoPanel'
 import { ChainStage, type ChainNoticeRow } from '../../auto/ChainNotice'
@@ -103,6 +105,7 @@ export function GameFeelSamples() {
           <PressSample />
           <WeightSample />
           <HitSample />
+          <SummonSample />
           <ChainSample />
           <FlipbookSample />
           <ScreenSample />
@@ -570,6 +573,83 @@ function HitSample() {
         ))}
       </div>
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
+    </Specimen>
+  )
+}
+
+// ——— 3c. La invocación ———
+
+const ENTRANCES: ReadonlyArray<readonly [EntranceKind, string, string]> = [
+  ['fusion', 'Fusión', '89631139'],
+  ['synchro', 'Sincronía', '46986414'],
+  ['xyz', 'Xyz', '57554544'],
+  ['link', 'Enlace', '14558127'],
+  ['ritual', 'Ritual', '23434538'],
+]
+
+/**
+ * La invocación de la mesa (`arriveAt` y `playEntrance`, las piezas reales) sobre una casilla de muestra: la llegada común (Especial y por Sacrificio) y la entrada larga de cada tipo, con
+ * los tiempos de Master Duel. Mientras dura una entrada, los botones no responden (como la mesa). Con «Livianos», la llegada rápida de siempre; con movimiento reducido, nada.
+ */
+function SummonSample() {
+  const board = useRef<HTMLDivElement | null>(null)
+  const cell = useRef<HTMLSpanElement | null>(null)
+  const [busy, setBusy] = useState<EntranceKind | null>(null)
+  const [short, setShort] = useState(false)
+  const [materials, setMaterials] = useState(2)
+  const [art, setArt] = useState(HAND[0]!)
+  const arrive = (tone: ArrivalTone, strong = false) => impactOn(cell.current, board.current, strong ? 'strong' : 'light', 0, tone)
+  const enter = (kind: EntranceKind, id: string) => {
+    const target = cell.current
+    if (!target || busy) return
+    setArt(id)
+    const played = playEntrance({ kind, short, cell: target.getBoundingClientRect(), art: small(id), materials, hide: [target], field: board.current, onDone: () => setBusy(null) })
+    if (played) setBusy(kind)
+    else arrive(kind, true)
+  }
+
+  return (
+    <Specimen
+      title="3c · La invocación"
+      layout="column"
+      note={
+        <>
+          Como en Master Duel. La llegada: un anillo del color de su tipo (de 1,7 a 3,5 cartas en 144 ms con <Tag>--ease-llegada</Tag> y a 4,2 en 1 s) con su cruz y su brillo; la fuerte, tres
+          anillos y una onda. La entrada del Extra Deck y del Ritual: el velo, la figura del tipo, los materiales que convergen, la carta que cae grande (<Tag>--ease-revelar</Tag>), el golpe
+          fuerte y el brillo del marco; el duelo sigue a los ms de Master Duel (Fusión 2583, Xyz 3467, Enlace 4117, Sincronía 4600 o 3483 la corta, Ritual 5200 o 2833). Con «Livianos», la
+          llegada rápida. Archivos: <Tag>app/summon-entrance.ts</Tag> y <Tag>app/field-impact.ts</Tag>.
+        </>
+      }
+    >
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" icon="play" disabled={busy !== null} onClick={() => arrive('special')}>
+          Llegada
+        </Button>
+        <Button size="sm" variant="secondary" icon="play" disabled={busy !== null} onClick={() => arrive('tribute')}>
+          Por Sacrificio
+        </Button>
+        {ENTRANCES.map(([kind, label, id]) => (
+          <Button key={kind} size="sm" variant="secondary" icon="play" disabled={busy !== null} data-entrance={kind} onClick={() => enter(kind, id)}>
+            {label}
+          </Button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <Knob label="Materiales">
+          <Segmented label="Materiales" size="sm" value={String(materials)} onChange={(value) => setMaterials(Number(value))} options={['1', '2', '4', '6'].map((value) => ({ value, label: value }))} />
+        </Knob>
+        <Knob label="Corta (Sincronía y Ritual)">
+          <Switch label="Corta" checked={short} onChange={setShort} />
+        </Knob>
+      </div>
+      <div ref={board} data-field className="grid justify-items-center bg-background/60 px-2 py-10">
+        <span ref={cell} className="block aspect-[421/614] w-14 overflow-hidden bg-input">
+          <CardArt instant remoteUrl={small(art)} name="feel-invocada" className="block h-full w-full object-cover" />
+        </span>
+      </div>
+      <p aria-live="polite" className="text-micro text-soft">
+        {busy ? `Entrada en curso: ${ENTRANCES.find(([kind]) => kind === busy)?.[1]}. Nada responde hasta que termina.` : 'Tocá un tipo para ver su entrada.'}
+      </p>
     </Specimen>
   )
 }

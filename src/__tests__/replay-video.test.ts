@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildDuelReplay, duelReplayAt, type ReplayInput } from '../app/duel-replay'
+import { ARRIVAL } from '../app/field-impact'
+import { ENTRANCE } from '../app/summon-entrance'
 import type { WireAct } from '../app/mat-public'
 import { easeInOut } from '../app/motion'
 import { createMatState, type MatAction } from '../app/practice-mat'
@@ -263,7 +265,7 @@ describe('las transiciones', () => {
     const [landing, ring, shake] = (['landing', 'impact', 'shake'] as const).map((kind) => of(summon, kind))
     expect(landing!.start).toBeGreaterThan(1000)
     expect([ring!.start, shake!.start]).toEqual([landing!.start, landing!.start])
-    expect(ring!.duration).toBeCloseTo(Math.max(MESA.ring, MESA.flash) / speed)
+    expect(ring!.duration).toBeCloseTo(ARRIVAL.ms / speed)
     expect(shake!.duration).toBeCloseTo(IMPACT.shakes.light.ms / speed)
     // Hasta 3 px del celular (`layout.unit` del lienzo por cada uno), y de vuelta exacta a su lugar.
     const k = scenes[2]!.layout.unit
@@ -282,6 +284,28 @@ describe('las transiciones', () => {
     expect(of(attack, 'shake').duration).toBeCloseTo(IMPACT.shakes.light.ms / speed)
     const direct = overlaysOf(scenes.at(-2)!, { ...last, action: { type: 'attack', id: 'c6' } }, [], fakeAssets, speed, 0, 'duel')
     expect(of(direct, 'shake').duration).toBeCloseTo(IMPACT.shakes.strong.ms / speed)
+  })
+})
+
+describe('la entrada larga del Extra Deck en el video (la de la mesa)', () => {
+  it('la jugada dura lo que la entrada más su paso; la entrada esconde la carta de la mesa y el golpe fuerte llega a los ms de Master Duel, al ritmo del video', () => {
+    const xyzReplay = buildDuelReplay({ ...input, mine: { initial: mine, actions: [{ type: 'summon', id: 'card-90000000-1', how: 'xyz', materials: [], zone: 'emz', index: 0, pos: 'atk' }] }, theirs: { initial: theirs, acts: [] }, order: ['mine'], result: undefined })
+    const xyzScenes = [...replayScenes(xyzReplay, 720)]
+    const speed = VIDEO_PACE
+    expect(frameDurations({ kind: 'duel', replay: xyzReplay }, speed)[1]).toBeCloseTo((STEP_MS + ENTRANCE.xyz.end) / speed)
+    const list = overlaysOf(xyzScenes[0]!, xyzScenes[1]!, [], fakeAssets, speed, 1000, 'duel')
+    const entrance = list.find((overlay) => overlay.kind === 'entrance')!
+    expect(entrance.start).toBe(1000)
+    expect(entrance.duration).toBeCloseTo(ENTRANCE.xyz.end / speed)
+    // La carta invocada, del lado de quien grabó (en la vista pública, con su id opaco).
+    expect(entrance.hides).toEqual([expect.stringMatching(/^0:c\d+$/)])
+    const impact = list.find((overlay) => overlay.kind === 'impact')!
+    expect(impact.start).toBeCloseTo(1000 + ENTRANCE.xyz.hit / speed)
+    expect(list.find((overlay) => overlay.kind === 'shake')!.duration).toBeCloseTo(IMPACT.shakes.strong.ms / speed)
+    expect(list.some((overlay) => overlay.kind === 'landing')).toBe(false)
+    const ctx = fakeCtx()
+    for (const p of [0, 0.2, 0.5, 0.7, 0.8, 0.95, 1]) entrance.draw(ctx, p)
+    expect(ctx.calls).toBeGreaterThan(0)
   })
 })
 
