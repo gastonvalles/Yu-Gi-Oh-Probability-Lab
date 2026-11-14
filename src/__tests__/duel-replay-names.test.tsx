@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -42,6 +42,12 @@ function openLink(payload: string) {
   )
 }
 
+/** Un replay compartido abre por su comienzo (no muestra el resultado antes de mirarlo): se avanza hasta la última jugada. */
+async function toLastPlay() {
+  expect(await screen.findByRole('slider', { name: 'Línea de tiempo del replay' })).toHaveAttribute('aria-valuenow', '0')
+  for (let step = 0; step < 4; step += 1) fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+}
+
 beforeEach(() => {
   fetchNames.mockReset()
   window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
@@ -55,6 +61,7 @@ describe('un enlace de replay sin nombres', () => {
     const payload = await encodeReplayLinkPayload(replay)
     expect(payload).not.toContain('No viaja')
     openLink(payload)
+    await toLastPlay()
 
     // Abierto antes de que lleguen los nombres: la jugada se ve con «Carta», y el renglón ya tiene su alto.
     const text = await screen.findByTestId('replay-step-text')
@@ -72,6 +79,7 @@ describe('un enlace de replay sin nombres', () => {
   it('sin red queda «Carta» y no se rompe nada', async () => {
     fetchNames.mockRejectedValue(new Error('offline'))
     openLink(await encodeReplayLinkPayload(replay))
+    await toLastPlay()
 
     expect(await screen.findByTestId('replay-step-text')).toHaveTextContent('Beto: Invocación Normal de Carta')
     await waitFor(() => expect(fetchNames).toHaveBeenCalledTimes(1))
