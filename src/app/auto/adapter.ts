@@ -477,15 +477,21 @@ export function createAdapter(options: AdapterOptions): Adapter {
     else list.splice(Math.min(place.sequence, list.length), 0, card)
   }
 
-  /** Cómo llegó un monstruo a su zona: lo dice el mensaje que sigue al `move` en la misma tanda (`summoning` / `spsummoning`). */
+  /** El mensaje que dice cómo llegó un monstruo a su zona: el que sigue al `move` en la misma tanda (`summoning` / `spsummoning`, con las marcas del anfitrión). */
+  const summonOf = (to: LocPos, rest: readonly WireEvent[]) =>
+    rest.find((event): event is EventOf<'summoning' | 'spsummoning'> => (event.type === 'summoning' || event.type === 'spsummoning') && event.controller === to.controller && event.location === to.location && event.sequence === to.sequence)
+
+  /** Cómo llegó un monstruo a su zona: lo dice el mensaje que sigue al `move` en la misma tanda. Por Péndulo, sólo con la marca del anfitrión (de la mano o del Extra Deck boca arriba). */
   function arrival(card: Card, from: LocPos, to: LocPos, rest: readonly WireEvent[]): MatSummon | 'fusion' | 'synchro' | 'xyz' | 'link' | undefined {
     const type = typeOf(card.code)
 
     if (to.location === L.SZONE) return from.location === L.HAND && (type & TYPE.PENDULUM) !== 0 && (to.sequence === 0 || to.sequence === 4) && (to.position & P.FACEUP) !== 0 ? 'scale' : undefined
-    const summon = rest.find((event) => (event.type === 'summoning' || event.type === 'spsummoning') && event.controller === to.controller && event.location === to.location && event.sequence === to.sequence)
+    const summon = summonOf(to, rest)
 
+    if (summon?.type === 'spsummoning' && summon.pendulum) return 'pendulum'
     if (from.location === L.EXTRA) {
-      if ((from.position & P.FACEUP) !== 0) return 'pendulum'
+      // Boca arriba del Extra Deck sin la marca: lo sacó un efecto (una Especial, no la Invocación de su marco).
+      if ((from.position & P.FACEUP) !== 0) return summon ? 'special' : undefined
       if (type & TYPE.LINK) return 'link'
       if (type & TYPE.XYZ) return 'xyz'
       if (type & TYPE.SYNCHRO) return 'synchro'
@@ -637,7 +643,10 @@ export function createAdapter(options: AdapterOptions): Adapter {
         return
       }
 
-      return emit(to.controller, { type: 'place', id, zone: toSpot.zone, index: toSpot.index, pos, ...(how ? { how } : {}) }, from.location === L.DECK)
+      const summon = summonOf(to, rest)
+      const marks = { ...(summon?.type === 'summoning' && summon.tribute ? { tribute: true as const } : {}), ...(how === 'pendulum' && summon?.type === 'spsummoning' && summon.more ? { more: true as const } : {}) }
+
+      return emit(to.controller, { type: 'place', id, zone: toSpot.zone, index: toSpot.index, pos, ...(how ? { how } : {}), ...marks }, from.location === L.DECK)
     }
 
     // A una pila. El deck: arriba (secuencia = las que había) o abajo (0).
@@ -647,10 +656,12 @@ export function createAdapter(options: AdapterOptions): Adapter {
     const below = pile === 'deck' && to.sequence === 0 && places[to.controller].deck.length > 1
     const toPile = below ? 'deck-bottom' : pile
     const extra = { ...(to.location === L.REMOVED && (to.position & P.FACEDOWN) !== 0 ? { faceDown: true } : {}), ...(to.location === L.EXTRA && (to.position & P.FACEUP) !== 0 ? { faceUp: true } : {}) }
+    // Se fue del campo como Sacrificio (la marca del anfitrión): su efecto sale de la casilla que deja.
+    const tribute = fromSpot && event.tribute ? { tribute: true as const } : {}
 
     // Del campo de quien la controlaba a la pila de su dueño.
     if (fromSpot && card.owner !== from.controller) {
-      emit(from.controller, { type: 'move', id: matId(card, from.controller), to: toPile })
+      emit(from.controller, { type: 'move', id: matId(card, from.controller), to: toPile, ...tribute })
       return emit(card.owner, { type: 'regain', id: card.id, to: toPile, ...extra })
     }
     // Un material ajeno (el rival lo tenía bajo un Xyz suyo: lo controló y lo usó de material) vuelve a su dueño. Si el Xyz ya dejó el campo, la mesa de quien
@@ -662,7 +673,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       return emit(card.owner, { type: 'regain', id: card.id, to: toPile, ...extra })
     }
     if (to.controller !== card.owner) return note(`move: ${card.id} to a pile of the other side`)
-    emit(to.controller, { type: 'move', id: card.id, to: toPile, ...extra }, from.location === L.DECK)
+    emit(to.controller, { type: 'move', id: card.id, to: toPile, ...extra, ...tribute }, from.location === L.DECK)
   }
 
   function draw(event: EventOf<'draw'>) {

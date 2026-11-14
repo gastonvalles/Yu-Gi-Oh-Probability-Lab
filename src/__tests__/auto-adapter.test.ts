@@ -1,5 +1,5 @@
 import { createAdapter } from '../app/auto/adapter'
-import { LOCATION as L, POSITION as P, type AutoEvent, type WireEvent } from '../app/auto/protocol'
+import { LOCATION as L, POSITION as P, type AutoEvent, type EventOf, type WireEvent } from '../app/auto/protocol'
 import { whoseTurn } from '../app/duel-turn'
 import { mapActionIds } from '../app/mat-public'
 import { describeMatAction, matReducer } from '../app/practice-mat'
@@ -154,7 +154,26 @@ describe('el adaptador: del núcleo a la mesa', () => {
     adapter.apply(events(0, move(444, at(0, L.HAND, 3, 10), at(0, L.MZONE, 0)), played('spsummoning', 444, at(0, L.MZONE, 0))))
     adapter.apply(events(0, move(444, at(0, L.MZONE, 0), at(0, L.EXTRA, 1, P.FACEUP_ATTACK))))
     expect(adapter.mine.extraUp).toEqual(['card-444-1'])
-    expect(adapter.apply(events(0, move(444, at(0, L.EXTRA, 1), at(0, L.MZONE, 2)), played('spsummoning', 444, at(0, L.MZONE, 2)))).mine).toEqual([{ type: 'place', id: 'card-444-1', zone: 'mz', index: 2, pos: 'atk', how: 'pendulum' }])
+    // Boca arriba del Extra sin la marca del anfitrión: lo sacó un efecto, es una Especial (no se deduce el Péndulo).
+    expect(adapter.apply(events(0, move(444, at(0, L.EXTRA, 1), at(0, L.MZONE, 2)), played('spsummoning', 444, at(0, L.MZONE, 2)))).mine).toEqual([{ type: 'place', id: 'card-444-1', zone: 'mz', index: 2, pos: 'atk', how: 'special' }])
+  })
+
+  it('las marcas del anfitrión: el Péndulo (de la mano y del Extra, `more` mientras vengan más) y el Sacrificio (el que se va y la Invocación)', () => {
+    const adapter = make()
+    const pendulum = (code: number, to: ReturnType<typeof at>, more?: true): WireEvent => ({ ...(played('spsummoning', code, to) as EventOf<'spsummoning'>), pendulum: true, ...(more ? { more } : {}) })
+
+    adapter.apply(events(0, { type: 'draw', player: 0, drawn: [111, 222, 333].map((code) => ({ code, position: 10 })) }))
+    adapter.apply(events(0, move(333, at(0, L.HAND, 2, 10), at(0, L.MZONE, 0)), played('spsummoning', 333, at(0, L.MZONE, 0))))
+    adapter.apply(events(0, move(333, at(0, L.MZONE, 0), at(0, L.EXTRA, 0, P.FACEUP_ATTACK))))
+    expect(adapter.apply(events(0, move(111, at(0, L.HAND, 0, 10), at(0, L.MZONE, 1)), pendulum(111, at(0, L.MZONE, 1), true))).mine).toEqual([{ type: 'place', id: 'card-111-1', zone: 'mz', index: 1, pos: 'atk', how: 'pendulum', more: true }])
+    expect(adapter.apply(events(0, move(333, at(0, L.EXTRA, 0, P.FACEUP_ATTACK), at(0, L.MZONE, 2)), pendulum(333, at(0, L.MZONE, 2)))).mine).toEqual([{ type: 'place', id: 'card-333-1', zone: 'mz', index: 2, pos: 'atk', how: 'pendulum' }])
+
+    const out = adapter.apply(events(0, { ...(move(111, at(0, L.MZONE, 1), at(0, L.GRAVE, 0)) as EventOf<'move'>), tribute: true }, move(222, at(0, L.HAND, 0, 10), at(0, L.MZONE, 1)), { ...(played('summoning', 222, at(0, L.MZONE, 1)) as EventOf<'summoning'>), tribute: true }))
+
+    expect(out.mine).toEqual([
+      { type: 'move', id: 'card-111-1', to: 'gy', tribute: true },
+      { type: 'place', id: 'card-222-1', zone: 'mz', index: 1, pos: 'atk', how: 'normal', tribute: true },
+    ])
   })
 
   it('turno y fase en las dos mesas (`skipDraw`: el robo llega como `draw`), vidas y cadena en el overlay', () => {
