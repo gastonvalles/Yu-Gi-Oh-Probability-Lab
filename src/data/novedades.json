@@ -1,6 +1,31 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-7-escape-cierra-solo-el-menu",
+      "date": "2026-11-14",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Escape cierra sólo el menú",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Con el teclado, Escape sobre un menú de «Más opciones» abierto cierra sólo ese menú. Antes, en el replay de un duelo, cerraba también el replay."
+        ],
+        "ojo": []
+      },
+      "en": {
+        "title": "Escape closes only the menu",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "On a keyboard, Escape on an open «More options» menu closes only that menu. Before, in a duel replay, it also closed the replay."
+        ],
+        "ojo": []
+      }
+    },
+    {
       "id": "2026-11-14-6-pendulo-y-sacrificio-en-automatico",
       "date": "2026-11-14",
       "tags": [

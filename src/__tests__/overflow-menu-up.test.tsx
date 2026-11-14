@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { useEscapeKey } from '../app/use-overlay'
 import { OverflowMenu } from '../components/ui/OverflowMenu'
 
 // jsdom no mide: cada caja dice dónde está (y el menú, su alto) y se prueba la cuenta de «abajo no entra, arriba sí».
@@ -36,5 +37,29 @@ describe('OverflowMenu: no lo corta lo que lo contiene', () => {
 
   it('con lugar abajo (o sin lugar arriba) se abre hacia abajo, como siempre', () => {
     expect(openIn({ top: 100, bottom: 600 }, { top: 150, bottom: 190 }).className).toContain('top-full')
+  })
+})
+
+describe('OverflowMenu: Escape', () => {
+  // Como el menú del replay: adentro de una capa que también se cierra con Escape (`ReplayLayer`).
+  function Layer({ onClose }: { onClose: () => void }) {
+    useEscapeKey(onClose)
+    return <OverflowMenu label="Más opciones de Duelo" items={[{ label: 'Ver desde el otro lado', onSelect: () => {} }]} />
+  }
+
+  it('cierra sólo el menú y deja abierto lo que lo contiene; el segundo Escape cierra la capa', () => {
+    const onClose = vi.fn()
+    render(<Layer onClose={onClose} />)
+    const trigger = screen.getByRole('button', { name: 'Más opciones de Duelo' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(trigger)
+
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
+import { useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
@@ -100,6 +101,12 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
 
   useFocusTrap(menuRef, open && touched)
 
+  // Escape cierra sólo el menú: entra a la pila de lo abierto (`useEscapeKey`), así lo que lo contiene (un replay, un diálogo) no se cierra con la misma tecla.
+  useEscapeKey(() => {
+    setOpen(false)
+    root.current?.querySelector('button')?.focus()
+  }, open)
+
   useEffect(() => {
     if (!open) {
       return
@@ -109,10 +116,7 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
       if (!root.current?.contains(event.target as Node)) setOpen(false)
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false)
-        root.current?.querySelector('button')?.focus()
-      } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         const rows = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not(:disabled)') ?? [])]
         const at = rows.indexOf(document.activeElement as HTMLElement)
 
