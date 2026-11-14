@@ -21,7 +21,7 @@ import {
 } from '../../app/practice-hand-layout'
 import type { SpotlightKind } from '../../app/mat-effects'
 import { LIFT_SCALE, pushWeight, settled, stepWeight, tiltOf, weightAt, type Weight } from '../../app/card-weight'
-import { DEAL_EDGE_AT, DEAL_LAND_AT, dealFrames } from '../../app/deal-flight'
+import { DEAL_EDGE_AT, DEAL_LAND_AT, DEAL_MS, dealFrames } from '../../app/deal-flight'
 import { EASE_IN_OUT, EASE_OUT, cancelWhenDone } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import { Presence } from '../../app/use-presence'
@@ -41,8 +41,6 @@ const TOP_ROOM = HAND_TOP_ROOM
 /** Espacio bajo las cartas: el abanico baja en los extremos y las cartas inclinadas sobresalen. */
 const FAN_ROOM = 22
 const DRAG_THRESHOLD = 6
-/** Cuánto tarda una carta en llegar a la mano desde el mazo al repartir (sale, se da vuelta en el camino y se asienta). */
-const DEAL_MS = 380
 /**
  * Las capas de la sombra del reparto y cuándo se ve cada una (`opacity`): la de la carta en el aire, que crece al salir y se apaga al aterrizar, y la suya (`own`), que vuelve al
  * apoyarse. Fundirlas una en otra se ve como una sombra que se anima entera.

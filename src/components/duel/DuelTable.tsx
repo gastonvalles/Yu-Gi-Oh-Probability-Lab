@@ -5,7 +5,9 @@ import type { TallyView } from '../../app/auto/tally'
 import { pileLinksOf, type ChainBadgeData, type ChainMedal } from '../../app/card-glow'
 import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
+import { DEAL_EDGE_AT, DEAL_MS, dealFrames } from '../../app/deal-flight'
 import { flatTransform, type Point } from '../../app/flat-quad'
+import { cancelWhenDone, prefersReducedMotion } from '../../app/motion'
 import { useMatView } from '../../app/mat-view'
 import { computeHandLayout, fanAngle } from '../../app/practice-hand-layout'
 import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
@@ -198,8 +200,14 @@ export function TheirHand({
   align = 'center',
   below = false,
   label,
+  dealFrom,
 }: {
   count: number
+  /**
+   * Repartiendo (el replay de un duelo al empezar): de dónde sale cada carta que se suma (el deck de ese lado). Vuela a su lugar en el abanico con el vuelo del reparto de la mesa
+   * (`dealFrames`, `DEAL_MS`), de dorso y dándose vuelta en el camino si va boca arriba. Sin esto (o con movimiento reducido) la carta aparece en su lugar.
+   */
+  dealFrom?: () => DOMRect | null
   /** Lo que dice el lector de pantalla, si no es la mano del rival (el replay de un duelo: de quién es). */
   label?: string
   /** Debajo del campo (la mano de abajo en el replay de un duelo): el abanico espejado, como la tuya en la mesa (el centro más alto, las puntas bajan) y colgado del borde de arriba; lleva la marca de la mano propia (`data-drop`), de donde salen y a donde llegan sus vuelos. */
@@ -235,6 +243,40 @@ export function TheirHand({
   const offset = (width - span) / 2
   // El lugar del abanico, dentro de la caja: ahí late el aro de lo que se señala y van la mira y el botón de marcarla.
   const fanBox: CSSProperties = { left: offset, width: span }
+  // El lugar de cada carta en el abanico: el espejo de la nuestra (Gastón, 2026-11-12): el centro es lo más cercano al campo y las puntas suben, abiertas hacia el rival.
+  // Debajo del campo (la mano de abajo del replay), el de tu mano en la mesa.
+  const poseAt = (index: number) => {
+    const raise = Math.abs(index - (shown - 1) / 2) ** 2 * (below ? HAND_FAN_RISE : THEIR_FAN_RISE)
+
+    return { x: offset + index * layout.step, y: below ? raise : -raise, rotate: (below ? 1 : -1) * fanAngle(index, shown, 2.2) }
+  }
+  // Las cartas que se suman mientras se reparte salen del deck (`dealFrom`), como en `PracticeHand`: el camino y el giro en una sola animación, que se cancela al terminar.
+  const dealtRef = useRef(shown)
+
+  useLayoutEffect(() => {
+    const from = dealtRef.current
+    const box = boxRef.current
+    dealtRef.current = shown
+    const deck = shown > from && box && !prefersReducedMotion() ? (dealFrom?.() ?? null) : null
+
+    if (!deck || !box) return
+    const area = box.getBoundingClientRect()
+    const height = (layout.cardWidth * 614) / 421
+    const cards = box.querySelectorAll<HTMLElement>('[data-their-card]')
+
+    for (let index = from; index < shown; index += 1) {
+      const card = cards[index]
+
+      if (typeof card?.animate !== 'function') continue
+      const to = poseAt(index)
+      const start = { x: deck.left + deck.width / 2 - area.left - layout.cardWidth / 2, y: deck.top + deck.height / 2 - area.top - (below ? 0 : room - height) - height / 2 }
+      cancelWhenDone(card.animate(dealFrames({ ...start, rotate: -10, scale: Math.max(0.3, deck.width / layout.cardWidth), opacity: 0.9 }, { ...to, scale: 1, opacity: 1 }, 24), { duration: DEAL_MS, fill: 'backwards' }))
+      // Boca arriba: el dorso se ve hasta quedar de canto, con el mismo reloj que el giro.
+      card.querySelector('[data-deal-back]')?.animate([{ opacity: 1 }, { opacity: 1, offset: DEAL_EDGE_AT }, { opacity: 0, offset: DEAL_EDGE_AT }, { opacity: 0 }], { duration: DEAL_MS })
+    }
+    // Sólo cuando se suman cartas; la medida es la de ese dibujo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown])
 
   // Cuelga del borde de arriba del campo, que en la vista 3D se inclina: la perspectiva la aplastaba (medido: de 0,686 a 1,1 de ancho sobre alto). Se la endereza
   // (`flatTransform`): apoyada en el mismo punto, del ancho de su borde de abajo y con su proporción. Se rehace si cambia de tamaño ella, la mesa o la pantalla, o la vista.
@@ -280,9 +322,7 @@ export function TheirHand({
       <div data-pointed={pointed ? 'true' : undefined} className="pointer-events-auto absolute inset-y-0" style={fanBox} />
       <div role={open ? 'group' : 'img'} aria-label={label ?? (cards ? (cards.includes(null) ? (cards.some(Boolean) ? t('duel.hand.theirsPublic', { count: cards.length, cards: cards.flatMap((card) => (card ? [card.name] : [])).join(', ') }) : t('duel.hand.theirs', { count })) : t('duel.hand.theirsShown', { cards: cards.map((card) => card!.name).join(', ') })) : t('duel.hand.theirs', { count }))} className="absolute inset-0 z-7">
         {Array.from({ length: shown }, (_, index) => {
-          // El espejo de la nuestra (Gastón, 2026-11-12): el centro es lo más cercano al campo y las puntas suben, abiertas hacia el rival.
-          // Debajo del campo (la mano de abajo del replay), el de tu mano en la mesa.
-          const raise = Math.abs(index - (shown - 1) / 2) ** 2 * (below ? HAND_FAN_RISE : THEIR_FAN_RISE)
+          const pose = poseAt(index)
           const card = cards?.[index]
 
           return (
@@ -293,9 +333,14 @@ export function TheirHand({
               data-their-card=""
               // El ancho manda y el alto sale de la proporción de la carta (nunca los dos fijos).
               className={cx('pointer-events-auto absolute left-0 block aspect-[421/614] overflow-hidden', below ? 'top-0' : 'bottom-0', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
-              style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${below ? raise : -raise}px) rotate(${(below ? 1 : -1) * fanAngle(index, shown, 2.2)}deg)` }}
+              style={{ width: layout.cardWidth, transform: `translate(${pose.x}px, ${pose.y}px) rotate(${pose.rotate}deg)` }}
             >
               {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
+              {card && dealFrom ? (
+                <span aria-hidden="true" data-deal-back="" className="pointer-events-none absolute inset-0 opacity-0">
+                  <CardBack className="h-full" />
+                </span>
+              ) : null}
               {card?.public ? <i aria-hidden="true" data-public="" className="pointer-events-none absolute inset-0 border-2 border-warning motion-safe:animate-pulse-twice" /> : null}
               {card && open ? (
                 <button

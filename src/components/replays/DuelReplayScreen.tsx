@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 
 import type { ChainStep } from '../../app/auto/chain-feed'
 import { medalsOf } from '../../app/card-glow'
+import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { lineCell, railsCell, railsField } from '../../app/duel-rails'
 import { duelReplayAt, replayChainSteps, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
 import { impactOn, sacrificeAt, shakeOf } from '../../app/field-impact'
@@ -159,6 +160,30 @@ function shuffleAt(replay: DuelReplay, from: number, to: number): ReplaySide | n
  * con las marcas propias y las de arriba con las del rival (los ids de cada lado no cambian de un paso a otro). Al saltar o dar vuelta la mesa se monta de nuevo (`key`): nada vuela,
  * sólo se mide.
  */
+/** Cuántas cartas de cada lado (0 y 1, no arriba y abajo) se ven repartidas; `Infinity`: todas, sin repartir. */
+type Deal = readonly [number, number]
+const NO_DEAL: Deal = [Infinity, Infinity]
+const dealAt = (side: ReplaySide, value: number) => (current: Deal): Deal => (side === 0 ? [value, current[1]] : [current[0], value])
+
+/**
+ * El reparto de la primera mano de un lado, de a una carta y con el ritmo de la mesa (`PracticeMat`, `dealt`): su deck se baraja (`onStart`) y, `FIRST_DEAL_MS` después, sale una carta
+ * cada `NEXT_DEAL_MS` (el vuelo lo hace `TheirHand`). La primera mano es la del arranque o, en el automático (arranca con las manos vacías), el robo de 5 de la primera jugada de ese lado.
+ * Repartida, se apaga (`Infinity`): los robos de después son jugadas, con sus vuelos.
+ */
+function useOpeningDeal(side: ReplaySide, dealt: number, count: number, ready: boolean, setDeal: (update: (current: Deal) => Deal) => void, onStart: (side: ReplaySide) => void) {
+  useEffect(() => {
+    if (!ready || dealt === Infinity || count === 0) return
+    if (dealt >= count) {
+      setDeal(dealAt(side, Infinity))
+      return
+    }
+    if (dealt === 0) onStart(side)
+    const timer = window.setTimeout(() => setDeal(dealAt(side, dealt + 1)), dealt === 0 ? FIRST_DEAL_MS : NEXT_DEAL_MS)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `onStart` y `setDeal` no cambian lo que se reparte
+  }, [ready, dealt, count])
+}
+
 function ReplayFlights({ containerRef, bottom, top, layout }: { containerRef: RefObject<HTMLElement | null>; bottom: DuelSideView; top: DuelSideView; layout: string }) {
   useCardFlights(containerRef, bottom.state, bottom.artOf, layout)
   useCardFlights(containerRef, top.state, top.artOf, layout, 'theirs')
@@ -191,6 +216,13 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     return waiting
   }
   const [strike, setStrike] = useState<Strike | null>(null)
+  // Abierto por su comienzo, las manos se reparten como en la mesa (`useOpeningDeal`); con movimiento reducido, aparecen. Saltar o dar vuelta la mesa las muestra enteras.
+  const [deal, setDeal] = useState<Deal>(() => (startAt === 0 && !prefersReducedMotion() ? [0, 0] : NO_DEAL))
+  // Lo lee `announce` (una jugada): con cada carta repartida no se rehace, así reproducir no vuelve a contar su espera.
+  const dealRef = useRef(deal)
+  useEffect(() => {
+    dealRef.current = deal
+  }, [deal])
   const rootRef = useRef<HTMLDivElement | null>(null)
   // Lo que sacude un impacto: el campo (como en la mesa, `data-field`); las chapas, las manos y los controles, no.
   const fieldRef = useRef<HTMLDivElement | null>(null)
@@ -250,9 +282,21 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       setShuffled(side === null ? null : { key: to, drop: side === bottom ? 'data-drop' : 'data-rival-drop' })
       setImpact(impactAt(replay, shots, from, to, bottom))
       sacrificeStep(replay, shots, from, to, bottom, stageRef.current)
+      // El robo que trae la primera mano de un lado (el automático) no vuela: la reparte `TheirHand`. Los vuelos se montan de nuevo, como al saltar.
+      const step = to === from + 1 ? replay.steps[from] : undefined
+      if (step?.[1].type === 'draw' && dealRef.current[step[0]] !== Infinity) setFlights((current) => current + 1)
     },
     [replay, shots, chainSteps, bottom],
   )
+  const hands = [frame.states[0].hand.length, frame.states[1].hand.length] as const
+  const dealing = deal[0] < hands[0] || deal[1] < hands[1]
+  // La jugada que sigue es el robo de la primera mano del otro lado (el automático): no espera, los dos repartos se pisan como en la mesa del duelo.
+  const nextStep = replay.steps[cursor]
+  const nextDeals = nextStep !== undefined && nextStep[1].type === 'draw' && deal[nextStep[0]] !== Infinity && hands[nextStep[0]] === 0
+  const deckOf = (side: ReplaySide) => stageRef.current?.querySelector(`[${side === bottom ? 'data-drop' : 'data-rival-drop'}="deck"]`) ?? null
+  const startDeal = (side: ReplaySide) => shuffleDeck(deckOf(side)?.querySelectorAll('[data-layer]') ?? [])
+  useOpeningDeal(0, deal[0], hands[0], stage !== null, setDeal, startDeal)
+  useOpeningDeal(1, deal[1], hands[1], stage !== null, setDeal, startDeal)
   useEffect(() => {
     if (shuffled) shuffleDeck(stageRef.current?.querySelectorAll(`[${shuffled.drop}="deck"] [data-layer]`) ?? [])
   }, [shuffled])
@@ -343,9 +387,9 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     return () => window.clearTimeout(timer)
   }, [chain, chainDue, chainSteps, speed])
 
-  // Reproducir: una jugada cada `STEP_MS` (según la velocidad) hasta el final; la cadena de una jugada se cuenta entera antes de la siguiente.
+  // Reproducir: una jugada cada `STEP_MS` (según la velocidad) hasta el final; la cadena de una jugada se cuenta entera antes de la siguiente, y el reparto de las manos, antes de la primera.
   useEffect(() => {
-    if (!playing || chainPending || entering) return
+    if (!playing || chainPending || entering || (dealing && !nextDeals)) return
     if (cursor >= total) {
       setPlaying(false)
       return
@@ -355,8 +399,9 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       announce(cursor, cursor + 1)
     }, STEP_MS / speed)
     return () => window.clearTimeout(timer)
-  }, [playing, chainPending, entering, cursor, total, speed, replay, announce])
+  }, [playing, chainPending, entering, dealing, nextDeals, cursor, total, speed, replay, announce])
   const jump = (at: number) => {
+    setDeal(NO_DEAL)
     // Saltar, sin entrada: la que estaba en curso se corta (y las del Péndulo que esperaban vuelven a verse).
     entrance.current?.cancel()
     releasePendulum()
@@ -388,11 +433,13 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     [chainStage, replay],
   )
 
-  const view = (side: ReplaySide): DuelSideView => ({ state: frame.states[side], artOf: (id) => artOfDrawId(isToken(id) ? id : realOf(replay, frame, side, id)), handCount: frame.states[side].hand.length })
+  const view = (side: ReplaySide): DuelSideView => ({ state: frame.states[side], artOf: (id) => artOfDrawId(isToken(id) ? id : realOf(replay, frame, side, id)), handCount: Math.min(hands[side], deal[side]) })
   const bottomView = { ...view(bottom), medals: medals.mine }
   const topView = { ...view(top), medals: medals.theirs }
   // Con «mi mano», la de quien grabó boca arriba (abajo; dada vuelta la mesa, de dorso como la del rival).
-  const openHand = replay.view === 'mine' && bottom === 0 ? frame.states[0].hand.map((id) => ({ name: cardName(replay, frame, 0)(id), art: bottomView.artOf(id) })) : undefined
+  const openHand = replay.view === 'mine' && bottom === 0 ? frame.states[0].hand.slice(0, bottomView.handCount).map((id) => ({ name: cardName(replay, frame, 0)(id), art: bottomView.artOf(id) })) : undefined
+  // Mientras un lado reparte, cada carta que se suma a su mano sale de su deck.
+  const dealFrom = (side: ReplaySide) => (deal[side] === Infinity ? {} : { dealFrom: () => deckOf(side)?.getBoundingClientRect() ?? null })
   const playLabel = playing ? t('practice.mat.pause') : cursor >= total ? t('practice.mat.watchAgain') : t('practice.mat.play')
   const title = titleOf(replay)
   const result = cursor >= total ? replayResultText(replay) : null
@@ -413,7 +460,13 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     playLabel,
     speed,
     onTogglePlay: () => {
-      if (!playing && cursor >= total) setCursor(0)
+      // «Ver otra vez» arranca de cero, como al abrirlo por su comienzo: la mesa del arranque (sin volar desde el final) y las manos, repartidas otra vez.
+      if (!playing && cursor >= total) {
+        jump(0)
+        if (!prefersReducedMotion()) setDeal([0, 0])
+        setPlaying(true)
+        return
+      }
       setPlaying((current) => !current)
     },
     onPrevious: () => jump(Math.max(0, cursor - 1)),
@@ -429,7 +482,15 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   // Volver al principio va en la fila de los botones sólo en la tableta; en el celular y en los laterales de escritorio no entra con los demás y va en el menú (o Inicio en la línea de tiempo).
   const restartInRow = !phone && !desktop
   const items: OverflowItem[] = [
-    { label: t('duel.watch.flip'), icon: 'swap', checked: flipped, onSelect: () => setFlipped((current) => !current) },
+    {
+      label: t('duel.watch.flip'),
+      icon: 'swap',
+      checked: flipped,
+      onSelect: () => {
+        setDeal(NO_DEAL)
+        setFlipped((current) => !current)
+      },
+    },
     ...(restartInRow ? [] : [{ label: t('practice.replay.restart'), icon: 'skip-back' as const, onSelect: () => jump(0) }]),
     ...actions,
   ]
@@ -480,7 +541,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       {stage ? <ReplayFlights key={`${flights}:${bottom}`} containerRef={stageRef} bottom={bottomView} top={topView} layout={`${stage.width}x${stage.height}`} /> : null}
       {geometry ? (
         <>
-          {place(geometry.rivalTop, <TheirHandSize value={geometry.rival}><TheirHand count={topView.handCount ?? 0} medals={topView.medals.get('hand') ?? null} label={t('meta.duels.hand', { name: names[top], count: topView.handCount ?? 0 })} /></TheirHandSize>)}
+          {place(geometry.rivalTop, <TheirHandSize value={geometry.rival}><TheirHand {...dealFrom(top)} count={topView.handCount ?? 0} medals={topView.medals.get('hand') ?? null} label={t('meta.duels.hand', { name: names[top], count: topView.handCount ?? 0 })} /></TheirHandSize>)}
           {place(
             geometry.fieldTop,
             // La carta grande y la cadena, encima del campo y fuera de lo que sacude un impacto (como en la mesa); la banda de la fase va en su fila del campo y se sacude con él.
@@ -512,7 +573,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
           {place(
             geometry.handTop + HAND_TOP_ROOM,
             <TheirHandSize value={geometry.hand}>
-              <TheirHand below count={bottomView.handCount ?? 0} medals={bottomView.medals.get('hand') ?? null} label={openHand ? t('meta.duels.handShown', { name: names[bottom], cards: openHand.map((card) => card.name).join(', ') }) : t('meta.duels.hand', { name: names[bottom], count: bottomView.handCount ?? 0 })} {...(openHand ? { cards: openHand } : {})} />
+              <TheirHand below {...dealFrom(bottom)} count={bottomView.handCount ?? 0} medals={bottomView.medals.get('hand') ?? null} label={openHand ? t('meta.duels.handShown', { name: names[bottom], cards: openHand.map((card) => card.name).join(', ') }) : t('meta.duels.hand', { name: names[bottom], count: bottomView.handCount ?? 0 })} {...(openHand ? { cards: openHand } : {})} />
             </TheirHandSize>,
           )}
         </>
