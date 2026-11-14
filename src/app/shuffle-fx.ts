@@ -52,8 +52,11 @@ const n = (value: number) => Math.round(value * 100) / 100
 function shuffle(cards: Iterable<Element>, plan: Plan, gather: boolean): void {
   if (prefersReducedMotion()) return
 
-  const list = [...cards].filter((card) => typeof card.animate === 'function')
+  // La carta que se arrastra va con el dedo: no se baraja.
+  const list = [...cards].filter((card) => typeof card.animate === 'function' && (card as HTMLElement).dataset?.state !== 'dragging')
   const animations = list.map((card) => animationsOf(card))
+  // Dos barajados de la mano que se pisan (el del paso y el del núcleo, o uno detrás del otro) no vuelven a empezar: el que corre sigue y el segundo se funde con él.
+  if (gather && animations.some((own) => own.some((animation) => animation.id === SHUFFLE_ID && animation.playState === 'running'))) return
   const pending = animations.flatMap(arriving)
 
   if (pending.length > 0) {
@@ -77,9 +80,9 @@ function shuffle(cards: Iterable<Element>, plan: Plan, gather: boolean): void {
   const rank = openRank(count)
   const total = plan.openFrom + plan.openSpan + plan.open
 
-  list.forEach((card, index) => {
-    const own = bases[index]!
-    const place = places[index]!
+  // Los cuadros de cada carta, desde su lugar (`own`): la pila, con su punto fijo. Si la mano cambia a mitad, se rehacen con el lugar nuevo (`riffles`).
+  const framesOf = (index: number) => (own: string): Keyframe[] => {
+    const place = placeOf(own.trim())
     const { width, height } = sizes[index]!
     // A la pila: a su centro y derecha (sin el giro del abanico). El mazo ya está apilado: se corre hacia la mesa.
     const dx = gather ? center.x - place.x : -plan.shift * width
@@ -109,11 +112,47 @@ function shuffle(cards: Iterable<Element>, plan: Plan, gather: boolean): void {
       [total, home],
     ]
 
+    return steps.map(([at, transform, easing]) => ({ offset: Math.round((at / total) * 1e4) / 1e4, transform, ...(easing ? { easing } : {}) }))
+  }
+
+  list.forEach((card, index) => {
+    const frames = framesOf(index)
+
     // Sale del fin de su transición (al robar, la mano que se abre): la tapa, así que se corta, y la del barajado queda sola y va en la GPU (con las dos, Chromium sacaba a la transición).
     transitions[index]?.cancel()
-    cancelWhenDone(card.animate(steps.map(([at, transform, easing]) => ({ offset: Math.round((at / total) * 1e4) / 1e4, transform, ...(easing ? { easing } : {}) })), { id: SHUFFLE_ID, duration: total }))
+    const animation = cancelWhenDone(card.animate(frames(bases[index]!), { id: SHUFFLE_ID, duration: total }))
+
+    if (gather && riffles && typeof Element === 'function' && card instanceof Element) {
+      riffles.map.set(card, { animation, frames })
+      riffles.observer.observe(card, { attributes: true, attributeFilter: ['style', 'data-state'] })
+    }
   })
 }
+
+/**
+ * La mano cambia mientras se baraja (entra o sale una carta, se reacomoda, se levanta la del menú, cambia la pantalla) y React le escribe a cada carta su lugar nuevo debajo del
+ * barajado, que lleva el viejo en sus cuadros: terminaba ahí y saltaba de golpe al nuevo (medido: toda la mano, hasta 49 px en un cuadro). Ahora sus cuadros se rehacen con el
+ * lugar nuevo y el mismo reloj (la pila queda en su punto: se nota recién al abrirse, que va al lugar nuevo) y se corta la transición que eso dispara, como al empezar. La carta que
+ * toma el dedo deja de barajarse: manda el arrastre.
+ */
+const riffles = typeof MutationObserver === 'function'
+  ? {
+      map: new WeakMap<Element, { animation: Animation; frames: (own: string) => Keyframe[] }>(),
+      observer: new MutationObserver((records) => {
+        for (const card of new Set(records.map((record) => record.target as HTMLElement))) {
+          const riffle = riffles!.map.get(card)
+
+          if (!riffle || riffle.animation.playState !== 'running') continue
+          if (card.dataset.state === 'dragging') {
+            riffle.animation.cancel()
+            continue
+          }
+          transformTransition(card)?.cancel()
+          ;(riffle.animation.effect as KeyframeEffect).setKeyframes(riffle.frames(card.style.transform ? `${card.style.transform} ` : ''))
+        }
+      }),
+    }
+  : null
 
 /** Baraja el mazo (sus capas de dorso, `[data-layer]`): se parte en dos paquetes, se intercalan cayendo al centro y la pila se golpea contra la mesa. */
 export const shuffleDeck = (layers: Iterable<Element>) => shuffle(layers, DECK, false)
