@@ -27,7 +27,8 @@ beforeEach(() => {
   }
   window.cancelAnimationFrame = () => {}
   document.elementFromPoint = () => null
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  // `Date` también: la mesa descuenta de una espera lo que ya pasó (`Date.now()`); con el reloj de verdad, una máquina lenta acortaba las esperas y la prueba fallaba cada tanto.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
   // El centinela de la mesa anota en la consola: cada despacho es un bug.
   errors = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
     if (typeof args[0] === 'string' && args[0].startsWith('[auto]')) dispatches += 1
