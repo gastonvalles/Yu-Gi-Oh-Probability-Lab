@@ -363,14 +363,20 @@ export function playEntrance({ kind, cell, art, materials, hide, field, onDone }
 const r2 = (value: number) => Math.round(value * 100) / 100
 
 /**
- * La Invocación por Péndulo (`SummonPendulum01TL` de Master Duel, ≈3700 ms). La referencia no trae las marcas de golpe ni de «sigue el duelo» (StrongSummon / StartCard): sólo sus piezas,
- * que se usan tal cual: a los 417 ms se muestran las dos escalas (3267 ms, hasta 3684: el final de la escena), a los 667 la luz (2900 ms), a los 1117 el péndulo (2300 ms) y a los 1483 la
- * bajada (1967 ms). Las cartas caen en esa bajada con la caída de las otras entradas (`ENTRANCE_COMMON.reveal`, 850 ms): tocan su casilla a los 2333 ms, de a una cada 67 ms si son varias.
+ * La Invocación por Péndulo (`SummonPendulum01TL` de Master Duel, ≈3700 ms). La referencia no trae las marcas de golpe ni de «sigue el duelo» (StrongSummon / StartCard): sólo sus piezas:
+ * a los 417 ms se muestran las dos escalas (hasta 3684: el final de la escena), a los 667 la luz (2900 ms), a los 1117 el péndulo (2300 ms) y a los 1483 la bajada. Dura lo mismo que las
+ * demás entradas (Gastón, 2026-11-14: «todos lo mismo»): esa línea se acomoda a `ENTRANCE` con `pendulumAt`, y las cartas tocan su casilla en el golpe, de a una cada 67 ms si son varias.
  */
 export const PENDULUM = { scales: 417, light: 667, lightMs: 2900, swing: 1117, swingMs: 2300, descent: 1483, end: 3684, every: 67 } as const
 /** Lo más que espera escondida una carta de una Invocación por Péndulo a las demás de la misma Invocación (una reproducción en pausa no la deja escondida para siempre). */
 export const PENDULUM_HOLD_MS = 20_000
-export const pendulumHit = (index = 0) => PENDULUM.descent + ENTRANCE_COMMON.reveal + index * PENDULUM.every
+export const pendulumHit = (index = 0) => ENTRANCE.hit + index * PENDULUM.every
+
+/** Como `figureAt`: lo de antes de la bajada se comprime hasta que arranca la caída de las cartas y, desde ahí, va al ritmo de Master Duel, sin pasar del final de todas. */
+export function pendulumAt(ms: number): number {
+  const lead = ENTRANCE.hit - ENTRANCE_COMMON.reveal
+  return Math.min(ENTRANCE.end, ms <= PENDULUM.descent ? (ms * lead) / PENDULUM.descent : lead + (ms - PENDULUM.descent))
+}
 
 /** Una carta de la Invocación por Péndulo: su casilla (en la pantalla), su arte y lo que se esconde hasta que toca (la carta de la mesa y el fantasma de su vuelo). */
 export interface PendulumCard {
@@ -404,6 +410,11 @@ export function playPendulum({ cards, field, onDone }: { cards: readonly Pendulu
   const [vw, vh] = [window.innerWidth, window.innerHeight]
   const r = Math.min(vw, vh) * 0.36
   const veil = el(root, VEIL)
+  // Las escalas, la luz y el péndulo, con su línea de tiempo acomodada al golpe de todas (`pendulumAt`).
+  const paced: Add = (element, frames, duration, delay, easing) => {
+    const from = pendulumAt(delay)
+    add(element, frames, pendulumAt(delay + duration) - from, from, easing)
+  }
 
   // Las dos escalas: suben desde abajo a los costados y se quedan hasta el final; su gema arriba.
   const pillar = [Math.round(0.14 * r), Math.round(0.78 * vh)] as const
@@ -411,14 +422,14 @@ export function playPendulum({ cards, field, onDone }: { cards: readonly Pendulu
     const group = el(root, `${PIECE} left-0 top-0 size-0`)
     group.style.translate = `${Math.round(x * vw)}px ${Math.round(vh / 2)}px`
     const bar = el(group, `${SCALE} ${color}`, pillar)
-    add(bar, [{ scale: '1 0', easing: EASE_OUT }, { scale: '1 1' }], 400, p.scales)
+    paced(bar, [{ scale: '1 0', easing: EASE_OUT }, { scale: '1 1' }], 400, p.scales)
     el(group, `${GEM} ${gem}`).style.top = `${-Math.round(pillar[1] / 2)}px`
-    add(group, keep(0, p.end - p.scales, p.end - p.scales, [1, 1]), p.end - p.scales, p.scales)
+    paced(group, keep(0, p.end - p.scales, p.end - p.scales, [1, 1]), p.end - p.scales, p.scales)
   }
   // La luz blanca entre las escalas, de arriba hacia abajo.
   const light = el(root, `${PIECE} left-1/2 top-0 h-full origin-top bg-linear-to-b from-white/45 via-fx-pendulo-azul/20 to-transparent mix-blend-plus-lighter`)
   Object.assign(light.style, { width: `${Math.round(0.9 * r)}px`, marginLeft: `${-Math.round(0.45 * r)}px` })
-  add(light, keep(0, p.lightMs, p.lightMs, [0.4, 1], 0.85), p.lightMs, p.light)
+  paced(light, keep(0, p.lightMs, p.lightMs, [0.4, 1], 0.85), p.lightMs, p.light)
   // El péndulo, colgado arriba en el medio: oscila y se va apagando (gira; no se traslada).
   const swing = el(root, `${PIECE} left-1/2 top-1/12 size-0 origin-top`)
   const rod = el(swing, 'absolute -ml-px w-0.5 bg-white/85 outline-1 outline-black/40')
@@ -428,7 +439,7 @@ export function playPendulum({ cards, field, onDone }: { cards: readonly Pendulu
   bob.style.top = `${length}px`
   // Cada vaivén, más corto (se apaga): a lo sumo 18°, así la bola no sale de entre las escalas en el celular.
   const swings = [0, 18, -16, 12, -8, 4, 0]
-  add(swing, swings.map((deg, index) => ({ offset: index / (swings.length - 1), rotate: `${deg}deg`, opacity: index === 0 || index === swings.length - 1 ? 0 : 1, easing: EASE_IN_OUT })), p.swingMs, p.swing)
+  paced(swing, swings.map((deg, index) => ({ offset: index / (swings.length - 1), rotate: `${deg}deg`, opacity: index === 0 || index === swings.length - 1 ? 0 : 1, easing: EASE_IN_OUT })), p.swingMs, p.swing)
 
   // Las cartas: bajan derechas desde arriba de la pantalla hasta su casilla (de ×1,6 a ×1,15 y a su tamaño, con el aplastón), de a una cada 67 ms.
   const total = c.reveal + c.settle
@@ -471,11 +482,11 @@ export function playPendulum({ cards, field, onDone }: { cards: readonly Pendulu
   const master = veil.animate(
     [
       { offset: 0, opacity: 0, easing: EASE_OUT },
-      { offset: c.veilIn / p.end, opacity: c.veil },
-      { offset: 1 - c.veilOut / p.end, opacity: c.veil },
+      { offset: c.veilIn / ENTRANCE.end, opacity: c.veil },
+      { offset: 1 - c.veilOut / ENTRANCE.end, opacity: c.veil },
       { offset: 1, opacity: 0 },
     ],
-    { duration: p.end },
+    { duration: ENTRANCE.end },
   )
   let done = false
   const finish = () => {

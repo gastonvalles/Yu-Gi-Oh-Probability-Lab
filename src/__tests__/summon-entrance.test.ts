@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ENTRANCE, ENTRANCE_COMMON, ENTRANCE_FIGURE, PENDULUM, UNKNOWN_SUMMON, entranceAllowed, entranceOf, figureAt, figureTime, landingToneOf, type EntranceKind, pendulumHit, playEntrance, playPendulum, surePendulum } from '../app/summon-entrance'
+import { ENTRANCE, ENTRANCE_COMMON, ENTRANCE_FIGURE, PENDULUM, UNKNOWN_SUMMON, entranceAllowed, entranceOf, figureAt, figureTime, landingToneOf, type EntranceKind, pendulumAt, pendulumHit, playEntrance, playPendulum, surePendulum } from '../app/summon-entrance'
 
 /** jsdom no anima: cada `animate` se anota con su elemento y devuelve una animación que se termina a mano. */
 function stubAnimate() {
@@ -103,14 +103,25 @@ describe('la entrada larga de la invocación (Master Duel)', () => {
     playPendulum({ cards, field: null, onDone })
     expect(document.querySelectorAll('[data-entrance="pendulum"]')).toHaveLength(1)
     const veil = calls.find((call) => call.el.className.includes('bg-black opacity-0'))!
-    expect(veil.options).toMatchObject({ duration: PENDULUM.end })
-    // Las escalas a los 417 ms, la luz a los 667, el péndulo a los 1117; cada carta toca su casilla a los 2333 ms, de a una cada 67.
-    expect(calls.some((call) => call.options.delay === PENDULUM.scales && call.el.className.includes('origin-bottom'))).toBe(true)
-    expect(calls.some((call) => call.options.delay === PENDULUM.light && call.options.duration === PENDULUM.lightMs)).toBe(true)
-    expect(calls.find((call) => call.options.delay === PENDULUM.swing)!.options.duration).toBe(PENDULUM.swingMs)
-    expect([0, 1, 2].map((index) => pendulumHit(index))).toEqual([2333, 2400, 2467])
+    // Dura lo mismo que las demás entradas («todos lo mismo»): el velo hasta `ENTRANCE.end` y la primera carta toca en `ENTRANCE.hit`.
+    expect(veil.options).toMatchObject({ duration: ENTRANCE.end })
+    expect([0, 1, 2].map((index) => pendulumHit(index))).toEqual([1500, 1567, 1634])
+    // Como `figureAt`: lo de antes de la bajada se comprime hasta que arranca la caída de las cartas; desde ahí, al ritmo de Master Duel, sin pasar del final.
+    const lead = ENTRANCE.hit - ENTRANCE_COMMON.reveal
+    expect(pendulumAt(PENDULUM.descent)).toBeCloseTo(lead)
+    expect(pendulumAt(PENDULUM.descent) + ENTRANCE_COMMON.reveal).toBeCloseTo(pendulumHit())
+    expect(pendulumAt(PENDULUM.descent + 300) - pendulumAt(PENDULUM.descent)).toBeCloseTo(300)
+    expect(pendulumAt(PENDULUM.end)).toBe(ENTRANCE.end)
+    // Las escalas, la luz y el péndulo, en su lugar comprimido y apagados para el final.
+    const paced = (ms: number) => Math.round(pendulumAt(ms))
+    expect(calls.some((call) => call.options.delay === paced(PENDULUM.scales) && call.el.className.includes('origin-bottom'))).toBe(true)
+    expect(calls.some((call) => call.options.delay === paced(PENDULUM.light) && call.options.duration === Math.round(ENTRANCE.end - pendulumAt(PENDULUM.light)))).toBe(true)
+    const scene = document.querySelector('[data-entrance="pendulum"]')!
+    for (const call of calls) if (scene.contains(call.el)) expect(Number(call.options.delay ?? 0) + Number(call.options.duration)).toBeLessThanOrEqual(ENTRANCE.end + 1)
     cards.forEach((card, index) => expect(calls.find((call) => call.el === card.hide[0])!.options).toMatchObject({ duration: pendulumHit(index) + ENTRANCE_COMMON.settle }))
-    expect(calls.filter((call) => call.el.className.includes('border-white') && call.el.className.includes('border-2') && call.options.delay !== undefined && [2333, 2400, 2467].includes(Number(call.options.delay)))).not.toHaveLength(0)
+    expect(calls.filter((call) => call.el.className.includes('border-white') && call.el.className.includes('border-2') && call.options.delay !== undefined && [1500, 1567, 1634].includes(Number(call.options.delay)))).not.toHaveLength(0)
+    // Con cinco cartas, la última toca y se asienta antes de que el duelo siga.
+    expect(pendulumHit(4) + ENTRANCE_COMMON.settle).toBeLessThan(ENTRANCE.end)
     // Las cartas bajan derechas (sólo en y) y nada sale del compositor.
     for (const { frames } of calls) for (const frame of frames) {
       expect(Object.keys(frame).filter((key) => !['scale', 'opacity', 'translate', 'rotate', 'offset', 'easing'].includes(key))).toEqual([])
