@@ -25,7 +25,7 @@
 ["SDDC-EN012","Common","Unlimited",0.36,57912,65192027,"Dark Armed Dragon"],
 ["SDDC-EN013","Common","1st Edition",0.51,57913,88264978,"Red-Eyes Darkness Metal Dragon"],
 ["SDDC-EN013","Common","Unlimited",0.49,57913,88264978,"Red-Eyes Darkness Metal Dragon"],
-["SDDC-EN014","Common","1st Edition",0.49,57914,9596126,"Chaos Sorcerer"],
+["SDDC-EN014","Common","1st Edition",0.48,57914,9596126,"Chaos Sorcerer"],
 ["SDDC-EN014","Common","Unlimited",0.48,57914,9596126,"Chaos Sorcerer"],
 ["SDDC-EN015","Common","1st Edition",0.37,57915,17985575,"Lord of D."],
 ["SDDC-EN015","Common","Unlimited",0.29,57915,17985575,"Lord of D."],
@@ -77,6 +77,6 @@
 ["SDDC-EN038","Common","Unlimited",0.11,57938,97077563,"Call of the Haunted"],
 ["SDDC-EN039","Common","1st Edition",0.3,57939,36261276,"Interdimensional Matter Transporter"],
 ["SDDC-EN039","Common","Unlimited",0.23,57939,36261276,"Interdimensional Matter Transporter"],
-["SDDC-EN040","Common","1st Edition",0.16,57940,31550470,"Escape from the Dark Dimension"],
+["SDDC-EN040","Common","1st Edition",0.15,57940,31550470,"Escape from the Dark Dimension"],
 ["SDDC-EN040","Common","Unlimited",0.14,57940,31550470,"Escape from the Dark Dimension"]
 ]

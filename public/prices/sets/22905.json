@@ -77,7 +77,7 @@
 ["SRL-EN075","Rare","Unlimited",1.25,478894,62397231,"Hyozanryu"],
 ["SRL-EN076","Super Rare","Unlimited",3.36,478895,15259703,"Toon World"],
 ["SRL-EN077","Rare","Unlimited",3.02,478897,34124316,"Cyber Jar"],
-["SRL-EN078","Super Rare","Unlimited",null,478898,61528025,"Banisher of the Light"],
+["SRL-EN078","Super Rare","Unlimited",3,478898,61528025,"Banisher of the Light"],
 ["SRL-EN079","Rare","Unlimited",0.97,478899,97017120,"Giant Rat"],
 ["SRL-EN080","Rare","Unlimited",0.72,478900,23401839,"Senju of the Thousand Hands"],
 ["SRL-EN081","Rare","Unlimited",null,478901,60806437,"UFO Turtle"],
@@ -102,5 +102,5 @@
 ["SRL-EN100","Common","Unlimited",null,478920,81777047,"Luminous Spark"],
 ["SRL-EN101","Common","Unlimited",null,478921,18161786,"Mystic Plasma Zone"],
 ["SRL-EN102","Super Rare","Unlimited",6.49,478922,44656491,"Messenger of Peace"],
-["SRL-EN103","Secret Rare","Unlimited",11.5,478923,66516792,"Serpent Night Dragon"]
+["SRL-EN103","Secret Rare","Unlimited",12.05,478923,66516792,"Serpent Night Dragon"]
 ]

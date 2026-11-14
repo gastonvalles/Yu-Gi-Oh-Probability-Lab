@@ -1,12 +1,12 @@
 [
 ["SBTK-EN001","Ultra Rare","1st Edition",13.85,205496,30208479,"Magician of Black Chaos"],
 ["SBTK-EN002","Common","1st Edition",0.53,205497,76792184,"Black Magic Ritual"],
-["SBTK-EN003","Common","1st Edition",1.91,205498,76634149,"Kairyu-Shin"],
+["SBTK-EN003","Common","1st Edition",1.93,205498,76634149,"Kairyu-Shin"],
 ["SBTK-EN004","Common","1st Edition",0.09,205499,42431843,"Ancient Brain"],
 ["SBTK-EN005","Common","1st Edition",0.22,205500,96643568,"Wetha"],
 ["SBTK-EN006","Common","1st Edition",0.24,205501,18914778,"Change Slime"],
 ["SBTK-EN007","Common","1st Edition",0.2,205502,72299832,"Giant Mech-Soldier"],
-["SBTK-EN008","Common","1st Edition",0.18,205503,53713014,"Crazy Fish"],
+["SBTK-EN008","Common","1st Edition",0.17,205503,53713014,"Crazy Fish"],
 ["SBTK-EN009","Common","1st Edition",0.13,205504,84620194,"Girochin Kuwagata"],
 ["SBTK-EN010","Common","1st Edition",0.17,205505,65957473,"Metal Armored Bug"],
 ["SBTK-EN011","Common","1st Edition",0.2,205512,28725004,"Tainted Wisdom"],
@@ -24,7 +24,7 @@
 ["SBTK-EN023","Common","1st Edition",0.27,205531,44689688,"Jurrac Spinos"],
 ["SBTK-EN024","Super Rare","1st Edition",0.72,205532,48411996,"Jurrac Stauriko"],
 ["SBTK-EN025","Super Rare","1st Edition",0.67,205533,16111820,"Jurrac Herra"],
-["SBTK-EN026","Common","1st Edition",0.13,205554,14771222,"Shore Knight"],
+["SBTK-EN026","Common","1st Edition",0.12,205554,14771222,"Shore Knight"],
 ["SBTK-EN027","Ultra Rare","1st Edition",3.2,205555,19801646,"The Legendary Fisherman II"],
 ["SBTK-EN028","Ultra Rare","1st Edition",6.46,205556,14457896,"Parasite Paranoid"],
 ["SBTK-EN029","Common","1st Edition",0.19,205557,2504891,"Skull Knight"],
@@ -33,7 +33,7 @@
 ["SBTK-EN032","Common","1st Edition",0.39,205560,56830749,"Share the Pain"],
 ["SBTK-EN033","Common","1st Edition",0.16,205561,75560629,"Flint"],
 ["SBTK-EN034","Common","1st Edition",0.34,205562,83682725,"Tail Swipe"],
-["SBTK-EN035","Common","1st Edition",1.13,205563,75652080,"Double Cyclone"],
+["SBTK-EN035","Common","1st Edition",1.09,205563,75652080,"Double Cyclone"],
 ["SBTK-EN036","Super Rare","1st Edition",1.81,205575,33057951,"Surface"],
 ["SBTK-EN037","Super Rare","1st Edition",1.35,205576,88610708,"Bashing Shield"],
 ["SBTK-EN038","Common","1st Edition",0.17,205577,34559295,"Iron Draw"],
@@ -58,6 +58,6 @@
 ["SBTK-ENSP5","Common","Limited",0.99,206293,17814387,"Reinforcements"],
 ["SBTK-ENSP6","Common","Limited",5.04,206285,300302001,"Fusion Party!"],
 ["SBTK-ENSP7","Common","Limited",1.78,206286,300302002,"Ritual Ceremony"],
-["SBTK-ENSP8","Common","Limited",0.85,206287,300302003,"Low Blow"],
-["SBTK-ENSP9","Common","Limited",0.48,206288,300302004,"Digging for Gold"]
+["SBTK-ENSP8","Common","Limited",1,206287,300302003,"Low Blow"],
+["SBTK-ENSP9","Common","Limited",0.5,206288,300302004,"Digging for Gold"]
 ]
