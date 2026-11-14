@@ -110,6 +110,20 @@ describe.skipIf(!hasCoreData)('las marcas del anfitrión: Péndulo y Sacrificio'
     }
   })
 
+  it('Colocar un monstruo por Sacrificio: el que se va y la Colocación (`set`) llevan `tribute`; los dos asientos lo ven', { timeout: 120_000 }, async () => {
+    const { mine, theirs } = await play([at(CELTIC, 0, L.MZONE, 2, 1), at(SKULL, 0, L.HAND)], (ask, seen) => {
+      const options = idle(ask)
+
+      if (options) return of(seen, 'set').length > 0 ? 'stop' : { type: 'select_idlecmd', action: 3, index: options.monster_sets.findIndex((card) => card.code === SKULL) }
+      return ask.type === 'select_tribute' ? { type: ask.type, indices: [0] } : undefined
+    })
+
+    for (const events of [mine, theirs]) {
+      expect(of(events, 'move').filter((event) => event.tribute).map((event) => [event.card, event.to.location])).toEqual([[CELTIC, L.GRAVE]])
+      expect(of(events, 'set').map((event) => event.tribute)).toEqual([true])
+    }
+  })
+
   it('una Invocación Ritual: los monstruos que se sacrifican (de la mano y del campo) llevan `tribute`; el Ritual no lleva marca de Invocación por Sacrificio', { timeout: 120_000 }, async () => {
     const { mine, theirs } = await play([at(SKULL, 0, L.MZONE, 2, 1), at(CELTIC, 0, L.HAND), at(RITUAL_SPELL, 0, L.HAND), at(BLS, 0, L.HAND)], (ask, seen) => {
       const options = idle(ask)

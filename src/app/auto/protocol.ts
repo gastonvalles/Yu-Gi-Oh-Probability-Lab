@@ -229,7 +229,8 @@ export const EVENT_SHAPES = {
   /** `tribute`: la carta se fue como Sacrificio (lo marca el anfitrión, `core-host.ts`: el núcleo no lo dice en el mensaje). */
   move: { card: 'int', from: LOC, to: LOC, tribute: ['opt', 'bool'] },
   pos_change: { code: 'int', controller: 'seat', location: 'int', sequence: 'int', prev_position: 'int', position: 'int' },
-  set: PLAYED,
+  /** `tribute`: la Colocación de un monstruo pagó un Sacrificio (el anfitrión lo marca, como en `summoning`). */
+  set: { ...PLAYED, tribute: ['opt', 'bool'] },
   swap: { card1: CARD_POS, card2: CARD_POS },
   field_disabled: { field_mask: 'int' },
   /** `tribute`: es una Invocación por Sacrificio. `pendulum`: por Péndulo; `more`, y vienen más de la misma Invocación. Los marca el anfitrión (`core-host.ts`). */

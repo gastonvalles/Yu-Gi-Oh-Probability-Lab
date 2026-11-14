@@ -59,6 +59,9 @@ describe('la mesa de práctica en inglés', () => {
 
     expect(describe({ type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' })).toBe('You Normal Summon C1 (Tributing A1 and A2)')
     expect(describe({ type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 0, pos: 'set' })).toBe('You Set C1 face-down by Tributing A1')
+    // Con la marca del núcleo (el automático): dice Sacrificio, no Normal.
+    expect(describe({ type: 'place', id: 'c1', zone: 'mz', index: 0, pos: 'atk', how: 'normal', tribute: true })).toBe('You Tribute Summon C1')
+    expect(describe({ type: 'place', id: 'c1', zone: 'mz', index: 0, pos: 'set', tribute: true })).toBe('You Set C1 face-down by Tribute')
     expect(describe({ type: 'summon', id: 'x1', how: 'xyz', materials: ['a1', 'a2', 'b1'], zone: 'emz', index: 0, pos: 'def' })).toBe('You Xyz Summon X1 in Defense Position (materials: A1, A2, and B1)')
     expect(describe({ type: 'phase', phase: 'battle' })).toBe('You go to the Battle Phase')
     expect(describe({ type: 'phase', phase: 'draw' }, end)).toBe('Turn 2: Draw Phase, you draw E1')

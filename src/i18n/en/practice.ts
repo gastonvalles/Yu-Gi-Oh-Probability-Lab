@@ -159,6 +159,8 @@ export const practice: Translated<typeof es> = {
   'practice.step.position.def': 'Defense Position',
   'practice.step.tributeSet': 'You Set {card} face-down by Tributing {list}',
   'practice.step.tributeSummon': 'You Normal Summon {card} (Tributing {list})',
+  'practice.step.tributeSetMarked': 'You Set {card} face-down by Tribute',
+  'practice.step.tributeSummonMarked': 'You Tribute Summon {card}',
   'practice.step.summon': 'You {summon} {card} (materials: {materials})',
   'practice.step.summonNone': 'You Special Summon {card} (no materials)',
   'practice.step.summonNoneDefense': 'You Special Summon {card} in Defense Position (no materials)',
