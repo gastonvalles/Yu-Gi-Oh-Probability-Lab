@@ -10,6 +10,8 @@ import { DECK_SHUFFLE_MS } from './shuffle-fx'
 /** Pausa antes de repartir la primera carta de una mano nueva (el mazo se baraja antes: se lo ve terminar y golpearse contra la mesa) y entre carta y carta (el ritmo de quien reparte). */
 export const FIRST_DEAL_MS = DECK_SHUFFLE_MS + 140
 export const NEXT_DEAL_MS = 100
+/** Cuánto tarda una carta en llegar a la mano desde el mazo al repartir (sale, se da vuelta en el camino y se asienta). */
+export const DEAL_MS = 380
 
 /** Dónde está la carta (px dentro de la mano), cuánto gira en el plano (°), su escala y su opacidad. */
 export interface DealPose {

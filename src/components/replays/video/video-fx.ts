@@ -587,24 +587,32 @@ function handShuffleOverlay(hand: readonly SceneSlot[], side: number, assets: Vi
 
 /**
  * El reparto de la mano al empezar, como en la mesa: el deck se baraja y, `MESA.firstDeal` después, sale una carta cada `MESA.nextDeal` por una curva baja hasta su lugar en el
- * abanico (`dealFrames`: arranca rápido y llega despacio, dándose vuelta en el camino, y se asienta apenas más grande).
+ * abanico (`dealFrames`: arranca rápido y llega despacio, dándose vuelta en el camino, y se asienta apenas más grande). Las dos manos (`sides`) a la vez, como el replay; `start`, desde cuándo
+ * (la primera mano del automático llega con su robo de 5).
  */
-export function dealOverlays(scene: Scene, assets: VideoAssets, speed: VideoSpeed): Overlay[] {
-  const side = scene.sides[0]
+export function dealOverlays(scene: Scene, assets: VideoAssets, speed: VideoSpeed, sides: readonly (0 | 1)[] = [0, 1], start = 0): Overlay[] {
+  return sides.flatMap((index) => dealSide(scene, index, assets, speed, start))
+}
+
+/** Las cartas que reparte `dealOverlays` (`lado:id`): no vuelan con la jugada. */
+export const dealtKeys = (scene: Scene, sides: readonly (0 | 1)[]) => sides.flatMap((index) => scene.sides[index].hand.map((slot) => `${index}:${slot.card!.id}`))
+
+function dealSide(scene: Scene, index: 0 | 1, assets: VideoAssets, speed: VideoSpeed, start: number): Overlay[] {
+  const side = scene.sides[index]
   const deck = side.slots.find((slot) => slot.pile === 'deck')
   if (!deck || side.hand.length === 0 || !assets.back) return []
   const s = scene.layout.scale
-  const from = poseOf(deck.rect, { sideways: false, upsideDown: false })
+  const from = poseOf(deck.rect, { sideways: false, upsideDown: index === 1 })
   const cards = side.hand.map((slot) => ({ card: slot.card!, to: poseOf(slot.rect, slot.card!) }))
   const total = MESA.firstDeal + (cards.length - 1) * MESA.nextDeal + MESA.deal
   const turnEase = easeInOut
   return [
-    shuffleOverlay(deck, 0, assets, s, 0, speed),
+    shuffleOverlay(deck, index, assets, s, start, speed),
     {
       kind: 'deal',
-      start: 0,
+      start,
       duration: total / speed,
-      hides: cards.map(({ card }) => `0:${card.id}`),
+      hides: dealtKeys(scene, [index]),
       draw: (ctx, p) => {
         const ms = p * total
         cards.forEach(({ card, to }, index) => {
