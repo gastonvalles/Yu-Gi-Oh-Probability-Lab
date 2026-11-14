@@ -123,15 +123,21 @@ const roundCorners = (page: Page) =>
     })
   })
 
-/** Un muestreador por cuadro: guarda el mínimo y el máximo de la `y` del campo y de tu mano desde que se llama (un salto que vuelve no se escapa). Se lee con `readYs`. */
-const watchYs = (page: Page) =>
+/**
+ * Un muestreador por cuadro: guarda el mínimo y el máximo de la `y` del campo y de tu mano desde que se llama (un salto que vuelve no se escapa). Se lee con `readYs`. Con `shake`, el campo no se
+ * muestrea mientras se sacude a propósito (`data-shaking`, la sacudida de una Invocación: 68933e13 y `docs/movimiento.md`); antes y después, sí: tiene que volver a su píxel.
+ */
+const watchYs = (page: Page, { shake = false } = {}) =>
   page.evaluate(`(() => {
     const field = ${FIELD}
     const hand = document.querySelector('[role=list][aria-label=Mano]')
     const seen = { field: [Infinity, -Infinity], hand: [Infinity, -Infinity] }
     window.__ys = seen
     const sample = () => {
-      for (const [key, node] of [['field', field], ['hand', hand]]) { const y = node.getBoundingClientRect().top; seen[key] = [Math.min(seen[key][0], y), Math.max(seen[key][1], y)] }
+      for (const [key, node] of [['field', field], ['hand', hand]]) {
+        if (${shake} && key === 'field' && node.closest('[data-shaking]')) continue
+        const y = node.getBoundingClientRect().top; seen[key] = [Math.min(seen[key][0], y), Math.max(seen[key][1], y)]
+      }
       window.__raf = requestAnimationFrame(sample)
     }
     sample()
@@ -786,7 +792,8 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`))
     await startAuto(page)
-    await watchYs(page)
+    // El aviso sale de una Invocación Normal, que sacude el campo a propósito (68933e13): esos cuadros no cuentan; Opciones, la paleta y el aviso, sí.
+    await watchYs(page, { shake: true })
 
     await test.step('TI-214: el conteo de cada pila es sólo un número blanco, sin cuadro ni color; el botón de fase es cuadrado (≥ 44 px)', async () => {
       const counts = await mat(page).locator('[data-drop="deck"], [data-drop="extra"], [data-drop="gy"], [data-drop="banish"]').evaluateAll((zones) =>
