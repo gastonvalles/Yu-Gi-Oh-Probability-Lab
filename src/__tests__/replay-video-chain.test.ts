@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import { CHAIN_ALONE_MS, CHAIN_LEAVE_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainFeed } from '../app/auto/chain-feed'
 import { buildDuelReplay, replayChainSteps, type ReplayChainStep, type ReplayInput } from '../app/duel-replay'
+import { CHAIN_BEAT_MS } from '../app/card-glow'
 import { createMatState } from '../app/practice-mat'
 import { LAYOUT } from '../components/auto/ChainNotice'
 import { BACK_POSE, CHAIN_TILT, tiltPoint, chainOverlays, chainSnapshots, drawMedal, medalTracks, MEDAL, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
@@ -211,5 +212,13 @@ describe('los medallones en el video', () => {
     expect(calls(resolve - 1)).toBe(0)
     for (const now of [resolve + 30, resolve + 100, resolve + 600, resolve + CHAIN_SOLVE_MS + 100]) expect(calls(now)).toBeGreaterThan(0)
     expect(calls(resolve + CHAIN_SOLVE_MS + MEDAL.fade)).toBe(0)
+  })
+
+  it('los tres gestos de la cadena duran en la mesa lo que dibuja el video (`CHAIN_BEAT_MS` contra las animaciones `chain-*` de `index.css`)', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8')
+    const { wait, resolve, void: blink, flash } = CHAIN_BEAT_MS
+    for (const token of [`--animate-chain-wait: pulse ${wait}ms`, `--animate-chain-resolve: chain-resolve ${resolve}ms`, `--animate-chain-glint: chain-glint ${resolve}ms`, `--animate-chain-void: chain-void ${blink}ms`, `--animate-chain-void-flash: chain-void-flash ${flash}ms`]) expect(css).toContain(token)
+    // El brillo sube en `glint` ms de los `resolve` del pulso.
+    expect(css).toContain(`${Math.round((CHAIN_BEAT_MS.glint / resolve) * 100)}% {\n      opacity: 1;`)
   })
 })

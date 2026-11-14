@@ -239,7 +239,8 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
             out && 'scale-125 opacity-0',
           )}
         >
-          <span className={cx('grid size-full place-items-center', resolving && !out && 'animate-pulse motion-reduce:animate-none')}>
+          {/* Al quedar negado, el medallón parpadea cuatro veces (`animate-chain-void`) tras un destello celeste corto, encima (Master Duel lo da azul `#1300ff`, que sobre el carbón no se ve). */}
+          <span className={cx('grid size-full place-items-center motion-reduce:animate-none', !out && (voided ? 'animate-chain-void' : resolving && 'animate-pulse'))}>
             <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
               <circle cx={20} cy={20} r={18} className="fill-background" />
               {MEDAL_RING.map((angle, i) =>
@@ -253,6 +254,7 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
             </svg>
             <span className="relative text-lead font-extrabold leading-none tabular-nums text-white text-shadow-md text-shadow-chain-glow">{number}</span>
           </span>
+          {voided && !out ? <span data-chain-void-flash="" className="absolute -inset-2 animate-chain-void-flash bg-radial from-chain-glow from-30% to-transparent to-70% fx-lite:hidden motion-reduce:hidden" /> : null}
           {/* Al quedar negado, el corte (un flipbook) pasa por donde queda la tacha. */}
           {voided && !out ? <Flipbook book={CUT} className="absolute -inset-2" /> : null}
         </span>

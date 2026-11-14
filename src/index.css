@@ -2187,3 +2187,63 @@
     }
   }
 }
+
+/*
+ * Los tres gestos de la cadena, con los tiempos de Master Duel (`CHAIN_BEAT_MS` de `app/card-glow.ts`; un test los compara): la carta que espera respuesta y los medallones que esperan
+ * su turno laten (el `pulse` de Tailwind, de 1 a 0,5, cada 1333 ms); el medallón que resuelve crece 0,75 → 0,87 → 1 en 517 ms con un brillo que sube en 100 ms (`chain-glint`, la
+ * opacidad de una capa); el negado parpadea cuatro veces en 450 ms tras un destello de 50 ms. Sólo `scale` y `opacity`; ninguno alarga `chainDwell`.
+ */
+@theme {
+  --animate-chain-wait: pulse 1333ms ease-in-out infinite;
+  --animate-chain-resolve: chain-resolve 517ms var(--ease-out) both;
+  --animate-chain-glint: chain-glint 517ms var(--ease-out) both;
+  --animate-chain-void: chain-void 450ms ease-in-out both;
+  --animate-chain-void-flash: chain-void-flash 50ms var(--ease-out) both;
+
+  @keyframes chain-resolve {
+    0% {
+      scale: 0.75;
+    }
+    50% {
+      scale: 0.87;
+    }
+    100% {
+      scale: 1;
+    }
+  }
+  /* 100 de 517 ms: sube y se apaga con el resto del pulso. */
+  @keyframes chain-glint {
+    0% {
+      opacity: 0;
+    }
+    19% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes chain-void {
+    0%,
+    25%,
+    50%,
+    75%,
+    100% {
+      opacity: 1;
+    }
+    12.5%,
+    37.5%,
+    62.5%,
+    87.5% {
+      opacity: 0;
+    }
+  }
+  @keyframes chain-void-flash {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+}

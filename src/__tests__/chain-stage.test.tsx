@@ -265,6 +265,9 @@ describe('la cadena en grande', () => {
     // Negado: lo cruza el corte (un flipbook), sin «Livianos» ni movimiento reducido.
     view.rerender(<ChainBadge medals={[{ ...medal(1), voided: true }, medal(2)]} />)
     expect(at(1)!.querySelector('[data-flipbook]')).toHaveClass('fx-lite:hidden', 'motion-reduce:hidden')
+    // Y parpadea cuatro veces (también con «Livianos»: es información) tras un destello celeste (sin «Livianos»); con movimiento reducido, nada.
+    expect(at(1)!.querySelector('.animate-chain-void')).toHaveClass('motion-reduce:animate-none')
+    expect(at(1)!.querySelector('[data-chain-void-flash]')).toHaveClass('animate-chain-void-flash', 'fx-lite:hidden', 'motion-reduce:hidden')
     view.rerender(<ChainBadge medals={[medal(1)]} />)
     expect(at(1)!.style.translate).toBe('0px 0')
     const leaving = document.querySelector('[data-chain-medal-leaving="2"]')
