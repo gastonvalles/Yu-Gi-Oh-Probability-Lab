@@ -1060,7 +1060,12 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
     await press(hero.getByRole('button', { name: 'Ver el replay', exact: true }), isMobile)
     const back = page.getByRole('button', { name: 'Volver al resultado' })
     await expect(back, 'el replay se abre con su salida «Volver al resultado»').toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('button', { name: 'Ver desde el otro lado' }), 'el replay trae los dos lados').toBeVisible()
+    // «Ver desde el otro lado» va en el menú del replay, con los controles en las franjas del duelo (b6b412ce y a269488f).
+    const more = page.getByRole('button', { name: /^Más opciones de / })
+    await press(more, isMobile)
+    await expect(page.getByRole('menuitemcheckbox', { name: 'Ver desde el otro lado' }), 'el replay trae los dos lados').toBeVisible()
+    await press(more, isMobile)
+    await expect(page.getByRole('menuitemcheckbox', { name: 'Ver desde el otro lado' }), 'el menú se cierra').toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Siguiente' }), 'el replay avanza de a un paso').toBeVisible()
     await press(page.getByRole('button', { name: 'Siguiente' }), isMobile)
     await press(back, isMobile)
