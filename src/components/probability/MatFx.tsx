@@ -240,7 +240,7 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
           )}
         >
           {/* Al quedar negado, el medallón parpadea cuatro veces (`animate-chain-void`) tras un destello celeste corto, encima (Master Duel lo da azul `#1300ff`, que sobre el carbón no se ve). */}
-          <span className={cx('grid size-full place-items-center motion-reduce:animate-none', !out && (voided ? 'animate-chain-void' : resolving && 'animate-pulse'))}>
+          <span className={cx('grid size-full place-items-center motion-reduce:animate-none', !out && (voided ? 'animate-chain-void' : resolving && 'animate-chain-resolve'))}>
             <svg viewBox="0 0 40 40" className="absolute inset-0 size-full overflow-visible">
               <circle cx={20} cy={20} r={18} className="fill-background" />
               {MEDAL_RING.map((angle, i) =>
@@ -253,6 +253,8 @@ export function ChainBadge({ medals }: { medals: readonly ChainMedal[] }) {
               {voided ? <line x1={9} y1={31} x2={31} y2={9} strokeWidth={3.5} strokeLinecap="round" className="stroke-danger" /> : null}
             </svg>
             <span className="relative text-lead font-extrabold leading-none tabular-nums text-white text-shadow-md text-shadow-chain-glow">{number}</span>
+            {/* Al resolver, el brillo corto (Master Duel: +0,2 en 100 ms): la opacidad de una capa, sin `filter`. */}
+            {resolving && !voided && !out ? <span data-chain-glint="" className="absolute inset-0 animate-chain-glint bg-radial from-white/25 from-30% to-transparent to-70% fx-lite:hidden motion-reduce:hidden" /> : null}
           </span>
           {voided && !out ? <span data-chain-void-flash="" className="absolute -inset-2 animate-chain-void-flash bg-radial from-chain-glow from-30% to-transparent to-70% fx-lite:hidden motion-reduce:hidden" /> : null}
           {/* Al quedar negado, el corte (un flipbook) pasa por donde queda la tacha. */}

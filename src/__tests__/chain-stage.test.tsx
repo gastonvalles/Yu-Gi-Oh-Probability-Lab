@@ -261,6 +261,10 @@ describe('la cadena en grande', () => {
     expect(at(1)).toHaveClass('starting:opacity-0', 'starting:scale-75', 'motion-reduce:transition-opacity')
     expect(at(1)!.style.translate).toBe('-12px 0')
     expect(at(2)!.style.translate).toBe('12px 0')
+    // El que resuelve crece 0,75 → 0,87 → 1 (también con «Livianos») con un brillo corto (sin «Livianos»); con movimiento reducido, nada.
+    expect(at(2)!.querySelector('.animate-chain-resolve')).toHaveClass('motion-reduce:animate-none')
+    expect(at(2)!.querySelector('[data-chain-glint]')).toHaveClass('animate-chain-glint', 'fx-lite:hidden', 'motion-reduce:hidden')
+    expect(at(1)!.querySelector('.animate-chain-resolve, [data-chain-glint]')).toBeNull()
     expect(document.querySelector('[data-flipbook]')).toBeNull()
     // Negado: lo cruza el corte (un flipbook), sin «Livianos» ni movimiento reducido.
     view.rerender(<ChainBadge medals={[{ ...medal(1), voided: true }, medal(2)]} />)
