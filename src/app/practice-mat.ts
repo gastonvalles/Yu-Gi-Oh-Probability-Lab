@@ -91,8 +91,12 @@ export type MatAction =
   | { type: 'mill'; count: number }
   | { type: 'shuffle'; seed: number }
   /** `deck` = tope del deck. `faceDown` sólo aplica al destierro. `shuffle`: la carta salió mirando el deck y el resto se baraja con esa semilla en la misma jugada. */
-  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean; faceUp?: boolean; shuffle?: number }
-  | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon; shuffle?: number }
+  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean; faceUp?: boolean; shuffle?: number; tribute?: true }
+  /**
+   * `tribute` y `more` sólo los pone el automático, con las marcas del núcleo (`auto/core-host.ts`): `tribute` en `move`, se fue del campo como Sacrificio; en `place`, es una Invocación
+   * por Sacrificio. `more`, con `how: 'pendulum'`: vienen más de la misma Invocación por Péndulo.
+   */
+  | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon; shuffle?: number; tribute?: true; more?: true }
   /** Invocación Normal (o Colocar) de un monstruo de Nivel 5+: los sacrificios van al cementerio y la carta sale a la zona. */
   | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
   /** Invocación desde el Extra Deck, con materiales del campo o sin ninguno: Fusión, Sincronía y Enlace los mandan al cementerio; Xyz los pone debajo. Sin materiales sale igual (como cualquier Invocación Especial). */

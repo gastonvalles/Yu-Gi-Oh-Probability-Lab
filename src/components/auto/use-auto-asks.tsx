@@ -1090,7 +1090,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // Lo del rival que la mesa recibe, armado una vez por mesa del rival (y no por aviso del núcleo): su campo, su mano, sus vuelos y sus Zonas Extra.
   const opponentCells = useMemo(() => <SideCells side={opponent} owner="theirs" />, [opponent])
   const sharedZone = useCallback((index: number) => sharedZoneCard(opponent, index), [opponent])
-  const rivalFlights = useMemo(() => ({ state: theirs, artOf: opponent.artOf }), [theirs, opponent.artOf])
+  // Con la última jugada suya que se muestra: la mesa lee de ahí las marcas del núcleo (el Péndulo, el Sacrificio).
+  const rivalAction = snap.theirsActs[theirsShown - 1]?.action
+  const rivalFlights = useMemo(() => ({ state: theirs, artOf: opponent.artOf, ...(rivalAction ? { action: rivalAction } : {}) }), [theirs, opponent.artOf, rivalAction])
   // Su deck y su mano se barajan a la vista cuando toca su deck o le suma una carta a la mano (lo mismo que cuenta el duelo por enlace).
   const rivalShuffle = useRivalShuffle(theirs)
   // La mano que barajó un efecto (la tuya o la del rival), cuando la mesa llega hasta ahí: no es una jugada.

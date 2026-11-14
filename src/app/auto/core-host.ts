@@ -95,6 +95,26 @@ const STAT_FLAGS = (OcgQueryFlags.CODE | OcgQueryFlags.POSITION | OcgQueryFlags.
 const HAND_FLAGS = (STAT_FLAGS | OcgQueryFlags.IS_PUBLIC) as QueryFlags
 
 const TYPE_MONSTER = 0x1
+const REASON_RELEASE = 0x2
+const REASON_SUMMON = 0x10
+const RELEASE_FLAGS = (OcgQueryFlags.CODE | OcgQueryFlags.REASON) as QueryFlags
+const FROM_PLAY = OcgLocation.MZONE | OcgLocation.SZONE | OcgLocation.HAND
+/** Las preguntas de la Invocación por Péndulo misma (qué cartas, dónde y en qué posición): mientras pregunta una de éstas, la Invocación sigue. */
+const PENDULUM_ASKS = new Set(['select_unselect_card', 'select_card', 'select_place', 'select_position'])
+/** Las que piden la carta siguiente de la misma Invocación: con una de éstas detrás, viene otra (`more`). */
+const NEXT_CARD_ASKS = new Set(['select_place', 'select_position'])
+
+/**
+ * Si el `move` que el núcleo acaba de contar fue un Sacrificio, y si fue el de una Invocación por Sacrificio: el mensaje no trae el motivo, pero la carta lo guarda (`REASON_RELEASE`,
+ * con `REASON_SUMMON` en una Invocación). Se consulta en su lugar nuevo antes de que el núcleo siga (`duelProcess` corta tras cada paso que cuenta algo, y en un paso una carta se mueve
+ * una vez); si ahí no está la misma carta, no se marca.
+ */
+function releaseOf(lib: OcgCoreSync, handle: OcgDuelHandle, move: { card: number; from: { location: number }; to: { controller: Seat; location: number; sequence: number } }): number {
+  if ((move.from.location & FROM_PLAY) === 0 || (move.to.location & (OcgLocation.MZONE | OcgLocation.SZONE | OcgLocation.OVERLAY)) !== 0 || move.to.location === 0) return 0
+  const card = lib.duelQuery(handle, { flags: RELEASE_FLAGS, controller: move.to.controller, location: move.to.location as OcgLocation, sequence: move.to.sequence, overlaySequence: 0 })
+
+  return card?.code === move.card && card.reason !== undefined && (card.reason & REASON_RELEASE) !== 0 ? card.reason : 0
+}
 /** El script de una carta sin reglas automáticas (`vanillaScript`). */
 const VANILLA_SCRIPT = 'local s,id=GetID()\nfunction s.initial_effect(c) end\n'
 const LUA_LOCATION: Record<number, string> = { [OcgLocation.DECK]: 'LOCATION_DECK', [OcgLocation.HAND]: 'LOCATION_HAND', [OcgLocation.MZONE]: 'LOCATION_MZONE', [OcgLocation.SZONE]: 'LOCATION_SZONE', [OcgLocation.GRAVE]: 'LOCATION_GRAVE', [OcgLocation.REMOVED]: 'LOCATION_REMOVED', [OcgLocation.EXTRA]: 'LOCATION_EXTRA' }
@@ -315,6 +335,41 @@ export function createAutoHost(options: HostOptions): AutoHost {
    * al invitado. Se rearma con cada re-simulación.
    */
   let known: [Set<number>, Set<number>] = [new Set(), new Set()]
+  /**
+   * Lo que el núcleo no dice y se sabe por la respuesta: quién está haciendo una Invocación por Péndulo (contestó la Invocación Especial de una carta de su Zona de Péndulo, `ask-ui.ts`;
+   * dura mientras el núcleo pregunte por esa Invocación, `PENDULUM_ASKS`) y si el último Sacrificio fue el de una Invocación (la marca va a la Invocación Normal que sigue).
+   */
+  let pendulum: Seat | null = null
+  let tributeSummon = false
+
+  /** Las marcas del anfitrión en un evento del núcleo, antes de repartirlo: el Sacrificio en `move` y en la Invocación que paga, y el Péndulo en `spsummoning`. */
+  function mark(event: WireEvent, lib: OcgCoreSync, handle: OcgDuelHandle): WireEvent {
+    switch (event.type) {
+      case 'move': {
+        const reason = releaseOf(lib, handle, event)
+
+        if (reason === 0) return event
+        if ((reason & REASON_SUMMON) !== 0) tributeSummon = true
+        return { ...event, tribute: true }
+      }
+      case 'summoning':
+        if (!tributeSummon) return event
+        tributeSummon = false
+        return { ...event, tribute: true }
+      case 'set':
+        tributeSummon = false
+        return event
+      case 'spsummoning':
+        return pendulum === null ? event : { ...event, pendulum: true }
+      // Terminó la Invocación (o algo se encadenó): lo que se invoque después ya no es por Péndulo.
+      case 'spsummoned':
+      case 'chaining':
+        pendulum = null
+        return event
+      default:
+        return event
+    }
+  }
 
   const fault = (kind: FaultKind, message: string, cards?: number[]) => emit({ t: 'fault', kind, message: clip(message), ...(cards ? { cards } : {}) })
 
@@ -338,6 +393,8 @@ export function createAutoHost(options: HostOptions): AutoHost {
     if (live) freeDuel(live.lib, live.handle)
     live = null
     pending = null
+    pendulum = null
+    tributeSummon = false
     started = false
     ended = false
   }
@@ -404,7 +461,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
 
             if (!parsed) fault('unhandled', `message with an unknown shape: ${name}`)
             else {
-              const event = { type: name, ...parsed } as WireEvent
+              const event = mark({ type: name, ...parsed } as WireEvent, lib, handle)
 
               for (const seat of [0, 1] as const) {
                 const seen = eventFor(seat, event)
@@ -424,6 +481,18 @@ export function createAutoHost(options: HostOptions): AutoHost {
       return false
     }
 
+    // La Invocación por Péndulo cuenta cada carta en una tanda (entre una y otra pregunta dónde y en qué posición va la siguiente): la última lleva `more` sólo si sigue la Invocación.
+    const going = pendulum !== null && question?.seat === pendulum && PENDULUM_ASKS.has(question.ask.type)
+    const next = going && NEXT_CARD_ASKS.has(question!.ask.type)
+
+    if (!going) pendulum = null
+    for (const told of events) {
+      const last = told.findLastIndex((event) => event.type === 'spsummoning' && event.pendulum)
+
+      told.forEach((event, index) => {
+        if (event.type === 'spsummoning' && event.pendulum && (index < last || next)) told[index] = { ...event, more: true }
+      })
+    }
     if (question) events[1 - question.seat]!.push({ type: 'waiting' })
     // Una tanda de más de `MAX_LIST` no se lee del otro lado: viaja en varias, en orden y con el mismo `n`. Un `move` que quede al final de una
     // pierde el `summoning` que lo sigue (el adaptador lo busca en la misma tanda): la mesa no dice si fue Normal o Especial, nada más.
@@ -462,6 +531,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
     }
     pending = null
     answers.push(answer)
+    if (answer.type === 'select_idlecmd' && asked.ask.type === 'select_idlecmd' && answer.action === 1 && answer.index !== null && asked.ask.special_summons[answer.index]?.location === OcgLocation.SZONE) pendulum = asked.seat
     const start = performance.now()
 
     send(live.lib, live.handle, toResponse(answer))

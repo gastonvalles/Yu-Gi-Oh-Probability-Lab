@@ -168,13 +168,13 @@ describe('el impacto en la mesa (field-impact)', () => {
       expect(calls.some((call) => classOf(call).includes('border-3') && classOf(call).includes('border-fx-enlace'))).toBe(true)
     })
 
-    it('el tipo de la llegada: el de la jugada, Ritual si sale de la mano, Sacrificio si lo dice o es una Normal de Nivel 5 o más', () => {
+    it('el tipo de la llegada: el de la jugada, Ritual si sale de la mano, Sacrificio sólo si lo dice (no se deduce del Nivel)', () => {
       const card = (over: Partial<SummonCard['kind']> = {}, ritual = false): SummonCard => ({ kind: { ...TOKEN_KIND, ...over }, ritual })
       expect(landingToneOf({ tone: 'xyz' }, card())).toBe('xyz')
       expect(landingToneOf({ tone: 'special', hand: true }, card({}, true))).toBe('ritual')
       expect(landingToneOf({ tone: 'special' }, card({}, true))).toBe('special')
       expect(landingToneOf({ tone: 'normal', tribute: true }, card())).toBe('tribute')
-      expect(landingToneOf({ tone: 'normal', hand: true }, card({ level: 7 }))).toBe('tribute')
+      expect(landingToneOf({ tone: 'normal', hand: true }, card({ level: 7 }))).toBe('special')
       expect(landingToneOf({ tone: 'normal', hand: true }, card({ level: 4 }))).toBe('special')
       expect(arrivalToneOf({ from: 'extra' }, card({ synchro: true }))).toBe('synchro')
       expect(arrivalToneOf({ from: 'other', hand: true }, card({}, true))).toBe('ritual')
