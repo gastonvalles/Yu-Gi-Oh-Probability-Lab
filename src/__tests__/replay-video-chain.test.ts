@@ -9,7 +9,7 @@ import { buildDuelReplay, replayChainSteps, type ReplayChainStep, type ReplayInp
 import { CHAIN_BEAT_MS } from '../app/card-glow'
 import { createMatState } from '../app/practice-mat'
 import { LAYOUT } from '../components/auto/ChainNotice'
-import { BACK_POSE, CHAIN_TILT, tiltPoint, chainOverlays, chainSnapshots, drawMedal, medalTracks, MEDAL, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
+import { BACK_POSE, CHAIN_TILT, tiltPoint, chainOverlays, chainSnapshots, drawMedal, medalGesture, medalTracks, MEDAL, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
 import { overlaysOf } from '../components/replays/video/video-fx'
 import { cellsOf, fieldRect, placeRect, replayScenes, videoLayout } from '../components/replays/video/video-scene'
 import { chainBeats, chainMs, chainTimeline, frameDurations, INTRO_MS, OUTRO_MS, paceOf, STEP_MS, VIDEO_PACE, videoDurationMs } from '../components/replays/video/video-timeline'
@@ -113,7 +113,7 @@ describe('la escena de la cadena en el video', () => {
     expect(stagePoseOf(4, 5)).toBe(BACK_POSE)
     // Las clases y los tiempos que copia el video siguen en `ChainStage`.
     const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'components', 'auto', 'ChainNotice.tsx'), 'utf8')
-    for (const text of ['starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0', "'-translate-y-full scale-50 opacity-0'", `duration-${STAGE_MS.move}`, `'delay-${STAGE_MS.newest}'`, `delay-${STAGE_MS.bondDelay}`, 'left-1/3 top-2/7 aspect-[421/614] w-1/3', 'aspect-3/4 h-full max-w-full', 'bg-chain-veil/65', 'bg-chain-veil/45']) expect(source).toContain(text)
+    for (const text of ['starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0', "'-translate-y-full scale-50 opacity-0'", `duration-${STAGE_MS.move}`, `'delay-${STAGE_MS.newest}'`, `delay-${STAGE_MS.bondDelay}`, 'left-1/3 top-2/7 aspect-[421/614] w-1/3', 'aspect-3/4 h-full max-w-full', 'bg-chain-veil/65', 'bg-chain-veil/45', 'absolute -inset-1 animate-chain-wait border-2 border-chain-glow']) expect(source).toContain(text)
   })
 
   it('cada carta lleva la inclinación 3D de la mesa (`chain-tilt-*` de `index.css`, con su perspectiva): la de adelante se ve más ancha abajo y más alta del lado que se acerca', () => {
@@ -212,6 +212,27 @@ describe('los medallones en el video', () => {
     expect(calls(resolve - 1)).toBe(0)
     for (const now of [resolve + 30, resolve + 100, resolve + 600, resolve + CHAIN_SOLVE_MS + 100]) expect(calls(now)).toBeGreaterThan(0)
     expect(calls(resolve + CHAIN_SOLVE_MS + MEDAL.fade)).toBe(0)
+  })
+
+  it('los gestos de los medallones, con los tiempos de la mesa y al ritmo del video: el que resuelve crece con su brillo, el que espera late y el negado parpadea cuatro veces', () => {
+    const [cl1, cl2] = [...medalTracks(chainSnapshots(steps, starts, 1))].sort((a, b) => a.number - b.number)
+    const resolve = INTRO_MS + 2 * CHAIN_LINK_MS
+    const { wait, resolve: grow, glint, void: blink, flash } = CHAIN_BEAT_MS
+    expect(medalGesture(cl2!, resolve, 1)).toEqual({ beat: 1, pop: 0.75, glint: 0, flash: 0 })
+    expect(medalGesture(cl2!, resolve + glint, 1).glint).toBe(1)
+    expect(medalGesture(cl2!, resolve + grow / 2, 1).pop).toBeCloseTo(0.87)
+    expect(medalGesture(cl2!, resolve + grow, 1)).toEqual({ beat: 1, pop: 1, glint: 0, flash: 0 })
+    // Al 1,25× todo dura menos: el pulso termina a los 517 / 1,25 ms.
+    expect(medalGesture(cl2!, resolve + grow / 1.25, 1.25).pop).toBe(1)
+    // El CL1 espera su turno: late desde que entró, a la mitad de opacidad a mitad del latido.
+    expect(medalGesture(cl1!, resolve + wait / 2, 1).beat).toBeCloseTo(0.5)
+    expect(medalGesture(cl1!, resolve + wait, 1).beat).toBeCloseTo(1)
+    // Negado: el destello de 50 ms y cuatro parpadeos en 450; después, quieto (sin latir).
+    const voided = { ...cl1!, voided: [{ t: resolve, on: true }] }
+    expect(medalGesture(voided, resolve, 1)).toMatchObject({ beat: 1, flash: 1 })
+    expect(medalGesture(voided, resolve + flash, 1).flash).toBe(0)
+    for (let i = 0; i < 4; i += 1) expect(medalGesture(voided, resolve + (blink / 4) * (i + 0.5), 1).beat).toBeCloseTo(0)
+    expect(medalGesture(voided, resolve + blink + wait / 2, 1).beat).toBe(1)
   })
 
   it('los tres gestos de la cadena duran en la mesa lo que dibuja el video (`CHAIN_BEAT_MS` contra las animaciones `chain-*` de `index.css`)', () => {
