@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-9-replay-reparte-la-mano",
+      "date": "2026-11-14",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "El replay reparte las manos al empezar",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Al empezar el replay de un duelo, las manos de los dos jugadores ya no aparecen de golpe: cada mazo se baraja y las cartas salen de a una, como en el duelo.",
+          "La primera jugada espera a que termine el reparto.",
+          "El video de un duelo también reparte las dos manos; antes repartía sólo la de abajo."
+        ],
+        "ojo": [
+          "Se reparte al abrir el replay por su comienzo y al tocar «Ver de nuevo». Si saltás a otro punto, las manos aparecen ya puestas.",
+          "El replay arranca 1,3 segundos más tarde que antes, por el reparto.",
+          "Con «reducir movimiento» las manos aparecen, como antes."
+        ]
+      },
+      "en": {
+        "title": "The replay deals the hands at the start",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "When a duel replay starts, both players' hands no longer pop in: each deck is shuffled and the cards come out one by one, as in the duel.",
+          "The first play waits for the deal to finish.",
+          "The video of a duel also deals both hands; before, it dealt only the bottom one."
+        ],
+        "ojo": [
+          "The deal runs when you open the replay at its start and when you tap «Watch again». If you jump to another point, the hands show up already in place.",
+          "The replay starts 1.3 seconds later than before, because of the deal.",
+          "With «reduce motion» the hands just appear, as before."
+        ]
+      }
+    },
+    {
       "id": "2026-11-14-8-entradas-misma-velocidad",
       "date": "2026-11-14",
       "tags": [
