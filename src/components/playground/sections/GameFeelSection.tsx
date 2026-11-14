@@ -668,10 +668,10 @@ const CHAIN_CARDS = [
 
 function ChainSample() {
   const [count, setCount] = useState(0)
-  // Cuántos eslabones ya se resolvieron (-1: se arma) y si el 2 niega al 1 al resolverse (como Ash Blossom).
+  // Cuántos eslabones ya se resolvieron (-1: se arma; 0: resuelve el último) y si el 2 niega al 1 al resolverse (como Ash Blossom).
   const [solved, setSolved] = useState(-1)
   const [negate, setNegate] = useState(true)
-  const current = count - solved
+  const current = count - Math.max(solved, 0)
   const rows: ChainNoticeRow[] = CHAIN_CARDS.slice(0, count).map((card, index) => ({ number: index + 1, mine: index % 2 === 0, name: card.name, art: small(card.id), state: solved < 0 ? 'chained' : index + 1 > current ? 'solved' : index + 1 === current ? 'solving' : 'chained' }))
   const medals: ChainMedal[] = solved < 0 ? [] : rows.filter((row) => row.number <= current).map((row) => ({ number: row.number, mine: row.mine, voided: negate && row.number === 1 && current <= 2 && count > 1, resolving: row.number === current }))
   const restart = () => {
@@ -699,7 +699,7 @@ function ChainSample() {
           {count >= CHAIN_CARDS.length ? 'Volver a empezar' : `Encadenar (${count + 1})`}
         </Button>
         <Button size="sm" variant="secondary" disabled={count === 0} onClick={() => (solved >= count - 1 ? restart() : setSolved(solved + 1))}>
-          {solved >= count - 1 && count > 0 ? 'Terminar la cadena' : `Resolver el ${current - (solved < 0 ? 0 : 1)}`}
+          {solved >= count - 1 && count > 0 ? 'Terminar la cadena' : `Resolver el ${solved < 0 ? count : current - 1}`}
         </Button>
         <Switch label="El 2 niega al 1" checked={negate} onChange={setNegate} />
       </div>
