@@ -26,11 +26,10 @@ export interface MatEffects {
   /**
    * Una carta que cae en una zona de monstruo: `flies` es que llega volando desde otro lado (el destello espera a que aterrice). `tribute`: por Sacrificio (la llegada roja); `hand`: salió
    * de la mano (un Ritual que sale de la mano es su Invocación Ritual: `summon-entrance.ts`); `extra`: del Extra Deck sin materiales (la mesa manual), que va con el tipo de su marco.
-   * `pendulum`: la jugada dice Invocación por Péndulo (`how: 'pendulum'`). Sólo es seguro en la mesa manual (lo eligió quien juega): en el automático el adaptador lo deduce de «sale boca
-   * arriba del Extra» y no se usa (`summon-entrance.ts`).
+   * `pendulum`: la jugada dice Invocación por Péndulo (`how: 'pendulum'`: la eligió quien juega, o la marcó el núcleo en el automático); `more`, vienen más de la misma (la marca del núcleo).
    */
-  landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; tribute?: true; hand?: true; extra?: true; pendulum?: true }
-  /** Las casillas de los monstruos que se sacrifican (la jugada `tribute`, también al Colocar): de ahí sale su efecto mientras vuelan al Cementerio (`sacrificeAt`). */
+  landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; tribute?: true; hand?: true; extra?: true; pendulum?: true; more?: true }
+  /** Las casillas de los monstruos que se sacrifican (la jugada `tribute`, también al Colocar, o un `move` con `tribute`): de ahí sale su efecto mientras vuelan al Cementerio (`sacrificeAt`). */
   sacrifice?: Array<{ spot: MatSpot; index: number }>
   /** Cambio de fase: el cartel. `turn` sólo cuando empieza otro turno. */
   banner?: { phase: MatPhase; turn: number | null }
@@ -78,7 +77,7 @@ function batchEffects(before: MatState, actions: readonly MatAction[], hiddenHan
     if (part.type === 'batch') continue
 
     const effects = matEffects(state, part, hiddenHand)
-    const { spotlight, showcase, quiet } = joined
+    const { spotlight, showcase, quiet, sacrifice } = joined
 
     state = matReducer(state, part)
     joined = {
@@ -87,6 +86,7 @@ function batchEffects(before: MatState, actions: readonly MatAction[], hiddenHan
       ...(spotlight && effects.spotlight?.kind === spotlight.kind ? { spotlight: { ...spotlight, ids: [...(spotlight.ids ?? [spotlight.id]), effects.spotlight.id] } } : {}),
       ...(showcase && effects.showcase?.kind === showcase.kind ? { showcase: { ...showcase, ids: [...showcase.ids, ...effects.showcase.ids], ...(effects.showcase.flip ? { flip: true as const } : {}) } } : {}),
       ...(quiet && effects.quiet?.kind === quiet.kind ? { quiet: { ...quiet, ids: [...quiet.ids, ...effects.quiet.ids] } } : {}),
+      ...(sacrifice && effects.sacrifice ? { sacrifice: [...sacrifice, ...effects.sacrifice] } : {}),
     }
   }
 
@@ -136,12 +136,18 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
       return milled.length > 0 ? quiet(milled, 'gy') : {}
     }
 
-    case 'move':
+    case 'move': {
+      if (!changed) return {}
+      // Un Sacrificio que marcó el núcleo (`tribute`, el automático): su efecto sale de la casilla que deja, como en la jugada `tribute`.
+      const where = action.tribute ? locateCard(before, action.id) : null
+      const sacrificed = where?.kind === 'spot' ? { sacrifice: [{ spot: where.spot, index: where.index }] } : {}
+
       // Una ficha que deja el campo desaparece: no hay carta que mostrar.
-      if (!changed || isToken(action.id)) return {}
+      if (isToken(action.id)) return sacrificed
 
       // Al cementerio o al destierro no se muestra grande: va al registro.
-      return action.to === 'gy' || action.to === 'banished' ? quiet([action.id], action.to === 'gy' ? 'gy' : 'banish') : show([action.id], SHOWCASE_OF_PILE[action.to])
+      return { ...(action.to === 'gy' || action.to === 'banished' ? quiet([action.id], action.to === 'gy' ? 'gy' : 'banish') : show([action.id], SHOWCASE_OF_PILE[action.to])), ...sacrificed }
+    }
 
     case 'attach':
       return changed ? show([action.id], 'attach') : {}
@@ -162,8 +168,9 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
       const tone = normal ? 'normal' : 'special'
 
       const extra = where?.kind === 'pile' && where.pile === 'extra'
-      const pendulum = action.how === 'pendulum' ? { pendulum: true as const } : {}
-      return { landing: { spot: action.zone, index: action.index, tone, flies: true, ...(hand ? { hand: true as const } : {}), ...(extra ? { extra: true as const } : {}), ...pendulum }, ...show([action.id], tone) }
+      const pendulum = action.how === 'pendulum' ? { pendulum: true as const, ...(action.more ? { more: true as const } : {}) } : {}
+      const tribute = action.tribute ? { tribute: true as const } : {}
+      return { landing: { spot: action.zone, index: action.index, tone, flies: true, ...(hand ? { hand: true as const } : {}), ...(extra ? { extra: true as const } : {}), ...pendulum, ...tribute }, ...show([action.id], tone) }
     }
 
     case 'tribute': {

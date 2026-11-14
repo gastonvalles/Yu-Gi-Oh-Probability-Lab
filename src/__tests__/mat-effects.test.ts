@@ -85,6 +85,11 @@ describe('los efectos de una jugada', () => {
     })
     // Al Colocar, el Sacrificio igual se ve (sin llegada).
     expect(matEffects(field, { type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 4, pos: 'set' })).toEqual({ sacrifice: [{ spot: 'mz', index: 0 }] })
+    // El automático, con las marcas del núcleo: el que se va como Sacrificio (`move`) y la Invocación por Sacrificio y por Péndulo (`place`). Sin la marca, al Cementerio no destella.
+    expect(matEffects(field, { type: 'move', id: 'a1', to: 'gy', tribute: true })).toEqual({ quiet: { ids: ['a1'], kind: 'gy' }, sacrifice: [{ spot: 'mz', index: 0 }] })
+    expect(matEffects(field, { type: 'move', id: 'a1', to: 'gy' })).toEqual({ quiet: { ids: ['a1'], kind: 'gy' } })
+    expect(matEffects(field, { type: 'place', id: 'c1', zone: 'mz', index: 4, pos: 'atk', how: 'normal', tribute: true })).toMatchObject({ landing: { tone: 'normal', tribute: true } })
+    expect(matEffects(field, { type: 'place', id: 'c1', zone: 'mz', index: 4, pos: 'atk', how: 'pendulum', more: true })).toMatchObject({ landing: { tone: 'special', pendulum: true, more: true } })
   })
 
   it('la ficha aparece de la nada y el monstruo que pasa boca arriba a ataque es una Invocación por Volteo', () => {

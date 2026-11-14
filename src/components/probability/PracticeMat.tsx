@@ -244,7 +244,7 @@ export interface DuelMatLink {
   /** Señalar una carta mía a la vista en el campo (se ve en las dos pantallas un rato; no es una jugada). */
   point?: (id: string) => void
   /** La mesa del rival (con ids opacos) y el arte de lo que mostró: sus cartas vuelan de un lugar a otro (al cementerio, a la mano, al campo…) como las propias. */
-  rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
+  rivalFlights?: { state: MatState; artOf: (id: string) => string | null; action?: MatAction }
   /** Cuenta las veces que el rival tocó su deck o sumó una carta a su mano: cada vez que sube, su deck y su mano se barajan a la vista. */
   rivalShuffle?: number
   /** Cuenta las veces que un efecto barajó tu mano (duelo automático): cada vez que sube, tu mano se baraja a la vista (no es una jugada: ni Pasos ni replay). */
@@ -580,7 +580,7 @@ interface MatFx {
   flash: { id: string; key: number; kind: SpotlightKind } | null
   stage: { ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null
   /** `dropped`: era la carta que esperaba levantada en esa casilla; cae ahí mismo (`dropFrames`) y su golpe espera a que toque. */
-  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; dropped: boolean; key: number; pendulum?: true } | null
+  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; dropped: boolean; key: number; pendulum?: true; more?: true } | null
   banner: { phase: MatPhase; turn: number | null; key: number } | null
   handFlash: number | null
 }
@@ -1156,10 +1156,22 @@ function PracticeMatBody({
    * La Invocación por Péndulo es una sola escena con todas sus cartas (`playPendulum`), pero la mesa las coloca de a una (la cola de «Invocar varias por Péndulo»): mientras falte alguna de la misma Invocación, la que llega espera escondida (`pendulumWait`, sin anillo); con la última, la escena. Cortar la cola la lanza con las que hay;
    * saltar o deshacer, no (vuelven a verse).
    */
-  const pendulumWait = useRef<{ id: string; cell: Element; held: Animation[] }[]>([])
-  const pendulumHidden = (id: string) => {
+  const pendulumWait = useRef<{ id: string; cell: Element; held: Animation[]; mine: boolean }[]>([])
+  const pendulumHidden = (id: string, mine: boolean) => {
     const escaped = CSS.escape(id)
-    return [...(sectionRef.current?.querySelectorAll(`[data-card-id="${escaped}"]`) ?? []), ...document.querySelectorAll(`[data-flight-ghost="${escaped}"]`)]
+    return [...(sectionRef.current?.querySelectorAll(mine ? `[data-card-id="${escaped}"]` : `[data-rival-card-id="${escaped}"]`) ?? []), ...document.querySelectorAll(`[data-flight-ghost="${escaped}"]`)]
+  }
+  /** Una carta de una Invocación por Péndulo que llegó: espera escondida si vienen más de la misma (`more`); con la última, la escena. Devuelve si la tomó. */
+  const pendulumLanding = (id: string, cell: Element, mine: boolean, more: boolean) => {
+    if (!entranceAllowed()) return false
+    pendulumWait.current.push({ id, cell, held: [], mine })
+    if (!more) {
+      flushPendulum()
+      return true
+    }
+    const wait = pendulumWait.current.at(-1)!
+    wait.held = pendulumHidden(id, mine).map((element) => element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: PENDULUM_HOLD_MS }))
+    return true
   }
   const releasePendulum = () => {
     const waiting = pendulumWait.current
@@ -1171,12 +1183,12 @@ function PracticeMatBody({
     const waiting = releasePendulum()
     if (waiting.length === 0) return
     entrance.current?.cancel()
-    const cards = waiting.map(({ id, cell }) => {
-      const hide = [...pendulumHidden(id), ...cell.querySelectorAll('[data-fx="landing"]')]
+    const cards = waiting.map(({ id, cell, mine }) => {
+      const hide = [...pendulumHidden(id, mine), ...cell.querySelectorAll('[data-fx="landing"]')]
       const box = cell.getBoundingClientRect()
       const card = hide.find((element): element is HTMLElement => element instanceof HTMLElement && sectionRef.current?.contains(element) === true && element.offsetWidth > 0)
       const [w, h] = card ? [Math.min(box.width, card.offsetWidth), Math.min(box.height, card.offsetHeight)] : [box.width, box.height]
-      return { cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h), art: artById(id), hide }
+      return { cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h), art: mine ? artById(id) : (duel?.rivalFlights?.artOf(id) ?? null), hide }
     })
     const played = playPendulum({
       cards,
@@ -1198,22 +1210,12 @@ function PracticeMatBody({
     if (!landing || landingKey === undefined) return
     const cell = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(landing.spot, landing.index)}"]`) ?? null
     const placed = landing.spot === 'mz' || landing.spot === 'emz' ? state[landing.spot][landing.index] : null
-    // Un combo guardado que se repasa (`session.replay`) no le dice a la mesa si se grabó en el automático (donde el Péndulo se deduce): ahí tampoco va.
-    const sure = surePendulum(landing, isAuto || session.replay)
+    // Un combo guardado que se repasa (`session.replay`) no le dice a la mesa si se grabó en el automático de antes de la marca del núcleo (donde el Péndulo se deducía): ahí no va.
+    const sure = surePendulum(landing, session.replay)
     const tone = landingToneOf(sure, summonCardOf(placed?.id))
     const step = fxStep.step && 'action' in fxStep.step ? fxStep.step.action : null
-    if (sure.pendulum && placed && cell && entranceAllowed()) {
-      pendulumWait.current.push({ id: placed.id, cell, held: [] })
-      // ¿Falta otra de la misma Invocación? La cola tiene más sin colocar.
-      const more = pendulumQueue?.ids.some((id) => id !== placed.id && locateCard(state, id)?.kind !== 'spot') ?? false
-      if (!more) {
-        flushPendulum()
-        return
-      }
-      const wait = pendulumWait.current.at(-1)!
-      wait.held = pendulumHidden(placed.id).map((element) => element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: PENDULUM_HOLD_MS }))
-      return
-    }
+    // ¿Falta otra de la misma Invocación? Lo marca el núcleo (`more`) o la cola de la mesa manual tiene más sin colocar.
+    if (sure.pendulum && placed && cell && pendulumLanding(placed.id, cell, true, Boolean(landing.more) || (pendulumQueue?.ids.some((id) => id !== placed.id && locateCard(state, id)?.kind !== 'spot') ?? false))) return
     const materials = step?.type === 'summon' ? step.materials.length : (placed?.materials.length ?? 0)
     if (placed && cell && enter(tone, placed.id, cell, true, materials, artById(placed.id))) return
     impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped), tone)
@@ -1241,11 +1243,20 @@ function PracticeMatBody({
   useEffect(() => {
     const before = rivalBefore.current
     rivalBefore.current = rivalState
-    if (!before || !rivalState || before === rivalState) return
+    if (!before || !rivalState || before === rivalState || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
+    // Su jugada, si la trae (el automático: con las marcas del núcleo): un Sacrificio destella donde estaba la carta, sobre el comienzo de su vuelo (la carta ya no está en la casilla).
+    const action = duel?.rivalFlights?.action
+    if (action?.type === 'move' && matEffects(before, action).sacrifice && locateCard(rivalState, action.id)?.kind !== 'spot') {
+      const rect = document.querySelector(`[data-flight-ghost="${CSS.escape(action.id)}"]`)?.getBoundingClientRect()
+      if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
+    }
     const [arrived, ...more] = arrivals(before, rivalState)
-    if (!arrived || more.length > 0 || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
+    if (!arrived || more.length > 0) return
     const cell = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)?.closest('[data-rival-drop], [data-drop]') ?? null
-    const tone = arrivalToneOf(arrived, summonCardOf(arrived.id))
+    // La llegada de su jugada (`place` con las marcas del núcleo): por Péndulo, la escena; por Sacrificio, el anillo rojo.
+    const landing = action?.type === 'place' && action.id === arrived.id ? matEffects(before, action).landing : undefined
+    if (landing?.pendulum && cell && pendulumLanding(arrived.id, cell, false, Boolean(landing.more))) return
+    const tone = landing?.tribute ? 'tribute' : landing?.pendulum ? 'pendulum' : arrivalToneOf(arrived, summonCardOf(arrived.id))
     const placed = rivalState[arrived.spot][arrived.index]
     if (cell && enter(tone, arrived.id, cell, false, placed?.materials.length ?? 0, duel?.rivalFlights?.artOf(arrived.id) ?? null)) return
     impactOn(cell, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT), tone)

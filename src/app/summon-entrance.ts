@@ -18,12 +18,9 @@ export interface SummonCard {
 /** Una carta de la que no se sabe el marco (el video, el replay sin la carta): sale con el tipo que dice la jugada. */
 export const UNKNOWN_SUMMON: SummonCard = { kind: TOKEN_KIND, ritual: false }
 
-/** Una carta de Nivel 5 o más que sale de la mano con una Invocación Normal pidió Sacrificios (el núcleo no manda la jugada de Sacrificio aparte: la deduce la mesa). */
-const TRIBUTE_LEVEL = 5
-
 /**
  * El tipo de la llegada de una jugada de la mesa (`matEffects`): Fusión, Sincronía, Xyz y Enlace son el suyo (también sin materiales, desde el Extra); un Ritual que sale de la mano con una Invocación Especial, Ritual; por
- * Sacrificio (la jugada, o una Normal de Nivel 5 o más desde la mano), rojo; lo demás, Normal o Especial.
+ * Sacrificio (la jugada `tribute`, o la marca del núcleo en el automático; nunca deducido del Nivel), rojo; lo demás, Normal o Especial.
  */
 export function landingToneOf(landing: { tone: LandingTone; tribute?: true; hand?: true; extra?: true; pendulum?: true }, card: SummonCard): ArrivalTone {
   const { tone, tribute, hand, extra, pendulum } = landing
@@ -31,7 +28,7 @@ export function landingToneOf(landing: { tone: LandingTone; tribute?: true; hand
   if (pendulum) return 'pendulum'
   if (extra) return arrivalToneOf({ from: 'extra' }, card)
   if (tone === 'special' && hand && card.ritual) return 'ritual'
-  if (tribute || (tone === 'normal' && hand && (card.kind.level ?? 0) >= TRIBUTE_LEVEL)) return 'tribute'
+  if (tribute) return 'tribute'
   return 'special'
 }
 
@@ -47,12 +44,12 @@ export type EntranceKind = 'fusion' | 'synchro' | 'xyz' | 'link' | 'ritual'
 export const entranceOf = (tone: ArrivalTone): EntranceKind | null => (tone === 'special' || tone === 'tribute' || tone === 'pendulum' ? null : tone)
 
 /**
- * Lo que la mesa sabe con certeza que es una Invocación por Péndulo: la jugada de la mesa manual (`how: 'pendulum'`, lo eligió quien juega). En el automático no: el núcleo no dice cómo
- * se invocó (`spsummoning` no trae el tipo y el `move` no trae el motivo) y el adaptador lo deduce de «sale boca arriba del Extra» (`adapter.ts`, `arrival`), que deja afuera las de la
- * mano y mete las que saca un efecto. Ahí la llegada queda como Especial.
+ * Lo que la mesa sabe con certeza que es una Invocación por Péndulo: la jugada de la mesa manual (lo eligió quien juega) y la del automático en vivo (la marca del núcleo, `auto/core-host.ts`).
+ * `unsure`: lo grabado que pudo salir del automático de antes de la marca (un replay automático, un combo que se repasa), donde el adaptador ponía `how: 'pendulum'` a todo lo que salía boca
+ * arriba del Extra: no se distingue de lo nuevo, así que ahí la llegada queda como Especial.
  */
-export const surePendulum = <T extends { pendulum?: true }>(landing: T, auto: boolean): T => {
-  if (!auto || !landing.pendulum) return landing
+export const surePendulum = <T extends { pendulum?: true }>(landing: T, unsure: boolean): T => {
+  if (!unsure || !landing.pendulum) return landing
   const { pendulum: _, ...rest } = landing
   return rest as T
 }
