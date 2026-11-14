@@ -3,16 +3,16 @@ import { flushSync } from 'react-dom'
 
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, cancelWhenDone } from '../../../app/motion'
 import { setEffects, useEffects } from '../../../app/effects'
-import { impactOn, type ArrivalTone } from '../../../app/field-impact'
+import { impactOn, sacrificeAt, type ArrivalTone } from '../../../app/field-impact'
 import { BURST, CUT, SPARK } from '../../../app/flipbooks'
-import { playEntrance, type EntranceKind } from '../../../app/summon-entrance'
+import { playEntrance, playPendulum, type EntranceKind } from '../../../app/summon-entrance'
 import { useMediaQuery } from '../../../app/use-media-query'
 import { PANEL_LIME } from '../../auto/AutoPanel'
 import { ChainStage, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { CardArt } from '../../CardArt'
 import type { ChainMedal } from '../../../app/card-glow'
 import { AttackFx, measureStrike, type Strike } from '../../probability/AttackFx'
-import { ChainBadge } from '../../probability/MatFx'
+import { ChainBadge, MATERIAL_MARK } from '../../probability/MatFx'
 import { Button } from '../../ui/Button'
 import { Callout } from '../../ui/Callout'
 import { Flipbook, FlipbookFrames } from '../../ui/Flipbook'
@@ -596,11 +596,26 @@ const ENTRANCES: ReadonlyArray<readonly [EntranceKind, string, string]> = [
 function SummonSample() {
   const board = useRef<HTMLDivElement | null>(null)
   const cell = useRef<HTMLSpanElement | null>(null)
-  const [busy, setBusy] = useState<EntranceKind | null>(null)
+  const left = useRef<HTMLSpanElement | null>(null)
+  const right = useRef<HTMLSpanElement | null>(null)
+  const [busy, setBusy] = useState<EntranceKind | 'pendulum' | null>(null)
   const [short, setShort] = useState(false)
   const [materials, setMaterials] = useState(2)
+  const [marked, setMarked] = useState(false)
   const [art, setArt] = useState(HAND[0]!)
   const arrive = (tone: ArrivalTone, strong = false) => impactOn(cell.current, board.current, strong ? 'strong' : 'light', 0, tone)
+  // La Invocación por Péndulo: una sola escena con las tres casillas; con «Livianos», la llegada blanca en cada una.
+  const pendulum = () => {
+    const cells = [left.current, cell.current, right.current].filter((target): target is HTMLSpanElement => target !== null)
+    if (busy || cells.length === 0) return
+    const played = playPendulum({ cards: cells.map((target, index) => ({ cell: target.getBoundingClientRect(), art: small(HAND[index % HAND.length]!), hide: [target] })), field: board.current, onDone: () => setBusy(null) })
+    if (played) setBusy('pendulum')
+    else for (const target of cells) impactOn(target, board.current, 'light', 0, 'pendulum')
+  }
+  const sacrifice = () => {
+    const rect = left.current?.getBoundingClientRect()
+    if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
+  }
   const enter = (kind: EntranceKind, id: string) => {
     const target = cell.current
     if (!target || busy) return
@@ -619,7 +634,10 @@ function SummonSample() {
           Como en Master Duel. La llegada: un anillo del color de su tipo (de 1,7 a 3,5 cartas en 144 ms con <Tag>--ease-llegada</Tag> y a 4,2 en 1 s) con su cruz y su brillo; la fuerte, tres
           anillos y una onda. La entrada del Extra Deck y del Ritual: el velo, la figura del tipo, los materiales que convergen, la carta que cae grande (<Tag>--ease-revelar</Tag>), el golpe
           fuerte y el brillo del marco; el duelo sigue a los ms de Master Duel (Fusión 2583, Xyz 3467, Enlace 4117, Sincronía 4600 o 3483 la corta, Ritual 5200 o 2833). Con «Livianos», la
-          llegada rápida. Archivos: <Tag>app/summon-entrance.ts</Tag> y <Tag>app/field-impact.ts</Tag>.
+          llegada rápida. El Péndulo (sólo el de la mesa manual: en el automático el núcleo no lo dice): una sola escena con todas sus cartas, las escalas a los 417 ms, la luz a los 667, el
+          péndulo a los 1117 y las cartas que tocan a los 2333 (de a una cada 67); sigue a los 3684. El Sacrificio: el disco violeta, el círculo de 1,7 cartas y la columna, en 450 ms, dentro del
+          vuelo al Cementerio. El material elegido late a 1,25 Hz (Master Duel, 8 Hz: pasa los tres destellos por segundo). Archivos: <Tag>app/summon-entrance.ts</Tag> y{' '}
+          <Tag>app/field-impact.ts</Tag>.
         </>
       }
     >
@@ -635,6 +653,12 @@ function SummonSample() {
             {label}
           </Button>
         ))}
+        <Button size="sm" variant="secondary" icon="play" disabled={busy !== null} data-entrance="pendulum" onClick={pendulum}>
+          Péndulo (3)
+        </Button>
+        <Button size="sm" variant="secondary" icon="play" disabled={busy !== null} data-sample="sacrifice" onClick={sacrifice}>
+          Sacrificio
+        </Button>
       </div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <Knob label="Materiales">
@@ -643,14 +667,26 @@ function SummonSample() {
         <Knob label="Corta (Sincronía y Ritual)">
           <Switch label="Corta" checked={short} onChange={setShort} />
         </Knob>
+        <Knob label="Material elegido (latido)">
+          <Switch label="Material elegido" checked={marked} onChange={setMarked} />
+        </Knob>
       </div>
-      <div ref={board} data-field className="grid justify-items-center bg-background/60 px-2 py-10">
-        <span ref={cell} className="block aspect-[421/614] w-14 overflow-hidden bg-input">
-          <CardArt instant remoteUrl={small(art)} name="feel-invocada" className="block h-full w-full object-cover" />
+      <div ref={board} data-field className="flex justify-center gap-3 bg-background/60 px-2 py-10">
+        <span ref={left} className="block aspect-[421/614] w-14 overflow-hidden bg-input">
+          <CardArt instant remoteUrl={small(HAND[1]!)} name="feel-izquierda" className="block h-full w-full object-cover" />
+        </span>
+        <span ref={cell} className="relative block aspect-[421/614] w-14 bg-input">
+          <span className="block size-full overflow-hidden">
+            <CardArt instant remoteUrl={small(art)} name="feel-invocada" className="block h-full w-full object-cover" />
+          </span>
+          {marked ? <span aria-hidden="true" data-material="" className={MATERIAL_MARK} /> : null}
+        </span>
+        <span ref={right} className="block aspect-[421/614] w-14 overflow-hidden bg-input">
+          <CardArt instant remoteUrl={small(HAND[2]!)} name="feel-derecha" className="block h-full w-full object-cover" />
         </span>
       </div>
       <p aria-live="polite" className="text-micro text-soft">
-        {busy ? `Entrada en curso: ${ENTRANCES.find(([kind]) => kind === busy)?.[1]}. Nada responde hasta que termina.` : 'Tocá un tipo para ver su entrada.'}
+        {busy === 'pendulum' ? 'Invocación por Péndulo en curso. Nada responde hasta que termina.' : busy ? `Entrada en curso: ${ENTRANCES.find(([kind]) => kind === busy)?.[1]}. Nada responde hasta que termina.` : 'Tocá un tipo para ver su entrada.'}
       </p>
     </Specimen>
   )
