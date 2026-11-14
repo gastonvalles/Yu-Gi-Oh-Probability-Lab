@@ -50,7 +50,7 @@ interface DuelReplayScreenProps {
   shared?: { onSave: () => void } | undefined
   /** Copiar el enlace (si entra) y descargar el archivo. */
   actions: OverflowItem[]
-  /** Desde qué jugada abre (si no, el final): el replay de un duelo recién jugado, desde el principio. */
+  /** Desde qué jugada abre (si no, el final). Las pantallas lo abren desde el principio (0): el de un duelo recién jugado, uno guardado y uno compartido; así se reparten las manos y no se ve el resultado antes de mirarlo. */
   startAt?: number
   /** Lo que dice la flecha de volver (si no, «Volver a Replays»). */
   backLabel?: string

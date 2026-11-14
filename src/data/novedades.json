@@ -1,6 +1,39 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-10-replay-abre-por-el-comienzo",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Los replays guardados abren por el comienzo",
+        "novedades": [
+          "Un replay guardado o que te compartieron ahora abre en la mesa al empezar, con las manos repartiéndose, en vez de abrir en la última jugada.",
+          "Ya no ves quién ganó antes de mirar el duelo."
+        ],
+        "comoSeUsa": [
+          "Abrí el replay y tocá reproducir, o avanzá de a una jugada con «Siguiente».",
+          "Para ir directo al final, arrastrá la línea de tiempo hasta el extremo."
+        ],
+        "arreglos": [],
+        "ojo": []
+      },
+      "en": {
+        "title": "Saved replays open at the start",
+        "novedades": [
+          "A saved replay, or one someone shared with you, now opens on the starting table, with the hands being dealt, instead of opening on the last play.",
+          "You no longer see who won before watching the duel."
+        ],
+        "comoSeUsa": [
+          "Open the replay and tap play, or step through one play at a time with «Next».",
+          "To go straight to the end, drag the timeline all the way."
+        ],
+        "arreglos": [],
+        "ojo": []
+      }
+    },
+    {
       "id": "2026-11-14-9-replay-reparte-la-mano",
       "date": "2026-11-14",
       "tags": [

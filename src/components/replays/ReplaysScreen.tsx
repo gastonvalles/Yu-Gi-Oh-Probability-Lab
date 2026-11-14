@@ -231,6 +231,7 @@ export function ReplaysScreen(props: ReplaysScreenProps = {}) {
             key={link}
             replay={replay}
             onClose={duels.close}
+            startAt={0}
             shared={duels.opened.shared ? { onSave: duels.saveOpened } : undefined}
             actions={[
               ...(linkFits(link.length, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => void shareReplayLink(replay, title, link).then((outcome) => tellShared(outcome, video)) }] : []),
