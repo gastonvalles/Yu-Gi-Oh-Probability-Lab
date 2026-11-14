@@ -1,10 +1,10 @@
-import { EASE_IN_OUT, EASE_OUT, cancelWhenDone, prefersReducedMotion } from './motion'
+import { EASE_ASENTAR, EASE_GOLPE, EASE_IN_OUT, EASE_OUT, bezierEase, cancelWhenDone, prefersReducedMotion } from './motion'
 import type { LandingTone } from './mat-effects'
 import type { MatState } from './practice-mat'
 
 /**
- * El impacto en la mesa («Impacto Ligero»): cuando una carta queda en el campo por una Invocación o conecta un ataque, se abre un anillo de energía desde ella (el cian `fx-energia`) con un
- * destello dorado aditivo (`fx-destello`, sólo con «Efectos completos») y el campo se sacude a propósito (Gastón, 2026-11-13: «el campo si se mueve si es a proposito, si no lo es es un bug»).
+ * El impacto en la mesa («Impacto Ligero»): cuando una carta queda en el campo por una Invocación se abre un anillo de energía desde ella (el cian `fx-energia`) con un destello dorado
+ * aditivo (`fx-destello`, sólo con «Efectos completos»); cuando conecta un ataque, el golpe dorado con los tiempos de Master Duel (`PUNCH`); y el campo se sacude a propósito (Gastón, 2026-11-13: «el campo si se mueve si es a proposito, si no lo es es un bug»).
  * Todo por el DOM y la Web Animations API, sin pasar por React (no redibuja la mesa con los vuelos en el aire), sólo `scale`, `translate` y `opacity`. Con «Livianos» no hay sacudida ni
  * destello aditivo (queda el anillo); con movimiento reducido, nada.
  */
@@ -64,40 +64,102 @@ export function settleShake(root: HTMLElement | null): void {
   for (const running of field?.getAnimations?.() ?? []) if (running.id === SHAKE_ID) running.finish()
 }
 
+/** La Invocación (hasta que tenga su anillo propio): el aro cian de energía y el destello dorado aditivo. */
 const RING = 'pointer-events-none absolute -ml-10 -mt-10 size-20 rounded-full border-2 border-fx-energia opacity-0'
 const FLASH = 'pointer-events-none absolute -ml-14 -mt-14 size-28 rounded-full bg-radial from-fx-destello/90 to-transparent to-70% opacity-0 mix-blend-plus-lighter'
 export const RING_MS = 340
 export const FLASH_MS = 260
 
 /**
- * El anillo de impacto en un punto de la pantalla (`x`, `y`), a los `delay` ms: el aro cian que se abre y se apaga y, con «Efectos completos», el destello dorado aditivo. Una capa fija
- * encima del campo y debajo de las cartas grandes del centro, que se quita sola. Con movimiento reducido, nada.
+ * El golpe de un ataque, en dorado (el de Master Duel, `fx-destello`), y cada capa clara con su gemela oscura debajo (negro al 40 %: se lee sobre un arte claro): el aro (su gemela es
+ * el contorno, `outline`) y el destello aditivo sobre un halo negro. Las medidas, ajustadas al celular: el destello de Master Duel mide 5 cartas (240 px con la carta de 48 del celular, dos
+ * tercios del ancho); acá, 160 px.
  */
-export function ringAt(x: number, y: number, delay = 0): void {
-  if (typeof document === 'undefined' || prefersReducedMotion() || typeof document.body.animate !== 'function') return
+const HIT_RING = 'pointer-events-none absolute -ml-18 -mt-18 size-36 rounded-full border-3 border-fx-destello outline-2 outline-black/40 opacity-0'
+const HIT_FLASH = 'pointer-events-none absolute -ml-20 -mt-20 size-40 rounded-full bg-radial from-fx-destello/90 to-transparent to-70% opacity-0 mix-blend-plus-lighter'
+const HIT_TWIN = 'pointer-events-none absolute -ml-22 -mt-22 size-44 rounded-full bg-radial from-black/40 to-transparent to-70% opacity-0'
+/** Lo que dura el golpe: 500–600 ms en la referencia. */
+export const HIT_MS = 560
 
+/**
+ * La curva «puñetazo» (el destello del golpe de Master Duel): crece de `from` al pico (1) en el primer `peak` de su vida (50 ms de 560) con `--ease-golpe`, se asienta encogiéndose
+ * hasta `mid` con `--ease-asentar` mientras el alfa sigue plena hasta `hold` y, de ahí, baja lineal a 0 mientras llega a `to` (la mitad).
+ */
+export const PUNCH = { from: 0.2, peak: 0.09, mid: 0.7, hold: 0.55, to: 0.5 } as const
+export const punchFrames = (alpha: number): Keyframe[] => [
+  { scale: `${PUNCH.from}`, opacity: 0, easing: EASE_GOLPE },
+  { scale: '1', opacity: alpha, offset: PUNCH.peak, easing: EASE_ASENTAR },
+  { scale: `${PUNCH.mid}`, opacity: alpha, offset: PUNCH.hold },
+  { scale: `${PUNCH.to}`, opacity: 0 },
+]
+const easeGolpe = bezierEase(EASE_GOLPE)
+const easeAsentar = bezierEase(EASE_ASENTAR)
+const mix = (a: number, b: number, e: number) => a + (b - a) * e
+
+/** La curva «puñetazo» en `p` (0 a 1), para el video: lo mismo que `punchFrames`. */
+export function punchAt(p: number): { scale: number; alpha: number } {
+  if (p <= 0) return { scale: PUNCH.from, alpha: 0 }
+  if (p < PUNCH.peak) {
+    const e = easeGolpe(p / PUNCH.peak)
+    return { scale: mix(PUNCH.from, 1, e), alpha: e }
+  }
+  if (p < PUNCH.hold) return { scale: mix(1, PUNCH.mid, easeAsentar((p - PUNCH.peak) / (PUNCH.hold - PUNCH.peak))), alpha: 1 }
+  const e = Math.min(1, (p - PUNCH.hold) / (1 - PUNCH.hold))
+  return { scale: mix(PUNCH.mid, PUNCH.to, e), alpha: 1 - e }
+}
+
+const canAnimate = () => typeof document !== 'undefined' && !prefersReducedMotion() && typeof document.body.animate === 'function'
+
+/** Una capa fija en `(x, y)`, encima del campo y debajo de las cartas grandes del centro. */
+function layerAt(x: number, y: number): HTMLDivElement {
   const layer = document.createElement('div')
   layer.className = 'pointer-events-none fixed left-0 top-0 z-[115]'
   layer.dataset.fx = 'impact'
   layer.setAttribute('aria-hidden', 'true')
   layer.style.translate = `${Math.round(x)}px ${Math.round(y)}px`
   document.body.append(layer)
+  return layer
+}
 
-  const ring = document.createElement('span')
-  ring.className = RING
-  layer.append(ring)
-  const parts = [cancelWhenDone(ring.animate([{ scale: '0.5', opacity: 0.95 }, { scale: '1.8', opacity: 0 }], { duration: RING_MS, delay, easing: EASE_OUT }))]
+function spanIn(parent: Element, className: string): HTMLSpanElement {
+  const span = document.createElement('span')
+  span.className = className
+  parent.append(span)
+  return span
+}
 
-  if (!lite()) {
-    const flash = document.createElement('span')
-    flash.className = FLASH
-    layer.append(flash)
-    parts.push(cancelWhenDone(flash.animate([{ scale: '0.6', opacity: 0 }, { opacity: 1, offset: 0.25 }, { scale: '1.5', opacity: 0 }], { duration: FLASH_MS, delay, easing: EASE_OUT })))
+/** Las animaciones de una capa con su final; la capa se quita cuando termina la última. */
+function removeAfter(layer: Element, parts: ReadonlyArray<readonly [Animation, number]>) {
+  const [last] = parts.reduce((a, b) => (b[1] > a[1] ? b : a))
+  const remove = () => layer.remove()
+  last.addEventListener?.('finish', remove)
+  last.addEventListener?.('cancel', remove)
+}
+
+/**
+ * El anillo de impacto en un punto de la pantalla (`x`, `y`), a los `delay` ms, en una capa fija que se quita sola. `hit` (un ataque): el golpe dorado con la curva «puñetazo»; si no
+ * (una Invocación), el aro cian que se abre y se apaga. Con «Livianos», sólo el aro; con movimiento reducido, nada.
+ */
+export function ringAt(x: number, y: number, delay = 0, { hit = false }: { hit?: boolean } = {}): void {
+  if (!canAnimate()) return
+
+  const layer = layerAt(x, y)
+  const full = !lite()
+  const parts: Array<readonly [Animation, number]> = []
+  const add = (parent: Element, className: string, frames: Keyframe[], options: KeyframeAnimationOptions & { duration: number; delay: number }) =>
+    parts.push([cancelWhenDone(spanIn(parent, className).animate(frames, options)), options.delay + options.duration])
+
+  if (hit) {
+    const timing = { duration: HIT_MS, delay }
+    if (full) add(layer, HIT_TWIN, punchFrames(1), timing)
+    add(layer, HIT_RING, punchFrames(1), timing)
+    if (full) add(layer, HIT_FLASH, punchFrames(1), timing)
+  } else {
+    add(layer, RING, [{ scale: '0.5', opacity: 0.95 }, { scale: '1.8', opacity: 0 }], { duration: RING_MS, delay, easing: EASE_OUT })
+    if (full) add(layer, FLASH, [{ scale: '0.6', opacity: 0 }, { opacity: 1, offset: 0.25 }, { scale: '1.5', opacity: 0 }], { duration: FLASH_MS, delay, easing: EASE_OUT })
   }
 
-  const remove = () => layer.remove()
-  parts[0]!.addEventListener?.('finish', remove)
-  parts[0]!.addEventListener?.('cancel', remove)
+  removeAfter(layer, parts)
 }
 
 /** El impacto entero sobre un elemento (su centro): el anillo y la sacudida del campo, a los `delay` ms. */

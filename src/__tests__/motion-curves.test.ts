@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, easeSnap } from '../app/motion'
+import { EASE_ASENTAR, EASE_GOLPE, EASE_IN_OUT, EASE_OUT, EASE_SNAP, easeSnap } from '../app/motion'
 
 // Las curvas del JS (la Web Animations API) son las de los tokens de index.css, y ningún movimiento de la interfaz usa la palabra `ease-out` de esa API
 // (es otra curva). Esta regla mira el código, como `link-rules.test.ts`.
@@ -33,6 +33,9 @@ describe('las curvas de movimiento', () => {
     expect(EASE_OUT).toBe(token('ease-out'))
     expect(EASE_IN_OUT).toBe(token('ease-in-out'))
     expect(EASE_SNAP).toBe(token('ease-snap'))
+    // Las del golpe («puñetazo», de Master Duel): el pico y el asentado.
+    expect(EASE_GOLPE).toBe(token('ease-golpe'))
+    expect(EASE_ASENTAR).toBe(token('ease-asentar'))
   })
 
   it('easeSnap (JS) es EASE_SNAP: el tiempo recorrido se convierte en camino como lo hace el navegador', () => {

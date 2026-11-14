@@ -2068,6 +2068,9 @@
   /* El rebote de un botón al soltarlo, de 90 % a 100 % pasando por 108 % (marcado) o 104 % (suave): por tramos (`linear()`), porque un cubic-bezier no se pasa un 80 %. */
   --ease-rebote-marcado: linear(0, 1.8 38%, 0.9 70%, 1);
   --ease-rebote-suave: linear(0, 1.4 40%, 0.96 72%, 1);
+  /* El golpe («puñetazo», medido en Master Duel): sube al pico en el primer 9 % y se asienta encogiéndose (`PUNCH` de `app/field-impact.ts`). */
+  --ease-golpe: cubic-bezier(0.1, 0.9, 0.3, 1);
+  --ease-asentar: cubic-bezier(0.3, 0, 0.7, 1);
 
   /* El anillo de impacto al estampar una carta y el destello aditivo que lo acompaña (sólo con «Efectos completos»). */
   --animate-feel-ring: feel-ring 340ms var(--ease-out) both;

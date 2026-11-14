@@ -15,6 +15,9 @@ export const EASE_OUT = 'cubic-bezier(0.2, 0, 0, 1)'
 export const EASE_IN_OUT = 'cubic-bezier(0.4, 0, 0.2, 1)'
 /** Lo que arranca ya en movimiento y se asienta (pops, lo que suelta un gesto, estallidos, la moneda, las medallas). */
 export const EASE_SNAP = 'cubic-bezier(0.25, 1, 0.5, 1)'
+/** El golpe («puñetazo», medido en Master Duel; `PUNCH` de `field-impact.ts`): llega al pico en un par de cuadros y después se asienta con `EASE_ASENTAR`. */
+export const EASE_GOLPE = 'cubic-bezier(0.1, 0.9, 0.3, 1)'
+export const EASE_ASENTAR = 'cubic-bezier(0.3, 0, 0.7, 1)'
 
 /**
  * La curva de un `cubic-bezier(x1, y1, x2, y2)` como función: dado el tiempo recorrido (0 a 1), devuelve cuánto del camino va hecho, como en una transición.
