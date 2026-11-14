@@ -369,7 +369,8 @@ function Burst() {
  *   esquina opuesta; las de antes, más chicas y más arriba (`LAYOUT`); desde la quinta, se van hacia arriba. Cada carta entera, con su halo blanco (una sombra quieta), una leve
  *   inclinación 3D y atada por dos esquinas con cadena; entre carta y carta la cadena, de eslabones chicos, cuelga en curva por delante. El número, enorme, blanco en bloques con
  *   contorno y resplandor celestes (`ChainNumber`), pisa la esquina de abajo del lado de afuera. El
- *   nombre va sólo en la carta sin imagen (con imagen ya está impreso). Al empezar a resolver, la cadena se corta en el medio mientras la escena se va.
+ *   nombre va sólo en la carta sin imagen (con imagen ya está impreso). La última, mientras espera respuesta, late (su marco celeste, `animate-chain-wait`, cada 1333 ms como Master
+ *   Duel). Al empezar a resolver, la cadena se corta en el medio mientras la escena se va.
  * - **El velo:** mientras está, toda la pantalla baja y se azula (Gastón: «debería oscurecer todo»): una capa `fixed inset-0` al lado de la escena, en su misma capa (la de la cadena de
  *   la mesa), así queda debajo de la escena y de la pregunta («¿Respondés?») y encima de las manos, las chapas, las barras, los paneles y el menú lateral; sólo `opacity`; no ataja toques.
  * - **Sin línea a la vista:** «Se resuelve del último al primero» (y, resolviendo, qué pasó con cada uno) va en un `role="status"` oculto, para el lector de pantalla.
@@ -500,7 +501,9 @@ export function ChainStage({
               {newest ? <Burst /> : null}
               <CardArt remoteUrl={link.art} name={link.name} {...(link.frame ? { frame: link.frame } : {})} className="block size-full object-cover" />
               {link.art ? null : <span data-chain-name="" className="absolute inset-x-1 top-1 truncate bg-background/85 px-1 text-micro font-semibold text-foreground">{link.name}</span>}
-              {newest ? <span aria-hidden="true" data-chain-glow="" className="absolute -inset-2 animate-fx-flash border-4 border-chain-flash motion-reduce:hidden" /> : null}
+              {/* La que espera respuesta late (Master Duel, cada 1333 ms): un marco celeste que va de 1 a 0,5 de opacidad, no la carta, que se seguiría leyendo; se corta al resolver. */}
+              {newest ? <span aria-hidden="true" data-chain-wait="" className="absolute -inset-1 animate-chain-wait border-2 border-chain-glow motion-reduce:hidden" /> : null}
+              {newest ? <span aria-hidden="true" data-chain-glow=""className="absolute -inset-2 animate-fx-flash border-4 border-chain-flash motion-reduce:hidden" /> : null}
               <svg aria-hidden="true" viewBox="0 0 100 146" preserveAspectRatio="none" data-chain-ties="" className="absolute inset-0 size-full overflow-visible">
                 {CORNER_TIES.map(([from, to], i) => (
                   <Links key={i} links={hangingLinks(from, to, 2, 7.5)} size={0.7} />
