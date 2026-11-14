@@ -25,9 +25,9 @@ export interface MatEffects {
   quiet?: { ids: string[]; kind: QuietKind }
   /**
    * Una carta que cae en una zona de monstruo: `flies` es que llega volando desde otro lado (el destello espera a que aterrice). `tribute`: por Sacrificio (la llegada roja); `hand`: salió
-   * de la mano (un Ritual que sale de la mano es su Invocación Ritual: `summon-entrance.ts`).
+   * de la mano (un Ritual que sale de la mano es su Invocación Ritual: `summon-entrance.ts`); `extra`: del Extra Deck sin materiales (la mesa manual), que va con el tipo de su marco.
    */
-  landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; tribute?: true; hand?: true }
+  landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; tribute?: true; hand?: true; extra?: true }
   /** Cambio de fase: el cartel. `turn` sólo cuando empieza otro turno. */
   banner?: { phase: MatPhase; turn: number | null }
   /** Una carta entró a la mano (robada, buscada o devuelta): la mano se enmarca un instante. */
@@ -157,7 +157,8 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
       const normal = action.how === 'normal' || (action.how === undefined && hand)
       const tone = normal ? 'normal' : 'special'
 
-      return { landing: { spot: action.zone, index: action.index, tone, flies: true, ...(hand ? { hand: true as const } : {}) }, ...show([action.id], tone) }
+      const extra = where?.kind === 'pile' && where.pile === 'extra'
+      return { landing: { spot: action.zone, index: action.index, tone, flies: true, ...(hand ? { hand: true as const } : {}), ...(extra ? { extra: true as const } : {}) }, ...show([action.id], tone) }
     }
 
     case 'tribute':

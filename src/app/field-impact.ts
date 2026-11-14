@@ -112,6 +112,35 @@ export const arrivalRingFrames = (): Keyframe[] => {
   ]
 }
 
+/**
+ * El brillo del marco («OverFrame» de Master Duel), 600 ms después de que la carta de una entrada larga toca su casilla: un marco con la forma de la carta que estalla (alfa plena en
+ * 80 ms, de 57 % a 81 % en 106 ms y a su tamaño, 1,35 cartas, en 800), del color de su tipo, con su gemela oscura. Con movimiento reducido, nada.
+ */
+export const OVER_FRAME = { ms: 800, size: 1.35, from: 0.57, fast: 0.81, fastAt: 106 / 800, in: 80 / 800 } as const
+const OVER_FRAME_CLASS = 'pointer-events-none absolute border-3 outline-2 outline-black/40 opacity-0'
+
+export function overFrameAt(x: number, y: number, w: number, h: number, delay: number, tone: ArrivalTone): void {
+  if (!canAnimate()) return
+
+  const layer = layerAt(x, y)
+  const frame = spanIn(layer, `${OVER_FRAME_CLASS} ${ARRIVAL_CLASS[tone].ring}`)
+  const [fw, fh] = [Math.round(w * OVER_FRAME.size), Math.round(h * OVER_FRAME.size)]
+  Object.assign(frame.style, { width: `${fw}px`, height: `${fh}px`, marginLeft: `${-fw / 2}px`, marginTop: `${-fh / 2}px` })
+  const animation = cancelWhenDone(
+    frame.animate(
+      [
+        { scale: `${OVER_FRAME.from}`, opacity: 0 },
+        { opacity: 1, offset: OVER_FRAME.in },
+        { scale: `${OVER_FRAME.fast}`, offset: OVER_FRAME.fastAt, easing: EASE_OUT },
+        { opacity: 0.8, offset: 0.5 },
+        { scale: '1', opacity: 0 },
+      ],
+      { duration: OVER_FRAME.ms, delay },
+    ),
+  )
+  removeAfter(layer, [[animation, delay + OVER_FRAME.ms]])
+}
+
 /** Lo mismo en `p` (0 a 1 de `ARRIVAL.ms`), para el video. */
 export function arrivalRingAt(p: number): { scale: number; alpha: number } {
   const { from, fast, to, fastAt, hold } = ARRIVAL.ring

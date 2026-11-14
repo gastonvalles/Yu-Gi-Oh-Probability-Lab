@@ -63,8 +63,8 @@ import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
-import { arrivals, impactOn, shakeOf } from '../../app/field-impact'
-import { arrivalToneOf, landingToneOf, type SummonCard } from '../../app/summon-entrance'
+import { arrivals, impactOn, shakeOf, type ArrivalTone } from '../../app/field-impact'
+import { arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, type SummonCard } from '../../app/summon-entrance'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
@@ -295,6 +295,8 @@ export interface DuelMatLink {
   onActivity?: (activity: Activity | null) => void
   /** Hay un cartel de fase o de «Cambio de turno» en curso (`PhaseBand`), antes de pintar y cada vez que cambia: el automático no deja jugar ni pregunta mientras tanto. */
   onBanding?: (busy: boolean) => void
+  /** Hay una entrada larga en curso (una Invocación del Extra Deck o Ritual, `summon-entrance.ts`): nada sigue hasta que termina, ni las fases. */
+  onEntering?: (busy: boolean) => void
   /** El visor de las pilas del rival (`rivalViewer`) está abierto: el de la mesa se cierra, porque los dos van en el mismo lugar. */
   rivalViewing?: boolean
   /** El reloj de turnos: en la fila del medio, a la izquierda de la Zona Extra (la casilla `p1`). */
@@ -935,6 +937,12 @@ function PracticeMatBody({
   }, [phaseCue])
   const bandBusy = idleFor !== bandCue
   const onBanding = duel?.onBanding
+  // La entrada larga de una Invocación del Extra Deck o Ritual en curso (`summon-entrance.ts`): dura lo que su velo, que es quien dice que terminó (no un reloj aparte). Mientras tanto,
+  // como con un cartel, las cartas no responden (`openCard`) y la pantalla no pregunta ni muestra la jugada siguiente (`onEntering`). Es una referencia, no estado: un estado redibujaba la
+  // mesa entera al entrar y al salir (dos tareas largas con la CPU frenada).
+  const entrance = useRef<Animation | null>(null)
+  const onEnteringRef = useRef(duel?.onEntering)
+  onEnteringRef.current = duel?.onEntering
   // Lo leen los toques (no la dibuja de nuevo: un cambio de la banda no rehace los oyentes de las cartas).
   const banding = useRef(false)
   useLayoutEffect(() => {
@@ -942,6 +950,7 @@ function PracticeMatBody({
     onBanding?.(bandBusy)
     return () => onBanding?.(false)
   }, [bandBusy, onBanding])
+  useEffect(() => () => entrance.current?.cancel(), [])
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
@@ -1099,16 +1108,65 @@ function PracticeMatBody({
     setFieldNode(node)
   }, [])
 
+  // Las cartas del Extra Deck y las Ritual que ya entraron en este duelo (por nombre): la segunda vez, la Sincronía y el Ritual van con su entrada corta de Master Duel.
+  const entered = useRef(new Set<string>())
+  /**
+   * La entrada larga (`playEntrance`) de lo que sale del Extra Deck o de un Ritual, sobre su casilla: la carta (tuya, `mine`, o del rival) y el fantasma de su vuelo no se ven hasta el
+   * golpe. Con «Livianos» o movimiento reducido no va: devuelve `false` y queda la llegada de siempre.
+   */
+  const enter = (tone: ArrivalTone, id: string, cell: Element, mine: boolean, materials: number, art: string | null): boolean => {
+    const kind = entranceOf(tone)
+    if (!kind || !entranceAllowed()) return false
+    const name = nameOf(id)
+    const short = entered.current.has(name)
+    entered.current.add(name)
+    const escaped = CSS.escape(id)
+    // La carta, el fantasma de su vuelo y el destello de la casilla (`LandingBurst`): la entrada trae su golpe.
+    const hide = [...(sectionRef.current?.querySelectorAll(mine ? `[data-card-id="${escaped}"]` : `[data-rival-card-id="${escaped}"]`) ?? []), ...document.querySelectorAll(`[data-flight-ghost="${escaped}"]`), ...cell.querySelectorAll('[data-fx="landing"]')]
+    entrance.current?.cancel()
+    // La caja de la carta (con su forma, no la de la casilla), en el centro de la casilla: medida sin las transformaciones de un vuelo en curso.
+    const box = cell.getBoundingClientRect()
+    const card = hide.find((element): element is HTMLElement => element instanceof HTMLElement && sectionRef.current?.contains(element) === true && element.offsetWidth > 0)
+    const [w, h] = card ? [Math.min(box.width, card.offsetWidth), Math.min(box.height, card.offsetHeight)] : [box.width, box.height]
+    const played = playEntrance({
+      kind,
+      short,
+      cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h),
+      art,
+      materials,
+      hide,
+      field: fieldRef.current,
+      onDone: () => {
+        if (entrance.current !== played) return
+        entrance.current = null
+        onEnteringRef.current?.(false)
+      },
+    })
+    entrance.current = played
+    if (played) onEnteringRef.current?.(true)
+    return played !== null
+  }
+
   // El impacto de una Invocación (`field-impact.ts`): el anillo desde la casilla y la sacudida del campo cuando la carta la toca. Por el DOM, sin dibujar la mesa de nuevo.
   const landingKey = landing?.key
   useEffect(() => {
     if (!landing || landingKey === undefined) return
     const cell = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(landing.spot, landing.index)}"]`) ?? null
-    const id = landing.spot === 'mz' || landing.spot === 'emz' ? state[landing.spot][landing.index]?.id : undefined
-    impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped), landingToneOf(landing, summonCardOf(id)))
+    const placed = landing.spot === 'mz' || landing.spot === 'emz' ? state[landing.spot][landing.index] : null
+    const tone = landingToneOf(landing, summonCardOf(placed?.id))
+    const step = fxStep.step && 'action' in fxStep.step ? fxStep.step.action : null
+    const materials = step?.type === 'summon' ? step.materials.length : (placed?.materials.length ?? 0)
+    if (placed && cell && enter(tone, placed.id, cell, true, materials, artById(placed.id))) return
+    impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped), tone)
     // Una vez por Invocación (su `key`).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [landingKey])
+
+  // Saltar o deshacer corta la entrada en curso (no era de este paso).
+  const cut = fxStep.step !== null && 'cut' in fxStep.step
+  useEffect(() => {
+    if (cut) entrance.current?.cancel()
+  }, [cut, fxStep])
 
   // Las del rival: la mesa no recibe sus jugadas, sólo ve su campo cambiar (`rivalFlights`): un monstruo que llega boca arriba a una zona, de a uno (un `sync` que trae varios no es un golpe).
   const rivalState = duel?.rivalFlights?.state ?? null
@@ -1119,9 +1177,12 @@ function PracticeMatBody({
     if (!before || !rivalState || before === rivalState) return
     const [arrived, ...more] = arrivals(before, rivalState)
     if (!arrived || more.length > 0 || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
-    const card = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)
-    impactOn(card?.closest('[data-rival-drop], [data-drop]') ?? null, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT), arrivalToneOf(arrived, summonCardOf(arrived.id)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `summonCardOf` sólo lee la carta
+    const cell = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)?.closest('[data-rival-drop], [data-drop]') ?? null
+    const tone = arrivalToneOf(arrived, summonCardOf(arrived.id))
+    const placed = rivalState[arrived.spot][arrived.index]
+    if (cell && enter(tone, arrived.id, cell, false, placed?.materials.length ?? 0, duel?.rivalFlights?.artOf(arrived.id) ?? null)) return
+    impactOn(cell, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT), tone)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `summonCardOf` y `enter` sólo leen la carta y la mesa
   }, [rivalState])
 
   // La vista 3D se agranda hasta ocupar el lugar que tiene (la inclinación le quita alto y la perspectiva, fondo): el campo con la mano del rival crece parejo desde su borde de abajo (que no se mueve, así la mano
@@ -1802,6 +1863,8 @@ function PracticeMatBody({
 
         onPeek({ name, card: apiCard })
       }
+      // Con una entrada larga en curso, nada (mirarla, sí): el toque no se guarda para después.
+      if (entrance.current) return
 
       // En automático una carta que la pregunta ofrece se elige con el toque; si no, abre su menú con las jugadas legales. Sin ninguna, el menú dice por qué (`duel.auto.whyNot`), ofrece
       // seguir en manual y, sin el detalle fijo a la izquierda, «Ver carta» (como en la mesa manual, tocar siempre muestra algo). Eligiendo cartas o una casilla, tocar otra no hace nada.
