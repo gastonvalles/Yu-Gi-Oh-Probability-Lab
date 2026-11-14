@@ -1,6 +1,53 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-2-invocacion-con-entrada",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Las invocaciones del Extra Deck y las Rituales, con su entrada",
+        "novedades": [
+          "Lo que sale del Extra Deck y los monstruos Rituales entran con una escena propia: el campo se oscurece, los materiales se juntan, la carta cae grande sobre su casilla y golpea.",
+          "Cada tipo tiene su color y su figura: Fusión, Sincronía, Xyz, Enlace y Ritual.",
+          "Cada tipo dura lo que dura en Master Duel: de unos 2,6 segundos la Fusión a unos 5 el Ritual.",
+          "Las demás invocaciones llegan con un anillo del color de su tipo; la de Sacrificio, en rojo.",
+          "Lo mismo se ve en el replay de un duelo, al repasar un combo y en el video que descargás."
+        ],
+        "comoSeUsa": [
+          "Para jugar más rápido, elegí «Efectos: Livianos» en los ajustes: la carta llega enseguida, sólo con su anillo."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Mientras dura la entrada nadie juega: los toques se descartan. Mirar una carta sí se puede.",
+          "Un turno de combo con muchas invocaciones del Extra Deck tarda bastante más que antes.",
+          "La segunda vez que invocás la misma carta de Sincronía o Ritual en un duelo, la entrada es más corta.",
+          "En el replay y en el video, un Ritual llega con el anillo común, sin la escena."
+        ]
+      },
+      "en": {
+        "title": "Extra Deck and Ritual Summons, with their entrance",
+        "novedades": [
+          "Whatever comes out of the Extra Deck, and Ritual Monsters, now enter with their own scene: the field darkens, the materials come together, the card drops in large onto its zone and hits.",
+          "Each type has its own colour and shape: Fusion, Synchro, Xyz, Link and Ritual.",
+          "Each type lasts as long as it does in Master Duel: from about 2.6 seconds for Fusion to about 5 for Ritual.",
+          "Other Summons arrive with a ring in the colour of their type; a Tribute Summon, in red.",
+          "The same shows in a duel replay, when reviewing a combo and in the video you download."
+        ],
+        "comoSeUsa": [
+          "To play faster, pick «Effects: Light» in the settings: the card arrives right away, with just its ring."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "While the entrance lasts nobody plays: taps are dropped. You can still look at a card.",
+          "A combo turn with many Extra Deck Summons takes quite a bit longer than before.",
+          "The second time you Summon the same Synchro or Ritual card in a duel, the entrance is shorter.",
+          "In the replay and the video, a Ritual arrives with the common ring, without the scene."
+        ]
+      }
+    },
+    {
       "id": "2026-11-14-1-golpe-y-ataque",
       "date": "2026-11-14",
       "tags": [
