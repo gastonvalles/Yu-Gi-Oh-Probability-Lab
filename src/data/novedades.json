@@ -1,6 +1,45 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-1-golpe-y-ataque",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El golpe y el ataque, con más peso",
+        "novedades": [
+          "El golpe cambió de forma: el destello llega de un puñetazo y después se encoge, en vez de crecer y apagarse. Ahora es dorado.",
+          "La carta que ataca brilla en dorado antes de embestir.",
+          "En un ataque directo, una onda cruza toda la pantalla. Un instante después del impacto sale una segunda onda de polvo.",
+          "El golpe se lee mejor sobre cartas y fondos claros: cada destello lleva un contorno oscuro debajo."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "El ataque dura lo mismo que antes.",
+          "Con «Efectos: Livianos» no hay ondas ni polvo: queda el aro del golpe. Con «reducir movimiento», nada de esto.",
+          "Lo mismo se ve en el replay de un duelo y en el video que descargás."
+        ]
+      },
+      "en": {
+        "title": "The hit and the attack, with more weight",
+        "novedades": [
+          "The hit changed shape: the flash lands like a punch and then shrinks, instead of growing and fading. It is now gold.",
+          "The attacking card glows gold before it lunges.",
+          "On a direct attack, a wave crosses the whole screen. A moment after the impact, a second wave of dust comes out.",
+          "The hit reads better over light cards and backgrounds: every flash has a dark outline beneath."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "The attack lasts as long as before.",
+          "With «Effects: Light» there are no waves or dust: the hit ring stays. With «reduce motion», none of this.",
+          "The same shows in a duel replay and in the video you download."
+        ]
+      }
+    },
+    {
       "id": "2026-11-13-7-cadena-con-energia-e-impactos-en-replays",
       "date": "2026-11-13",
       "tags": [
