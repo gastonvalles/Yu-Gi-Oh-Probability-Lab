@@ -244,7 +244,9 @@ describe('la cadena en grande', () => {
         <ChainStage rows={[ENGAGE, ASH, CALLED]} current={-1} />
       </Provider>,
     )
-    expect(cards()[2]).toHaveClass('delay-100', 'ease-in-out', 'duration-350')
+    // La nueva sube a su lugar en 280 ms frenando (dentro del eslabón: llega a los 380, antes que la línea de energía); las de antes se corren en 350.
+    expect(cards()[2]).toHaveClass('delay-100', 'duration-280', 'ease-llegada')
+    expect(cards()[1]).toHaveClass('duration-350', 'ease-in-out')
     expect(cards()[1]).not.toHaveClass('delay-100')
     // El tramo 1-2 entre los lugares viejos, apagándose; los de ahora, con su retraso.
     const fading = [...document.querySelectorAll('[data-chain-bond][data-fading]')]
@@ -335,8 +337,9 @@ describe('la cadena en grande', () => {
     stage([ENGAGE])
     expect(document.querySelector('[data-chain-stage]')).toHaveClass('pointer-events-none')
     expect(cards()[0]).toHaveClass('transition-[translate,rotate,scale,opacity,transform]', 'motion-reduce:transition-opacity')
-    // Entra grande y derecha desde el centro y cae inclinada a su lugar.
-    expect(cards()[0]).toHaveClass('starting:translate-x-0', 'starting:translate-y-0', 'starting:rotate-0', 'starting:scale-150', 'starting:opacity-0')
+    // Sube desde abajo a su lugar con su fundido: sólo cambia la altura (ni de costado ni en diagonal) y llega ya inclinada y de su tamaño.
+    expect(cards()[0]).toHaveClass('starting:translate-y-full', 'starting:opacity-0')
+    expect(cards()[0]!.className).not.toMatch(/starting:(-?translate-x|-?rotate|scale)/)
 
     const code = readFileSync(path.join(__dirname, '../components/auto/ChainNotice.tsx'), 'utf8')
     // Lo que cambia entre armar e irse son clases de `translate`, `rotate`, `scale` y `opacity`: nunca `left`, `top` ni el tamaño.

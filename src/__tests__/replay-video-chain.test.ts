@@ -105,7 +105,8 @@ describe('la escena de la cadena en el video', () => {
     // Con su inclinación 3D (`chain-tilt-front`, `chain-tilt-back-flip`…).
     expect(poseOfClasses(LAYOUT.narrow.left.depth[0]!)).toEqual({ x: -0.4, y: 0.5, rotate: deg(-8), scale: 1.4, opacity: 1, tiltX: deg(10), tiltY: deg(-7) })
     expect(poseOfClasses(LAYOUT.narrow.right.depth[3]!)).toEqual({ x: -0.1, y: -0.75, rotate: deg(-3), scale: 0.6, opacity: 1, tiltX: deg(-8), tiltY: deg(-6) })
-    expect(START_POSE).toEqual({ x: 0, y: 0, rotate: 0, scale: 1.5, opacity: 0, tiltX: 0, tiltY: 0 })
+    // La nueva sube desde abajo: su lugar corrido una carta hacia abajo (sólo `y` y la opacidad cambian).
+    expect(START_POSE).toEqual({ x: 0, y: 1, rotate: 0, scale: 1, opacity: 0, tiltX: 0, tiltY: 0 })
     expect(BACK_POSE).toEqual({ x: 0, y: -1, rotate: 0, scale: 0.5, opacity: 0, tiltX: 0, tiltY: 0 })
     // Impar a la izquierda, par a la derecha; desde el quinto lugar, se va hacia arriba.
     expect(stagePoseOf(0, 1).x).toBeLessThan(0)
@@ -113,7 +114,7 @@ describe('la escena de la cadena en el video', () => {
     expect(stagePoseOf(4, 5)).toBe(BACK_POSE)
     // Las clases y los tiempos que copia el video siguen en `ChainStage`.
     const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'components', 'auto', 'ChainNotice.tsx'), 'utf8')
-    for (const text of ['starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0', "'-translate-y-full scale-50 opacity-0'", `duration-${STAGE_MS.move}`, `'delay-${STAGE_MS.newest}'`, `delay-${STAGE_MS.bondDelay}`, 'left-1/3 top-2/7 aspect-[421/614] w-1/3', 'aspect-3/4 h-full max-w-full', 'bg-chain-veil/65', 'bg-chain-veil/45', 'absolute -inset-1 animate-chain-wait border-2 border-chain-glow']) expect(source).toContain(text)
+    for (const text of ['starting:translate-y-full starting:opacity-0', "'-translate-y-full scale-50 opacity-0'", `'duration-${STAGE_MS.move} ease-in-out'`, `'delay-${STAGE_MS.newest} duration-${STAGE_MS.rise} ease-llegada'`, `delay-${STAGE_MS.bondDelay}`, 'left-1/3 top-2/7 aspect-[421/614] w-1/3', 'aspect-3/4 h-full max-w-full', 'bg-chain-veil/65', 'bg-chain-veil/45', 'absolute -inset-1 animate-chain-wait border-2 border-chain-glow']) expect(source).toContain(text)
   })
 
   it('cada carta lleva la inclinación 3D de la mesa (`chain-tilt-*` de `index.css`, con su perspectiva): la de adelante se ve más ancha abajo y más alta del lado que se acerca', () => {
