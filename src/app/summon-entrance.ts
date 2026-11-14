@@ -350,6 +350,8 @@ const r2 = (value: number) => Math.round(value * 100) / 100
  * bajada (1967 ms). Las cartas caen en esa bajada con la caída de las otras entradas (`ENTRANCE_COMMON.reveal`, 850 ms): tocan su casilla a los 2333 ms, de a una cada 67 ms si son varias.
  */
 export const PENDULUM = { scales: 417, light: 667, lightMs: 2900, swing: 1117, swingMs: 2300, descent: 1483, end: 3684, every: 67 } as const
+/** Lo más que espera escondida una carta de una Invocación por Péndulo a las demás de la misma Invocación (una reproducción en pausa no la deja escondida para siempre). */
+export const PENDULUM_HOLD_MS = 20_000
 export const pendulumHit = (index = 0) => PENDULUM.descent + ENTRANCE_COMMON.reveal + index * PENDULUM.every
 
 /** Una carta de la Invocación por Péndulo: su casilla (en la pantalla), su arte y lo que se esconde hasta que toca (la carta de la mesa y el fantasma de su vuelo). */

@@ -10,7 +10,7 @@ import { prefersReducedMotion } from '../../app/motion'
 import { isToken } from '../../app/practice-mat'
 import { growHand } from '../../app/practice-hand-layout'
 import { shuffleDeck } from '../../app/shuffle-fx'
-import { UNKNOWN_SUMMON, entranceAllowed, entranceOf, landingToneOf, playEntrance } from '../../app/summon-entrance'
+import { PENDULUM_HOLD_MS, UNKNOWN_SUMMON, entranceAllowed, entranceOf, landingToneOf, playEntrance, playPendulum, surePendulum, type PendulumCard } from '../../app/summon-entrance'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
@@ -179,6 +179,14 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   // La entrada larga de lo que sale del Extra Deck (la de la mesa): mientras dura, reproducir no avanza (la dice su velo, `onDone`).
   const [entering, setEntering] = useState(false)
   const entrance = useRef<Animation | null>(null)
+  // Las cartas de una Invocación por Péndulo que esperan a las demás, escondidas (`held`), para caer todas en una sola escena.
+  const pendulumWait = useRef<{ card: PendulumCard; held: Animation[] }[]>([])
+  const releasePendulum = () => {
+    const waiting = pendulumWait.current
+    pendulumWait.current = []
+    for (const { held } of waiting) for (const animation of held) animation.cancel()
+    return waiting
+  }
   const [strike, setStrike] = useState<Strike | null>(null)
   const rootRef = useRef<HTMLDivElement | null>(null)
   // Lo que sacude un impacto: el campo (como en la mesa, `data-field`); las chapas, las manos y los controles, no.
@@ -257,14 +265,44 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     }
     const landed = stageRef.current?.querySelector(card(impact.mine, impact.id))
     const cell = landed?.parentElement ?? null
-    const tone = landingToneOf(impact.landing, UNKNOWN_SUMMON)
+    const side = impact.mine ? bottom : bottom === 0 ? 1 : 0
+    // La Invocación por Péndulo, sólo la del duelo manual (en el automático la deduce el adaptador): una sola escena con todas sus cartas, como en la mesa (cada carta es un paso: la que
+    // llega espera escondida mientras la jugada que sigue sea otra por Péndulo del mismo lado).
+    const sure = surePendulum(impact.landing, replay.mode !== 'link')
+    if (sure.pendulum && cell && landed instanceof HTMLElement && entranceAllowed()) {
+      const hide = [landed, ...document.querySelectorAll(`[data-flight-ghost="${impact.id}"]`)]
+      const box = cell.getBoundingClientRect()
+      const [w, h] = [Math.min(box.width, landed.offsetWidth || box.width), Math.min(box.height, landed.offsetHeight || box.height)]
+      pendulumWait.current.push({ card: { cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h), art: artOfDrawId(realOf(replay, frame, side, impact.id) ?? impact.id), hide }, held: [] })
+      const next = replay.steps[impact.key]
+      if (next && next[0] === side && next[1].type === 'place' && next[1].how === 'pendulum') {
+        pendulumWait.current.at(-1)!.held = hide.map((element) => element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: PENDULUM_HOLD_MS }))
+        return
+      }
+      const cards = releasePendulum().map(({ card }) => card)
+      entrance.current?.cancel()
+      const played = playPendulum({
+        cards,
+        field: fieldRef.current,
+        onDone: () => {
+          if (entrance.current !== played) return
+          entrance.current = null
+          setEntering(false)
+        },
+      })
+      if (played) {
+        entrance.current = played
+        setEntering(true)
+      }
+      return
+    }
+    const tone = landingToneOf(sure, UNKNOWN_SUMMON)
     // Lo que sale del Extra Deck, con la entrada larga de la mesa (`playEntrance`): reproducir espera a que termine (`entering`). Con «Livianos» o movimiento reducido, la llegada de siempre.
     const kind = entranceOf(tone)
     if (kind && cell && landed instanceof HTMLElement && entranceAllowed()) {
       entrance.current?.cancel()
       const box = cell.getBoundingClientRect()
       const [w, h] = [Math.min(box.width, landed.offsetWidth || box.width), Math.min(box.height, landed.offsetHeight || box.height)]
-      const side = impact.mine ? bottom : bottom === 0 ? 1 : 0
       const played = playEntrance({
         kind,
         cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h),
@@ -316,8 +354,9 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     return () => window.clearTimeout(timer)
   }, [playing, chainPending, entering, cursor, total, speed, replay, announce])
   const jump = (at: number) => {
-    // Saltar, sin entrada: la que estaba en curso se corta.
+    // Saltar, sin entrada: la que estaba en curso se corta (y las del Péndulo que esperaban vuelven a verse).
     entrance.current?.cancel()
+    releasePendulum()
     setPlaying(false)
     setBanner(null)
     setActivation(null)

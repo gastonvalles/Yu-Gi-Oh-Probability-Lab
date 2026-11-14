@@ -64,7 +64,7 @@ import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
 import { arrivals, impactOn, sacrificeAt, shakeOf, type ArrivalTone } from '../../app/field-impact'
-import { arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, playPendulum, surePendulum, type SummonCard } from '../../app/summon-entrance'
+import { PENDULUM_HOLD_MS, arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, playPendulum, surePendulum, type SummonCard } from '../../app/summon-entrance'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
@@ -588,8 +588,6 @@ interface MatFx {
 const NO_FX: MatFx = { flash: null, stage: null, landing: null, banner: null, handFlash: null }
 const FX_MS: Record<keyof MatFx, number> = { flash: ACTIVATE_MS, stage: ACTIVATE_MS, landing: LANDING_MS, banner: BANNER_MS, handFlash: HAND_FLASH_MS }
 const FX_NAMES = Object.keys(FX_MS) as (keyof MatFx)[]
-/** Lo más que espera escondida una carta de una Invocación por Péndulo a las demás (una reproducción en pausa no la deja escondida para siempre). */
-const PENDULUM_HOLD_MS = 20_000
 const fxKeyOf = (fx: MatFx, name: keyof MatFx): number | null => {
   const item = fx[name]
 
