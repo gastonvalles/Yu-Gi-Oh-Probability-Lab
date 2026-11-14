@@ -2,7 +2,7 @@ import { ARRIVAL, CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LI
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
-import { UNKNOWN_SUMMON, entranceOf, entranceTiming, landingToneOf, surePendulum } from '../../../app/summon-entrance'
+import { ENTRANCE, UNKNOWN_SUMMON, entranceOf, landingToneOf, surePendulum } from '../../../app/summon-entrance'
 import { entranceOverlay } from './video-entrance'
 import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
@@ -228,8 +228,8 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const entrance = action.type === 'summon' ? entranceOf(tone) : null
     const place = id ? placeIn(now, id, sides) : undefined
     if (entrance && action.type === 'summon' && place) {
-      // Lo que sale del Extra Deck, con la entrada larga de la mesa (`entranceOverlay`): su golpe fuerte, a los ms de Master Duel (la jugada dura lo que la entrada: `stepMs`).
-      const blow = start + entranceTiming(entrance).hit / speed
+      // Lo que sale del Extra Deck, con la entrada larga de la mesa (`entranceOverlay`): su golpe fuerte, a los ms de la mesa (la jugada dura lo que la entrada: `stepMs`).
+      const blow = start + ENTRANCE.hit / speed
       out.push(entranceOverlay(entrance, place.pose, place.card, `${sides.find((side) => now.has(`${side}:${action.id}`))}:${action.id}`, action.materials.length, theme.fx.llegada[entrance], assets, after.layout.unit, s, start, speed))
       out.push(...impactOverlays(place.pose.x, place.pose.y, 'strong', after.layout.unit, theme, blow, blow, speed, false, entrance))
     } else if (rect) {

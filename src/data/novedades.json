@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-8-entradas-misma-velocidad",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Las invocaciones del Extra Deck, todas igual de rápidas",
+        "novedades": [
+          "Las entradas de Fusión, Sincronía, Xyz, Enlace y Ritual ahora duran todas lo mismo: 2,2 segundos, con el golpe al segundo y medio.",
+          "Son más rápidas que antes: la Fusión tardaba 2,6 segundos y el Ritual, 5,2."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "El replay y el video de un duelo usan la misma duración nueva."
+        ],
+        "ojo": [
+          "La figura de cada tipo (el remolino, la galaxia, la puerta, los anillos, los círculos) se arma más rápido que antes, en el primer medio segundo.",
+          "Con «Efectos: Livianos» sigue sin entrada, como antes."
+        ]
+      },
+      "en": {
+        "title": "Extra Deck Summons, all equally fast",
+        "novedades": [
+          "The entrances for Fusion, Synchro, Xyz, Link and Ritual now all last the same: 2.2 seconds, with the hit at one and a half.",
+          "They are faster than before: Fusion took 2.6 seconds and Ritual, 5.2."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "The replay and the video of a duel use the same new length."
+        ],
+        "ojo": [
+          "Each type's figure (the swirl, the galaxy, the gate, the rings, the circles) builds up faster than before, in the first half second.",
+          "With «Effects: Light» there is still no entrance, as before."
+        ]
+      }
+    },
+    {
       "id": "2026-11-14-7-escape-cierra-solo-el-menu",
       "date": "2026-11-14",
       "tags": [

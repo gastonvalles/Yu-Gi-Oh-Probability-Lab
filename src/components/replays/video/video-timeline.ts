@@ -3,7 +3,7 @@ import { replayChainSteps, type DuelReplay } from '../../../app/duel-replay'
 import { safeFileName, type SharedCombo } from '../../../app/combo-share'
 import type { MatAction } from '../../../app/practice-mat'
 import { comboChainSteps, type SavedCombo } from '../../../app/saved-combos'
-import { entranceTiming } from '../../../app/summon-entrance'
+import { ENTRANCE } from '../../../app/summon-entrance'
 import { chainDwell, nextShown, stepsUpTo } from '../../auto/ChainNotice'
 import { titleOf } from '../duel-replay-text'
 
@@ -48,7 +48,7 @@ export const LONG_VIDEO_MS = 6 * 60_000
  * `STEP_MS`; al reproducir un combo, la mesa espera lo que sea más largo.
  */
 export const stepMs = (action: MatAction, speed: VideoSpeed = VIDEO_PACE, kind: VideoSubject['kind'] = 'duel') => {
-  const entrance = action.type === 'summon' ? entranceTiming(action.how).end : 0
+  const entrance = action.type === 'summon' ? ENTRANCE.end : 0
   const base = action.type === 'phase' ? (kind === 'combo' ? COMBO_PHASE_MS : PHASE_MS) : kind === 'combo' ? COMBO_STEP_MS : STEP_MS
   return (kind === 'combo' ? Math.max(base, entrance) : base + entrance) / speed
 }

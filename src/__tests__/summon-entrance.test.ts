@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ENTRANCE, ENTRANCE_COMMON, PENDULUM, UNKNOWN_SUMMON, entranceAllowed, entranceCost, entranceOf, entranceTiming, landingToneOf, pendulumHit, playEntrance, playPendulum, surePendulum } from '../app/summon-entrance'
+import { ENTRANCE, ENTRANCE_COMMON, ENTRANCE_FIGURE, PENDULUM, UNKNOWN_SUMMON, entranceAllowed, entranceOf, figureAt, figureTime, landingToneOf, type EntranceKind, pendulumHit, playEntrance, playPendulum, surePendulum } from '../app/summon-entrance'
 
 /** jsdom no anima: cada `animate` se anota con su elemento y devuelve una animación que se termina a mano. */
 function stubAnimate() {
@@ -22,22 +22,34 @@ describe('la entrada larga de la invocación (Master Duel)', () => {
     delete (Element.prototype as Partial<Element>).animate
   })
 
-  it('los tiempos de Master Duel por tipo: el golpe fuerte y cuándo sigue el duelo; Sincronía y Ritual con su corta', () => {
-    expect(Object.fromEntries(Object.entries(ENTRANCE).map(([kind, t]) => [kind, [t.hit, t.end]]))).toEqual({ fusion: [1817, 2583], xyz: [2683, 3467], link: [3633, 4117], synchro: [4083, 4600], ritual: [4700, 5200] })
-    expect([entranceTiming('synchro', true).hit, entranceTiming('synchro', true).end]).toEqual([2750, 3483])
-    expect([entranceTiming('ritual', true).hit, entranceTiming('ritual', true).end]).toEqual([2367, 2833])
-    // Fusión, Xyz y Enlace no tienen corta: piden la larga.
-    expect(entranceTiming('xyz', true)).toBe(entranceTiming('xyz'))
-    for (const t of [...Object.values(ENTRANCE), ENTRANCE.synchro.short!, ENTRANCE.ritual.short!]) {
-      // La revelación arranca 850 ms antes del golpe y el duelo sigue de medio segundo a 0,8 s después.
-      expect(t.hit - ENTRANCE_COMMON.reveal).toBeGreaterThan(t.figure)
-      expect(t.end - t.hit).toBeGreaterThanOrEqual(466)
-      expect(t.end - t.hit).toBeLessThanOrEqual(784)
-      // Los materiales llegan antes del golpe (en la Fusión, como en Master Duel, se cruzan con la revelación).
-      expect(t.materials).toBeLessThan(t.hit)
+  it('todas las entradas duran lo mismo (el golpe a 1,5 s y el duelo sigue a 2,2 s), más cortas que la más corta de Master Duel, y la figura de cada tipo corre comprimida hasta ese golpe', () => {
+    expect(ENTRANCE).toEqual({ hit: 1500, end: 2200 })
+    expect(ENTRANCE.end).toBeLessThan(Math.min(...Object.values(ENTRANCE_FIGURE).map((t) => t.end)))
+    for (const kind of Object.keys(ENTRANCE_FIGURE) as EntranceKind[]) {
+      const ref = ENTRANCE_FIGURE[kind]
+      const lead = ENTRANCE.hit - ENTRANCE_COMMON.reveal
+      // El golpe de la figura cae en el de todas; lo de antes de la revelación se comprime (nunca se estira) y, desde ahí, va al ritmo de Master Duel.
+      expect(figureAt(kind, ref.hit)).toBeCloseTo(ENTRANCE.hit)
+      expect(figureAt(kind, ref.hit - ENTRANCE_COMMON.reveal)).toBeCloseTo(lead)
+      expect(ref.hit - ENTRANCE_COMMON.reveal).toBeGreaterThan(lead)
+      expect(figureAt(kind, ref.hit + 300) - figureAt(kind, ref.hit)).toBeCloseTo(300)
+      // El video lee lo mismo al revés.
+      for (const ms of [0, 200, lead, 1000, ENTRANCE.hit, ENTRANCE.end]) expect(figureAt(kind, figureTime(kind, ms))).toBeCloseTo(ms)
+      // La figura y su segundo tiempo ya entraron cuando aparece la carta, y los materiales llegan antes del golpe.
+      expect(figureAt(kind, ref.figure)).toBeLessThan(lead)
+      expect(figureAt(kind, ref.accent)).toBeLessThan(lead)
+      expect(ref.materials).toBeLessThan(ref.hit)
+
+      // En la mesa: el velo y la carta escondida duran lo mismo en todos los tipos, y ninguna pieza de la figura arranca después del golpe.
+      const calls = stubAnimate()
+      const card = document.body.appendChild(document.createElement('div'))
+      playEntrance({ kind, cell: new DOMRect(100, 500, 48, 70), art: null, materials: 2, hide: [card], field: null, onDone: () => {} })
+      expect(calls.find((call) => call.el.className.includes('bg-black opacity-0') && call.el.className.includes('inset-0'))!.options).toMatchObject({ duration: ENTRANCE.end })
+      expect(calls.find((call) => call.el === card)!.options).toMatchObject({ duration: ENTRANCE.hit + ENTRANCE_COMMON.settle })
+      const stage = document.querySelector('[data-fx="entrance"]')!
+      for (const call of calls) if (stage.contains(call.el)) expect(Number(call.options.delay ?? 0)).toBeLessThanOrEqual(ENTRANCE.hit)
+      document.body.innerHTML = ''
     }
-    // Lo que suma a la Invocación de siempre (que ya esperaba el vuelo hasta tocar, 408 ms).
-    expect(entranceCost('fusion', 408)).toBe(2175)
   })
 
   it('sólo lo del Extra Deck con su mecánica y el Ritual llevan entrada; con «Livianos» o movimiento reducido, no va', () => {
@@ -58,9 +70,9 @@ describe('la entrada larga de la invocación (Master Duel)', () => {
     const calls = stubAnimate()
     const card = document.body.appendChild(document.createElement('div'))
     const onDone = vi.fn()
-    const master = playEntrance({ kind: 'ritual', short: true, cell: new DOMRect(100, 500, 48, 70), art: 'arte.jpg', materials: 4, hide: [card], field: null, onDone })!
+    const master = playEntrance({ kind: 'ritual', cell: new DOMRect(100, 500, 48, 70), art: 'arte.jpg', materials: 4, hide: [card], field: null, onDone })!
 
-    const t = ENTRANCE.ritual.short!
+    const t = ENTRANCE
     const veil = calls.find((call) => call.el.className.includes('bg-black opacity-0') && call.el.className.includes('inset-0'))!
     expect(veil.options).toMatchObject({ duration: t.end })
     expect(veil.frames[1]).toMatchObject({ opacity: ENTRANCE_COMMON.veil })

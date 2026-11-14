@@ -599,7 +599,6 @@ function SummonSample() {
   const left = useRef<HTMLSpanElement | null>(null)
   const right = useRef<HTMLSpanElement | null>(null)
   const [busy, setBusy] = useState<EntranceKind | 'pendulum' | null>(null)
-  const [short, setShort] = useState(false)
   const [materials, setMaterials] = useState(2)
   const [marked, setMarked] = useState(false)
   const [art, setArt] = useState(HAND[0]!)
@@ -620,7 +619,7 @@ function SummonSample() {
     const target = cell.current
     if (!target || busy) return
     setArt(id)
-    const played = playEntrance({ kind, short, cell: target.getBoundingClientRect(), art: small(id), materials, hide: [target], field: board.current, onDone: () => setBusy(null) })
+    const played = playEntrance({ kind, cell: target.getBoundingClientRect(), art: small(id), materials, hide: [target], field: board.current, onDone: () => setBusy(null) })
     if (played) setBusy(kind)
     else arrive(kind, true)
   }
@@ -663,9 +662,6 @@ function SummonSample() {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <Knob label="Materiales">
           <Segmented label="Materiales" size="sm" value={String(materials)} onChange={(value) => setMaterials(Number(value))} options={['1', '2', '4', '6'].map((value) => ({ value, label: value }))} />
-        </Knob>
-        <Knob label="Corta (Sincronía y Ritual)">
-          <Switch label="Corta" checked={short} onChange={setShort} />
         </Knob>
         <Knob label="Material elegido (latido)">
           <Switch label="Material elegido" checked={marked} onChange={setMarked} />

@@ -1,4 +1,4 @@
-import { ENTRANCE_COMMON, entranceTiming, type EntranceKind } from '../../../app/summon-entrance'
+import { ENTRANCE, ENTRANCE_COMMON, ENTRANCE_FIGURE, figureTime, type EntranceKind } from '../../../app/summon-entrance'
 import { EASE_IN_OUT, EASE_OUT, EASE_REVELAR, EASE_SNAP, bezierEase } from '../../../app/motion'
 import { drawCard, type Ctx, type VideoAssets } from './video-draw'
 import type { Overlay } from './video-fx'
@@ -50,9 +50,9 @@ function glow(ctx: Ctx, x: number, y: number, radius: number, color: string, alp
   ctx.globalCompositeOperation = 'source-over'
 }
 
-/** La figura de cada tipo en `ms`, en el centro `(x, y)` con radio `r`. */
+/** La figura de cada tipo en `ms` de su línea de tiempo (`ENTRANCE_FIGURE`), en el centro `(x, y)` con radio `r`. */
 function drawFigure(ctx: Ctx, kind: EntranceKind, ms: number, x: number, y: number, r: number, color: string, k: number) {
-  const t = entranceTiming(kind)
+  const t = ENTRANCE_FIGURE[kind]
   const until = t.hit + 150
   switch (kind) {
     case 'fusion': {
@@ -165,7 +165,7 @@ function drawFigure(ctx: Ctx, kind: EntranceKind, ms: number, x: number, y: numb
  * px del celular. Dura hasta que el duelo sigue (`end`).
  */
 export function entranceOverlay(kind: EntranceKind, to: Pose, card: SceneCard | undefined, key: string, materials: number, color: string, assets: VideoAssets, k: number, s: number, start: number, speed: VideoSpeed): Overlay {
-  const t = entranceTiming(kind)
+  const t = ENTRANCE
   const c = ENTRANCE_COMMON
   return {
     kind: 'entrance',
@@ -181,9 +181,11 @@ export function entranceOverlay(kind: EntranceKind, to: Pose, card: SceneCard | 
       ctx.globalAlpha = c.veil * Math.min(clamp(ms / c.veilIn), clamp((t.end - ms) / c.veilOut))
       ctx.fillStyle = '#000'
       ctx.fillRect(0, 0, width, height)
-      drawFigure(ctx, kind, ms, x, y, r, color, k)
+      // La figura y los materiales corren su línea de tiempo acomodada al golpe de todas, como en la mesa (`figureAt`).
+      const at = figureTime(kind, ms)
+      drawFigure(ctx, kind, at, x, y, r, color, k)
       // Los materiales, de los costados al centro.
-      const m = ms / t.materials
+      const m = at / ENTRANCE_FIGURE[kind].materials
       if (m > 0 && m < 1) {
         const n = Math.max(1, Math.min(6, materials || 2))
         const e = inOut(m)
