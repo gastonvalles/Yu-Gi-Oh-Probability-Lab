@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { createPortal } from 'react-dom'
 
 import { HITSTOP_MS } from '../../app/card-weight'
-import { ringAt, shakeField, shakeOf } from '../../app/field-impact'
+import { chargeOn, ringAt, shakeField, shakeOf } from '../../app/field-impact'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { cx } from '../ui/cx'
 import { fxVars } from './MatFx'
@@ -398,6 +398,8 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
       ],
       { duration: total },
     )
+    // La carga (`chargeOn`): mientras embiste, la carta brilla dorada y el polvo converge hacia ella, hasta el impacto. Sobre el tiempo que ya existe: el ataque no se alarga.
+    chargeOn(attacker, Math.cos(ang) * reach, Math.sin(ang) * reach, IMPACT_MS)
 
     return () => lunge.cancel()
   }, [attacker, len, ang])
@@ -416,7 +418,7 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
   useEffect(() => {
     const direct = !target || target.hasAttribute('data-lp')
 
-    ringAt(bx, by, IMPACT_MS)
+    ringAt(bx, by, IMPACT_MS, { hit: true, strong: direct })
     shakeField(attacker.closest<HTMLElement>('[data-field]'), shakeOf({ attack: direct ? 'direct' : 'card' }), IMPACT_MS + HITSTOP_MS)
   }, [attacker, target, bx, by])
 
@@ -427,15 +429,16 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
         <span className="absolute left-0 top-0 -mt-[3px] h-1.5 w-[var(--len)] origin-left animate-fx-beam rounded-full bg-[linear-gradient(90deg,transparent,rgb(var(--fx-rgb)/0.9)_70%,#fff)] shadow-[0_0_12px_3px_rgb(var(--fx-rgb)/0.75)] motion-reduce:hidden" />
         <Blade />
       </div>
-      {/* El impacto: un destello, una onda que se expande y chispas, cuando la espada llega. */}
-      <div className="absolute size-0" style={{ left: strike.bx, top: strike.by }}>
-        <span className="absolute -ml-10 -mt-10 size-20 animate-fx-flash rounded-full bg-[radial-gradient(circle,rgb(255_255_255/0.95),rgb(var(--fx-rgb)/0.75)_35%,transparent_72%)] opacity-0 motion-reduce:hidden" style={delayed} />
-        <span className="absolute -ml-9 -mt-9 size-[4.5rem] animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] bg-[radial-gradient(closest-side,transparent_60%,rgb(var(--fx-rgb)/0.4))] opacity-0 motion-reduce:hidden" style={delayed} />
+      {/* El impacto: un destello, una onda que se expande y chispas, cuando la espada llega. Dorado, como el golpe de Master Duel (el rojo queda para el rayo y la espada), y cada
+          capa clara con su borde oscuro (la gemela negra de la referencia): la onda, con su contorno; el destello y las chispas, con un anillo negro al 40 % en su degradé. */}
+      <div className="absolute size-0" style={{ left: strike.bx, top: strike.by, ...fxVars('gold') }}>
+        <span className="absolute -ml-10 -mt-10 size-20 animate-fx-flash rounded-full bg-[radial-gradient(circle,rgb(255_255_255/0.95),rgb(var(--fx-rgb)/0.75)_35%,rgb(0_0_0/0.4)_60%,transparent_72%)] opacity-0 motion-reduce:hidden" style={delayed} />
+        <span className="absolute -ml-9 -mt-9 size-[4.5rem] animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] bg-[radial-gradient(closest-side,transparent_60%,rgb(var(--fx-rgb)/0.4))] outline-2 outline-black/40 opacity-0 motion-reduce:hidden" style={delayed} />
         {SPARKS.map(([x, y]) => (
           <span
             key={`${x}:${y}`}
             // Con «Livianos», menos destellos a la vez: sin chispas.
-            className="absolute -ml-2 -mt-2 size-4 animate-fx-spark bg-[radial-gradient(circle,#fff_20%,rgb(var(--fx-rgb)/0.8)_40%,transparent_70%)] opacity-0 motion-reduce:hidden fx-lite:hidden"
+            className="absolute -ml-2 -mt-2 size-4 animate-fx-spark bg-[radial-gradient(circle,#fff_20%,rgb(var(--fx-rgb)/0.8)_40%,rgb(0_0_0/0.4)_55%,transparent_70%)] opacity-0 motion-reduce:hidden fx-lite:hidden"
             style={{ ...delayed, '--dx': `${x}rem`, '--dy': `${y}rem` } as CSSProperties}
           />
         ))}

@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+
+import { waveAt } from '../../app/field-impact'
 import { cx } from '../ui/cx'
 
 /** Los rayos del estallido, repartidos en la vuelta. */
@@ -10,6 +13,11 @@ const RAYS = Array.from({ length: 14 }, (_, at) => (at * 360) / 14)
  * reducido, sin destello ni rayos: el número quieto. No ataja toques. `inline`: dentro de su marco (el catálogo) en vez de la pantalla.
  */
 export function LethalBlow({ damage, mine, inline = false }: { damage: number; /** Caés vos (rojo); si no, el rival (lima, el color de ganar). */ mine: boolean; inline?: boolean }) {
+  // El golpe fuerte: la onda que cruza la pantalla desde el punto del golpe (`waveAt`; con «Livianos» o movimiento reducido, nada). En el catálogo (`inline`), no: saldría de su marco.
+  useEffect(() => {
+    if (!inline) waveAt(window.innerWidth / 2, window.innerHeight * (mine ? 2 / 3 : 1 / 3))
+  }, [inline, mine])
+
   return (
     <div aria-hidden="true" data-testid="lethal-blow" data-side={mine ? 'mine' : 'theirs'} className={cx('pointer-events-none inset-0 z-150 overflow-hidden', inline ? 'absolute' : 'fixed')}>
       <div className={cx('absolute left-1/2', mine ? 'top-2/3' : 'top-1/3')}>
