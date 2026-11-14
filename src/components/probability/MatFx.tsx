@@ -143,10 +143,10 @@ export const PICK_ORDER = 'absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place
 
 /**
  * El latido de un material elegido (en el campo y en la hoja de elegir cartas): un disco violeta y magenta de 1,2 cartas (el de Master Duel), una capa quieta que sólo cambia su opacidad
- * (de 1 a 0,5). En Master Duel late a 8 Hz; acá a 1,25 Hz (`--animate-fx-material`), porque más de tres destellos por segundo no van, y de bajo contraste (un disco suave, no un
+ * (de 1 a 0,25, en una curva suave). En Master Duel late a 8 Hz; acá a 1,25 Hz (`--animate-fx-material`), porque más de tres destellos por segundo no van, y de bajo contraste (un disco suave, no un
  * parpadeo): no se confunde con el foco ni con la elegida común (celeste). Con «Livianos», quieto; con movimiento reducido, nada.
  */
-export const MATERIAL_MARK = 'pointer-events-none absolute inset-x-0 top-1/2 z-3 aspect-square -translate-y-1/2 scale-120 rounded-full bg-radial from-fx-material-brillo/55 via-fx-material/40 via-40% to-transparent to-70% mix-blend-plus-lighter animate-fx-material fx-lite:animate-none fx-lite:mix-blend-normal motion-reduce:hidden'
+export const MATERIAL_MARK = 'pointer-events-none absolute inset-x-0 top-1/2 z-3 aspect-square -translate-y-1/2 scale-120 rounded-full bg-radial from-fx-material-brillo/90 via-fx-material/75 via-45% to-transparent to-75% mix-blend-plus-lighter animate-fx-material fx-lite:animate-none fx-lite:mix-blend-normal motion-reduce:hidden'
 
 /** Las cuatro esquinas de la mira. */
 const BRACKETS = [
