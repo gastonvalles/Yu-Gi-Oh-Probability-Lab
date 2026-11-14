@@ -25,9 +25,10 @@ const TRIBUTE_LEVEL = 5
  * El tipo de la llegada de una jugada de la mesa (`matEffects`): Fusión, Sincronía, Xyz y Enlace son el suyo (también sin materiales, desde el Extra); un Ritual que sale de la mano con una Invocación Especial, Ritual; por
  * Sacrificio (la jugada, o una Normal de Nivel 5 o más desde la mano), rojo; lo demás, Normal o Especial.
  */
-export function landingToneOf(landing: { tone: LandingTone; tribute?: true; hand?: true; extra?: true }, card: SummonCard): ArrivalTone {
-  const { tone, tribute, hand, extra } = landing
+export function landingToneOf(landing: { tone: LandingTone; tribute?: true; hand?: true; extra?: true; pendulum?: true }, card: SummonCard): ArrivalTone {
+  const { tone, tribute, hand, extra, pendulum } = landing
   if (tone !== 'normal' && tone !== 'special') return tone
+  if (pendulum) return 'pendulum'
   if (extra) return arrivalToneOf({ from: 'extra' }, card)
   if (tone === 'special' && hand && card.ritual) return 'ritual'
   if (tribute || (tone === 'normal' && hand && (card.kind.level ?? 0) >= TRIBUTE_LEVEL)) return 'tribute'
@@ -43,7 +44,18 @@ export function arrivalToneOf(arrived: { from: 'extra' | 'other'; hand?: true },
 
 /** Las que llevan la entrada larga: lo que sale del Extra Deck con su mecánica y el Ritual. */
 export type EntranceKind = 'fusion' | 'synchro' | 'xyz' | 'link' | 'ritual'
-export const entranceOf = (tone: ArrivalTone): EntranceKind | null => (tone === 'special' || tone === 'tribute' ? null : tone)
+export const entranceOf = (tone: ArrivalTone): EntranceKind | null => (tone === 'special' || tone === 'tribute' || tone === 'pendulum' ? null : tone)
+
+/**
+ * Lo que la mesa sabe con certeza que es una Invocación por Péndulo: la jugada de la mesa manual (`how: 'pendulum'`, lo eligió quien juega). En el automático no: el núcleo no dice cómo
+ * se invocó (`spsummoning` no trae el tipo y el `move` no trae el motivo) y el adaptador lo deduce de «sale boca arriba del Extra» (`adapter.ts`, `arrival`), que deja afuera las de la
+ * mano y mete las que saca un efecto. Ahí la llegada queda como Especial.
+ */
+export const surePendulum = <T extends { pendulum?: true }>(landing: T, auto: boolean): T => {
+  if (!auto || !landing.pendulum) return landing
+  const { pendulum: _, ...rest } = landing
+  return rest as T
+}
 
 /**
  * Los tiempos de cada entrada, en ms desde que arranca (las líneas de tiempo de Master Duel, a 60 cuadros): `hit`, el golpe fuerte («StrongSummon»: la carta toca su casilla, el anillo, la
@@ -331,3 +343,131 @@ export function playEntrance({ kind, short = false, cell, art, materials, hide, 
 }
 
 const r2 = (value: number) => Math.round(value * 100) / 100
+
+/**
+ * La Invocación por Péndulo (`SummonPendulum01TL` de Master Duel, ≈3700 ms). La referencia no trae las marcas de golpe ni de «sigue el duelo» (StrongSummon / StartCard): sólo sus piezas,
+ * que se usan tal cual: a los 417 ms se muestran las dos escalas (3267 ms, hasta 3684: el final de la escena), a los 667 la luz (2900 ms), a los 1117 el péndulo (2300 ms) y a los 1483 la
+ * bajada (1967 ms). Las cartas caen en esa bajada con la caída de las otras entradas (`ENTRANCE_COMMON.reveal`, 850 ms): tocan su casilla a los 2333 ms, de a una cada 67 ms si son varias.
+ */
+export const PENDULUM = { scales: 417, light: 667, lightMs: 2900, swing: 1117, swingMs: 2300, descent: 1483, end: 3684, every: 67 } as const
+export const pendulumHit = (index = 0) => PENDULUM.descent + ENTRANCE_COMMON.reveal + index * PENDULUM.every
+
+/** Una carta de la Invocación por Péndulo: su casilla (en la pantalla), su arte y lo que se esconde hasta que toca (la carta de la mesa y el fantasma de su vuelo). */
+export interface PendulumCard {
+  cell: DOMRect
+  art: string | null
+  hide: readonly Element[]
+}
+
+const SCALE = 'absolute bg-linear-to-t from-transparent to-transparent outline-1 outline-black/40 origin-bottom'
+const GEM = 'absolute -ml-2 -mt-2 size-4 rotate-45 border-2 border-white outline-1 outline-black/40'
+
+/**
+ * Una sola escena para toda la Invocación por Péndulo, con todas sus cartas: el velo, las dos escalas que suben a los costados (azul y roja), la luz blanca entre ellas, el péndulo que
+ * oscila colgado del medio y las cartas que bajan derechas (nada en diagonal) hasta su casilla; cada una con la llegada fuerte blanca y su brillo de marco, y una sola sacudida. Nadie juega
+ * mientras dura (el velo, como en `playEntrance`). Devuelve la animación del velo, o `null` si no va (`entranceAllowed`: con «Livianos», la llegada blanca de siempre).
+ */
+export function playPendulum({ cards, field, onDone }: { cards: readonly PendulumCard[]; field: HTMLElement | null; onDone: () => void }): Animation | null {
+  if (!entranceAllowed() || cards.length === 0) return null
+
+  const c = ENTRANCE_COMMON
+  const p = PENDULUM
+  const root = document.createElement('div')
+  root.className = ROOT
+  root.dataset.fx = 'entrance'
+  root.dataset.entrance = 'pendulum'
+  root.setAttribute('aria-hidden', 'true')
+  document.body.append(root)
+  const add: Add = (element, frames, duration, delay, easing) => {
+    cancelWhenDone(element.animate(frames, { duration: Math.max(1, Math.round(duration)), delay: Math.round(delay), ...(easing ? { easing } : {}) }))
+  }
+  const [vw, vh] = [window.innerWidth, window.innerHeight]
+  const r = Math.min(vw, vh) * 0.36
+  const veil = el(root, VEIL)
+
+  // Las dos escalas: suben desde abajo a los costados y se quedan hasta el final; su gema arriba.
+  const pillar = [Math.round(0.14 * r), Math.round(0.78 * vh)] as const
+  for (const [x, color, gem] of [[0.1, 'via-fx-pendulo-azul/75', 'bg-fx-pendulo-azul'], [0.9, 'via-fx-pendulo-rojo/75', 'bg-fx-pendulo-rojo']] as const) {
+    const group = el(root, `${PIECE} left-0 top-0 size-0`)
+    group.style.translate = `${Math.round(x * vw)}px ${Math.round(vh / 2)}px`
+    const bar = el(group, `${SCALE} ${color}`, pillar)
+    add(bar, [{ scale: '1 0', easing: EASE_OUT }, { scale: '1 1' }], 400, p.scales)
+    el(group, `${GEM} ${gem}`).style.top = `${-Math.round(pillar[1] / 2)}px`
+    add(group, keep(0, p.end - p.scales, p.end - p.scales, [1, 1]), p.end - p.scales, p.scales)
+  }
+  // La luz blanca entre las escalas, de arriba hacia abajo.
+  const light = el(root, `${PIECE} left-1/2 top-0 h-full origin-top bg-linear-to-b from-white/45 via-fx-pendulo-azul/20 to-transparent mix-blend-plus-lighter`)
+  Object.assign(light.style, { width: `${Math.round(0.9 * r)}px`, marginLeft: `${-Math.round(0.45 * r)}px` })
+  add(light, keep(0, p.lightMs, p.lightMs, [0.4, 1], 0.85), p.lightMs, p.light)
+  // El péndulo, colgado arriba en el medio: oscila y se va apagando (gira; no se traslada).
+  const swing = el(root, `${PIECE} left-1/2 top-1/12 size-0 origin-top`)
+  const rod = el(swing, 'absolute -ml-px w-0.5 bg-white/85 outline-1 outline-black/40')
+  const length = Math.round(0.3 * vh)
+  rod.style.height = `${length}px`
+  const bob = el(swing, 'absolute rounded-full border-2 border-white bg-radial from-white via-fx-pendulo-azul/80 to-fx-pendulo-rojo/80 outline-2 outline-black/40', Math.round(0.22 * r))
+  bob.style.top = `${length}px`
+  // Cada vaivén, más corto (se apaga): a lo sumo 18°, así la bola no sale de entre las escalas en el celular.
+  const swings = [0, 18, -16, 12, -8, 4, 0]
+  add(swing, swings.map((deg, index) => ({ offset: index / (swings.length - 1), rotate: `${deg}deg`, opacity: index === 0 || index === swings.length - 1 ? 0 : 1, easing: EASE_IN_OUT })), p.swingMs, p.swing)
+
+  // Las cartas: bajan derechas desde arriba de la pantalla hasta su casilla (de ×1,6 a ×1,15 y a su tamaño, con el aplastón), de a una cada 67 ms.
+  const total = c.reveal + c.settle
+  const at = (ms: number) => Math.round((ms / total) * 1000) / 1000
+  cards.forEach((card, index) => {
+    const hit = pendulumHit(index)
+    for (const element of card.hide) cancelWhenDone(element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: hit + c.settle }))
+    const path = el(root, CARD_PATH)
+    Object.assign(path.style, { left: `${Math.round(card.cell.left)}px`, top: `${Math.round(card.cell.top)}px`, width: `${Math.round(card.cell.width)}px`, height: `${Math.round(card.cell.height)}px` })
+    const face = el(path, 'block size-full')
+    const image = document.createElement(card.art ? 'img' : 'span')
+    image.className = `${CARD_FACE} block border-white`
+    if (card.art && image instanceof HTMLImageElement) {
+      image.src = card.art
+      image.alt = ''
+      image.decoding = 'async'
+    }
+    face.append(image)
+    const fall = Math.round(card.cell.top + 2 * card.cell.height)
+    const from = hit - c.reveal
+    add(path, [
+      { offset: 0, translate: `0px ${-fall}px`, opacity: 0 },
+      { offset: at(c.show), translate: `0px ${-fall}px`, opacity: 1, easing: EASE_REVELAR },
+      { offset: at(c.reveal), translate: '0px 0px', opacity: 1 },
+      { offset: 1, translate: '0px 0px', opacity: 1 },
+    ], total, from)
+    add(face, [
+      { offset: 0, scale: '1.6' },
+      { offset: at(c.show), scale: '1.6', easing: EASE_REVELAR },
+      { offset: at(c.show + c.fall), scale: '1.15', easing: EASE_REVELAR },
+      { offset: at(c.reveal), scale: `${c.squash}`, easing: EASE_SNAP },
+      { offset: 1, scale: '1' },
+    ], total, from)
+    const [x, y] = [card.cell.left + card.cell.width / 2, card.cell.top + card.cell.height / 2]
+    arriveAt(x, y, hit, { tone: 'pendulum', strong: true, unit: card.cell.width })
+    overFrameAt(x, y, card.cell.width, card.cell.height, hit + c.overFrame, 'pendulum')
+  })
+  shakeField(field, 'strong', pendulumHit())
+
+  const master = veil.animate(
+    [
+      { offset: 0, opacity: 0, easing: EASE_OUT },
+      { offset: c.veilIn / p.end, opacity: c.veil },
+      { offset: 1 - c.veilOut / p.end, opacity: c.veil },
+      { offset: 1, opacity: 0 },
+    ],
+    { duration: p.end },
+  )
+  let done = false
+  const finish = () => {
+    if (done) return
+    done = true
+    root.remove()
+    onDone()
+  }
+  master.addEventListener('finish', () => {
+    master.cancel()
+    finish()
+  })
+  master.addEventListener('cancel', finish)
+  return master
+}

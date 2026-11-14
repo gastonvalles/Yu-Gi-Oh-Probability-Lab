@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ENTRANCE, ENTRANCE_COMMON, entranceAllowed, entranceCost, entranceOf, entranceTiming, playEntrance } from '../app/summon-entrance'
+import { ENTRANCE, ENTRANCE_COMMON, PENDULUM, UNKNOWN_SUMMON, entranceAllowed, entranceCost, entranceOf, entranceTiming, landingToneOf, pendulumHit, playEntrance, playPendulum, surePendulum } from '../app/summon-entrance'
 
 /** jsdom no anima: cada `animate` se anota con su elemento y devuelve una animación que se termina a mano. */
 function stubAnimate() {
@@ -78,5 +78,35 @@ describe('la entrada larga de la invocación (Master Duel)', () => {
     // Cortarla (saltar, deshacer) también avisa, una sola vez.
     master.cancel()
     expect(onDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('la Invocación por Péndulo: sólo la que eligió quien juega (en el automático el adaptador la deduce y queda Especial); una sola escena con todas sus cartas, con las piezas de Master Duel a su tiempo', () => {
+    expect(landingToneOf({ tone: 'special', pendulum: true }, UNKNOWN_SUMMON)).toBe('pendulum')
+    expect(landingToneOf(surePendulum({ tone: 'special' as const, pendulum: true as const }, true), UNKNOWN_SUMMON)).toBe('special')
+    expect(entranceOf('pendulum')).toBeNull()
+
+    const calls = stubAnimate()
+    const cards = [0, 1, 2].map((index) => ({ cell: new DOMRect(60 + index * 52, 300, 48, 70), art: null, hide: [document.body.appendChild(document.createElement('div'))] }))
+    const onDone = vi.fn()
+    playPendulum({ cards, field: null, onDone })
+    expect(document.querySelectorAll('[data-entrance="pendulum"]')).toHaveLength(1)
+    const veil = calls.find((call) => call.el.className.includes('bg-black opacity-0'))!
+    expect(veil.options).toMatchObject({ duration: PENDULUM.end })
+    // Las escalas a los 417 ms, la luz a los 667, el péndulo a los 1117; cada carta toca su casilla a los 2333 ms, de a una cada 67.
+    expect(calls.some((call) => call.options.delay === PENDULUM.scales && call.el.className.includes('origin-bottom'))).toBe(true)
+    expect(calls.some((call) => call.options.delay === PENDULUM.light && call.options.duration === PENDULUM.lightMs)).toBe(true)
+    expect(calls.find((call) => call.options.delay === PENDULUM.swing)!.options.duration).toBe(PENDULUM.swingMs)
+    expect([0, 1, 2].map((index) => pendulumHit(index))).toEqual([2333, 2400, 2467])
+    cards.forEach((card, index) => expect(calls.find((call) => call.el === card.hide[0])!.options).toMatchObject({ duration: pendulumHit(index) + ENTRANCE_COMMON.settle }))
+    expect(calls.filter((call) => call.el.className.includes('border-white') && call.el.className.includes('border-2') && call.options.delay !== undefined && [2333, 2400, 2467].includes(Number(call.options.delay)))).not.toHaveLength(0)
+    // Las cartas bajan derechas (sólo en y) y nada sale del compositor.
+    for (const { frames } of calls) for (const frame of frames) {
+      expect(Object.keys(frame).filter((key) => !['scale', 'opacity', 'translate', 'rotate', 'offset', 'easing'].includes(key))).toEqual([])
+      if (typeof frame.translate === 'string' && frame.translate !== '0px 0px') expect(frame.translate.startsWith('0px ')).toBe(true)
+    }
+    veil.fire('finish')
+    expect(onDone).toHaveBeenCalledTimes(1)
+    document.documentElement.setAttribute('data-effects', 'lite')
+    expect(playPendulum({ cards, field: null, onDone })).toBeNull()
   })
 })

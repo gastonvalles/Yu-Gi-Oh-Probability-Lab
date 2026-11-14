@@ -48,8 +48,8 @@ export interface VideoTheme {
   fieldLineRgb?: string
   /** Los de la escena de la cadena y sus medallones (`--color-chain-*`, iguales en las dos paletas). */
   chain: ChainColors
-  /** Los del impacto de la mesa (`--color-fx-*`): el destello dorado, el aro cian de energía y el de la llegada al campo de cada tipo. */
-  fx: { destello: string; energia: string; llegada: Record<ArrivalTone, string> }
+  /** Los del impacto de la mesa (`--color-fx-*`): el destello dorado, el aro cian de energía, el de la llegada al campo de cada tipo, el violeta del Sacrificio y las escalas del Péndulo. */
+  fx: { destello: string; energia: string; llegada: Record<ArrivalTone, string>; material: string; materialBrillo: string; penduloAzul: string; penduloRojo: string }
 }
 
 export interface ChainColors {
@@ -97,7 +97,11 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     fx: {
       destello: v('--color-fx-destello'),
       energia: v('--color-fx-energia'),
-      llegada: { special: v('--color-fx-especial'), tribute: v('--color-fx-sacrificio'), fusion: v('--color-fx-fusion'), synchro: v('--color-fx-sincronia'), xyz: v('--color-fx-xyz'), link: v('--color-fx-enlace'), ritual: v('--color-fx-ritual') },
+      llegada: { special: v('--color-fx-especial'), tribute: v('--color-fx-sacrificio'), fusion: v('--color-fx-fusion'), synchro: v('--color-fx-sincronia'), xyz: v('--color-fx-xyz'), link: v('--color-fx-enlace'), ritual: v('--color-fx-ritual'), pendulum: v('--color-white') },
+      material: v('--color-fx-material'),
+      materialBrillo: v('--color-fx-material-brillo'),
+      penduloAzul: v('--color-fx-pendulo-azul'),
+      penduloRojo: v('--color-fx-pendulo-rojo'),
     },
   }
 }

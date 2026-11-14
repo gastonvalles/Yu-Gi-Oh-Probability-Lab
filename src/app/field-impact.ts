@@ -66,9 +66,9 @@ export function settleShake(root: HTMLElement | null): void {
 
 /**
  * El color de una llegada al campo (el de Master Duel por tipo; `--color-fx-*` de `index.css`): la Normal y la Especial comparten el oro anaranjado y la de Sacrificio va en rojo; la
- * Ritual, en azul profundo.
+ * Ritual, en azul profundo; la de Péndulo, blanca.
  */
-export type ArrivalTone = 'special' | 'tribute' | 'fusion' | 'synchro' | 'xyz' | 'link' | 'ritual'
+export type ArrivalTone = 'special' | 'tribute' | 'fusion' | 'synchro' | 'xyz' | 'link' | 'ritual' | 'pendulum'
 
 /** Las clases de cada color, enteras (Tailwind las lee del código): el aro, la cruz y el brillo del piso. */
 export const ARRIVAL_CLASS: Record<ArrivalTone, { ring: string; bar: string; glow: string }> = {
@@ -79,6 +79,7 @@ export const ARRIVAL_CLASS: Record<ArrivalTone, { ring: string; bar: string; glo
   xyz: { ring: 'border-fx-xyz', bar: 'bg-fx-xyz', glow: 'from-fx-xyz/60' },
   link: { ring: 'border-fx-enlace', bar: 'bg-fx-enlace', glow: 'from-fx-enlace/60' },
   ritual: { ring: 'border-fx-ritual', bar: 'bg-fx-ritual', glow: 'from-fx-ritual/60' },
+  pendulum: { ring: 'border-white', bar: 'bg-white', glow: 'from-white/60' },
 }
 
 /**

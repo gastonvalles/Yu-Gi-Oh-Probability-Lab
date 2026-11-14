@@ -2079,6 +2079,9 @@
   /* El material y el Sacrificio (Master Duel: la marca de «elegida como material», violeta y magenta): la carta que se sacrifica y el latido de los materiales elegidos. */
   --color-fx-material: #aa00ff;
   --color-fx-material-brillo: #ff00ff;
+  /* La Invocación por Péndulo: sus dos escalas, con los colores de las gemas de la mesa (azul a la izquierda, rojo a la derecha); la luz y la llegada, blancas (las de Master Duel). */
+  --color-fx-pendulo-azul: #4aa8ff;
+  --color-fx-pendulo-rojo: #ff4d6d;
 
   /* El rebote con pasada (el «Ease-Out-Back» del documento): un 10 % más allá y vuelve. Para lo que entra entero (una pantalla, un número que golpea). */
   --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);

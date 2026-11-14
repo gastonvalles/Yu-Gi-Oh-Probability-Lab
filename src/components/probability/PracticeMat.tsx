@@ -64,7 +64,7 @@ import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
 import { arrivals, impactOn, sacrificeAt, shakeOf, type ArrivalTone } from '../../app/field-impact'
-import { arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, type SummonCard } from '../../app/summon-entrance'
+import { arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, playPendulum, surePendulum, type SummonCard } from '../../app/summon-entrance'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
@@ -580,7 +580,7 @@ interface MatFx {
   flash: { id: string; key: number; kind: SpotlightKind } | null
   stage: { ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null
   /** `dropped`: era la carta que esperaba levantada en esa casilla; cae ahí mismo (`dropFrames`) y su golpe espera a que toque. */
-  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; dropped: boolean; key: number } | null
+  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; dropped: boolean; key: number; pendulum?: true } | null
   banner: { phase: MatPhase; turn: number | null; key: number } | null
   handFlash: number | null
 }
@@ -588,6 +588,8 @@ interface MatFx {
 const NO_FX: MatFx = { flash: null, stage: null, landing: null, banner: null, handFlash: null }
 const FX_MS: Record<keyof MatFx, number> = { flash: ACTIVATE_MS, stage: ACTIVATE_MS, landing: LANDING_MS, banner: BANNER_MS, handFlash: HAND_FLASH_MS }
 const FX_NAMES = Object.keys(FX_MS) as (keyof MatFx)[]
+/** Lo más que espera escondida una carta de una Invocación por Péndulo a las demás (una reproducción en pausa no la deja escondida para siempre). */
+const PENDULUM_HOLD_MS = 20_000
 const fxKeyOf = (fx: MatFx, name: keyof MatFx): number | null => {
   const item = fx[name]
 
@@ -1152,14 +1154,69 @@ function PracticeMatBody({
     return played !== null
   }
 
+  /**
+   * La Invocación por Péndulo es una sola escena con todas sus cartas (`playPendulum`), pero la mesa las coloca de a una (la cola de «Invocar varias por Péndulo», o un paso por carta al
+   * reproducir): mientras falte alguna de la misma Invocación, la que llega espera escondida (`pendulumWait`, sin anillo); con la última, la escena. Cortar la cola la lanza con las que hay;
+   * saltar o deshacer, no (vuelven a verse).
+   */
+  const pendulumWait = useRef<{ id: string; cell: Element; held: Animation[] }[]>([])
+  const pendulumHidden = (id: string) => {
+    const escaped = CSS.escape(id)
+    return [...(sectionRef.current?.querySelectorAll(`[data-card-id="${escaped}"]`) ?? []), ...document.querySelectorAll(`[data-flight-ghost="${escaped}"]`)]
+  }
+  const releasePendulum = () => {
+    const waiting = pendulumWait.current
+    pendulumWait.current = []
+    for (const { held } of waiting) for (const animation of held) animation.cancel()
+    return waiting
+  }
+  const flushPendulum = () => {
+    const waiting = releasePendulum()
+    if (waiting.length === 0) return
+    entrance.current?.cancel()
+    const cards = waiting.map(({ id, cell }) => {
+      const hide = [...pendulumHidden(id), ...cell.querySelectorAll('[data-fx="landing"]')]
+      const box = cell.getBoundingClientRect()
+      const card = hide.find((element): element is HTMLElement => element instanceof HTMLElement && sectionRef.current?.contains(element) === true && element.offsetWidth > 0)
+      const [w, h] = card ? [Math.min(box.width, card.offsetWidth), Math.min(box.height, card.offsetHeight)] : [box.width, box.height]
+      return { cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h), art: artById(id), hide }
+    })
+    const played = playPendulum({
+      cards,
+      field: fieldRef.current,
+      onDone: () => {
+        if (entrance.current !== played) return
+        entrance.current = null
+        onEnteringRef.current?.(false)
+      },
+    })
+    entrance.current = played
+    if (played) onEnteringRef.current?.(true)
+    else for (const { cell } of waiting) impactOn(cell, fieldRef.current, 'light', 0, 'pendulum')
+  }
+
   // El impacto de una Invocación (`field-impact.ts`): el anillo desde la casilla y la sacudida del campo cuando la carta la toca. Por el DOM, sin dibujar la mesa de nuevo.
   const landingKey = landing?.key
   useEffect(() => {
     if (!landing || landingKey === undefined) return
     const cell = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(landing.spot, landing.index)}"]`) ?? null
     const placed = landing.spot === 'mz' || landing.spot === 'emz' ? state[landing.spot][landing.index] : null
-    const tone = landingToneOf(landing, summonCardOf(placed?.id))
+    const sure = surePendulum(landing, isAuto)
+    const tone = landingToneOf(sure, summonCardOf(placed?.id))
     const step = fxStep.step && 'action' in fxStep.step ? fxStep.step.action : null
+    if (sure.pendulum && placed && cell && entranceAllowed()) {
+      pendulumWait.current.push({ id: placed.id, cell, held: [] })
+      // ¿Falta otra de la misma Invocación? La cola tiene más sin colocar, o la jugada que sigue (reproduciendo) es otra por Péndulo.
+      const next = session.actions[session.cursor]
+      const more = (pendulumQueue?.ids.some((id) => id !== placed.id && locateCard(state, id)?.kind !== 'spot') ?? false) || (next?.type === 'place' && next.how === 'pendulum')
+      if (!more) {
+        flushPendulum()
+        return
+      }
+      const wait = pendulumWait.current.at(-1)!
+      wait.held = pendulumHidden(placed.id).map((element) => element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: PENDULUM_HOLD_MS }))
+      return
+    }
     const materials = step?.type === 'summon' ? step.materials.length : (placed?.materials.length ?? 0)
     if (placed && cell && enter(tone, placed.id, cell, true, materials, artById(placed.id))) return
     impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped), tone)
@@ -1167,10 +1224,18 @@ function PracticeMatBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [landingKey])
 
-  // Saltar o deshacer corta la entrada en curso (no era de este paso).
+  // Se cortó la cola de «Invocar varias por Péndulo»: la escena, con las que se colocaron.
+  useEffect(() => {
+    if (!pendulumQueue && pendulumWait.current.length > 0) flushPendulum()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo cuando se va la cola
+  }, [pendulumQueue])
+
+  // Saltar o deshacer corta la entrada en curso (no era de este paso) y las del Péndulo que esperaban vuelven a verse.
   const cut = fxStep.step !== null && 'cut' in fxStep.step
   useEffect(() => {
-    if (cut) entrance.current?.cancel()
+    if (!cut) return
+    entrance.current?.cancel()
+    releasePendulum()
   }, [cut, fxStep])
 
   // Las del rival: la mesa no recibe sus jugadas, sólo ve su campo cambiar (`rivalFlights`): un monstruo que llega boca arriba a una zona, de a uno (un `sync` que trae varios no es un golpe).
