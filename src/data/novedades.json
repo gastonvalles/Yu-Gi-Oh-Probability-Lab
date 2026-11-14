@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-5-invocacion-por-pendulo",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "La Invocación por Péndulo, con su escena",
+        "novedades": [
+          "En el duelo manual, la Invocación por Péndulo tiene su escena: se encienden las dos escalas, baja una columna de luz, el péndulo se mece y las cartas bajan juntas a sus casillas.",
+          "Es una sola escena aunque invoques varios monstruos a la vez, y dura unos 3,7 segundos.",
+          "También se ve en el replay de un duelo manual."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "En el duelo automático todavía no: ahí la Invocación por Péndulo llega como una Invocación Especial común.",
+          "Mientras dura la escena nadie juega. Con «Efectos: Livianos» las cartas llegan enseguida, con un anillo blanco.",
+          "El video todavía no dibuja la escena."
+        ]
+      },
+      "en": {
+        "title": "Pendulum Summon, with its scene",
+        "novedades": [
+          "In a manual duel, a Pendulum Summon has its own scene: both scales light up, a column of light comes down, the pendulum swings and the cards drop together onto their zones.",
+          "It is a single scene even if you Summon several monsters at once, and it lasts about 3.7 seconds.",
+          "It also shows in the replay of a manual duel."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Not in the automatic duel yet: there a Pendulum Summon arrives as a regular Special Summon.",
+          "While the scene lasts nobody plays. With «Effects: Light» the cards arrive right away, with a white ring.",
+          "The video does not draw the scene yet."
+        ]
+      }
+    },
+    {
       "id": "2026-11-14-4-sacrificio-y-materiales",
       "date": "2026-11-14",
       "tags": [
