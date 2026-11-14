@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { createPortal } from 'react-dom'
 
 import { HITSTOP_MS } from '../../app/card-weight'
-import { ringAt, shakeField, shakeOf } from '../../app/field-impact'
+import { chargeOn, ringAt, shakeField, shakeOf } from '../../app/field-impact'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { cx } from '../ui/cx'
 import { fxVars } from './MatFx'
@@ -398,6 +398,8 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
       ],
       { duration: total },
     )
+    // La carga (`chargeOn`): mientras embiste, la carta brilla dorada y el polvo converge hacia ella, hasta el impacto. Sobre el tiempo que ya existe: el ataque no se alarga.
+    chargeOn(attacker, Math.cos(ang) * reach, Math.sin(ang) * reach, IMPACT_MS)
 
     return () => lunge.cancel()
   }, [attacker, len, ang])
@@ -416,7 +418,7 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
   useEffect(() => {
     const direct = !target || target.hasAttribute('data-lp')
 
-    ringAt(bx, by, IMPACT_MS, { hit: true })
+    ringAt(bx, by, IMPACT_MS, { hit: true, strong: direct })
     shakeField(attacker.closest<HTMLElement>('[data-field]'), shakeOf({ attack: direct ? 'direct' : 'card' }), IMPACT_MS + HITSTOP_MS)
   }, [attacker, target, bx, by])
 

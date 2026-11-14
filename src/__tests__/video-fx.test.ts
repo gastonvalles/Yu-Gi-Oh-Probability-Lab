@@ -42,9 +42,9 @@ describe('el video anima con los tiempos y los colores de la mesa', () => {
     const { hit, wave } = IMPACT
     expect(source).toContain(`size-${hit.ring.size / 4} rounded-full border-${hit.ring.border} border-fx-destello outline-${hit.ring.twin} outline-black/40`)
     expect(source).toContain(`size-${hit.flash.size / 4} rounded-full bg-radial from-fx-destello/${hit.flash.alpha * 100} to-transparent to-${hit.flash.stop * 100}%`)
-    expect(source).toContain(`size-${hit.flash.twin / 4} rounded-full bg-radial from-black/40 to-transparent to-${hit.flash.stop * 100}%`)
+    expect(source).toContain(`size-${hit.flash.twin / 4} rounded-full bg-radial from-transparent from-${hit.flash.hole * 100}% via-black/40 via-50% to-transparent to-${hit.flash.stop * 100}%`)
     expect(source).toContain(`rounded-full border-${wave.border} border-fx-destello outline-${wave.twin} outline-black/40`)
-    expect(source).toContain(`h-${hit.lines.width / 4} w-${hit.lines.length / 4} bg-fx-destello`)
+    expect(source).toContain(`h-${hit.lines.width / 4} w-${hit.lines.length / 4} origin-left bg-fx-destello`)
     expect(source).toContain(`size-${hit.dust.size / 4} rounded-full bg-fx-destello`)
     expect(source).toContain(`LINE_RADIUS = ${hit.lines.radius}`)
     expect(source).toContain(`DUST_RADIUS = ${hit.dust.radius}`)

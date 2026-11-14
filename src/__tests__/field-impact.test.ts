@@ -98,7 +98,7 @@ describe('el impacto en la mesa (field-impact)', () => {
       expect(ring.options).toMatchObject({ duration: HIT_MS, delay: 300 })
       const flash = calls.find((call) => classOf(call).includes('mix-blend-plus-lighter'))!
       expect(classOf(flash)).toContain('from-fx-destello')
-      expect(calls.some((call) => classOf(call).includes('from-black/40'))).toBe(true)
+      expect(calls.some((call) => classOf(call).includes('via-black/40'))).toBe(true)
       const second = calls.filter((call) => call.options.delay === 300 + SECOND_AT)
       expect(second).toHaveLength(2)
       expect(calls.some((call) => call.el.getAttribute('data-fx') === 'wave')).toBe(false)
