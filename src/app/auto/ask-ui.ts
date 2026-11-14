@@ -244,8 +244,8 @@ export interface AutoLink {
   phaseItems: AutoMenuItem[]
   endTurn: (() => void) | null
   zonePick: { label: string; targets: MatTarget[]; onPick: (zone: MatSpot, index: number) => void } | null
-  /** `stats`: el ATK/DEF de ahora de tus monstruos del campo que se eligen (`pickStatsOf`), debajo de cada uno mientras se elige. */
-  cardPick: { label: string; eligible: ReadonlySet<string>; chosen: readonly string[]; onToggle: (id: string) => void; done: { label: string; onSelect: () => void } | null; cancel: (() => void) | null; stats?: ReadonlyMap<string, PickStat> } | null
+  /** `stats`: el ATK/DEF de ahora de tus monstruos del campo que se eligen (`pickStatsOf`), debajo de cada uno mientras se elige. `material`: se eligen materiales (`isMaterialPick`): las elegidas laten. */
+  cardPick: { label: string; eligible: ReadonlySet<string>; chosen: readonly string[]; onToggle: (id: string) => void; done: { label: string; onSelect: () => void } | null; cancel: (() => void) | null; stats?: ReadonlyMap<string, PickStat>; material?: true } | null
   /** El ATK/DEF de ahora de tus monstruos boca arriba del campo, siempre (`fieldStatsOf`): la etiqueta de cada uno. Estable por valor: cambia sólo si cambia un número. */
   stats?: ReadonlyMap<string, PickStat>
   /** Lo que cuentan tus cartas boca arriba en las Mágicas y Trampas y las de tu mano (`talliesOf`), por id: su número. Estable por valor. */
@@ -947,6 +947,12 @@ export function askView(state: AskState): AskView {
 
 /** El título de la pregunta de a qué monstruo atacar (`HINTMSG_ATTACKTARGET`). */
 export const ATTACK_TARGET_HINT = '549'
+
+/**
+ * ¿Se eligen materiales? Los títulos de Fusión, Sincronía, Xyz y Enlace (`HINTMSG_FMATERIAL`, `_SMATERIAL`, `_XMATERIAL`, `_LMATERIAL`). El Ritual no: sus Sacrificios llegan con
+ * `HINTMSG_RELEASE` (500, `proc_ritual.lua`), el mismo de cualquier costo de «Sacrificar», y no se distinguen.
+ */
+export const isMaterialPick = (title: string | undefined) => title === '511' || title === '512' || title === '513' || title === '533'
 
 /**
  * Para qué se eligen las cartas: el `HINT_SELECTMSG` que precede a la pregunta (`AskState.title`), con las palabras de las cartas. Es la tabla propia de los textos del sistema

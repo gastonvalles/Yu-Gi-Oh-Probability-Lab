@@ -382,6 +382,40 @@ export function chargeOn(card: Element | null, dx: number, dy: number, ms: numbe
   removeAfter(layer, [[moving, ms]])
 }
 
+/**
+ * El Sacrificio (en Master Duel, la marca de «elegida como material»): sobre la casilla de la carta que se sacrifica, mientras vuela al Cementerio (`FLIGHT_MS`, 480 ms: no alarga nada),
+ * el disco violeta de 1,2 cartas (alfa 0,75 → 0,5 y se apaga), el círculo blanco de 1,7 cartas que crece de 44 % a 100 % en 200 ms y la columna de luz de 0,25 × 3,4 cartas, una vez cada
+ * uno (en Master Duel laten a 8 por segundo mientras se elige: acá es una salida). Con «Livianos», sólo el círculo (lo mínimo que dice «se sacrificó»); con movimiento reducido, nada.
+ */
+export const SACRIFICE = { ms: 450, disc: { size: 1.2, from: 0.75, to: 0.5 }, maru: { size: 1.7, from: 0.44, ms: 200 }, column: { w: 0.25, h: 3.4, ms: 300 } } as const
+const SACRIFICE_DISC = 'pointer-events-none absolute rounded-full bg-radial from-fx-material-brillo/80 via-fx-material/70 to-transparent to-70% opacity-0 mix-blend-plus-lighter'
+const SACRIFICE_MARU = 'pointer-events-none absolute rounded-full border-2 border-white outline-2 outline-fx-material/60 opacity-0'
+const SACRIFICE_COLUMN = 'pointer-events-none absolute bg-linear-to-b from-transparent via-fx-material-brillo/80 to-transparent opacity-0 mix-blend-plus-lighter'
+
+export function sacrificeAt(x: number, y: number, unit = 48): void {
+  if (!canAnimate()) return
+
+  const layer = layerAt(x, y)
+  layer.dataset.fx = 'sacrifice'
+  const parts: Array<readonly [Animation, number]> = []
+  const add = (className: string, [w, h]: readonly [number, number], frames: Keyframe[], duration: number, easing?: string) => {
+    const span = spanIn(layer, className)
+    const [pw, ph] = [Math.round(w * unit), Math.round(h * unit)]
+    Object.assign(span.style, { width: `${pw}px`, height: `${ph}px`, marginLeft: `${-pw / 2}px`, marginTop: `${-ph / 2}px` })
+    parts.push([cancelWhenDone(span.animate(frames, { duration, ...(easing ? { easing } : {}) })), duration])
+  }
+  const { disc, maru, column } = SACRIFICE
+
+  // El círculo crece casi lineal (como en Master Duel) y se apaga hasta el final de la salida.
+  add(SACRIFICE_MARU, [maru.size, maru.size], [{ scale: `${maru.from}`, opacity: 1 }, { scale: '1', opacity: 0.8, offset: r3(maru.ms / SACRIFICE.ms) }, { scale: '1', opacity: 0 }], SACRIFICE.ms)
+  if (!lite()) {
+    add(SACRIFICE_DISC, [disc.size, disc.size], [{ scale: '0.85', opacity: 0, easing: EASE_OUT }, { scale: '1', opacity: disc.from, offset: 0.15 }, { opacity: disc.to, offset: 0.6 }, { scale: '1.05', opacity: 0 }], SACRIFICE.ms)
+    add(SACRIFICE_COLUMN, [column.w, column.h], [{ scale: '1 0', opacity: 0, easing: EASE_OUT }, { scale: '1 1', opacity: 1, offset: 0.3 }, { scale: '0.4 1', opacity: 0 }], column.ms)
+  }
+
+  removeAfter(layer, parts)
+}
+
 /** La llegada entera sobre una casilla (su centro): el anillo del color de su tipo (la fuerte, si sacude fuerte) y la sacudida del campo, a los `delay` ms. */
 export function impactOn(element: Element | null, field: HTMLElement | null, shake: Shake, delay = 0, tone: ArrivalTone = 'special'): void {
   if (!element) return

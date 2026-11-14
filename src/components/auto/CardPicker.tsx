@@ -9,7 +9,7 @@ import type { CardFrame } from '../../app/card-frame'
 import type { MatPile } from '../../app/practice-mat'
 import { CardArt } from '../CardArt'
 import { COPIES, PILE_SHORT } from '../probability/MatDialogs'
-import { PICK_ORDER } from '../probability/MatFx'
+import { MATERIAL_MARK, PICK_ORDER } from '../probability/MatFx'
 import { AskWhy } from '../duel/AskWhy'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -125,6 +125,8 @@ interface PickGridProps {
    * Force…» son la misma carta chiquita). Sin `className`: la lista tiene su propio alto.
    */
   rows?: boolean
+  /** Se eligen materiales (`isMaterialPick`): las elegidas, además, laten en violeta (`MATERIAL_MARK`). */
+  material?: boolean
 }
 
 /**
@@ -133,7 +135,7 @@ interface PickGridProps {
  * Las que dicen de dónde son (`from`) van por lugar, la mano propia primero, cada una con su chip: dos copias iguales de la mano y del Deck nunca se ven iguales. Eligiendo una sola, las copias de
  * la misma carta en el mismo lugar van en una, con «×3» (`copyGroups`, `copyToToggle`); eligiendo varias (`multi` o `apart`), cada copia es una carta, con su número de orden.
  */
-export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, apart = false, onInspect, rows = false }: PickGridProps) {
+export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, apart = false, onInspect, rows = false, material = false }: PickGridProps) {
   const [active, setActive] = useState(0)
   // La bandeja se desliza de costado: con el mouse, también con la rueda vertical.
   const row = useRef<HTMLDivElement>(null)
@@ -221,6 +223,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
           ) : null}
           {/* Lo elegido, el aro y la tilde lima (eligiendo varias, su número de orden); lo que ahora no se puede elegir va apagado. */}
           {order >= 0 ? <span aria-hidden="true" data-pick-chosen="" className="pointer-events-none absolute inset-0 outline-2 -outline-offset-2 outline-info" /> : null}
+          {order >= 0 && material ? <span aria-hidden="true" data-material="" className={MATERIAL_MARK} /> : null}
           {order >= 0 && multi ? <span aria-hidden="true" className={PICK_ORDER}>{orders.map((n) => n + 1).join('·')}</span> : null}
           {order >= 0 && !multi ? (
             <span aria-hidden="true" className="absolute right-0.5 top-0.5 grid size-5 place-items-center bg-info text-background">
@@ -326,6 +329,8 @@ interface PickBandProps {
   onInspect?: (key: string) => void
   /** Cada copia aparte aunque el toque elija una (`PickGrid`). */
   apart?: boolean
+  /** Se eligen materiales: las elegidas laten (`PickGrid`). */
+  material?: boolean
 }
 
 /**
@@ -333,7 +338,7 @@ interface PickBandProps {
  * caja y la principal a la derecha. Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la primera carta.
  * Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa. Sin «Cancelar», Escape lo minimiza.
  */
-export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note, why, variant, onInspect, apart = false }: PickBandProps) {
+export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note, why, variant, onInspect, apart = false, material = false }: PickBandProps) {
   const titleId = useId()
   const whyId = useId()
   const primary = multi || done
@@ -376,7 +381,7 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
       }
     >
       <div className="grid gap-1">
-        <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} apart={apart} className={TRAY} {...(onInspect ? { onInspect } : {})} />
+        <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} apart={apart} material={material} className={TRAY} {...(onInspect ? { onInspect } : {})} />
         {note ? <p className="m-0 text-micro text-muted">{note}</p> : null}
       </div>
     </AutoPanel>
@@ -412,6 +417,8 @@ interface CardPickerProps {
   onInspect?: (key: string) => void
   /** Cada copia aparte aunque el toque elija una (`PickGrid`). */
   apart?: boolean
+  /** Se eligen materiales: las elegidas laten (`PickGrid`). */
+  material?: boolean
   /**
    * Declarar una carta: el buscador está siempre y, además de `cards` (las que se vieron y las del deck propio, a un toque), muestra las de todo el catálogo que encuentra `find` (nunca sin
    * escribir: no dicen nada del rival). `status`: el catálogo cargando o sin poder cargar (las de `cards` siguen valiendo).
@@ -425,7 +432,7 @@ interface CardPickerProps {
  * elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, una sola principal («Elegir 3 cartas», o «Listo») que se
  * enciende con `min` (o con `done`) y el contador («2 de 3») a la derecha del título. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done, onInspect, apart = false, more }: CardPickerProps) {
+export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done, onInspect, apart = false, material = false, more }: CardPickerProps) {
   const leaving = useLeaving()
   const whyId = useId()
   // El tramo de Mayús, en el orden que se ve (por lugar).
@@ -477,7 +484,7 @@ export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCanc
       <div className="grid gap-2">
         {searchable ? <SearchField label={t('auto.picker.search')} placeholder={t(more ? 'auto.picker.searchAny' : 'auto.picker.search')} value={query} onChange={setQuery} /> : null}
         {shown.length > 0 ? (
-          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={open} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} apart={apart} {...(more ? { rows: true } : { className: TRAY })} {...(onInspect ? { onInspect } : {})} />
+          <PickGrid label={t('auto.picker.cards')} cards={groupsOf(shown).flat()} chosen={chosen} eligible={open} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} apart={apart} material={material} {...(more ? { rows: true } : { className: TRAY })} {...(onInspect ? { onInspect } : {})} />
         ) : moreNote === null ? (
           <p className="m-0 text-body text-muted">{needle ? t('auto.picker.noMatches', { query: query.trim() }) : t('auto.picker.typeName')}</p>
         ) : null}

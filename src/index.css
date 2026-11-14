@@ -2076,6 +2076,9 @@
   --color-fx-xyz-brasa: #ff8437;
   --color-fx-enlace: #0091ff;
   --color-fx-ritual: #005aff;
+  /* El material y el Sacrificio (Master Duel: la marca de «elegida como material», violeta y magenta): la carta que se sacrifica y el latido de los materiales elegidos. */
+  --color-fx-material: #aa00ff;
+  --color-fx-material-brillo: #ff00ff;
 
   /* El rebote con pasada (el «Ease-Out-Back» del documento): un 10 % más allá y vuelve. Para lo que entra entero (una pantalla, un número que golpea). */
   --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -2094,6 +2097,8 @@
   --animate-feel-flash: feel-flash 260ms var(--ease-out) both;
   /* El número de la cadena que golpea la pantalla: entra grande y se clava con pasada. */
   --animate-feel-hit: feel-hit 220ms var(--ease-out-back) both;
+  /* El latido de un material elegido (`MATERIAL_MARK`): de 1 a 0,5 cada 800 ms (1,25 Hz; el de Master Duel, a 8 Hz, pasa el límite de tres destellos por segundo), mientras se elige. */
+  --animate-fx-material: pulse 800ms ease-in-out infinite;
 
   @keyframes feel-ring {
     from {

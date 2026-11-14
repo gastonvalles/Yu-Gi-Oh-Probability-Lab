@@ -4,7 +4,7 @@ import type { ChainStep } from '../../app/auto/chain-feed'
 import { medalsOf } from '../../app/card-glow'
 import { lineCell, railsCell, railsField } from '../../app/duel-rails'
 import { duelReplayAt, replayChainSteps, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
-import { impactOn, shakeOf } from '../../app/field-impact'
+import { impactOn, sacrificeAt, shakeOf } from '../../app/field-impact'
 import { matEffects, type MatEffects } from '../../app/mat-effects'
 import { prefersReducedMotion } from '../../app/motion'
 import { isToken } from '../../app/practice-mat'
@@ -109,6 +109,19 @@ function impactAt(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>[2],
   const id = duelReplayAt(replay, to, shots).states[side][landing.spot][landing.index]?.id
 
   return id ? { key: to, mine, landing, id } : null
+}
+
+/**
+ * Los Sacrificios de un paso, con la misma regla que la mesa (`matEffects`): su efecto (`sacrificeAt`) sale de cada carta que se sacrifica, medida antes de que se dibuje el paso (todavía
+ * está en su casilla), mientras vuela al Cementerio. Sólo al avanzar de a un paso.
+ */
+function sacrificeStep(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>[2], from: number, to: number, bottom: ReplaySide, root: Element | null) {
+  const step = to === from + 1 ? replay.steps[to - 1] : undefined
+  if (!step || step[1].type !== 'tribute' || !matEffects(duelReplayAt(replay, from, shots).states[step[0]], step[1]).sacrifice) return
+  for (const id of step[1].tributes) {
+    const rect = root?.querySelector(`[${step[0] === bottom ? 'data-card-id' : 'data-rival-card-id'}="${CSS.escape(id)}"]`)?.getBoundingClientRect()
+    if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
+  }
 }
 
 /** Los mensajes de la cadena que se muestran:los de la jugada `at` (desde `from`, los que ya se veían antes de ella), de a uno hasta `seen`. */
@@ -225,6 +238,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       const side = shuffleAt(replay, from, to)
       setShuffled(side === null ? null : { key: to, drop: side === bottom ? 'data-drop' : 'data-rival-drop' })
       setImpact(impactAt(replay, shots, from, to, bottom))
+      sacrificeStep(replay, shots, from, to, bottom, stageRef.current)
     },
     [replay, shots, chainSteps, bottom],
   )

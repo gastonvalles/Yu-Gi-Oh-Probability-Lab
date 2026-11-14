@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-4-sacrificio-y-materiales",
+      "date": "2026-11-14",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El Sacrificio se ve y los materiales elegidos laten",
+        "novedades": [
+          "Al invocar por Sacrificio, el monstruo que se sacrifica deja su casilla con un destello violeta y una columna de luz, mientras va al Cementerio.",
+          "Al elegir los materiales de una Fusión, Sincronía, Xyz o Enlace, las cartas que ya elegiste laten en violeta, en el campo y en la ventana de elegir.",
+          "El Sacrificio también se ve en el replay de un duelo."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "El Sacrificio no alarga el duelo: ocurre mientras la carta viaja al Cementerio.",
+          "Los Sacrificios de un Ritual y los de un costo todavía no llevan el latido ni el destello.",
+          "Con «Efectos: Livianos» la marca de los materiales queda quieta. Con «reducir movimiento», nada de esto."
+        ]
+      },
+      "en": {
+        "title": "Tributes show, and chosen materials pulse",
+        "novedades": [
+          "On a Tribute Summon, the Tributed monster leaves its zone with a violet flash and a column of light, on its way to the Graveyard.",
+          "When choosing the materials of a Fusion, Synchro, Xyz or Link Summon, the cards you already picked pulse violet, on the field and in the picking window.",
+          "The Tribute also shows in a duel replay."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "The Tribute does not lengthen the duel: it happens while the card travels to the Graveyard.",
+          "Tributes for a Ritual and for a cost do not get the pulse or the flash yet.",
+          "With «Effects: Light» the material mark stays still. With «reduce motion», none of this."
+        ]
+      }
+    },
+    {
       "id": "2026-11-14-3-cadena-con-gestos",
       "date": "2026-11-14",
       "tags": [
