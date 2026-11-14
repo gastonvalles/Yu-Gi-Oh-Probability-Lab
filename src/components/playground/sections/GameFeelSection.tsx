@@ -10,7 +10,9 @@ import { useMediaQuery } from '../../../app/use-media-query'
 import { PANEL_LIME } from '../../auto/AutoPanel'
 import { ChainStage, type ChainNoticeRow } from '../../auto/ChainNotice'
 import { CardArt } from '../../CardArt'
+import type { ChainMedal } from '../../../app/card-glow'
 import { AttackFx, measureStrike, type Strike } from '../../probability/AttackFx'
+import { ChainBadge } from '../../probability/MatFx'
 import { Button } from '../../ui/Button'
 import { Callout } from '../../ui/Callout'
 import { Flipbook, FlipbookFrames } from '../../ui/Flipbook'
@@ -666,7 +668,16 @@ const CHAIN_CARDS = [
 
 function ChainSample() {
   const [count, setCount] = useState(0)
-  const rows: ChainNoticeRow[] = CHAIN_CARDS.slice(0, count).map((card, index) => ({ number: index + 1, mine: index % 2 === 0, name: card.name, art: small(card.id), state: 'chained' }))
+  // Cuántos eslabones ya se resolvieron (-1: se arma) y si el 2 niega al 1 al resolverse (como Ash Blossom).
+  const [solved, setSolved] = useState(-1)
+  const [negate, setNegate] = useState(true)
+  const current = count - solved
+  const rows: ChainNoticeRow[] = CHAIN_CARDS.slice(0, count).map((card, index) => ({ number: index + 1, mine: index % 2 === 0, name: card.name, art: small(card.id), state: solved < 0 ? 'chained' : index + 1 > current ? 'solved' : index + 1 === current ? 'solving' : 'chained' }))
+  const medals: ChainMedal[] = solved < 0 ? [] : rows.filter((row) => row.number <= current).map((row) => ({ number: row.number, mine: row.mine, voided: negate && row.number === 1 && current <= 2 && count > 1, resolving: row.number === current }))
+  const restart = () => {
+    setCount(0)
+    setSolved(-1)
+  }
 
   return (
     <Specimen
@@ -677,16 +688,29 @@ function ChainSample() {
           La pieza real (<Tag>ChainStage</Tag>, la escena de la cadena del duelo): al encadenar, una línea de energía (<Tag>fx-energia</Tag>, núcleo blanco) une la carta anterior con la nueva de
           un trazo en 150 ms (<Tag>animate-chain-energy</Tag>: un solo elemento que estira <Tag>scale</Tag> desde su punta y apunta con <Tag>rotate</Tag>), salta la chispa donde toca (el
           flipbook) y recién después asienta la cadena de metal; todo dentro de los 0,7 s del eslabón. Con «livianos», la línea queda y la chispa no; con movimiento reducido, ninguna.
+          Los gestos de Master Duel (<Tag>CHAIN_BEAT_MS</Tag>), sin alargar nada: la carta que espera respuesta late (su marco celeste, de 1 a 0,5 cada 1333 ms); al resolver, los
+          medallones (<Tag>ChainBadge</Tag>) que esperan su turno laten, el que resuelve crece 0,75 → 0,87 → 1 en 517 ms con un brillo de 100 ms y el negado parpadea cuatro veces en
+          450 ms tras un destello celeste de 50 ms. Con «livianos», sin el brillo ni el destello; con movimiento reducido, nada (la tacha sigue diciendo que se negó).
         </>
       }
     >
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="primary" icon="link" onClick={() => setCount(count >= CHAIN_CARDS.length ? 0 : count + 1)}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="primary" icon="link" disabled={solved >= 0} onClick={() => (count >= CHAIN_CARDS.length ? restart() : setCount(count + 1))}>
           {count >= CHAIN_CARDS.length ? 'Volver a empezar' : `Encadenar (${count + 1})`}
         </Button>
+        <Button size="sm" variant="secondary" disabled={count === 0} onClick={() => (solved >= count - 1 ? restart() : setSolved(solved + 1))}>
+          {solved >= count - 1 && count > 0 ? 'Terminar la cadena' : `Resolver el ${current - (solved < 0 ? 0 : 1)}`}
+        </Button>
+        <Switch label="El 2 niega al 1" checked={negate} onChange={setNegate} />
       </div>
       <div className="relative flex h-96 items-center justify-center overflow-hidden bg-card-background p-4">
-        {rows.length ? <ChainStage rows={rows} current={-1} /> : <p className="m-0 text-micro text-muted">Sin cadena: tocá «Encadenar».</p>}
+        {rows.length ? <ChainStage rows={rows} current={solved < 0 ? -1 : current - 1} /> : <p className="m-0 text-micro text-muted">Sin cadena: tocá «Encadenar».</p>}
+        {/* Los medallones, en una casilla de muestra (en la mesa van donde se activó cada eslabón). */}
+        {medals.length ? (
+          <span className="absolute bottom-4 left-1/2 h-16 w-40 -translate-x-1/2 bg-input">
+            <ChainBadge medals={medals} />
+          </span>
+        ) : null}
       </div>
     </Specimen>
   )
