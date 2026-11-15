@@ -15,7 +15,7 @@
 ["SD6-EN007","Common","Unlimited",0.3,24999,9156135,"Apprentice Magician"],
 ["SD6-EN008","Common","1st Edition",0.43,25000,72630549,"Chaos Command Magician"],
 ["SD6-EN008","Common","Unlimited",0.32,25000,72630549,"Chaos Command Magician"],
-["SD6-EN009","Common","1st Edition",1.6,25001,71413901,"Breaker the Magical Warrior"],
+["SD6-EN009","Common","1st Edition",1.58,25001,71413901,"Breaker the Magical Warrior"],
 ["SD6-EN009","Common","Unlimited",0.77,25001,71413901,"Breaker the Magical Warrior"],
 ["SD6-EN010","Common","1st Edition",0.52,25002,70791313,"Royal Magical Library"],
 ["SD6-EN010","Common","Unlimited",0.39,25002,70791313,"Royal Magical Library"],
@@ -55,7 +55,7 @@
 ["SD6-EN027","Common","Unlimited",0.78,25019,51481927,"Spell Absorption"],
 ["SD6-EN028","Common","1st Edition",0.95,25020,69162969,"Lightning Vortex"],
 ["SD6-EN028","Common","Unlimited",1.24,25020,69162969,"Lightning Vortex"],
-["SD6-EN029","Common","1st Edition",0.28,24928,28553439,"Magical Dimension"],
+["SD6-EN029","Common","1st Edition",0.3,24928,28553439,"Magical Dimension"],
 ["SD6-EN029","Common","Unlimited",0.14,24928,28553439,"Magical Dimension"],
 ["SD6-EN030","Common","1st Edition",0.6,25021,25774450,"Mystic Box"],
 ["SD6-EN030","Common","Unlimited",0.64,25021,25774450,"Mystic Box"],
@@ -69,6 +69,6 @@
 ["SD6-EN034","Common","Unlimited",0.2,25024,34029630,"Pitch-Black Power Stone"],
 ["SD6-EN035","Common","1st Edition",0.48,25025,49010598,"Divine Wrath"],
 ["SD6-EN035","Common","Unlimited",0.5,25025,49010598,"Divine Wrath"],
-["SD6-EN036","Common","1st Edition",0.46,25026,62279055,"Magic Cylinder"],
+["SD6-EN036","Common","1st Edition",0.52,25026,62279055,"Magic Cylinder"],
 ["SD6-EN036","Common","Unlimited",0.77,25026,62279055,"Magic Cylinder"]
 ]
