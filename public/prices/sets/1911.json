@@ -16,7 +16,7 @@
 ["SR04-EN007","Common","1st Edition",0.16,130117,6849042,"Super-Ancient Dinobeast"],
 ["SR04-EN007","Common","Unlimited",0.14,130117,6849042,"Super-Ancient Dinobeast"],
 ["SR04-EN008","Common","1st Edition",0.31,130118,41753322,"Sauropod Brachion"],
-["SR04-EN008","Common","Unlimited",0.16,130118,41753322,"Sauropod Brachion"],
+["SR04-EN008","Common","Unlimited",0.18,130118,41753322,"Sauropod Brachion"],
 ["SR04-EN009","Common","1st Edition",0.27,130119,83235263,"Tyranno Infinity"],
 ["SR04-EN009","Common","Unlimited",0.18,130119,83235263,"Tyranno Infinity"],
 ["SR04-EN010","Common","1st Edition",0.11,130120,50896944,"Black Brachios"],
@@ -24,7 +24,7 @@
 ["SR04-EN011","Common","1st Edition",0.19,130121,63259351,"Miracle Jurassic Egg"],
 ["SR04-EN011","Common","Unlimited",0.13,130121,63259351,"Miracle Jurassic Egg"],
 ["SR04-EN012","Common","1st Edition",0.24,130122,45894482,"Gilasaurus"],
-["SR04-EN012","Common","Unlimited",0.19,130122,45894482,"Gilasaurus"],
+["SR04-EN012","Common","Unlimited",0.17,130122,45894482,"Gilasaurus"],
 ["SR04-EN013","Common","1st Edition",0.21,130123,36042004,"Babycerasaurus"],
 ["SR04-EN013","Common","Unlimited",0.21,130123,36042004,"Babycerasaurus"],
 ["SR04-EN014","Common","1st Edition",0.12,130124,38572779,"Miscellaneousaurus"],
@@ -68,7 +68,7 @@
 ["SR04-EN033","Common","1st Edition",0.1,130143,95676943,"Extinction on Schedule"],
 ["SR04-EN033","Common","Unlimited",0.29,130143,95676943,"Extinction on Schedule"],
 ["SR04-EN034","Common","1st Edition",0.6,130144,29843091,"Ojama Trio"],
-["SR04-EN034","Common","Unlimited",0.47,130144,29843091,"Ojama Trio"],
+["SR04-EN034","Common","Unlimited",0.46,130144,29843091,"Ojama Trio"],
 ["SR04-EN035","Common","1st Edition",0.23,130145,42956963,"Nightmare Archfiends"],
 ["SR04-EN035","Common","Unlimited",0.21,130145,42956963,"Nightmare Archfiends"],
 ["SR04-EN036","Common","1st Edition",0.7,130146,40838625,"Quaking Mirror Force"],
@@ -76,5 +76,5 @@
 ["SR04-EN037","Common","1st Edition",0.31,130147,1637760,"Grand Horn of Heaven"],
 ["SR04-EN037","Common","Unlimited",0.19,130147,1637760,"Grand Horn of Heaven"],
 ["SR04-EN038","Common","1st Edition",0.25,130148,18252559,"Secret Blast"],
-["SR04-EN038","Common","Unlimited",0.23,130148,18252559,"Secret Blast"]
+["SR04-EN038","Common","Unlimited",0.22,130148,18252559,"Secret Blast"]
 ]

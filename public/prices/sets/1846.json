@@ -1,6 +1,6 @@
 [
 ["SDMY-EN001","Super Rare","1st Edition",0.69,123799,42023223,"Alpha The Electromagnet Warrior"],
-["SDMY-EN002","Super Rare","1st Edition",4.26,123800,79418928,"Beta The Electromagnet Warrior"],
+["SDMY-EN002","Super Rare","1st Edition",4.04,123800,79418928,"Beta The Electromagnet Warrior"],
 ["SDMY-EN003","Super Rare","1st Edition",1.13,123801,15502037,"Gamma The Electromagnet Warrior"],
 ["SDMY-EN004","Ultra Rare","1st Edition",3.36,123802,42901635,"Berserkion the Electromagna Warrior"],
 ["SDMY-EN005","Common","1st Edition",0.33,123803,78355370,"Kuribohrn"],
@@ -9,7 +9,7 @@
 ["SDMY-EN008","Common","1st Edition",0.77,123806,39256679,"Beta The Magnet Warrior"],
 ["SDMY-EN009","Common","1st Edition",0.56,123807,11549357,"Gamma the Magnet Warrior"],
 ["SDMY-EN010","Common","1st Edition",0.61,123808,46986414,"Dark Magician"],
-["SDMY-EN011","Common","1st Edition",0.64,123809,38033121,"Dark Magician Girl"],
+["SDMY-EN011","Common","1st Edition",0.65,123809,38033121,"Dark Magician Girl"],
 ["SDMY-EN012","Common","1st Edition",0.28,123810,78193831,"Buster Blader"],
 ["SDMY-EN013","Common","1st Edition",0.17,123811,90876561,"Jack's Knight"],
 ["SDMY-EN014","Common","1st Edition",0.16,123812,25652259,"Queen's Knight"],
@@ -29,7 +29,7 @@
 ["SDMY-EN028","Common","1st Edition",0.52,123826,25774450,"Mystic Box"],
 ["SDMY-EN029","Common","1st Edition",0.21,123827,72302403,"Swords of Revealing Light"],
 ["SDMY-EN030","Common","1st Edition",0.28,123828,93260132,"Spell Shattering Arrow"],
-["SDMY-EN031","Common","1st Edition",0.87,123829,24094653,"Polymerization"],
+["SDMY-EN031","Common","1st Edition",0.74,123829,24094653,"Polymerization"],
 ["SDMY-EN032","Common","1st Edition",0.64,123830,95286165,"De-Fusion"],
 ["SDMY-EN033","Common","1st Edition",0.61,123831,12923641,"Swords of Concealing Light"],
 ["SDMY-EN034","Common","1st Edition",0.24,123832,83715234,"Attack the Moon!"],
@@ -41,7 +41,7 @@
 ["SDMY-EN040","Common","1st Edition",0.16,123838,20781762,"Rock Bombardment"],
 ["SDMY-EN041","Ultra Rare","1st Edition",1.86,123839,4628897,"Imperion Magnum the Superconductive Battlebot"],
 ["SDMY-EN042","Common","1st Edition",0.43,123840,6150044,"Arcana Knight Joker"],
-["SDMY-EN043","Common","1st Edition",0.54,123841,98502113,"Dark Paladin"],
+["SDMY-EN043","Common","1st Edition",0.55,123841,98502113,"Dark Paladin"],
 ["SDMY-EN044","Common","1st Edition",0.22,123842,4796100,"Chimera the Flying Mythical Beast"],
 ["SDMY-EN045","Common","1st Edition",2.08,123843,86240887,"Buster Blader, the Dragon Destroyer Swordsman"]
 ]
