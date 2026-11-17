@@ -51,7 +51,7 @@
 ["SP14-EN025","Starfoil Rare","1st Edition",4.13,79890,28150174,"Photon Papilloperative"],
 ["SP14-EN026","Common","1st Edition",2.17,79893,64554883,"Number 25: Force Focus"],
 ["SP14-EN026","Starfoil Rare","1st Edition",5.87,79894,64554883,"Number 25: Force Focus"],
-["SP14-EN027","Common","1st Edition",7.43,79897,82308875,"Number 7: Lucky Straight"],
+["SP14-EN027","Common","1st Edition",7.45,79897,82308875,"Number 7: Lucky Straight"],
 ["SP14-EN027","Starfoil Rare","1st Edition",6.31,79898,82308875,"Number 7: Lucky Straight"],
 ["SP14-EN028","Common","1st Edition",0.34,79899,26563200,"Muzurhythm the String Djinn"],
 ["SP14-EN028","Starfoil Rare","1st Edition",0.46,79900,26563200,"Muzurhythm the String Djinn"],
@@ -93,9 +93,10 @@
 ["SP14-EN046","Starfoil Rare","1st Edition",0.74,79847,77060848,"Svartalf of the Nordic Alfar"],
 ["SP14-EN047","Common","1st Edition",0.5,79840,40844552,"Valkyrie of the Nordic Ascendant"],
 ["SP14-EN047","Starfoil Rare","1st Edition",0.63,79843,40844552,"Valkyrie of the Nordic Ascendant"],
-["SP14-EN048","Common","1st Edition",0.47,79836,30604579,"Thor, Lord of the Aesir"],
-["SP14-EN048","Starfoil Rare","1st Edition",1.32,79837,30604579,"Thor, Lord of the Aesir"],
+["SP14-EN048","Common","1st Edition",0.45,79836,30604579,"Thor, Lord of the Aesir"],
+["SP14-EN048","Starfoil Rare","1st Edition",1.51,79837,30604579,"Thor, Lord of the Aesir"],
 ["SP14-EN049","Common","1st Edition",0.23,79834,67098114,"Loki, Lord of the Aesir"],
 ["SP14-EN049","Starfoil Rare","1st Edition",0.71,79835,67098114,"Loki, Lord of the Aesir"],
-["SP14-EN050","Common","1st Edition",0.62,79826,93483212,"Odin, Father of the Aesir"]
+["SP14-EN050","Common","1st Edition",0.62,79826,93483212,"Odin, Father of the Aesir"],
+["SP14-EN050","Starfoil Rare","1st Edition",5.56,79827,93483212,"Odin, Father of the Aesir"]
 ]

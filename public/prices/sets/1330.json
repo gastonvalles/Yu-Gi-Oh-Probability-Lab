@@ -68,7 +68,7 @@
 ["DT04-EN067","Duel Terminal Normal Parallel Rare","Limited",2.11,81269,64034255,"Genex Ally Birdman"],
 ["DT04-EN068","Duel Terminal Rare Parallel Rare","Limited",0.33,81270,91438994,"Genex Ally Bellflame"],
 ["DT04-EN069","Duel Terminal Normal Parallel Rare","Limited",2.99,81271,27827903,"Genex Ally Crusher"],
-["DT04-EN070","Duel Terminal Super Parallel Rare","Limited",0.34,81272,63211608,"Genex Ally Reliever"],
+["DT04-EN070","Duel Terminal Super Parallel Rare","Limited",0.38,81272,63211608,"Genex Ally Reliever"],
 ["DT04-EN071","Duel Terminal Normal Parallel Rare","Limited",0.27,81273,90616316,"The Fabled Peggulsus"],
 ["DT04-EN072","Duel Terminal Normal Parallel Rare","Limited",0.23,81274,26704411,"The Fabled Kokkator"],
 ["DT04-EN073","Duel Terminal Rare Parallel Rare","Limited",0.29,81275,53199020,"Fabled Dianaira"],
@@ -82,8 +82,8 @@
 ["DT04-EN081","Duel Terminal Super Parallel Rare","Limited",0.67,81283,24644634,"Naturia White Oak"],
 ["DT04-EN082","Duel Terminal Normal Parallel Rare","Limited",0.51,81284,50032342,"Strategist of the Ice Barrier"],
 ["DT04-EN083","Duel Terminal Normal Parallel Rare","Limited",0.94,81285,27527047,"Secret Guards of the Ice Barrier"],
-["DT04-EN084","Duel Terminal Super Parallel Rare","Limited",0.67,81286,53921056,"General Gantala of the Ice Barrier"],
-["DT04-EN085","Duel Terminal Ultra Parallel Rare","Limited",22.99,81287,99916754,"Naturia Exterio"],
+["DT04-EN084","Duel Terminal Super Parallel Rare","Limited",0.66,81286,53921056,"General Gantala of the Ice Barrier"],
+["DT04-EN085","Duel Terminal Ultra Parallel Rare","Limited",20.69,81287,99916754,"Naturia Exterio"],
 ["DT04-EN086","Duel Terminal Normal Parallel Rare","Limited",1.48,81288,3366982,"Alligator's Sword Dragon"],
 ["DT04-EN087","Duel Terminal Normal Parallel Rare","Limited",7.91,81289,74711057,"Elemental HERO Terra Firma"],
 ["DT04-EN088","Duel Terminal Ultra Parallel Rare","Limited",1.24,81290,26304459,"Ancient Flamvell Deity"],
@@ -98,5 +98,5 @@
 ["DT04-EN097","Duel Terminal Normal Parallel Rare","Limited",0.41,81299,93895605,"Hate Buster"],
 ["DT04-EN098","Duel Terminal Normal Parallel Rare","Limited",37.47,81300,64697231,"Trap Dustshoot"],
 ["DT04-EN099","Duel Terminal Normal Parallel Rare","Limited",7.99,81301,63356631,"Phoenix Wing Wind Blast"],
-["DT04-EN100","Duel Terminal Rare Parallel Rare","Limited",1.6,81302,58921041,"Anti-Spell Fragrance"]
+["DT04-EN100","Duel Terminal Rare Parallel Rare","Limited",1.8,81302,58921041,"Anti-Spell Fragrance"]
 ]
