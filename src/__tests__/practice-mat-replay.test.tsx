@@ -9,6 +9,7 @@ import { tapMenu } from './support/mat-menu'
 import { ReplayBar, ReplayTimeline, ReplayTransport } from '../components/probability/ReplayBar'
 import { SavedCombosList } from '../components/probability/PracticeMatPanel'
 import { createSavedCombo } from '../app/saved-combos'
+import { css } from './support/css-value'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 
@@ -154,7 +155,7 @@ describe('la mesa de práctica', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
       const burst = zone('Zona de monstruo 1').querySelector('[data-fx="landing"]')
       expect(burst).toHaveAttribute('data-tone', 'normal')
-      expect(burst?.querySelector('span')).toHaveStyle({ animationDelay: `${Math.round(FLIGHT_MS * LANDING_AT)}ms` })
+      expect(burst?.querySelector('span')?.style.animationDelay).toBe(`${Math.round(FLIGHT_MS * LANDING_AT)}ms`)
       expect(zone('Zona de monstruo 2').querySelector('[data-fx="landing"]')).toBeNull()
 
       // Una fase nueva: la banda con su nombre y nada más, también de la End Phase a la Draw Phase (el turno nuevo no se escribe); en la práctica, siempre la tuya.
@@ -631,7 +632,7 @@ describe('la mesa de práctica', () => {
       // 45 pasos de 3 px más 3 px de espacio pedían ~280 px y se pasaban al panel de Pasos y Combos.
       expect(slider()).toHaveClass('min-w-0')
       expect(slider().className).not.toMatch(/(^|\s)gap-/)
-      expect(slider().style.gap).toBe(`min(3px, ${40 / 46}%)`)
+      expect(css(slider().style.gap)).toBe(css(`min(3px, ${40 / 46}%)`))
       for (const pill of slider().querySelectorAll('[data-state]')) expect(pill.className).not.toMatch(/(^|\s)(min-)?w-\[/)
     })
 

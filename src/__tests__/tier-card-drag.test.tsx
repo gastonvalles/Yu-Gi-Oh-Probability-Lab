@@ -8,6 +8,7 @@ import { MOUSE_DRAG_THRESHOLD_PX, TOUCH_DRAG_DELAY_MS, TOUCH_SCROLL_SLOP_PX } fr
 import { cardDropAt, type DropZone } from '../app/use-tier-card-drag'
 import { TierMakerBoard } from '../components/meta/TierMakerBoard'
 import { dragGhost, insertionLine, mockTierLayout, mouseDrag } from './support/tier-board-layout'
+import { css } from './support/css-value'
 
 // El arte real pide la imagen a la red: acá sólo importa dónde cae cada carta.
 vi.mock('../components/CardArt', () => ({ CardArt: () => <img alt="" /> }))
@@ -123,12 +124,12 @@ describe('arrastrar una carta del creador con el mouse, como en el builder', () 
     expect(ghost).toHaveAttribute('aria-hidden', 'true')
     expect(ghost).toHaveClass('pointer-events-none', 'fixed', 'opacity-70')
     expect(ghost).toHaveStyle({ width: '90px', height: '90px' })
-    expect(ghost?.style.transform).toBe(`translate3d(${100 + MOUSE_DRAG_THRESHOLD_PX}px, 700px, 0)`)
+    expect(css(ghost?.style.transform)).toBe(css(`translate3d(${100 + MOUSE_DRAG_THRESHOLD_PX}px, 700px, 0)`))
     expect(source).toHaveClass('opacity-40')
 
     move(source, 300, 50)
     nextFrame()
-    expect(ghost?.style.transform).toBe('translate3d(280px, 30px, 0)')
+    expect(css(ghost?.style.transform)).toBe(css('translate3d(280px, 30px, 0)'))
   })
 
   it('con el lápiz también: se levanta al moverlo, sin esperar', () => {
@@ -151,7 +152,7 @@ describe('arrastrar una carta del creador con el mouse, como en el builder', () 
     expect(cardsOf('Sin clasificar')).not.toHaveClass('shadow-focus')
     expect(insertionLine()?.hidden).toBe(false)
     expect(insertionLine()).toHaveClass('bg-info')
-    expect(insertionLine()?.style.transform).toBe('translate3d(195px, 0px, 0)')
+    expect(css(insertionLine()?.style.transform)).toBe(css('translate3d(195px, 0px, 0)'))
     expect(insertionLine()?.style.height).toBe('90px')
 
     // A, vacía.

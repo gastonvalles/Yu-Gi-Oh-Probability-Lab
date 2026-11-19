@@ -140,16 +140,19 @@ describe('el visor de una pila en el celular se baja con su asa, sin cerrarse', 
 
     fireEvent.pointerDown(grip, { ...base, button: 0, clientY: 100 })
     fireEvent.pointerMove(grip, { ...base, clientY: 120 })
-    expect(moved()).toContain('+ 20px')
+    // El corrimiento va como `calc(… + 20px)` (jsdom 30) o dentro del `clamp(0px, 20px, …)` ya simplificado (jsdom 31).
+    const offset = (px: number) => new RegExp(`(\\+ |, )${px}px[,)]`)
+
+    expect(moved()).toMatch(offset(20))
     fireEvent.pointerMove(grip, { ...base, clientY: 150 })
     const waiting = frames.size
 
     fireEvent.pointerMove(grip, { ...base, clientY: 170 })
     // Dos movimientos en el mismo cuadro: un solo cuadro pedido, el del último.
     expect(frames.size).toBe(waiting)
-    expect(moved()).toContain('+ 20px')
+    expect(moved()).toMatch(offset(20))
     frames.forEach((callback) => callback(0))
-    expect(moved()).toContain('+ 70px')
+    expect(moved()).toMatch(offset(70))
     fireEvent.pointerUp(grip, { ...base, buttons: 0, clientY: 170 })
     expect(grip).toHaveAttribute('aria-expanded', 'false')
     expect(moved()).not.toContain('clamp(')

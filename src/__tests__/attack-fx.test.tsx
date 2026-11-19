@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AttackFx, AttackTrail, ChevronTrail, measureStrike, sacudir, trailOf, type Strike } from '../components/probability/AttackFx'
 import { EASE_IN_OUT, EASE_OUT } from '../app/motion'
+import { css } from './support/css-value'
 
 /** jsdom no tiene layout (todo mide 0): cada elemento dice dónde está. */
 function place(element: Element, left: number, top: number, width: number, height: number) {
@@ -474,7 +475,7 @@ describe('la estela del ataque', () => {
     // En la capa de la mesa (no en un portal): la pregunta del medio (`z-[130]`) le queda encima.
     expect(container.contains(trail)).toBe(true)
     expect(trail.parentElement).toHaveClass('pointer-events-none', 'absolute', 'inset-0', 'z-[125]')
-    expect(trail.style.transform).toBe(`rotate(${Math.PI / 2}rad)`)
+    expect(css(trail.style.transform)).toBe(css(`rotate(${Math.PI / 2}rad)`))
     // Medida desde la capa: si la capa empieza más abajo, la estela sube lo mismo.
     const top = parseFloat(trail.style.top)
     place(trail.parentElement!, 0, 40, 400, 600)

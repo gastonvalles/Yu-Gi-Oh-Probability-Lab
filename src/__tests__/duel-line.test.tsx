@@ -12,6 +12,7 @@ import { COMPACT_FIELD_MEDIA_QUERY, phoneDuelLayout } from '../components/probab
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 import { t } from '../i18n'
 import { asSocket, createDuelHarness, phaseChip } from './support/duel-screen-harness'
+import { css } from './support/css-value'
 
 /**
  * La mesa del duelo en el celular (Gastón, 2026-11-12: «evitar espacio vacío entre campo y mano»): las vidas en chapas (la del rival en la barra) y, entre el campo y tu mano, nada: la línea es una
@@ -63,8 +64,8 @@ describe('la línea del celular', () => {
     const before = geometry()
 
     expect(line()).toHaveClass('h-0')
-    expect(line().style.marginBottom).toBe(`${layout.gap}px`)
-    expect(field().style.height).toBe(`${layout.fieldHeight}px`)
+    expect(css(line().style.marginBottom)).toBe(css(`${layout.gap}px`))
+    expect(css(field().style.height)).toBe(css(`${layout.fieldHeight}px`))
     expect(line().childElementCount).toBe(0)
 
     // La última jugada (las vidas que cambia el rival con su calculadora) queda en el chat: la mesa no la muestra.

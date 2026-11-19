@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MatPrompt } from '../components/duel/MatPrompt'
 import { Modal } from '../components/ui/Modal'
+import { css } from './support/css-value'
 
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 const render = (ui: ReactElement) => renderBare(ui, { wrapper: ({ children }) => <Provider store={store}>{children}</Provider> })
@@ -129,7 +130,7 @@ describe('un cartel de la mesa (MatPrompt, desde 1101 px: en el celular es la ho
 
     fireEvent.pointerDown(screen.getByText('¿Activás el efecto?'), { pointerId: 7, pointerType: 'touch', button: 0, buttons: 1, clientX: 120, clientY: 300 })
     fireEvent.pointerMove(screen.getByText('¿Activás el efecto?'), { pointerId: 7, pointerType: 'touch', buttons: 1, clientX: 120, clientY: 330 })
-    expect(cartel().style.translate).toBe('0 30px')
+    expect(css(cartel().style.translate)).toBe(css('0 30px'))
     fireEvent.pointerCancel(screen.getByText('¿Activás el efecto?'), { pointerId: 7 })
     expect(cartel().style.translate).toBe('')
 

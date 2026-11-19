@@ -621,7 +621,7 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom, en defensa' })).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Especial de Ash Blossom en defensa')).toBeInTheDocument()
     // Ya estaba en la zona: el destello no espera ningún vuelo desde la mano, sólo que caiga ahí mismo (la pausa en lo alto y la caída, `dropFrames`).
-    expect(mz1.querySelector('[data-fx="landing"] span')).toHaveStyle({ animationDelay: '110ms' })
+    expect(mz1.querySelector<HTMLElement>('[data-fx="landing"] span')?.style.animationDelay).toBe('110ms')
 
     // Soltada en una zona extra de monstruo, una carta de la mano no cae: esa zona es para lo que viene del Extra Deck.
     const emz1 = zone('Zona extra de monstruo 1')
@@ -1005,7 +1005,7 @@ describe('la mesa de práctica', () => {
       render(<Harness />)
 
       const dragged = within(hand()).getByRole('listitem', { name: 'Maxx C' })
-      const atRest = /^translate3d\(.+px, .+px, 0\) rotate\(.+deg\)$/
+      const atRest = /^translate3d\(.+px, .+px, 0(px)?\) rotate\(.+deg\)$/
       expect(dragged).toHaveAttribute('data-state', 'rest')
       expect(dragged.style.transform).toMatch(atRest)
 

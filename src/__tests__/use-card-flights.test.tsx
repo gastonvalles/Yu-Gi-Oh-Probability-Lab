@@ -10,6 +10,7 @@ import { DuelTable } from '../components/duel/DuelTable'
 import { EASE_IN_OUT, easeInOut } from '../app/motion'
 import { DUST_MS, LIFT_FADE_MS, LIFT_PX, liftAt, liftPathFrames, liftTiltFrames } from '../app/card-lift'
 import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, cardPose, flightMs, poseIn, tiltedOffset, useCardFlights, type Plane } from '../app/use-card-flights'
+import { css, expectClose } from './support/css-value'
 
 interface Box {
   left: number
@@ -442,8 +443,8 @@ describe('la carta que sale de tu mano al campo vuela por encima de sus vecinas 
     // A la mitad del reloj (el vuelo dura FLIGHT_MS), con la curva del vuelo: entre la mano (220, 600) y la zona (500, 350).
     const done = easeInOut(0.5)
     const [x, y] = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(ghosts()[0]!.from)!.slice(1).map(Number)
-    expect(x).toBeCloseTo(220 + 280 * done, 6)
-    expect(y).toBeCloseTo(600 - 250 * done, 6)
+    expectClose(x!, 220 + 280 * done, 6)
+    expectClose(y!, 600 - 250 * done, 6)
     // La copia que volaba a la zona se fue: queda sólo el fantasma que sale de ahí.
     expect([...document.querySelectorAll('[data-flight-ghost="c"]')]).toEqual([ghosts()[0]!.element])
   })
@@ -568,7 +569,7 @@ const backFade = (ghost: HTMLElement) => {
 /** Los golpes de color (`impact`) que dio cada lugar: su elemento y cuándo. */
 const impacts = (element: Element) => calls.filter((call) => call.element.parentElement === element && 'flightHold' in (call.element as HTMLElement).dataset && call.keyframes[0]?.transform !== undefined)
 /** El color del marco de un golpe: la sombra ya dibujada en su capa. */
-const ringColor = (call: { element: Element }) => (call.element as HTMLElement).style.boxShadow
+const ringColor = (call: { element: Element }) => css((call.element as HTMLElement).style.boxShadow)
 
 // Mano: 101 y 102. Deck: 103 a 112 (el tope, 103). Extra: 901 (un Xyz).
 const DECK = ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112']
@@ -1113,8 +1114,8 @@ describe('la jugada de una sola carta a la vista que cruza la mesa vuela en 3D (
     // A la mitad del reloj, con los números de sus cuadros: entre la mano (220, 600) y la zona (500, 350), `LIFT_PX` por la parábola más arriba.
     const { done, lift } = liftAt(0.5)
     const [x, y] = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(ghosts().at(-1)!.from)!.slice(1).map(Number)
-    expect(x).toBeCloseTo(220 + 280 * done, 6)
-    expect(y).toBeCloseTo(600 - 250 * done - LIFT_PX * lift, 6)
+    expectClose(x!, 220 + 280 * done, 6)
+    expectClose(y!, 600 - 250 * done - LIFT_PX * lift, 6)
     expect(document.querySelector('[data-flight-lift]')).toBeNull()
     expect(dustOf()).toEqual([])
   })

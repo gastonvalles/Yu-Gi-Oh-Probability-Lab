@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CardGlare, TILT_ART, tiltHandlers } from '../components/card-detail/card-tilt'
+import { css } from './support/css-value'
 
 function Art() {
   return (
@@ -59,7 +60,7 @@ describe('la carta grande se inclina en 3D hacia el mouse', () => {
     expect(art.style.rotate).toBe('')
     cuadro()
     expect(measure).toHaveBeenCalledTimes(1)
-    expect(art.style.rotate).toMatch(/^0\.86\d* 0\.89\d* 0 12deg$/)
+    expect(css(art.style.rotate)).toBe(css('0.866667 0.9 0 12deg'))
 
     fireEvent.pointerMove(art, { pointerType: 'mouse', clientX: 10, clientY: 280 })
     fireEvent.pointerLeave(art)
@@ -75,7 +76,7 @@ describe('la carta grande se inclina en 3D hacia el mouse', () => {
     fireEvent.pointerMove(art, { pointerType: 'mouse', clientX: 190, clientY: 20 })
     cuadro()
     // Arriba a la derecha, en el borde: el eje es perpendicular al desplazamiento desde el centro, el giro es el máximo (12°) y el brillo queda de ese lado.
-    expect(art.style.rotate).toMatch(/^0\.86\d* 0\.89\d* 0 12deg$/)
+    expect(css(art.style.rotate)).toBe(css('0.866667 0.9 0 12deg'))
     expect(art.dataset.tilting).toBe('true')
     expect(art.style.getPropertyValue('--glare-x')).toBe('95%')
 

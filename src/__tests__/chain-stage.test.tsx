@@ -12,6 +12,7 @@ import type { ChainMedal } from '../app/card-glow'
 import { CHAIN_LEAVE_MS, ChainStage, glyphCells, type ChainNoticeRow } from '../components/auto/ChainNotice'
 import { Presence } from '../app/use-presence'
 import { ChainBadge } from '../components/probability/MatFx'
+import { css } from './support/css-value'
 
 // La cadena en grande (K-01 a K-03), sólo al encadenar: cartas grandes inclinadas con su número enorme y el borde de su tipo, unidas por una cadena de metal; resolviendo, no está
 // (quedan los medallones); una sola línea arriba; una activación sola entra igual con su «1». Sin «CL» escrito, sin hexágonos ni «Cómo se resuelve», y no ataja toques.
@@ -262,8 +263,8 @@ describe('la cadena en grande', () => {
     const at = (number: number) => document.querySelector<HTMLElement>(`[data-chain-medal="${number}"]`)
 
     expect(at(1)).toHaveClass('starting:opacity-0', 'starting:scale-75', 'motion-reduce:transition-opacity')
-    expect(at(1)!.style.translate).toBe('-12px 0')
-    expect(at(2)!.style.translate).toBe('12px 0')
+    expect(css(at(1)!.style.translate)).toBe(css('-12px 0'))
+    expect(css(at(2)!.style.translate)).toBe(css('12px 0'))
     // El que resuelve crece 0,75 → 0,87 → 1 (también con «Livianos») con un brillo corto (sin «Livianos»); con movimiento reducido, nada.
     expect(at(2)!.querySelector('.animate-chain-resolve')).toHaveClass('motion-reduce:animate-none')
     expect(at(2)!.querySelector('[data-chain-glint]')).toHaveClass('animate-chain-glint', 'fx-lite:hidden', 'motion-reduce:hidden')
@@ -280,7 +281,7 @@ describe('la cadena en grande', () => {
     expect(at(1)!.querySelector('[data-chain-void-flash]')).toHaveClass('animate-chain-void-flash', 'fx-lite:hidden', 'motion-reduce:hidden')
     expect(at(1)!.querySelector('.animate-chain-wait')).toBeNull()
     view.rerender(<ChainBadge medals={[medal(1)]} />)
-    expect(at(1)!.style.translate).toBe('0px 0')
+    expect(css(at(1)!.style.translate)).toBe(css('0px 0'))
     const leaving = document.querySelector('[data-chain-medal-leaving="2"]')
     expect(leaving).toHaveClass('scale-125', 'opacity-0')
     expect(leaving).not.toHaveAttribute('data-resolving')
