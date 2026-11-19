@@ -1,10 +1,10 @@
 [
 ["SS03-ENA01","Common","1st Edition",0.27,196239,66516792,"Serpent Night Dragon"],
-["SS03-ENA02","Common","1st Edition",0.45,196240,94119974,"Two-Headed King Rex"],
+["SS03-ENA02","Common","1st Edition",0.44,196240,94119974,"Two-Headed King Rex"],
 ["SS03-ENA03","Common","1st Edition",0.17,196241,1784619,"Uraby"],
 ["SS03-ENA04","Common","1st Edition",0.37,196242,38289717,"Crawling Dragon #2"],
 ["SS03-ENA05","Common","1st Edition",0.27,196243,46457856,"Tomozaurus"],
-["SS03-ENA06","Common","1st Edition",0.36,196244,89904598,"Anthrosaurus"],
+["SS03-ENA06","Common","1st Edition",0.35,196244,89904598,"Anthrosaurus"],
 ["SS03-ENA07","Common","1st Edition",0.46,196245,38670435,"Black Tyranno"],
 ["SS03-ENA08","Common","1st Edition",0.15,196246,6849042,"Super-Ancient Dinobeast"],
 ["SS03-ENA09","Common","1st Edition",0.25,196247,79870141,"Mad Sword Beast"],
@@ -46,7 +46,7 @@
 ["SS03-ENB15","Common","1st Edition",0.19,196294,30587695,"Beetron"],
 ["SS03-ENB16","Common","1st Edition",0.17,196295,77007920,"Laser Cannon Armor"],
 ["SS03-ENB17","Common","1st Edition",0.25,196296,87430998,"Forest"],
-["SS03-ENB18","Common","1st Edition",0.26,196297,80402389,"Verdant Sanctuary"],
+["SS03-ENB18","Common","1st Edition",0.27,196297,80402389,"Verdant Sanctuary"],
 ["SS03-ENB19","Common","1st Edition",0.25,196298,22991179,"Insect Neglect"],
 ["SS03-ENB20","Common","1st Edition",0.18,196299,43140791,"Worm Bait"],
 ["SS03-ENB21","Common","1st Edition",0.35,196300,30531525,"Enchanting Fitting Room"],
@@ -60,6 +60,6 @@
 ["SS03-ENB29","Common","1st Edition",0.3,196308,39019325,"Order to Smash"],
 ["SS03-ENBS1","Common","1st Edition",0.13,196235,300203003,"Hyper Metamorphosis"],
 ["SS03-ENBS2","Common","1st Edition",0.18,196236,300203004,"Hidden Parasite"],
-["SS03-ENV01","Ultra Rare","1st Edition",0.43,196237,78986941,"Order to Charge"],
+["SS03-ENV01","Ultra Rare","1st Edition",0.44,196237,78986941,"Order to Charge"],
 ["SS03-ENV02","Ultra Rare","1st Edition",0.47,196238,98954106,"Jar of Avarice"]
 ]

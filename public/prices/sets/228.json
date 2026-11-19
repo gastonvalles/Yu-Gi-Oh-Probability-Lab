@@ -9,7 +9,7 @@
 ["HA05-EN003","Super Rare","Unlimited",0.95,57391,54620698,"Gem-Knight Tourmaline"],
 ["HA05-EN004","Secret Rare","1st Edition",0.56,57392,90019393,"Gem-Knight Alexandrite"],
 ["HA05-EN004","Secret Rare","Unlimited",0.2,57392,90019393,"Gem-Knight Alexandrite"],
-["HA05-EN005","Secret Rare","1st Edition",4.33,57393,27004302,"Gem-Armadillo"],
+["HA05-EN005","Secret Rare","1st Edition",4.13,57393,27004302,"Gem-Armadillo"],
 ["HA05-EN005","Secret Rare","Unlimited",3.39,57393,27004302,"Gem-Armadillo"],
 ["HA05-EN006","Super Rare","1st Edition",0.15,57394,53408006,"Gem-Merchant"],
 ["HA05-EN006","Super Rare","Unlimited",0.1,57394,53408006,"Gem-Merchant"],
@@ -39,7 +39,7 @@
 ["HA05-EN018","Super Rare","Unlimited",0.63,57406,40619741,"Vylon Soldier"],
 ["HA05-EN019","Secret Rare","1st Edition",2.03,57407,76614340,"Gem-Knight Ruby"],
 ["HA05-EN019","Secret Rare","Unlimited",1,57407,76614340,"Gem-Knight Ruby"],
-["HA05-EN020","Secret Rare","1st Edition",1.18,57408,13108445,"Gem-Knight Aquamarine"],
+["HA05-EN020","Secret Rare","1st Edition",1.16,57408,13108445,"Gem-Knight Aquamarine"],
 ["HA05-EN020","Secret Rare","Unlimited",0.78,57408,13108445,"Gem-Knight Aquamarine"],
 ["HA05-EN021","Secret Rare","1st Edition",0.94,57409,49597193,"Gem-Knight Topaz"],
 ["HA05-EN021","Secret Rare","Unlimited",0.52,57409,49597193,"Gem-Knight Topaz"],
@@ -94,7 +94,7 @@
 ["HA05-EN046","Super Rare","Unlimited",0.21,57434,53116300,"Steelswarm Caller"],
 ["HA05-EN047","Secret Rare","1st Edition",0.3,57435,85505315,"Steelswarm Mantis"],
 ["HA05-EN047","Secret Rare","Unlimited",null,57435,85505315,"Steelswarm Mantis"],
-["HA05-EN048","Super Rare","1st Edition",0.19,57436,22009013,"Steelswarm Moth"],
+["HA05-EN048","Super Rare","1st Edition",0.2,57436,22009013,"Steelswarm Moth"],
 ["HA05-EN048","Super Rare","Unlimited",0.5,57436,22009013,"Steelswarm Moth"],
 ["HA05-EN049","Secret Rare","1st Edition",0.31,57437,58494728,"Steelswarm Girastag"],
 ["HA05-EN049","Secret Rare","Unlimited",0.48,57437,58494728,"Steelswarm Girastag"],
@@ -118,6 +118,6 @@
 ["HA05-EN058","Super Rare","Unlimited",0.27,57446,46337945,"Aquamirror Meditation"],
 ["HA05-EN059","Super Rare","1st Edition",0.37,57447,82422049,"Blessings for Gusto"],
 ["HA05-EN059","Super Rare","Unlimited",0.25,57447,82422049,"Blessings for Gusto"],
-["HA05-EN060","Super Rare","1st Edition",0.17,57448,18816758,"Infestation Wave"],
-["HA05-EN060","Super Rare","Unlimited",0.15,57448,18816758,"Infestation Wave"]
+["HA05-EN060","Super Rare","1st Edition",0.18,57448,18816758,"Infestation Wave"],
+["HA05-EN060","Super Rare","Unlimited",null,57448,18816758,"Infestation Wave"]
 ]
