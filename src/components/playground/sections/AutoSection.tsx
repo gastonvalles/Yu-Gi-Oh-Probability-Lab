@@ -393,8 +393,6 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
     setShown(false)
     onAnswer(label)
   }
-  const manual = t('auto.bar.manual')
-
   return (
     <Specimen
       title={kind === 'card' ? 'Pregunta del núcleo · con la carta' : kind === 'context' ? 'Pregunta del núcleo · efecto que se dispara' : 'Pregunta del núcleo · sin carta'}
@@ -403,7 +401,7 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
         kind === 'card' ? (
           <>select_effectyn: el arte de la carta chico a la izquierda y «¿Activás el efecto?», sin su nombre ni lo que hace (están en su detalle). En la mesa va en la ranura <Tag>duel.prompt</Tag>: sin fondo, deja pasar los toques y no mueve nada. El asa de arriba (arrastrada o tocada) o Escape la bajan a una tira de un renglón; tocar la tira la sube. El foco va a la principal. Archivos: <Tag>auto/AskPrompt.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>
         ) : kind === 'context' ? (
-          <>select_effectyn con desc 221: <Tag>kicker</Tag> con qué pasó, sin nombres (<Tag>effectAskText</Tag> de <Tag>ask-ui.ts</Tag>), la pestaña <Tag>place</Tag> sobre el arte y el atajo <Tag>manual</Tag> a la izquierda (con él, la mesa le da más ancho).</>
+          <>select_effectyn con desc 221: <Tag>kicker</Tag> con qué pasó, sin nombres (<Tag>effectAskText</Tag> de <Tag>ask-ui.ts</Tag>), y la pestaña <Tag>place</Tag> sobre el arte. «Seguir en modo manual» no va en las preguntas: está en Opciones (⚙) y en los avisos donde el automático no puede seguir.</>
         ) : (
           <>select_yesno: el texto y, si llega mientras se activa o se resuelve una carta, de cuál es (<Tag>AskWhy</Tag>). Los botones dicen qué hacen («Hacerlo», o lo que diga el núcleo: «Pagar 1000 LP»), nunca «Sí» ni «No».</>
         )
@@ -421,7 +419,6 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
                       text={t('auto.ask.effect')}
                       card={PONIX}
                       place={t('practice.mat.field')}
-                      manual={{ label: manual, onSelect: () => reply(manual) }}
                       yes={{ label: yes, onSelect: () => reply(yes) }}
                       no={{ label: no, onSelect: () => reply(no) }}
                     />

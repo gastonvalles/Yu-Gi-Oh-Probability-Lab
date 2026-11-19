@@ -262,7 +262,8 @@ describe('auto-screen-online · la mesa', () => {
 
     expect(slot.className).toContain('top-[var(--strip-top,0.5rem)]')
     expect(slot.className).toContain('bottom-[var(--strip-bottom,50%)]')
-    expect(list).toHaveClass('grid', 'justify-between')
+    // Las cartas del visor, siempre al medio, en renglones que bajan (ya no una grilla pegada a los costados).
+    expect(list).toHaveClass('flex', 'flex-wrap', 'justify-center')
     expect(list.parentElement).toHaveClass('overflow-y-auto')
     core(() => session.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~0b110 >>> 0 }))
     expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()

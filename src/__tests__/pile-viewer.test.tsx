@@ -340,7 +340,7 @@ describe('en el celular es una hoja de abajo de todo el ancho (Gastón: «siempr
 
     expect(sheet).toHaveClass('fixed', 'inset-x-0', 'bottom-0')
     expect(sheet.className).not.toMatch(/(^|\s)(w-max|w-fit|mx-auto|max-w-(?!full))/)
-    expect(screen.getByRole('list', { name: 'Cartas' })).toHaveClass('justify-self-center')
+    expect(screen.getByRole('list', { name: 'Cartas' })).toHaveClass('flex-wrap', 'justify-center')
   })
 })
 
@@ -364,12 +364,13 @@ describe('en la mesa del duelo de escritorio es una tira: renglones de cartas qu
       </Provider>,
     )
 
-  it('las cartas bajan de renglón (lo que sobra de ancho se reparte entre las columnas: sin franja vacía) y lo que sobra se desliza de arriba abajo, nunca a los costados (hasta tres renglones y un asomo); el buscador va en la fila del título y «Elegir varias», abajo', () => {
+  it('las cartas bajan de renglón y van al medio, también el último renglón incompleto (con el buscador, la caja es toda la fila y la lista va al medio de ella) y lo que sobra se desliza de arriba abajo, nunca a los costados (hasta tres renglones y un asomo); el buscador va en la fila del título y «Elegir varias», abajo', () => {
     strip(Object.keys(NAMES))
     const panel = screen.getByRole('dialog', { name: 'Main · 9' })
     const list = within(panel).getByRole('list', { name: 'Cartas' })
 
-    expect(list).toHaveClass('grid', 'justify-between')
+    expect(list).toHaveClass('flex', 'flex-wrap', 'justify-center', 'justify-self-center')
+    expect(list).not.toHaveClass('grid', 'justify-between')
     expect(list).not.toHaveClass('overflow-x-auto')
     expect(list.parentElement).toHaveClass('overflow-y-auto', 'overflow-x-hidden')
     expect(list.parentElement!.className).toContain('max-h-[calc(3*')

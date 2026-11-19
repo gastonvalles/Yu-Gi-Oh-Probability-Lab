@@ -639,15 +639,16 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     () => snap.overlay.limits[seat].map((description) => effectLabel(0, description) ?? t('auto.why.limitOf', { card: nameOf(null, splitDesc(description).code) })),
     [snap.overlay.limits, seat, effectLabel, nameOf],
   )
-  // De dónde es (el chip y el grupo de `CardPicker`): lo que sólo se nombra por código, de ningún lado.
+  // De dónde es (el chip y el grupo de `CardPicker`): el lugar en la mesa o, si la mesa no la ubicó, el que dice el núcleo (`seen`); lo que sólo se nombra por código, de ningún lado.
   // La carta sin imagen, sobre el color de su tipo: el de tu carta (o de una igual a las tuyas) o, del rival, su tipo del `.cdb` si llegó (`cards`).
   const pickCardOf = (card: AskCard, key: string): PickCard => {
-    const from = card.place === 'pile' ? card.pile : card.place === 'none' ? undefined : card.place
+    const from = card.place === 'pile' ? card.pile : card.place === 'none' ? card.seen?.from : card.place
+    const theirs = card.ref ? card.ref.side === 'theirs' : (card.seen?.theirs ?? false)
     const code = card.ref ? codeOf(card.ref) || card.code : card.code
     const api = (card.ref?.side === 'mine' ? cardsById.get(card.ref.id)?.apiCard : undefined) ?? byCode.get(code)?.apiCard
     const frame = api ? frameKindOf(api.frameType, api.cardType) : frameOfType(cards?.get(code)?.type ?? 0)
 
-    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(frame.kind === 'neutral' ? {} : { frame }), ...(from && card.ref ? pickPlace(from, card.ref.side === 'theirs') : {}) }
+    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(frame.kind === 'neutral' ? {} : { frame }), ...(from ? pickPlace(from, theirs) : {}) }
   }
 
   // ── La pregunta pendiente: se abre con la mesa del núcleo (`session.adapter`) en el mismo render en que llega (un rearme con pregunta es un solo commit); lo que se contesta solo, se
@@ -1184,6 +1185,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const status = snap.status
   const faults = snap.faults
   const unmappedCount = snap.unmapped.length
+  // «Seguir en modo manual» va en Opciones (⚙) y, aparte, sólo donde el automático no puede seguir (trabado, un error del núcleo o de una carta, una respuesta rechazada, lo que la mesa no pudo
+  // mostrar): ahí es la salida a mano. En las preguntas normales, no (Gastón, 2026-11-19).
+  const toManual = useMemo(() => (onManual ? [{ label: t('auto.bar.manual'), onSelect: onManual, secondary: true }] : []), [onManual])
   // Un objeto por lo que dice (la barra lo recibe): lo que llega del núcleo sin cambiar nada de esto no la vuelve a dibujar.
   const lane = useMemo<LaneNotice | null>(
     () =>
@@ -1194,7 +1198,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         : frozen
           ? null
           : stuck
-            ? { kind: 'ask', text: t('auto.lane.stuck'), actions: canUndo ? [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] : [] }
+            ? { kind: 'ask', text: t('auto.lane.stuck'), actions: [...(canUndo ? [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] : []), ...toManual] }
             : status === 'waiting' && waitingText !== null && rivalBusy
               ? { kind: 'thinking', text: waitingText }
               : status === 'thinking'
@@ -1212,12 +1216,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
                           newFault.kind === 'script'
                             ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') })
                             : t(newFault.kind === 'retry' || newFault.kind === 'answer' ? 'auto.lane.rejected' : 'auto.lane.error'),
-                        actions: [],
+                        actions: toManual,
                       }
                     : unmappedCount > unmappedBase.current
-                      ? { kind: 'ask', text: t('auto.lane.unmapped'), actions: [] }
+                      ? { kind: 'ask', text: t('auto.lane.unmapped'), actions: toManual }
                       : null,
-    [review, back, frozen, stuck, canUndo, session, status, waitingText, rivalBusy, canCancel, shown, forcedOn, activatableCount, faults, newFault, unmappedCount, nameOf],
+    [review, back, frozen, stuck, canUndo, session, status, waitingText, rivalBusy, canCancel, shown, forcedOn, activatableCount, faults, newFault, unmappedCount, nameOf, toManual],
   )
   // La escena de la cadena: la última que empezó, como se ve con lo que ya se mostró (`feed`, más arriba). Terminada, se va a los `CHAIN_LINGER_MS` (lo que tarda en irse la
   // última carta).
@@ -1457,7 +1461,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         {...(effectAsk?.kicker ? { kicker: effectAsk.kicker } : {})}
         {...(effectAsk?.place ? { place: effectAsk.place } : {})}
         why={why}
-        {...(promptCard && onManual ? { manual: { label: t('auto.bar.manual'), onSelect: onManual } } : {})}
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
       />

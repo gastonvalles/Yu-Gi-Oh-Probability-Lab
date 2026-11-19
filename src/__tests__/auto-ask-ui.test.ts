@@ -886,6 +886,18 @@ describe('ask-ui: los carteles dicen lo justo, como Master Duel (qué pasó, qu�
   })
 })
 
+describe('ask-ui: el lugar de una carta que la mesa no ubica', () => {
+  it('dice dónde la ve el núcleo y de quién es (`seen`), así el menú pone su chip en todas; lo que sólo se nombra por código, nada', () => {
+    const ask: CoreAsk = { type: 'select_card', player: 0, can_cancel: false, min: 1, max: 2, selects: [pos(400, L.GRAVE, 0, 5), pos(800, L.REMOVED, 0, 5), pos(810, L.GRAVE, 0, 5, 1)] }
+    const cards = askView(open(ask, ctx(MESA))).cardPick!.cards
+
+    expect(cards[0]).toMatchObject({ ref: mine('card-400-1'), place: 'pile', pile: 'gy' })
+    expect(cards[0]).not.toHaveProperty('seen')
+    expect(cards[1]).toMatchObject({ ref: null, place: 'none', seen: { from: 'banished', theirs: false } })
+    expect(cards[2]).toMatchObject({ ref: null, place: 'none', seen: { from: 'gy', theirs: true } })
+  })
+})
+
 describe('ask-ui: declarar una carta (`announce_card`)', () => {
   const announce = (cards?: number[]): CoreAsk => ({ type: 'announce_card', player: 0, opcodes: ['46986414', '1073741840'], ...(cards ? { cards } : {}) })
 
