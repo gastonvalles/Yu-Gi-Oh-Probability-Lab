@@ -618,7 +618,7 @@ describe('CardPicker', () => {
     const list = screen.getByRole('listbox', { name: 'Cartas para elegir' })
     fireEvent.click(within(list).getByRole('option', { name: /Albaz/ }))
     expect(list.querySelectorAll('[data-material]')).toHaveLength(1)
-    expect(within(list).getByRole('option', { name: /Albaz/ }).querySelector('[data-material]')).toHaveClass('animate-fx-material', 'fx-lite:animate-none', 'motion-reduce:hidden', 'rounded-full')
+    expect(within(list).getByRole('option', { name: /Albaz/ }).querySelector('[data-material]')).toHaveClass('animate-fx-material', 'fx-lite:animate-none', 'motion-reduce:hidden', 'rounded-full', 'scale-150', 'min-[1101px]:scale-120')
     cleanup()
     render(<CardPicker title="Elegí qué agregar a tu mano" cards={CARDS} min={1} max={2} onPick={() => {}} />)
     fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: /Albaz/ }))

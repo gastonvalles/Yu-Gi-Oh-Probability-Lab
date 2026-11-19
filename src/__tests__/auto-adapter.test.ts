@@ -176,6 +176,15 @@ describe('el adaptador: del núcleo a la mesa', () => {
     ])
   })
 
+  it('la Colocación por Sacrificio (`set` marcado) lleva `tribute` en el `place` boca abajo; sin marca, no', () => {
+    const adapter = make()
+    const set = (to: ReturnType<typeof at>, tribute?: true): WireEvent => ({ type: 'set', code: 0, controller: to.controller, location: to.location, sequence: to.sequence, position: to.position, ...(tribute ? { tribute } : {}) })
+
+    adapter.apply(events(0, { type: 'draw', player: 0, drawn: [111, 222].map((code) => ({ code, position: 10 })) }))
+    expect(adapter.apply(events(0, move(111, at(0, L.HAND, 0, 10), at(0, L.MZONE, 0, P.FACEDOWN_DEFENSE)), set(at(0, L.MZONE, 0, P.FACEDOWN_DEFENSE)))).mine).toEqual([{ type: 'place', id: 'card-111-1', zone: 'mz', index: 0, pos: 'set' }])
+    expect(adapter.apply(events(0, move(222, at(0, L.HAND, 0, 10), at(0, L.MZONE, 1, P.FACEDOWN_DEFENSE)), set(at(0, L.MZONE, 1, P.FACEDOWN_DEFENSE), true))).mine).toEqual([{ type: 'place', id: 'card-222-1', zone: 'mz', index: 1, pos: 'set', tribute: true }])
+  })
+
   it('turno y fase en las dos mesas (`skipDraw`: el robo llega como `draw`), vidas y cadena en el overlay', () => {
     const adapter = make()
 

@@ -644,7 +644,9 @@ export function createAdapter(options: AdapterOptions): Adapter {
       }
 
       const summon = summonOf(to, rest)
-      const marks = { ...(summon?.type === 'summoning' && summon.tribute ? { tribute: true as const } : {}), ...(how === 'pendulum' && summon?.type === 'spsummoning' && summon.more ? { more: true as const } : {}) }
+      // Por Sacrificio: la Invocación Normal marcada, o la Colocación marcada (`set`, en la casilla donde llegó).
+      const paid = summon?.type === 'summoning' ? summon.tribute : rest.some((event) => event.type === 'set' && event.tribute && event.controller === to.controller && event.location === to.location && event.sequence === to.sequence)
+      const marks = { ...(paid ? { tribute: true as const } : {}), ...(how === 'pendulum' && summon?.type === 'spsummoning' && summon.more ? { more: true as const } : {}) }
 
       return emit(to.controller, { type: 'place', id, zone: toSpot.zone, index: toSpot.index, pos, ...(how ? { how } : {}), ...marks }, from.location === L.DECK)
     }

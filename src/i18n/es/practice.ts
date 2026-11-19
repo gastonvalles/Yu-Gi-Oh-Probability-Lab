@@ -165,6 +165,8 @@ export const practice = {
   'practice.step.position.def': 'defensa',
   'practice.step.tributeSet': 'Colocás {card} boca abajo sacrificando {list}',
   'practice.step.tributeSummon': 'Invocación Normal de {card} (sacrificás {list})',
+  'practice.step.tributeSetMarked': 'Colocás {card} boca abajo por Sacrificio',
+  'practice.step.tributeSummonMarked': 'Invocación por Sacrificio de {card}',
   'practice.step.summon': '{summon} de {card} (materiales: {materials})',
   'practice.step.summonNone': 'Invocación Especial de {card} (sin materiales)',
   'practice.step.summonNoneDefense': 'Invocación Especial de {card} en defensa (sin materiales)',

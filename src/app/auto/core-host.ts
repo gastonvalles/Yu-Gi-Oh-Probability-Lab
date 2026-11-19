@@ -356,9 +356,12 @@ export function createAutoHost(options: HostOptions): AutoHost {
         if (!tributeSummon) return event
         tributeSummon = false
         return { ...event, tribute: true }
-      case 'set':
+      case 'set': {
+        const paid = tributeSummon
+
         tributeSummon = false
-        return event
+        return paid ? { ...event, tribute: true } : event
+      }
       case 'spsummoning':
         return pendulum === null ? event : { ...event, pendulum: true }
       // Terminó la Invocación (o algo se encadenó): lo que se invoque después ya no es por Péndulo.

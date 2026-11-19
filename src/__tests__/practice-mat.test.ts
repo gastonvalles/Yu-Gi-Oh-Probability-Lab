@@ -133,6 +133,11 @@ describe('la mesa de práctica', () => {
     expect(describeMatAction(two, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' }, nameOf)).toBe('Invocación Normal de C1 (sacrificás A1 y A2)')
     expect(describeMatAction(two, { type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 2, pos: 'set' }, nameOf)).toBe('Colocás C1 boca abajo sacrificando A1')
 
+    // La marca del núcleo (el automático): «por Sacrificio», no «Normal»; sin marca, la Normal de siempre.
+    expect(describeMatAction(two, { type: 'place', id: 'c1', zone: 'mz', index: 0, pos: 'atk', how: 'normal', tribute: true }, nameOf)).toBe('Invocación por Sacrificio de C1')
+    expect(describeMatAction(two, { type: 'place', id: 'c1', zone: 'mz', index: 2, pos: 'set', tribute: true }, nameOf)).toBe('Colocás C1 boca abajo por Sacrificio')
+    expect(describeMatAction(two, { type: 'place', id: 'c1', zone: 'mz', index: 2, pos: 'atk', how: 'normal' }, nameOf)).toBe('Invocación Normal de C1')
+
     // Un sacrificio que no está en el campo, o sin sacrificios, no hace nada.
     expect(matReducer(two, { type: 'tribute', id: 'c1', tributes: ['b1'], zone: 'mz', index: 2, pos: 'atk' })).toBe(two)
     expect(matReducer(two, { type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 2, pos: 'atk' })).toBe(two)

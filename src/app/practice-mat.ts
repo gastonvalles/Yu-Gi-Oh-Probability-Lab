@@ -754,6 +754,8 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
         return action.pos === 'set' ? t('practice.step.setSpellTrap', { card }) : t('practice.step.activate', { card })
       }
 
+      // Con la marca del núcleo (`tribute`, el automático): no dice cuáles se sacrificaron (van en sus `move`), sólo que fue por Sacrificio.
+      if (action.tribute) return t(action.pos === 'set' ? 'practice.step.tributeSetMarked' : 'practice.step.tributeSummonMarked', { card })
       if (action.pos === 'set') return t('practice.step.setFaceDown', { card })
       if (action.how === 'normal') return t('practice.step.normalSummon', { card })
       if (action.how === 'special') return t('practice.step.specialSummon', { card, position })
