@@ -871,7 +871,7 @@ describe('AutoBar', () => {
     // Dos grupos con su rótulo; en «La mesa», los interruptores (sin la ventana grande fuera de escritorio) y los colores; sin «A ciegas» con el pasivo.
     expect(within(dialog).getByRole('group', { name: 'La mesa' })).toContainElement(within(dialog).getByRole('group', { name: 'Colores' }))
     expect(within(dialog).getByRole('group', { name: 'El duelo' })).toContainElement(within(dialog).getByRole('radiogroup', { name: 'Respuestas' }))
-    expect(within(dialog).getAllByRole('switch').map((item) => item.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Sonidos', 'Menús flotantes'])
+    expect(within(dialog).getAllByRole('switch').map((item) => item.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Sonidos', 'Imagen de la carta al invocar (beta)', 'Menús flotantes'])
     fireEvent.click(within(within(dialog).getByRole('group', { name: 'Colores' })).getByRole('button', { name: 'Índigo' }))
     expect(document.documentElement.dataset.palette).toBe('indigo')
     fireEvent.click(within(within(dialog).getByRole('group', { name: 'Colores' })).getByRole('button', { name: 'Carbón' }))

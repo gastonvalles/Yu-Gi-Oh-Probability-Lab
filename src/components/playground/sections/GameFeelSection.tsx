@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 
-import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, cancelWhenDone } from '../../../app/motion'
+import { EASE_OUT, EASE_SNAP, cancelWhenDone } from '../../../app/motion'
 import { setEffects, useEffects } from '../../../app/effects'
 import { impactOn, sacrificeAt, type ArrivalTone } from '../../../app/field-impact'
 import { BURST, CUT, SPARK } from '../../../app/flipbooks'
+import { burstLayers } from '../../../app/summon-art'
 import { playEntrance, playPendulum, type EntranceKind } from '../../../app/summon-entrance'
 import { useMediaQuery } from '../../../app/use-media-query'
 import { PANEL_LIME } from '../../auto/AutoPanel'
@@ -908,11 +909,8 @@ function LayersSample() {
       layers.current.forEach((layer) => layer && animate(layer, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT }))
       return
     }
-    const ease = entryEase(feel)
-    animate(back, [{ translate: '-30% 0' }, { translate: '0 0' }], { duration: 260, easing: ease, fill: 'backwards' })
-    animate(mid, [{ translate: '45% 0', scale: '1.2' }, { translate: '0 0', scale: '1' }], { duration: 260, delay: 40, easing: ease, fill: 'backwards' })
-    animate(front, [{ translate: '-70% 0' }, { translate: '0 0' }], { duration: 240, delay: 80, easing: ease, fill: 'backwards' })
-    if (feel.full && flash.current) animate(flash.current, [{ opacity: 0, scale: '0.8' }, { opacity: 0.9, offset: 0.3 }, { opacity: 0, scale: '1.3' }], { duration: 260, delay: 60, easing: EASE_IN_OUT })
+    // Las mismas capas que la mesa (`app/summon-art.ts`, la beta del duelo).
+    burstLayers([back, mid, front], feel.full ? flash.current : null, entryEase(feel))
   }
 
   // Los «huesos 2D»: cada capa sigue al puntero con su profundidad (más lejos, menos), escrito en un solo cuadro.
@@ -935,7 +933,8 @@ function LayersSample() {
       layout="column"
       note={
         <>
-          <strong>Beta: falta definir cuándo se muestra la imagen grande de una carta y de dónde sale</strong> (qué jugada la merece y qué arte se usa); hasta entonces no va a las pantallas.
+          <strong>Beta en el duelo</strong>, con su interruptor en Opciones («Imagen de la carta al invocar», apagado de fábrica): la primera vez que un monstruo se Invoca Normal, por Sacrificio o
+          Especial sin entrada propia, con la imagen que la mesa ya usa (<Tag>app/summon-art.ts</Tag>).
           Una ilustración en tres capas (fondo de bandas violetas, el arte recortado en un paralelogramo y los cortes cian adelante) que entra con <Tag>--ease-out-back</Tag>, cada capa con su
           retraso, y un destello aditivo (<Tag>mix-blend-plus-lighter</Tag> quieto; sólo cambia la opacidad, y con «livianos» no está). Mové el puntero encima: cada capa se corre según su
           profundidad (el parallax).

@@ -3,6 +3,7 @@ import { createContext, useContext, type ReactNode } from 'react'
 import { toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
 import { setMatView, useMatView } from '../../app/mat-view'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
+import { setSummonArt, useSummonArt } from '../../app/summon-art'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { useHandtrapsSheet } from '../duel/HandtrapPool'
@@ -42,13 +43,14 @@ export const MatReplayContext = createContext<{ step: string } | null>(null)
 export const MatUndoContext = createContext<ReactNode>(null)
 
 /**
- * «La mesa», el primer grupo del menú ⋯ de toda mesa (la práctica, «Jugar solo automático» y el duelo por enlace): la vista 3D, los sonidos y la ventana grande (sólo en escritorio: en el celular la mesa
- * ya ocupa todo), cada uno con su interruptor. Vienen prendidos de fábrica (la vista 3D y los sonidos) y por eso no van a la vista ni en color: su estado se lee en el interruptor.
+ * «La mesa», el primer grupo del menú ⋯ de toda mesa (la práctica, «Jugar solo automático» y el duelo por enlace): la vista 3D, los sonidos, la ventana grande (sólo en escritorio: en el celular la mesa
+ * ya ocupa todo) y la imagen de la carta al invocar (beta, apagada de fábrica), cada uno con su interruptor. Vienen prendidos de fábrica (la vista 3D y los sonidos) y por eso no van a la vista ni en color: su estado se lee en el interruptor.
  */
 export function useMatTableItems(view3d = true): OverflowItem[] {
   const view = useMatView()
   const sounds = useSoundsOn()
   const bigWindow = useDuelFullscreen()
+  const summonArt = useSummonArt()
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
 
   return [
@@ -56,6 +58,8 @@ export function useMatTableItems(view3d = true): OverflowItem[] {
     { ...(view3d ? {} : { group: t('practice.mat.groupTable') }), label: t('practice.mat.sounds'), icon: sounds ? 'volume' : 'volume-off', checked: sounds, onSelect: () => setSoundsOn(!sounds) },
     // Ventana grande: sin el menú lateral y, si el navegador deja, en pantalla completa. Es de la mesa: se apaga al salir de ella.
     ...(isDesktop ? [{ label: t('duel.bar.bigWindowOn'), icon: bigWindow ? 'minimize' : 'maximize', checked: bigWindow, onSelect: toggleDuelFullscreen } satisfies OverflowItem] : []),
+    // La beta de la irrupción (`app/summon-art.ts`): apagada de fábrica.
+    { label: t('duel.options.summonArt'), hint: t('duel.options.summonArtHint'), icon: 'image', checked: summonArt, onSelect: () => setSummonArt(!summonArt) },
   ]
 }
 

@@ -64,6 +64,7 @@ import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
 import { arrivals, impactOn, sacrificeAt, shakeOf, type ArrivalTone } from '../../app/field-impact'
+import { burstReplaces, playSummonArt, summonArtFits, summonArtOn } from '../../app/summon-art'
 import { PENDULUM_HOLD_MS, arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, playPendulum, surePendulum, type SummonCard } from '../../app/summon-entrance'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
@@ -1198,6 +1199,20 @@ function PracticeMatBody({
     else for (const { cell } of waiting) impactOn(cell, fieldRef.current, 'light', 0, 'pendulum')
   }
 
+  /**
+   * La beta «Imagen de la carta al invocar» (`app/summon-art.ts`, apagada de fábrica): la irrupción en capas, una sola vez por carta (por su imagen) en el duelo, sobre la llegada de siempre.
+   * Un combo que se repasa no la lleva (como el replay y el video). Devuelve si salió.
+   */
+  const burstSeen = useRef<{ initial: MatSession['initial']; arts: Set<string> }>({ initial: session.initial, arts: new Set() })
+  const [rivalBurst, setRivalBurst] = useState<{ id: string; at: number } | null>(null)
+  const burst = (tone: ArrivalTone, id: string, art: string | null): boolean => {
+    if (!art || isToken(id) || session.replay || !summonArtOn() || !summonArtFits(tone)) return false
+    if (burstSeen.current.initial !== session.initial) burstSeen.current = { initial: session.initial, arts: new Set() }
+    if (burstSeen.current.arts.has(art) || !playSummonArt(art)) return false
+    burstSeen.current.arts.add(art)
+    return true
+  }
+
   // El impacto de una Invocación (`field-impact.ts`): el anillo desde la casilla y la sacudida del campo cuando la carta la toca. Por el DOM, sin dibujar la mesa de nuevo.
   const landingKey = landing?.key
   useEffect(() => {
@@ -1212,6 +1227,8 @@ function PracticeMatBody({
     if (sure.pendulum && placed && cell && pendulumLanding(placed.id, cell, true, Boolean(landing.more) || (pendulumQueue?.ids.some((id) => id !== placed.id && locateCard(state, id)?.kind !== 'spot') ?? false))) return
     const materials = step?.type === 'summon' ? step.materials.length : (placed?.materials.length ?? 0)
     if (placed && cell && enter(tone, placed.id, cell, true, materials, artById(placed.id))) return
+    // La beta: sólo lo que llega volando o cae de la mano (no el Volteo, una ficha ni lo que cambia de manos).
+    if (placed && (landing.flies || landing.dropped)) burst(tone, placed.id, artById(placed.id))
     impactOn(cell, fieldRef.current, shakeOf({ landing: landing.tone }), landingDelay(landing.flies, landing.dropped), tone)
     // Una vez por Invocación (su `key`).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1253,6 +1270,8 @@ function PracticeMatBody({
     const tone = landing?.tribute ? 'tribute' : landing?.pendulum ? 'pendulum' : arrivalToneOf(arrived, summonCardOf(arrived.id))
     const placed = rivalState[arrived.spot][arrived.index]
     if (cell && enter(tone, arrived.id, cell, false, placed?.materials.length ?? 0, duel?.rivalFlights?.artOf(arrived.id) ?? null)) return
+    // La beta reemplaza la carta grande que el duelo por enlace muestra al invocar (`rivalEffect`, que llega un dibujo después): no se suman las dos.
+    if (burst(tone, arrived.id, duel?.rivalFlights?.artOf(arrived.id) ?? null)) setRivalBurst({ id: arrived.id, at: Date.now() })
     impactOn(cell, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT), tone)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `summonCardOf` y `enter` sólo leen la carta y la mesa
   }, [rivalState])
@@ -3810,7 +3829,7 @@ function PracticeMatBody({
       </Deferred>
 
       {/* Lo que hace el rival y se anima: sus cartas aparecen grandes en el centro con un cartel que dice qué pasó, como en un combo guardado. Salen de su carta (de cabeza, como se ven) o del medio de su mano y se enderezan en el camino. */}
-      <SpotlightSwap>{duel?.rivalEffect && !duel.rivalEffect.quiet && !(isAuto && duel.rivalEffect.kind === 'activate') ? (
+      <SpotlightSwap>{duel?.rivalEffect && !duel.rivalEffect.quiet && !(isAuto && duel.rivalEffect.kind === 'activate') && !burstReplaces(duel.rivalEffect, rivalBurst) ? (
         <Spotlight
           key={duel.rivalEffect.key}
           kind={duel.rivalEffect.kind}

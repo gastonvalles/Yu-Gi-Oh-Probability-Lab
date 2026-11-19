@@ -118,6 +118,8 @@ describe('la barra de la mesa es una sola', () => {
         { text: 'Vista 3D', checked: 'true', disabled: false },
         { text: 'Sonidos', checked: 'true', disabled: false },
         ...(layout === 'escritorio' ? [{ text: 'Ventana grande', checked: 'false', disabled: false }] : []),
+        // La beta de la irrupción, apagada de fábrica.
+        { text: 'Imagen de la carta al invocar (beta)La primera vez que se invoca un monstruo, su imagen irrumpe en grande. No va con efectos livianos ni con movimiento reducido.', checked: 'false', disabled: false },
         { text: 'Handtraps del rivalapagadas', checked: null, disabled: false },
         { text: 'Nueva mano', checked: null, disabled: false },
         { text: 'Guardar combosin jugadas', checked: null, disabled: true },
@@ -128,7 +130,7 @@ describe('la barra de la mesa es una sola', () => {
       const duel = within(dialog).getByRole('group', { name: 'El duelo' })
       const duelRows = within(duel).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
 
-      expect(table.getAllByRole('switch').map((element) => element.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Sonidos', ...(layout === 'escritorio' ? ['Ventana grande'] : []), 'Menús flotantes'])
+      expect(table.getAllByRole('switch').map((element) => element.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Sonidos', ...(layout === 'escritorio' ? ['Ventana grande'] : []), 'Imagen de la carta al invocar (beta)', 'Menús flotantes'])
       expect(table.getByRole('group', { name: 'Colores' })).toBeInTheDocument()
       expect(duelRows.filter((name) => name === 'Cambiar rival')).toHaveLength(1)
       expect(duelRows).toEqual(expect.arrayContaining(['Cambiar rival', 'Nueva mano', 'Guardar combo', 'Reiniciar el mismo duelo']))
@@ -334,7 +336,7 @@ describe('la barra de la mesa es una sola', () => {
     fireEvent.click(button(/^Opciones/))
     const more = screen.getByRole('dialog', { name: 'Opciones' })
 
-    expect(within(more).getAllByRole('switch').slice(0, 4).map((element) => element.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Sonidos', 'Ventana grande', 'Menús flotantes'])
+    expect(within(more).getAllByRole('switch').slice(0, 5).map((element) => element.getAttribute('aria-label'))).toEqual(['Vista 3D', 'Sonidos', 'Ventana grande', 'Imagen de la carta al invocar (beta)', 'Menús flotantes'])
     expect(within(more).getByRole('radiogroup', { name: 'Respuestas' })).toBeInTheDocument()
     expect(within(more).getByRole('radiogroup', { name: 'Casilla' })).toBeInTheDocument()
     expect(within(more).getByRole('button', { name: 'Reiniciar el mismo duelo' })).toBeInTheDocument()

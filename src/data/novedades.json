@@ -1,6 +1,49 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-7-imagen-al-invocar-beta",
+      "date": "2026-11-19",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "La imagen de la carta al invocar (beta)",
+        "novedades": [
+          "Al invocar un monstruo, su ilustración puede irrumpir en grande en el medio de la pantalla, medio segundo, antes de que la carta toque su casilla.",
+          "Sale en una Invocación Normal, por Sacrificio o Especial, la primera vez que esa carta entra en el duelo. Vale para tus invocaciones y las del rival.",
+          "Es una beta y viene apagada: la prendés vos."
+        ],
+        "comoSeUsa": [
+          "En el duelo, abrí Opciones (⚙) o el menú «La mesa» (⋯).",
+          "Prendé «Imagen de la carta al invocar (beta)». Queda guardado para los próximos duelos."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "No sale en Fusión, Sincronía, Xyz, Enlace, Ritual ni Péndulo, que ya tienen su propia entrada, ni al Colocar.",
+          "No alarga el duelo: corre mientras la carta vuela a su casilla. La franja tapa ese vuelo.",
+          "Con «Efectos: Livianos» o «reducir movimiento» no sale, aunque esté prendida. El replay y el video no la llevan."
+        ]
+      },
+      "en": {
+        "title": "The card's art when you Summon (beta)",
+        "novedades": [
+          "When you Summon a monster, its artwork can burst in large across the middle of the screen, for half a second, before the card touches its zone.",
+          "It shows on a Normal, Tribute or Special Summon, the first time that card enters the duel. It applies to your Summons and the opponent's.",
+          "It is a beta and comes turned off: you turn it on."
+        ],
+        "comoSeUsa": [
+          "In the duel, open Options (⚙) or the «The table» menu (⋯).",
+          "Turn on «Card art on summon (beta)». It is remembered for your next duels."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "It does not show on Fusion, Synchro, Xyz, Link, Ritual or Pendulum, which already have their own entrance, nor when Setting.",
+          "It does not make the duel longer: it runs while the card flies to its zone. The band covers that flight.",
+          "With «Effects: Light» or «reduce motion» it does not show, even if turned on. The replay and the video do not carry it."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-6-revelar-no-adelanta-el-duelo",
       "date": "2026-11-19",
       "tags": [
