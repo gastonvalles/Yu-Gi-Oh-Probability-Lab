@@ -316,6 +316,8 @@ export const duel = {
   'duel.options.viewHint': 'El campo inclinado, con perspectiva. Apagado, plano y visto de arriba.',
   'duel.options.floating': 'Menús flotantes',
   'duel.options.floatingHint': 'Las preguntas salen en una ventana que arrastrás de la barra y estirás de la esquina.',
+  'duel.options.summonArt': 'Imagen de la carta al invocar (beta)',
+  'duel.options.summonArtHint': 'La primera vez que se invoca un monstruo, su imagen irrumpe en grande. No va con efectos livianos ni con movimiento reducido.',
   'duel.options.concede': 'Rendirse',
   'duel.options.concedeSolo': 'Perdés el duelo y ves la pantalla final. Después podés jugar otra vez.',
   'duel.bar.leaveConfirm': 'Salir y dejar en pausa',

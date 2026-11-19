@@ -303,6 +303,8 @@ export const duel: Translated<typeof es> = {
   'duel.options.viewHint': 'The field tilted, with perspective. Off, flat and seen from above.',
   'duel.options.floating': 'Floating menus',
   'duel.options.floatingHint': 'Questions open in a window you drag by its bar and resize from the corner.',
+  'duel.options.summonArt': 'Card art on summon (beta)',
+  'duel.options.summonArtHint': 'The first time a monster is summoned, its art bursts onto the screen. Off with light effects or reduced motion.',
   'duel.options.concede': 'Concede',
   'duel.options.concedeSolo': 'You lose the duel and see the final screen. Afterwards you can play again.',
   'duel.bar.leaveConfirm': 'Leave and keep it paused',
