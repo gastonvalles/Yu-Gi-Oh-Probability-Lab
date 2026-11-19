@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-10-invocaciones-del-rival-con-su-golpe",
+      "date": "2026-11-19",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Las invocaciones del rival, con su golpe y su entrada",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Cuando el rival invocaba un monstruo en sus Zonas de Monstruos Principales, la carta llegaba sin nada: ni anillo, ni sacudida, ni la entrada de una Fusión, Sincronía, Xyz, Enlace o Ritual. Ahora llega como las tuyas.",
+          "Vale para el duelo contra un bot y para el duelo por enlace."
+        ],
+        "ojo": [
+          "El turno de un bot dura unos 2,2 segundos más por cada invocación del Extra Deck que haga. Los anillos no suman tiempo.",
+          "Mientras dura una entrada del rival, tu respuesta espera, igual que en las tuyas.",
+          "Con «Efectos: Livianos» sale sólo el anillo corto."
+        ]
+      },
+      "en": {
+        "title": "The opponent's Summons, with their hit and their entrance",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "When the opponent Summoned a monster to their Main Monster Zones, the card arrived with nothing: no ring, no shake, no entrance for a Fusion, Synchro, Xyz, Link or Ritual. Now it arrives like yours.",
+          "It applies to the duel against a bot and to the duel by link."
+        ],
+        "ojo": [
+          "A bot's turn runs about 2.2 seconds longer for each Extra Deck Summon it makes. The rings add no time.",
+          "While an opponent's entrance lasts, your response waits, the same as on yours.",
+          "With «Effects: Light» only the short ring shows."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-9-bot-invoca-por-pendulo",
       "date": "2026-11-19",
       "tags": [
