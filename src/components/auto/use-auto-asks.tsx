@@ -639,15 +639,16 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     () => snap.overlay.limits[seat].map((description) => effectLabel(0, description) ?? t('auto.why.limitOf', { card: nameOf(null, splitDesc(description).code) })),
     [snap.overlay.limits, seat, effectLabel, nameOf],
   )
-  // De dónde es (el chip y el grupo de `CardPicker`): lo que sólo se nombra por código, de ningún lado.
+  // De dónde es (el chip y el grupo de `CardPicker`): el lugar en la mesa o, si la mesa no la ubicó, el que dice el núcleo (`seen`); lo que sólo se nombra por código, de ningún lado.
   // La carta sin imagen, sobre el color de su tipo: el de tu carta (o de una igual a las tuyas) o, del rival, su tipo del `.cdb` si llegó (`cards`).
   const pickCardOf = (card: AskCard, key: string): PickCard => {
-    const from = card.place === 'pile' ? card.pile : card.place === 'none' ? undefined : card.place
+    const from = card.place === 'pile' ? card.pile : card.place === 'none' ? card.seen?.from : card.place
+    const theirs = card.ref ? card.ref.side === 'theirs' : (card.seen?.theirs ?? false)
     const code = card.ref ? codeOf(card.ref) || card.code : card.code
     const api = (card.ref?.side === 'mine' ? cardsById.get(card.ref.id)?.apiCard : undefined) ?? byCode.get(code)?.apiCard
     const frame = api ? frameKindOf(api.frameType, api.cardType) : frameOfType(cards?.get(code)?.type ?? 0)
 
-    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(frame.kind === 'neutral' ? {} : { frame }), ...(from && card.ref ? pickPlace(from, card.ref.side === 'theirs') : {}) }
+    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(frame.kind === 'neutral' ? {} : { frame }), ...(from ? pickPlace(from, theirs) : {}) }
   }
 
   // ── La pregunta pendiente: se abre con la mesa del núcleo (`session.adapter`) en el mismo render en que llega (un rearme con pregunta es un solo commit); lo que se contesta solo, se

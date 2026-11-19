@@ -70,6 +70,8 @@ export interface AskCard {
   code: number
   place: 'field' | 'hand' | 'pile' | 'material' | 'none'
   pile?: MatPile
+  /** Sin `ref` (la mesa no la ubicó), dónde dice el núcleo que está y de quién es: para que el menú diga su lugar igual. */
+  seen?: { from: MatPile | 'field' | 'material'; theirs: boolean }
   /** Lo que vale: en un Sacrificio, `release_param`; en una suma, `amount` (dos valores: u16 bajo y alto). */
   value?: number
 }
@@ -346,11 +348,13 @@ function resolver(queries: AskQueries, seat: Seat) {
   }
 }
 
-function askCard(card: Loc, ref: CardRef | null, value?: number): AskCard {
+function askCard(card: Loc, ref: CardRef | null, value?: number, seat?: Seat): AskCard {
   const pile = isMaterial(card) ? undefined : PILE_OF[card.location]
-  const place = !ref ? 'none' : isMaterial(card) ? 'material' : card.location === L.MZONE || card.location === L.SZONE ? 'field' : card.location === L.HAND ? 'hand' : 'pile'
+  const zone: NonNullable<AskCard['seen']>['from'] | undefined = isMaterial(card) ? 'material' : card.location === L.MZONE || card.location === L.SZONE ? 'field' : pile
+  const place = !ref ? 'none' : zone === 'material' || zone === 'field' ? zone : card.location === L.HAND ? 'hand' : 'pile'
+  const seen = !ref && zone && seat !== undefined ? { seen: { from: zone, theirs: card.controller !== seat } } : {}
 
-  return { ref, code: card.code, place, ...(pile ? { pile } : {}), ...(value === undefined ? {} : { value }) }
+  return { ref, code: card.code, place, ...(pile ? { pile } : {}), ...seen, ...(value === undefined ? {} : { value }) }
 }
 
 function positionOf(queries: AskQueries, ref: CardRef): MatPos | null {
@@ -724,7 +728,7 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
   const { ask } = input
   const resolve = resolver(ctx.queries, ask.player)
   const base: Base = { cards: [], items: new Map(), theirs: new Map(), phaseItems: phaseItemsOf({}, ctx.phase), endTurn: null, prompt: null, options: [], targets: [], auto: null, phaseWindow: null }
-  const cardsOf = <C extends Loc>(list: readonly C[], value?: (card: C) => number) => list.map((card) => askCard(card, resolve(card), value?.(card)))
+  const cardsOf = <C extends Loc>(list: readonly C[], value?: (card: C) => number) => list.map((card) => askCard(card, resolve(card), value?.(card), ask.player))
   const auto = (answer: CoreAnswer | null, why: NonNullable<AskView['auto']>['why']) => void (base.auto = { answer: answer && parseAnswer(answer), why })
 
   switch (ask.type) {

@@ -75,13 +75,17 @@ export function pickPlace(from: PickFrom, theirs: boolean): Pick<PickCard, 'plac
   return { place: t(`auto.picker.place.${theirs ? 'theirs' : 'mine'}.${from}`), from, ...(theirs ? { theirs } : {}) }
 }
 
-/** El chip del lugar sobre la carta: ícono y texto corto («Mano», «Cem. rival»); en una columna angosta (la banda a 390 px), sólo el ícono (el nombre accesible lo dice entero). */
+/**
+ * El chip del lugar sobre la carta: ícono y texto corto («Mano», «Cem. rival»), en **todas** las cartas que lo saben. Opaco (`onImage`: se lee sobre el arte, AA) y siempre con el texto: en una
+ * columna angosta (la banda a 390 px) se va el ícono y el texto baja a dos renglones («Cem.» / «rival») antes que esconderse.
+ */
 function PlaceChip({ from, theirs }: { from: PickFrom; theirs: boolean }) {
   const zone = from === 'field' ? t('practice.mat.field') : from === 'material' ? t('auto.picker.chip.material') : PILE_SHORT[from]
 
   return (
-    <Badge size="sm" shape="tag" {...(from === 'hand' && !theirs ? { tone: 'brand', solid: true } : {})} icon={FROM_ICON[from]} aria-hidden="true" data-pick-place="" className={cx('min-w-0 max-w-full justify-self-start', ON_ART)}>
-      <span className="hidden min-w-0 truncate @[4rem]:inline">{theirs ? t('auto.picker.chip.theirs', { zone }) : zone}</span>
+    <Badge size="sm" shape="tag" wrap {...(from === 'hand' && !theirs ? { tone: 'brand', solid: true } : { onImage: true })} aria-hidden="true" data-pick-place="" className={cx('min-w-0 justify-self-start', ON_ART)}>
+      <Icon name={FROM_ICON[from]} size={11} strokeWidth={2} className="hidden shrink-0 @[4rem]:block" />
+      <span className="min-w-0">{theirs ? t('auto.picker.chip.theirs', { zone }) : zone}</span>
     </Badge>
   )
 }

@@ -638,6 +638,9 @@ describe('CardPicker', () => {
     expect(chip('Ponix, en tu Deck')).toHaveTextContent('Deck')
     expect(chip('Ponix, en tu Deck')).not.toHaveClass('bg-primary')
     expect(chip('Effect Veiler, en la mano del rival')).toHaveTextContent('Mano rival')
+    // Se lee sobre el arte (opaco, no el teñido casi transparente) y el texto nunca se esconde: en una carta angosta se va el ícono y el texto baja de renglón.
+    expect(chip('Ponix, en tu Deck')).toHaveClass('bg-background/85', 'text-foreground', '[overflow-wrap:anywhere]')
+    for (const option of screen.getAllByRole('option')) expect(option.querySelector('[data-pick-place] > span')).not.toHaveClass('hidden')
     // El teclado recorre lo que se ve (la mano primero) y la respuesta es la carta, no su lugar en la lista.
     fireEvent.keyDown(screen.getAllByRole('option')[0]!, { key: 'ArrowRight' })
     fireEvent.keyDown(screen.getAllByRole('option')[1]!, { key: 'Enter' })
