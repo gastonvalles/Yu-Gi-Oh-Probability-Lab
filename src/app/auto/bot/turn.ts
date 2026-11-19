@@ -1,6 +1,6 @@
 import type { TurnRule } from '../../handtraps'
 import { passiveAnswer, ruleOf, tributePick, turnRuleOf } from '../policies'
-import type { AskOf, CardLoc, CoreAsk } from '../protocol'
+import type { AskOf, CardLoc, CoreAnswer, CoreAsk } from '../protocol'
 import type { Bot, BotCard, BotDecision, BotReason, BotView } from './bot'
 import { handtrapBot } from './rivals'
 
@@ -13,8 +13,9 @@ import { handtrapBot } from './rivals'
  *    Invocación Normal, porque después ya no se puede) y Gallant Bandit con uno tuyo y relleno de su mano (sólo con su relleno, no: se juega para sacarte monstruos);
  * 4. Invocar de modo Normal su monstruo de más ATK (sin Tributar salvo que el nuevo valga más), o colocarlo si tenés uno boca arriba con más ATK;
  * 5. colocar sus negaciones (`counter`) y lo que usa en tu turno (Evenly Matched, Book of Moon, Called by the Grave);
- * 6. la Battle Phase si tiene un ataque seguro: directo sin monstruos tuyos, o contra uno boca arriba que destruye sin perder el suyo (ATK contra ATK o DEF). Lo boca abajo no lo ataca;
- * 7. terminar el turno.
+ * 6. Invocar por Péndulo, una vez por turno, si eso suma monstruos al campo (`pendulumIndex`);
+ * 7. la Battle Phase si tiene un ataque seguro: directo sin monstruos tuyos, o contra uno boca arriba que destruye sin perder el suyo (ATK contra ATK o DEF). Lo boca abajo no lo ataca;
+ * 8. terminar el turno.
  * Los Tributos que elige: tus monstruos de más ATK primero (boca abajo, al final), después lo suyo de menos valor, y nunca primero una handtrap con regla. En tus turnos responde como el de
  * handtraps; además niega con sus `counter` colocadas (contra tu eslabón o tu Invocación), usa los dos efectos de Gallant Bandit, Book of Moon y Called by the Grave. Un tope de `MAX_IDLE` jugadas por turno evita
  * un turno eterno; el núcleo rechaza lo ilegal y la sesión contesta entonces con la de reserva.
@@ -27,6 +28,9 @@ export interface CardFacts {
   defense: number
   level: number
   category?: number
+  /** Las Escalas de Péndulo impresas (0 si no es de Péndulo). */
+  lscale?: number
+  rscale?: number
 }
 
 const HAND = 0x02
@@ -50,13 +54,44 @@ const SET_FOR_YOUR_TURN: Partial<Record<TurnRule, BotReason['key']>> = { evenly:
 const HOLD_FOR: Partial<Record<TurnRule, string>> = { moon: 'attack', called: 'graveyard' }
 
 type Pending =
-  | { play: Exclude<TurnRule, 'storm' | 'moon'> | 'summon' }
+  | { play: Exclude<TurnRule, 'storm' | 'moon'> | 'summon' | 'pendulum' }
   | { play: 'storm'; choice: number }
   | { play: 'attack'; attacker: number; target: number }
   | { play: 'moon'; attacker: number }
 type IdleAsk = AskOf<'select_idlecmd'>
 
 const NO_FACTS = () => undefined
+const POS_FACEUP_ATTACK = 1
+
+/**
+ * La Invocación por Péndulo de cualquier bot (`turnBot` y el marco de los ejecutores, `executor.ts`): el núcleo la ofrece como la entrada de `special_summons` cuya carta está en
+ * la Zona de Péndulo (`ask-ui.ts`) y ya filtra las Escalas, las casillas y la vez por turno. Se hace si suma un monstruo al campo: uno de la mano que no guarda para una regla
+ * (`keeps`: sus handtraps) con el Nivel impreso entre sus dos Escalas, o uno boca arriba del Extra Deck. El índice en `special_summons`, o -1.
+ */
+export function pendulumIndex(ask: IdleAsk, view: BotView, facts: (code: number) => CardFacts | undefined, keeps: (code: number) => boolean): number {
+  const index = ask.special_summons.findIndex((card) => card.location === SZONE)
+  const scales = [view.me.spells[0], view.me.spells[4]].flatMap((card) => (card ? [facts(card.code)] : []))
+
+  if (index < 0) return -1
+  // Sin las Escalas a la vista (o sin sus datos), decide el núcleo: lo que ofrece entra.
+  const [low, high] = scales.length === 2 && scales.every(Boolean) ? [Math.min(scales[0]!.lscale ?? 0, scales[1]!.rscale ?? 0), Math.max(scales[0]!.lscale ?? 0, scales[1]!.rscale ?? 0)] : [0, 99]
+  const enters = (code: number) => {
+    const card = facts(code)
+
+    return !!card && (card.type & MONSTER) !== 0 && !keeps(code) && card.level > low && card.level < high
+  }
+
+  return view.me.extraFaceUp.length > 0 || view.me.hand.some((card) => enters(card.code)) ? index : -1
+}
+
+/** Lo que sigue a la Invocación por Péndulo: elige de a uno todos los que entran (el de más ATK primero; de la mano, nunca lo que guarda) y los pone en ataque; si no queda ninguno, termina. */
+export function pendulumAnswer(ask: AskOf<'select_unselect_card'> | AskOf<'select_position'>, facts: (code: number) => CardFacts | undefined, keeps: (code: number) => boolean): CoreAnswer {
+  if (ask.type === 'select_position') return (ask.positions & POS_FACEUP_ATTACK) !== 0 ? { type: ask.type, position: POS_FACEUP_ATTACK } : passiveAnswer(ask, () => 0)
+  const atk = (code: number) => facts(code)?.attack ?? 0
+  const index = ask.select_cards.reduce((best, card, i) => (card.location === HAND && keeps(card.code) ? best : best < 0 || atk(card.code) > atk(ask.select_cards[best]!.code) ? i : best), -1)
+
+  return { type: ask.type, index: index >= 0 ? index : null }
+}
 
 /** `spend`: cuándo gasta una handtrap contra tu eslabón (`handtrapBot`); el bot con mazo pasa `mayInterrupt`. */
 export function turnBot(priority: readonly number[], extra: readonly number[] = [], aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number, factsOf: (code: number) => CardFacts | undefined = NO_FACTS, spend?: (view: BotView) => boolean): Bot {
@@ -69,6 +104,8 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
   const worth = (card: BotCard | null | undefined) => (card && card.code !== 0 && card.pos !== 'set' ? atkOf(card) : -1)
   let pending: Pending | null = null
   let idle = { turn: -1, history: 0, count: 0 }
+  /** El turno en que ya Invocó por Péndulo (una vez por turno: si la canceló, no la repite). */
+  let pendulumTurn = -1
 
   /** La carta de la vista en ese lugar del campo (tuya o suya). */
   const onField = (view: BotView, card: CardLoc) => (card.location === MZONE ? (card.controller === view.seat ? view.me : view.them).monsters[card.sequence] : undefined) ?? null
@@ -203,13 +240,21 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
     if (counter >= 0) return play(4, counter, { key: 'auto.bot.reason.play.setCounter', cards: [ask.spell_sets[counter]!.code] }, 'turn.setCounter')
     if (later >= 0) return play(4, later, { key: setKey(ask.spell_sets[later]!.code)!, cards: [ask.spell_sets[later]!.code] }, `turn.set.${turnRule(ask.spell_sets[later]!.code)}`)
 
-    // 6. La Battle Phase, si tiene un ataque seguro.
+    // 6. La Invocación por Péndulo, si suma monstruos al campo (después de lo suyo y antes de la Battle Phase: los que entran también atacan).
+    const pendulum = pendulumTurn === view.turn ? -1 : pendulumIndex(ask, view, factsOf, keeps)
+
+    if (pendulum >= 0) {
+      pendulumTurn = view.turn
+      return play(1, pendulum, { key: 'auto.bot.reason.play.pendulum', cards: [ask.special_summons[pendulum]!.code] }, 'turn.pendulum', { play: 'pendulum' })
+    }
+
+    // 7. La Battle Phase, si tiene un ataque seguro.
     if (ask.to_bp && bestAttack(view, attackersOf(view))) {
       pending = null
       return { answer: { type: ask.type, action: 6, index: null }, rule: 'turn.battle' }
     }
 
-    // 7. Terminar.
+    // 8. Terminar.
     return ask.to_ep ? end(view, { type: ask.type, action: 7, index: null }) : { answer: passiveAnswer(ask, () => 0) }
   }
 
@@ -256,6 +301,7 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
 
     if (mine && ask.type === 'select_idlecmd') return idleTurn(ask, view)
     if (mine && ask.type === 'select_battlecmd') return battle(ask, view)
+    if (mine && pending?.play === 'pendulum' && (ask.type === 'select_unselect_card' || ask.type === 'select_position')) return { answer: pendulumAnswer(ask, factsOf, keeps), rule: 'turn.pendulum.pick' }
     if (mine && ask.type === 'select_tribute' && pending && pending.play !== 'attack') {
       const indices = tributePick(ask, tributeOrder(view, ask.selects), () => false)
 

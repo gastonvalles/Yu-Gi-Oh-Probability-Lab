@@ -114,6 +114,7 @@ export const auto = {
   'auto.bot.reason.play.setQuick': 'Coloqué {card}: la puedo activar en tu turno.',
   'auto.bot.reason.play.normalEffect': 'Invoqué de modo Normal a {card}: su efecto sigue mi jugada.',
   'auto.bot.reason.play.special': 'Invoqué de modo Especial a {card} desde mi mano.',
+  'auto.bot.reason.play.pendulum': 'Invoqué por Péndulo con {card} y mi otra Escala: sumo monstruos a mi campo.',
   'auto.bot.reason.play.synchroLevel': 'Subí 3 Niveles a {to} con {card} y lo usé de material para una Sincronía.',
   'auto.bot.reason.play.synchroYourTurn': 'Activé {card} en tu Main Phase: Invoco por Sincronía a June Pride y sólo pueden atacar los monstruos del centro.',
   'auto.bot.reason.play.synchroNext': 'Invoqué por Sincronía a {card}: sigo armando mi campo.',
