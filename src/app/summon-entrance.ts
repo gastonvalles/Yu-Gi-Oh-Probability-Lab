@@ -194,13 +194,17 @@ function figureOf(kind: EntranceKind, stage: HTMLElement, t: EntranceTiming, r: 
         add(bar, [{ translate: `${x * 2 * r}px ${y * 2 * r}px`, easing: EASE_OUT }, { translate: '0px 0px' }], 500, t.figure)
       }
       add(bars, [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], 800, t.figure)
+      // La puerta (Gastón, 2026-11-14: «reforza»): entra ya cuadrada (de ×0,6), con borde grueso y relleno presente, y más ancha que la carta cuando ésta se achica, así asoma a los costados.
       const gate = until - (t.figure + 250)
-      add(el(stage, `${PIECE} border-2 border-fx-enlace bg-fx-enlace/15 outline-2 outline-black/40`, 1.1 * r), keep(0, gate, gate, [0.2, 1.2]), gate, t.figure + 250)
-      const arrows = el(stage, `${PIECE} size-0`)
+      add(el(stage, `${PIECE} border-4 border-fx-enlace bg-fx-enlace/30 outline-2 outline-black/40`, 1.4 * r), keep(0, gate, gate, [0.6, 1.1]), gate, t.figure + 250)
+      // Las flechas, más grandes, afuera de la puerta y encima de la carta que cae (`z-10`): todas prendidas antes de que la carta aparezca.
+      const arrows = el(stage, `${PIECE} z-10 size-0`)
       for (let index = 0; index < 8; index += 1) {
-        const arrow = el(arrows, `absolute -ml-2 -mt-2 size-4 border-r-3 border-t-3 border-fx-enlace opacity-0`)
-        arrow.style.transform = `rotate(${index * 45 - 45}deg) translate(${Math.round(0.8 * r)}px, 0) rotate(45deg)`
-        add(arrow, [{ opacity: 0 }, { opacity: 1, offset: 0.4 }, { opacity: 1 }], 300, t.accent + index * 120)
+        const arrow = el(arrows, `absolute -ml-3 -mt-3 size-6 border-r-4 border-t-4 border-fx-enlace opacity-0`)
+        arrow.style.transform = `rotate(${index * 45 - 45}deg) translate(${Math.round(r)}px, 0) rotate(45deg)`
+        // Prendida hasta el final (sin esto, al terminar su animación vuelve a `opacity-0` y se ve un destello).
+        const from = t.accent + index * 60
+        add(arrow, [{ opacity: 0 }, { opacity: 1, offset: 120 / (until - from) }, { opacity: 1 }], until - from, from)
       }
       add(arrows, keep(0, until - t.accent, until - t.accent, [1, 1.15]), until - t.accent, t.accent)
       return

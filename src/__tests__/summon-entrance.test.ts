@@ -52,6 +52,21 @@ describe('la entrada larga de la invocación (Master Duel)', () => {
     }
   })
 
+  it('la puerta del Enlace se lee («reforza»): borde grueso, entra ya cuadrada, y las ocho flechas, encima de la carta, prendidas antes de que aparezca y hasta el final', () => {
+    const calls = stubAnimate()
+    playEntrance({ kind: 'link', cell: new DOMRect(100, 500, 48, 70), art: null, materials: 2, hide: [], field: null, onDone: () => {} })
+    const gate = calls.find((call) => call.el.className.includes('border-4 border-fx-enlace'))!
+    expect(gate.frames[0]).toMatchObject({ scale: '0.6' })
+    const arrows = calls.filter((call) => call.el.className.includes('border-r-4 border-t-4'))
+    expect(arrows).toHaveLength(8)
+    expect(arrows.every((call) => call.el.parentElement!.className.includes('z-10'))).toBe(true)
+    for (const { options, frames } of arrows) {
+      expect(Number(options.delay)).toBeLessThan(ENTRANCE.hit - ENTRANCE_COMMON.reveal)
+      expect(frames.at(-1)).toMatchObject({ opacity: 1 })
+      expect(Number(options.delay) + Number(options.duration)).toBeCloseTo(figureAt('link', ENTRANCE_FIGURE.link.hit + 150), -1)
+    }
+  })
+
   it('sólo lo del Extra Deck con su mecánica y el Ritual llevan entrada; con «Livianos» o movimiento reducido, no va', () => {
     expect(['special', 'tribute', 'fusion', 'synchro', 'xyz', 'link', 'ritual'].map((tone) => entranceOf(tone as 'xyz'))).toEqual([null, null, 'fusion', 'synchro', 'xyz', 'link', 'ritual'])
     stubAnimate()
