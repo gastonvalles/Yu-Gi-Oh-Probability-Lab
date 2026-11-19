@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-4-pendulo-y-sacrificio-en-lo-grabado",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El Péndulo y el Sacrificio, también en lo que grabás",
+        "novedades": [
+          "El replay de un duelo automático ahora muestra la escena de la Invocación por Péndulo y el destello y el anillo rojo del Sacrificio.",
+          "Lo mismo un combo que guardás o compartís desde el duelo automático, cuando lo repasás en la mesa."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Vale para lo que grabes de acá en adelante. Los replays y combos de antes abren igual que siempre, sin esas escenas.",
+          "Los enlaces viejos siguen funcionando, y los nuevos crecen apenas unos caracteres.",
+          "En un combo compartido por enlace, las jugadas del rival van sin esas escenas."
+        ]
+      },
+      "en": {
+        "title": "Pendulum and Tribute, in what you record too",
+        "novedades": [
+          "The replay of an automatic duel now shows the Pendulum Summon scene and the Tribute flash and red ring.",
+          "So does a combo you save or share from the automatic duel, when you review it on the table."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "It applies to what you record from now on. Earlier replays and combos open as they always did, without those scenes.",
+          "Old links keep working, and new ones grow by just a few characters.",
+          "In a combo shared by link, the opponent's plays go without those scenes."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-3-sacrificio-texto-y-marca",
       "date": "2026-11-19",
       "tags": [
