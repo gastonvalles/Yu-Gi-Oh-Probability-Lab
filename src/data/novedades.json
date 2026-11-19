@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-5-replay-con-sonido",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El replay suena",
+        "novedades": [
+          "El replay de un duelo ahora suena como la mesa: el barajado y el reparto de las manos al empezar, y cada jugada con su sonido (invocar, colocar, activar, atacar, mandar al Cementerio…)."
+        ],
+        "comoSeUsa": [
+          "Suena al reproducir y al avanzar con «Siguiente». Si saltás a otro punto, no suena.",
+          "Para apagarlo, abrí «Más opciones» en el replay y tocá «Sonidos». Es la misma preferencia que la de la mesa."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Si las dos manos se reparten a la vez, suena sólo la de abajo, para que no se oiga doble.",
+          "El video sigue sin sonido."
+        ]
+      },
+      "en": {
+        "title": "The replay has sound",
+        "novedades": [
+          "A duel replay now sounds like the table: the shuffle and the deal of the hands at the start, and each play with its sound (summoning, setting, activating, attacking, sending to the Graveyard…)."
+        ],
+        "comoSeUsa": [
+          "It plays sound while playing and when stepping with «Next». If you jump to another point, it stays silent.",
+          "To turn it off, open «More options» in the replay and tap «Sounds». It is the same preference as the table's."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "If both hands are dealt at once, only the bottom one sounds, so you do not hear it doubled.",
+          "The video still has no sound."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-4-pendulo-y-sacrificio-en-lo-grabado",
       "date": "2026-11-19",
       "tags": [
