@@ -3,8 +3,8 @@ import { deflateRawSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 
 import { comboEnvelope, compactEnvelope, decodeComboPayload, encodeComboPayload, packPayload, parseComboText, readComboLink, unpackPayload } from '../app/combo-share'
-import { replayMat, type MatAction, type MatState } from '../app/practice-mat'
-import { createSavedCombo, type SavedCombo } from '../app/saved-combos'
+import { createMatState, replayMat, type MatAction, type MatState } from '../app/practice-mat'
+import { createSavedCombo, migrateSavedCombo, type SavedCombo } from '../app/saved-combos'
 import { deckCombo, referenceCombo, withoutId } from './support/combo-fixtures'
 
 /** Un enlace v1 de verdad: el combo de referencia (45 jugadas), escrito con el código de antes de v2. Tiene que abrir siempre igual, con sus nombres. */
@@ -196,5 +196,61 @@ describe('el enlace v2 de un combo (compacto)', () => {
     console.info(rows.join('\n'))
     // El de referencia (45 jugadas): 1.672 caracteres en v1; en v2, unos 730.
     expect(links[0]).toBeLessThan(750)
+  })
+})
+
+describe('las marcas del núcleo en un combo (`sure` y `m`)', () => {
+  const table = createMatState(Array.from({ length: 20 }, (_, n) => `card-${1000 + n}-1`), [], 5)
+  const [a, b, c] = table.hand as [string, string, string]
+  const plays: MatAction[] = [
+    { type: 'phase', phase: 'main1' },
+    { type: 'place', id: a, zone: 'mz', index: 0, pos: 'atk', how: 'normal' },
+    { type: 'move', id: a, to: 'gy', tribute: true },
+    { type: 'place', id: b, zone: 'mz', index: 0, pos: 'atk', how: 'normal', tribute: true },
+    { type: 'place', id: c, zone: 'mz', index: 1, pos: 'atk', how: 'pendulum', more: true },
+    { type: 'place', id: 'card-1010-1', zone: 'mz', index: 2, pos: 'atk', how: 'pendulum' },
+  ]
+  const marked = createSavedCombo({ name: 'Péndulo', deckName: 'Deck', initial: table, actions: plays, nameOf: () => 'x', auto: true }, [])
+
+  it('un combo nuevo con Péndulo o Sacrificio dice `sure`; sin nada de eso, no (y su enlace no cambia)', () => {
+    expect(marked.sure).toBe(true)
+    expect(createSavedCombo({ name: 'x', deckName: 'Deck', initial: table, actions: plays.slice(0, 2), nameOf: () => 'x' }, []).sure).toBeUndefined()
+    expect(compactEnvelope(referenceCombo())).not.toHaveProperty('m')
+  })
+
+  it('el enlace lleva `m` al lado de `c` (misma versión) y vuelve igual, con las marcas', async () => {
+    const envelope = compactEnvelope(marked)
+    expect(envelope).toMatchObject({ v: 2, m: [[2, 3], [4]] })
+    expect(await decodeComboPayload(await encodeComboPayload(marked))).toEqual({ ok: true, combo: { ...withoutId(marked), names: {} } })
+    expect(parseComboText(JSON.stringify(comboEnvelope(marked)))).toEqual({ ok: true, combo: withoutId(marked) })
+    // Lo que crece: sólo lo que lleva marcas, y poco.
+    const { sure: _, ...unsure } = marked
+    const [withMarks, without] = [await encodeComboPayload(marked), await encodeComboPayload(unsure)]
+    console.info(`combo de ${plays.length} jugadas con marcas: ${without.length} → ${withMarks.length} caracteres; JSON ${JSON.stringify(compactEnvelope(unsure)).length} → ${JSON.stringify(envelope).length}`)
+    expect(withMarks.length - without.length).toBeLessThan(30)
+  })
+
+  it('lo viejo abre igual: un enlace de antes, sin `sure`; una versión que no conoce `m` la ignora; lo guardado se lee tolerante', async () => {
+    const old = await readComboLink(V2_LINK)
+    expect(old.ok && old.combo.sure).toBeUndefined()
+    expect(old.ok && compactEnvelope(old.combo)).toEqual(await unpacked(V2_LINK.split('#combo=')[1]!))
+
+    const { m: _, ...withoutM } = compactEnvelope(marked)
+    const read = parseComboText(JSON.stringify(withoutM))
+    expect(read.ok && read.combo.sure).toBeUndefined()
+    expect(read.ok && JSON.stringify(read.combo.actions)).not.toMatch(/tribute|more/)
+
+    expect(migrateSavedCombo({ ...marked, sure: 'sí' as unknown as true }).sure).toBeUndefined()
+    expect(migrateSavedCombo(marked).sure).toBe(true)
+  })
+
+  it('`m` mal formado, o `sure`, `tribute` y `more` que no son lo que dicen, se rechazan', () => {
+    const base = compactEnvelope(marked)
+    const bad: unknown[] = ['x', {}, null, [[2, 3], [4], []], [[3, 2]], [[2, 2]], [[-1]], [[6]], [[1.5]], [['2']], [[0]], [[], [3]], [[], [5, 6]], [Array.from({ length: 7 }, (_, n) => n)]]
+    for (const m of bad) expect(parseComboText(JSON.stringify({ ...base, m })), JSON.stringify(m)).toEqual({ ok: false, error: 'broken' })
+
+    const v1 = comboEnvelope(marked)
+    const at = (n: number, change: object) => ({ ...v1, combo: { ...v1.combo, actions: v1.combo.actions.map((item, i) => (i === n ? { ...item, ...change } : item)) } })
+    for (const hostile of [{ ...v1, combo: { ...v1.combo, sure: 1 } }, at(2, { tribute: 'true' }), at(4, { more: false }), at(3, { more: true })]) expect(parseComboText(JSON.stringify(hostile))).toEqual({ ok: false, error: 'broken' })
   })
 })

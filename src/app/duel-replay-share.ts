@@ -1,10 +1,12 @@
 import {
+  applyMarks,
   chainOfTuple,
   chainTuple,
   compactReader,
   compactTime,
   compactWriter,
   invalid,
+  marksOf,
   MAX_PAYLOAD_CHARS,
   packPayload,
   parseComboText,
@@ -18,6 +20,7 @@ import {
   readRecord,
   readReveal,
   readText,
+  readYes,
   SHARE_APP,
   shareLink,
   unpackPayload,
@@ -63,6 +66,7 @@ export const replayEnvelope = (replay: DuelReplay) => ({ app: SHARE_APP, kind: '
  * lo revelado (id opaco → id real), en pares planos de lugares, y el de cada jugada, aparte (`[jugada, ...pares]`: pocas muestran algo); los nombres, en el orden de los
  * passcodes de la tabla (`null`, uno sin nombre). **Este orden es el formato: sólo se agrega al final.** Leer v2 es armar la forma de v1 y pasarla por el mismo `readReplay`.
  * El enlace va sin nombres (`names: false`, la lista vacía) y quien lo abre los pide por passcode (`resolveReplayNames`, como el combo); lo guardado acá los lleva.
+ * `m`, al lado de `d` y sólo con `sure`: las marcas del núcleo, como en el combo (`marksOf`, índices de `steps`); una versión que no la conoce la ignora y abre sin ellas.
  */
 export function compactReplayEnvelope(replay: DuelReplay, { names: withNames = true } = {}) {
   const pairs = (map: Record<string, string> | undefined) => Object.entries(map ?? {})
@@ -72,7 +76,7 @@ export function compactReplayEnvelope(replay: DuelReplay, { names: withNames = t
   const names = withNames ? pack.codes.map((code) => replay.cards[String(code)] ?? null) : []
   while (names.length > 0 && names.at(-1) === null) names.pop()
 
-  return {
+  const envelope = {
     app: SHARE_APP,
     kind: 'duel',
     v: replay.chain ? DUEL_REPLAY_VERSION : 2,
@@ -94,6 +98,7 @@ export function compactReplayEnvelope(replay: DuelReplay, { names: withNames = t
       ...(replay.chain ? [replay.chain.map((item) => chainTuple(item, pack.ref))] : []),
     ],
   }
+  return replay.sure ? { ...envelope, m: marksOf(replay.steps.map(([, action]) => action)) } : envelope
 }
 
 /** De dónde salen los ids de la tabla: las mesas, las jugadas, lo revelado y lo propio oculto (los ids reales están sólo ahí). */
@@ -159,7 +164,7 @@ export function parseReplayText(text: string): ReplayRead {
   if (!value || value.kind !== 'duel' || typeof value.v !== 'number') return { ok: false, error: 'notReplay' }
   if (value.v > DUEL_REPLAY_VERSION) return { ok: false, error: 'newer' }
   if (value.v !== 1 && value.v !== 2 && value.v !== DUEL_REPLAY_VERSION) return { ok: false, error: 'broken' }
-  const replay = value.v === 1 ? readReplay(value.replay) : readCompactReplay(value.d)
+  const replay = value.v === 1 ? readReplay(value.replay) : readCompactReplay(value.d, value.m)
   return replay ? { ok: true, replay } : { ok: false, error: 'broken' }
 }
 
@@ -255,6 +260,7 @@ function readReplay(value: unknown): DuelReplay | null {
       hidden: view === 'mine' && v.hidden !== undefined ? reveal(v.hidden, MAX_HIDDEN, (id) => (typeof id === 'string' && OPAQUE.test(id) ? id : invalid())) : undefined,
       result: v.result === undefined ? undefined : result(v.result),
       chain,
+      sure: v.sure === undefined ? undefined : readYes(v.sure),
     })
   } catch {
     return null
@@ -262,7 +268,7 @@ function readReplay(value: unknown): DuelReplay | null {
 }
 
 /** La forma v1 de un replay v2 (lanza si no se puede armar); `readReplay` la valida entera. */
-function expandCompactReplay(value: unknown): unknown {
+function expandCompactReplay(value: unknown, marks: unknown): unknown {
   const raw = (item: unknown) => item
   const [savedAt, mode, view, players, starter, rawTable, mats, shown, rawSteps, rawReveals, life, names, rawResult, hidden, rawChain, ...rest] = list(value, 15, raw)
   if (rest.length > 0) invalid()
@@ -282,6 +288,7 @@ function expandCompactReplay(value: unknown): unknown {
     const [at, ...flat] = list(item, MAX_REVEAL * 2 + 1, raw)
     steps[readInt(at, 0, steps.length - 1)]!.push(pairs(flat, MAX_REVEAL))
   }
+  if (marks !== undefined) applyMarks(marks, steps.map((item) => item[1]))
   const cardNames = list(names, MAX_CARDS, raw)
   const [winner, reason] = rawResult === null ? [] : list(rawResult, 2, raw)
 
@@ -301,12 +308,13 @@ function expandCompactReplay(value: unknown): unknown {
     hidden: hidden === undefined || hidden === null ? undefined : pairs(hidden, MAX_HIDDEN),
     result: rawResult === null ? undefined : { winner, reason },
     chain: rawChain === undefined ? undefined : list(rawChain, MAX_CHAIN, (item) => chainOfTuple(item, read.ref)),
+    sure: marks === undefined ? undefined : true,
   }
 }
 
-function readCompactReplay(value: unknown): DuelReplay | null {
+function readCompactReplay(value: unknown, marks: unknown): DuelReplay | null {
   try {
-    return readReplay(expandCompactReplay(value))
+    return readReplay(expandCompactReplay(value, marks))
   } catch {
     return null
   }

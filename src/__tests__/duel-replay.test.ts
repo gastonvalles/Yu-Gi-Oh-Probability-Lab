@@ -408,3 +408,66 @@ describe('los replays guardados', () => {
     expect(await saveReplay(replay)).toEqual({ saved: null, dropped: false })
   })
 })
+
+describe('las marcas del núcleo (`sure` y `m`)', () => {
+  // Un Sacrificio marcado (el que se va y el que llega) y una Invocación por Péndulo de dos cartas, como las marca el automático.
+  const [p0, p1, p2] = mine.hand as [string, string, string]
+  const marked = {
+    ...buildDuelReplay({
+      ...input,
+      mine: {
+        initial: mine,
+        actions: [
+          { type: 'phase', phase: 'main1' },
+          { type: 'place', id: p0, zone: 'mz', index: 0, pos: 'atk', how: 'normal' },
+          { type: 'move', id: p0, to: 'gy', tribute: true },
+          { type: 'place', id: p1, zone: 'mz', index: 0, pos: 'atk', how: 'normal', tribute: true },
+          { type: 'place', id: p2, zone: 'mz', index: 1, pos: 'atk', how: 'pendulum', more: true },
+          { type: 'place', id: deck[10]!, zone: 'mz', index: 2, pos: 'atk', how: 'pendulum' },
+        ],
+      },
+      theirs: { initial: theirs, acts: [] },
+      order: ['mine', 'mine', 'mine', 'mine', 'mine', 'mine'],
+      life: [{ at: 0, lp: [8000, 8000] }],
+    }),
+    sure: true as const,
+  }
+  const linkJson = async (item: DuelReplay) => JSON.parse((await unpackPayload(await encodeReplayLinkPayload(item), 1e6) as { text: string }).text) as { m?: unknown }
+
+  it('lo grabado con marcas seguras las lleva en `m` (al lado de `d`) y vuelve igual', async () => {
+    expect((await linkJson(marked)).m).toEqual([[2, 3], [4]])
+    expect(await decodeReplayPayload(await encodeReplayLinkPayload(marked))).toEqual({ ok: true, replay: { ...marked, cards: {} } })
+    expect(await decodeReplayPayload(await encodeReplayPayload(marked))).toEqual({ ok: true, replay: marked })
+  })
+
+  it('sin `sure` no hay `m` y el enlace es el de antes, byte a byte; un enlace viejo de verdad abre sin `sure` y se vuelve a escribir igual', async () => {
+    const { sure: _, ...unsure } = marked
+    expect((await linkJson(unsure)).m).toBeUndefined()
+    expect(JSON.stringify(compactReplayEnvelope(unsure))).toBe(JSON.stringify({ ...compactReplayEnvelope(marked), m: undefined }))
+
+    const read = await readShared(V2_LINK)
+    const before = (await unpackPayload(replayPayloadOf(V2_LINK)!, 1e6) as { text: string }).text
+    expect(read.ok && read.kind === 'duel' && read.replay.sure).toBeUndefined()
+    expect(read.ok && read.kind === 'duel' && JSON.stringify(compactReplayEnvelope(read.replay))).toBe(before)
+  })
+
+  it('una versión que no conoce `m` la ignora: abre como siempre, sin las marcas', async () => {
+    const { m: _, ...old } = compactReplayEnvelope(marked)
+    const read = parseReplayText(JSON.stringify(old))
+    expect(read.ok && read.replay.sure).toBeUndefined()
+    expect(read.ok && JSON.stringify(read.replay.steps)).not.toMatch(/tribute|more/)
+  })
+
+  it('`m` mal formado no se acepta: el enlace se rechaza entero, como hoy', () => {
+    const steps = marked.steps.length
+    const bad: unknown[] = ['x', {}, null, [[2, 3], [4], []], [[3, 2]], [[2, 2]], [[-1]], [[steps]], [[1.5]], [['2']], [[0]], [[5, 4]], [[], [3]], [[], [5, 6]], [Array.from({ length: steps + 1 }, (_, n) => n)]]
+    for (const m of bad) expect(parseReplayText(JSON.stringify({ ...compactReplayEnvelope(marked), m })), JSON.stringify(m)).toEqual({ ok: false, error: 'broken' })
+  })
+
+  it('en v1, `sure`, `tribute` y `more` se validan: un valor que no es `true`, o `more` sin Péndulo, se rechaza', () => {
+    const plain = JSON.parse(JSON.stringify(marked)) as DuelReplay
+    expect(parseReplayText(text(plain))).toEqual({ ok: true, replay: marked })
+    const at = (n: number, change: object) => ({ ...plain, steps: plain.steps.map((step, i) => (i === n ? [step[0], { ...step[1], ...change }] : step)) })
+    for (const hostile of [{ ...plain, sure: 'yes' }, { ...plain, sure: false }, at(2, { tribute: 1 }), at(3, { tribute: false }), at(4, { more: 'true' }), at(3, { more: true })]) expect(parseReplayText(text(hostile))).toEqual({ ok: false, error: 'broken' })
+  })
+})

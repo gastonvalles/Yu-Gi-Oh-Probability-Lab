@@ -28,7 +28,19 @@ export interface SavedCombo {
   theirs?: ComboTheirs
   /** Sólo grabado en «Jugar solo automático» con una cadena: sus mensajes como en el replay de un duelo, con `at` contado en jugadas del combo (se ve en el paso `at`). */
   chain?: ReplayChainStep[]
+  /**
+   * Sus marcas de Invocación (`how: 'pendulum'` y `more`, `tribute`) son seguras: lo grabado desde que el núcleo las marca (`sureMarks`). Uno de antes no lo tiene y la mesa no
+   * le cree el Péndulo (`surePendulum`): el automático de entonces lo deducía.
+   */
+  sure?: true
 }
+
+/**
+ * Si lo grabado tiene algo que dependa de las marcas (una Invocación por Péndulo, también en un lote, o un Sacrificio marcado): sólo entonces se dice `sure` (y el enlace lleva
+ * `m`, `combo-share.ts`); sin nada de eso, da igual, y el enlace no crece.
+ */
+export const sureMarks = (actions: readonly MatAction[]): boolean =>
+  actions.some((item) => (item.type === 'batch' ? sureMarks(item.actions) : item.type === 'place' ? item.how === 'pendulum' || item.tribute === true : item.type === 'move' && item.tribute === true))
 
 /**
  * El rival de un combo, como lo vio quien grabó: su mesa al empezar el combo, enmascarada como un lado del replay de un duelo (ids opacos `cN`, las cartas tuyas que controla
@@ -98,12 +110,13 @@ export function readSavedCombos(): SavedCombo[] {
 
 /** Una mano del rival que no se entiende se descarta (el combo queda sin rival), y una nota que no se entiende, también (las demás se quedan). */
 export function migrateSavedCombo(combo: SavedCombo): SavedCombo {
-  const { notes: rawNotes, theirs, chain, ...rest } = combo
+  const { notes: rawNotes, theirs, chain, sure, ...rest } = combo
   const { rival, ...table } = combo.initial
   const initial: MatState = { ...table, ...(isRivalHand(rival) ? { rival } : {}) }
   const notes = storedNotes(rawNotes, combo.actions.length)
   // El rival y la cadena (sólo los de «Jugar solo automático»): si no se entienden, el combo se abre como uno de antes.
-  return { ...rest, initial, ...(notes ? { notes } : {}), ...(isTheirs(theirs) ? { theirs } : {}), ...(Array.isArray(chain) && chain.length > 0 && chain.every(isRecord) ? { chain } : {}) }
+  // `sure`, sólo `true`: lo demás es un combo de antes (sin escena de Péndulo).
+  return { ...rest, initial, ...(notes ? { notes } : {}), ...(isTheirs(theirs) ? { theirs } : {}), ...(Array.isArray(chain) && chain.length > 0 && chain.every(isRecord) ? { chain } : {}), ...(sure === true ? { sure } : {}) }
 }
 
 const isRivalHand = (value: unknown): value is RivalHand => isRecord(value) && isStringList(value.hand) && isStringList(value.used)
@@ -308,5 +321,6 @@ export function createSavedCombo({ name, deckName, initial, actions, nameOf, aut
     ...(auto ? { auto: true as const } : {}),
     ...(theirs ? { theirs: structuredClone(theirs) } : {}),
     ...(chain?.length ? { chain: structuredClone(chain) } : {}),
+    ...(sureMarks(actions) ? { sure: true as const } : {}),
   }
 }

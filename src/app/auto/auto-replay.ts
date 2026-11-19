@@ -1,7 +1,7 @@
 import { buildDuelReplay, passcodeOf, type DuelReplay, type ReplayChainStep, type ReplayMode, type ReplayResult, type ReplaySide, type ReplayView } from '../duel-replay'
 import { publicIds } from '../mat-public'
 import { matReducer, replayMat, type MatAction, type MatState } from '../practice-mat'
-import { comboExtraIds, type ComboExtras, type ComboTheirStep } from '../saved-combos'
+import { comboExtraIds, sureMarks, type ComboExtras, type ComboTheirStep } from '../saved-combos'
 import type { AutoSnapshot } from './auto-session'
 import type { ChainStep } from './chain-feed'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from './end-reasons'
@@ -48,8 +48,7 @@ export function replayFromAuto(snap: Pick<AutoSnapshot, 'initial' | 'mineActions
     }
   }
   const result = options.result ?? coreResult(snap, seat)
-
-  return buildDuelReplay({
+  const replay = buildDuelReplay({
     mode: options.mode,
     view: options.view,
     players: options.players,
@@ -63,6 +62,9 @@ export function replayFromAuto(snap: Pick<AutoSnapshot, 'initial' | 'mineActions
     ...(result ? { result } : {}),
     chain: replayChain(snap.chainSteps),
   })
+
+  // Las marcas del adaptador son las del núcleo (`auto/core-host.ts`): seguras.
+  return sureMarks(replay.steps.map(([, action]) => action)) ? { ...replay, sure: true } : replay
 }
 
 /**
