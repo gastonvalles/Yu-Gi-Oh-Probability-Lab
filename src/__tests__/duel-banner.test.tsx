@@ -186,4 +186,52 @@ describe('el final del duelo', () => {
     expect(draw).toHaveTextContent(/^Empate$/)
     expect(draw).toHaveClass('text-accent')
   })
+
+  // Master Duel sin alargar (TI-325): el cartel entero sigue entrando en lo que tardan los botones (su demora y su duración).
+  const CSS = readFileSync(path.join(process.cwd(), 'src', 'index.css'), 'utf8')
+  const ms = (value: string) => [...value.matchAll(/(\d*\.?\d+)(ms|s)\b/g)].map(([, n, unit]) => Number(n) * (unit === 's' ? 1000 : 1))
+  const cartelMs = (container: HTMLElement) => {
+    const buttons = container.querySelector('[data-result-block] .grid-cols-2')!.className
+    return Number(/\bdelay-(\d+)/.exec(buttons)![1]) + Number(/\bduration-(\d+)/.exec(buttons)![1])
+  }
+  const keyframes = (name: string) => {
+    const start = CSS.indexOf(`@keyframes ${name} {`)
+    return CSS.slice(start, CSS.indexOf('@keyframes', start + 1))
+  }
+  const actions = <button type="button">Salir</button>
+
+  it('«Victoria» cae como un golpe: de ×3 a ×0,9 a los ~283 ms y se asienta en 1, sin pasarse del tiempo del cartel', () => {
+    const { container } = render(<ResultHero tone="win" title="¡Ganaste!" reason="Rival se rindió." actions={actions} />)
+    const word = container.querySelector('[data-result-word] p')!
+
+    expect(word).toHaveClass('animate-result-slam', 'fx-lite:animate-none', 'motion-reduce:animate-none')
+    const [duration] = ms(CSS.match(/--animate-result-slam:\s*([^;]+);/)![1]!)
+    expect(duration).toBeLessThanOrEqual(cartelMs(container))
+    const frames = [...keyframes('result-slam').matchAll(/(\d+)%\s*\{\s*scale:\s*([\d.]+);/g)].map(([, at, scale]) => [Number(at), Number(scale)])
+    expect(frames[0]).toEqual([0, 3])
+    expect(frames[1]![1]).toBe(0.9)
+    expect(Math.abs((frames[1]![0]! / 100) * duration! - 283)).toBeLessThan(20)
+    expect(frames.at(-1)).toEqual([100, 1])
+    // Con «Livianos», lo de antes: crece de 1,5 a 1.
+    expect(word).toHaveClass('fx-lite:starting:scale-150')
+  })
+
+  it('«Derrota» y «Empate» entran letra por letra deslizándose, la última dentro del tiempo del cartel', () => {
+    const [slide] = ms(CSS.match(/--animate-letter-slide:\s*([^;]+);/)![1]!)
+    expect(keyframes('letter-slide')).toMatch(/from\s*\{\s*translate:\s*-[\d.]+em 0;/)
+
+    for (const [tone, word] of [['lose', 'Derrota'], ['draw', 'Empate']] as const) {
+      const { container, unmount } = render(<ResultHero tone={tone} title={word} reason="." actions={actions} />)
+      const letters = [...container.querySelectorAll<HTMLElement>('[data-result-word] p [data-result-letter]')]
+      const delays = letters.map((letter) => parseFloat(letter.style.animationDelay))
+
+      expect(letters.map((letter) => letter.textContent).join('')).toBe(word)
+      for (const letter of letters) expect(letter).toHaveClass('animate-letter-slide', 'fx-lite:animate-none', 'motion-reduce:animate-none')
+      expect([...delays].sort((a, b) => a - b)).toEqual(delays)
+      expect(delays[0]).toBe(0)
+      expect(Math.max(...delays) + slide!).toBeLessThanOrEqual(cartelMs(container))
+      expect(container.querySelector('[data-result-word] p')).not.toHaveClass('animate-result-slam')
+      unmount()
+    }
+  })
 })

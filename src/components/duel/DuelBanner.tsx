@@ -43,6 +43,11 @@ type ResultTone = 'win' | 'lose' | 'draw'
 /** El color del resultado, lo único que resalta del cartel: lima si ganaste, rojo si perdiste, lavanda si empataron (los de la placa, `DuelMedal`). */
 const RESULT_TEXT: Record<ResultTone, string> = { win: 'text-info', lose: 'text-danger-soft', draw: 'text-accent' }
 const RESULT_WORD = { win: 'duel.result.word.win', lose: 'duel.result.word.lose', draw: 'duel.result.word.draw' } as const
+/** Lo que tarda cada letra de «Derrota» o «Empate» en deslizarse (`--animate-letter-slide`) y hasta cuándo puede llegar la última: los 600 ms en que llegan los botones. */
+const LETTER_SLIDE_MS = 300
+const RESULT_IN_MS = 600
+/** Cuándo arranca la letra `at` de `count`: cada 50 ms, o más juntas si son muchas, para que la última llegue a tiempo. */
+const letterDelay = (at: number, count: number) => at * Math.min(50, (RESULT_IN_MS - LETTER_SLIDE_MS) / Math.max(1, count - 1))
 
 interface ResultHeroProps {
   tone: ResultTone
@@ -68,7 +73,7 @@ interface ResultHeroProps {
 /**
  * El final del duelo (Gastón, 2026-11-12: «debo poder ver el campo, todo debe estar centrado al medio, mostrar la vida no es necesario»; referencia: el VICTORY de Master Duel): un solo
  * bloque al medio del campo, sin velo ni hoja, en una banda opaca de lado a lado (Gastón: «debe tener un fondo horizontal con la X arriba a la derecha»): el campo se ve arriba y abajo.
- * La palabra del resultado enorme («Victoria», «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos, quietos; entra creciendo, sólo
+ * La palabra del resultado enorme («Victoria», «Derrota», «Empate»: itálica, en el color del resultado, con contorno y resplandor blancos, quietos; «Victoria» cae como un golpe y las otras entran letra por letra, sólo
  * `scale`/`opacity`), el porqué debajo, la ✕ en la esquina de arriba a la derecha de la banda y las acciones en botones chicos iguales, de un renglón cada uno: dos por fila en lo angosto
  * y todos en una desde 36 rem (si son impares, en lo angosto la última va de lado a lado). Sin vidas: las dicen las chapas de la mesa. Recto (`mat-square`). El nombre del cartel es `title` («¡Ganaste!»). Lo usan los jugadores (con sus botones) y quienes miran.
  */
@@ -78,10 +83,12 @@ export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave
   const buttons = Children.toArray([actions, primary]).flatMap((node) => (isValidElement<{ children?: ReactNode }>(node) && node.type === Fragment ? Children.toArray(node.props.children) : [node]))
   const close = onHide ?? onLeave
   const closeLabel = onHide ? t('duel.result.hide') : t('duel.bar.leave')
+  const word = t(RESULT_WORD[tone])
+  const letters = Array.from(word)
 
   return (
     // En la mesa (no `fixed`) sólo el bloque ataja toques (`data-cover-pass`: la portada de `PracticeMat` los deja pasar): ⚙, Pasos y deshacer se siguen tocando con el final abierto.
-    <div role={role} aria-modal={fixed ? 'true' : undefined} aria-labelledby={titleId} data-testid="result-hero" data-tone={tone} {...(fixed ? {} : { 'data-cover-pass': '' })} className={cx('mat-square inset-0 z-65 grid place-items-center', fixed ? 'fixed' : 'pointer-events-none absolute')}>
+    <div role={role} aria-modal={fixed ? 'true' : undefined} aria-labelledby={titleId} data-testid="result-hero" data-tone={tone} {...(fixed ? {} : { 'data-cover-pass': '' })} className={cx('mat-square inset-0 z-65 grid place-items-center overflow-x-clip', fixed ? 'fixed' : 'pointer-events-none absolute')}>
       <h2 id={titleId} className="sr-only">
         {title}
       </h2>
@@ -94,11 +101,19 @@ export function ResultHero({ tone, title, reason, note, role = 'dialog', onLeave
           <p
             className={cx(
               'm-0 whitespace-nowrap text-display font-extrabold uppercase italic leading-none tracking-tight [paint-order:stroke_fill] [-webkit-text-stroke:0.1875rem_var(--color-foreground)] text-shadow-[0_0_1.5rem_rgb(255_255_255/0.45)] @min-[21rem]:text-hit @min-[28rem]:text-hit-lg',
-              'transition-[scale,opacity] duration-300 ease-snap starting:scale-150 starting:opacity-0 motion-reduce:transition-none',
+              // Con «Efectos: Livianos», crece de 1,5 a 1 en 300 ms; si no, «Victoria» cae como un golpe y «Derrota» o «Empate» entran letra por letra (Master Duel, sin alargar).
+              'transition-[scale,opacity] duration-300 ease-snap fx-lite:starting:scale-150 fx-lite:starting:opacity-0 motion-reduce:transition-none',
+              tone === 'win' && 'animate-result-slam fx-lite:animate-none motion-reduce:animate-none',
               RESULT_TEXT[tone],
             )}
           >
-            {t(RESULT_WORD[tone])}
+            {tone === 'win'
+              ? word
+              : letters.map((letter, at) => (
+                  <span key={at} data-result-letter="" className="inline-block whitespace-pre animate-letter-slide fx-lite:animate-none motion-reduce:animate-none" style={{ animationDelay: `${letterDelay(at, letters.length)}ms` }}>
+                    {letter}
+                  </span>
+                ))}
           </p>
         </div>
         {/* El porqué. */}
