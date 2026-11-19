@@ -5,7 +5,7 @@ import { medalsOf } from '../../app/card-glow'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { lineCell, railsCell, railsField } from '../../app/duel-rails'
 import { duelReplayAt, replayChainSteps, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
-import { activateAt, impactOn, sacrificeAt, shakeOf } from '../../app/field-impact'
+import { activateAt, impactOn, leaveAt, sacrificeAt, shakeOf } from '../../app/field-impact'
 import { matEffects, type MatEffects } from '../../app/mat-effects'
 import { prefersReducedMotion } from '../../app/motion'
 import { isToken, locateCard } from '../../app/practice-mat'
@@ -28,6 +28,7 @@ import { COMPACT_FIELD_MEDIA_QUERY, HAND_ROOM, HAND_TOP_ROOM, PHONE_DUEL_BAR, PH
 import { MatScene } from '../probability/MatArena'
 import { AttackFx, measureStrike, type Strike } from '../probability/AttackFx'
 import { Spotlight, landingDelay } from '../probability/MatFx'
+import { FX_RGB } from '../probability/practice-styles'
 import { DESKTOP_AUTO_HAND, DESKTOP_HAND_GAP, MAT_GAP } from '../probability/PracticeMat'
 import { ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from '../probability/ReplayBar'
 import { stepTone } from '../probability/step-tone'
@@ -123,11 +124,14 @@ function sacrificeStep(replay: DuelReplay, shots: Parameters<typeof duelReplayAt
   const step = to === from + 1 ? replay.steps[to - 1] : undefined
   // La jugada `tribute` de la mesa manual, o el `move` que el núcleo marcó como Sacrificio (el automático; lo guardado en un enlace no trae la marca).
   const action = step?.[1]
-  const ids = action?.type === 'tribute' ? action.tributes : action?.type === 'move' && action.tribute ? [action.id] : []
-  if (!step || ids.length === 0 || !matEffects(duelReplayAt(replay, from, shots).states[step[0]], step[1]).sacrifice) return
+  const ids = action?.type === 'tribute' ? action.tributes : action?.type === 'move' && (action.tribute || action.destroyed) ? [action.id] : []
+  const effects = step && ids.length > 0 ? matEffects(duelReplayAt(replay, from, shots).states[step[0]], step[1]) : null
+  if (!step || !effects) return
   for (const id of ids) {
     const rect = root?.querySelector(`[${step[0] === bottom ? 'data-card-id' : 'data-rival-card-id'}="${CSS.escape(id)}"]`)?.getBoundingClientRect()
-    if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
+    if (rect && effects.sacrifice) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
+    // Destruida (la marca del núcleo): su onda cian, como en la mesa.
+    if (rect && effects.destroyed) leaveAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width, FX_RGB.cyan)
   }
 }
 

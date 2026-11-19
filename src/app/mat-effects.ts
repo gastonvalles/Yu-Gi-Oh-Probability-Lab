@@ -31,6 +31,11 @@ export interface MatEffects {
   landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; tribute?: true; hand?: true; extra?: true; pendulum?: true; more?: true }
   /** Las casillas de los monstruos que se sacrifican (la jugada `tribute`, también al Colocar, o un `move` con `tribute`): de ahí sale su efecto mientras vuelan al Cementerio (`sacrificeAt`). */
   sacrifice?: Array<{ spot: MatSpot; index: number }>
+  /**
+   * Las casillas de las cartas destruidas (un `move` con `destroyed`, la marca del núcleo: sólo el automático): de ahí sale su onda al despegar (`leaveAt`). La que se destierra no va acá:
+   * su onda la da el vuelo (`use-card-flights`), que lo sabe por el destino.
+   */
+  destroyed?: Array<{ spot: MatSpot; index: number }>
   /** Cambio de fase: el cartel. `turn` sólo cuando empieza otro turno. */
   banner?: { phase: MatPhase; turn: number | null }
   /** Una carta entró a la mano (robada, buscada o devuelta): la mano se enmarca un instante. */
@@ -77,7 +82,7 @@ function batchEffects(before: MatState, actions: readonly MatAction[], hiddenHan
     if (part.type === 'batch') continue
 
     const effects = matEffects(state, part, hiddenHand)
-    const { spotlight, showcase, quiet, sacrifice } = joined
+    const { spotlight, showcase, quiet, sacrifice, destroyed } = joined
 
     state = matReducer(state, part)
     joined = {
@@ -87,6 +92,7 @@ function batchEffects(before: MatState, actions: readonly MatAction[], hiddenHan
       ...(showcase && effects.showcase?.kind === showcase.kind ? { showcase: { ...showcase, ids: [...showcase.ids, ...effects.showcase.ids], ...(effects.showcase.flip ? { flip: true as const } : {}) } } : {}),
       ...(quiet && effects.quiet?.kind === quiet.kind ? { quiet: { ...quiet, ids: [...quiet.ids, ...effects.quiet.ids] } } : {}),
       ...(sacrifice && effects.sacrifice ? { sacrifice: [...sacrifice, ...effects.sacrifice] } : {}),
+      ...(destroyed && effects.destroyed ? { destroyed: [...destroyed, ...effects.destroyed] } : {}),
     }
   }
 
@@ -139,8 +145,10 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
     case 'move': {
       if (!changed) return {}
       // Un Sacrificio que marcó el núcleo (`tribute`, el automático): su efecto sale de la casilla que deja, como en la jugada `tribute`.
-      const where = action.tribute ? locateCard(before, action.id) : null
-      const sacrificed = where?.kind === 'spot' ? { sacrifice: [{ spot: where.spot, index: where.index }] } : {}
+      const where = action.tribute || action.destroyed ? locateCard(before, action.id) : null
+      const spot = where?.kind === 'spot' ? [{ spot: where.spot, index: where.index }] : null
+      // Destruida (la otra marca del núcleo), salvo rumbo al destierro: esa onda la da el vuelo.
+      const sacrificed = spot ? { ...(action.tribute ? { sacrifice: spot } : {}), ...(action.destroyed && action.to !== 'banished' ? { destroyed: spot } : {}) } : {}
 
       // Una ficha que deja el campo desaparece: no hay carta que mostrar.
       if (isToken(action.id)) return sacrificed

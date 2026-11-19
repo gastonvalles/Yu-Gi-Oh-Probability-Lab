@@ -244,9 +244,16 @@ describe('las marcas del núcleo en un combo (`sure` y `m`)', () => {
     expect(migrateSavedCombo(marked).sure).toBe(true)
   })
 
+  it('la destruida (`destroyed`, la tercera lista de `m`) viaja y vuelve igual, y sola ya dice `sure`', async () => {
+    const destroyed = createSavedCombo({ name: 'x', deckName: 'Deck', initial: table, actions: [plays[0]!, plays[1]!, { type: 'move', id: a, to: 'gy', destroyed: true }], nameOf: () => 'x', auto: true }, [])
+    expect(destroyed.sure).toBe(true)
+    expect(compactEnvelope(destroyed)).toMatchObject({ m: [[], [], [2]] })
+    expect(await decodeComboPayload(await encodeComboPayload(destroyed))).toEqual({ ok: true, combo: { ...withoutId(destroyed), names: {} } })
+  })
+
   it('`m` mal formado, o `sure`, `tribute` y `more` que no son lo que dicen, se rechazan', () => {
     const base = compactEnvelope(marked)
-    const bad: unknown[] = ['x', {}, null, [[2, 3], [4], []], [[3, 2]], [[2, 2]], [[-1]], [[6]], [[1.5]], [['2']], [[0]], [[], [3]], [[], [5, 6]], [Array.from({ length: 7 }, (_, n) => n)]]
+    const bad: unknown[] = ['x', {}, null, [[2, 3], [4], [], []], [[2, 3], [4], [1]], [[3, 2]], [[2, 2]], [[-1]], [[6]], [[1.5]], [['2']], [[0]], [[], [3]], [[], [5, 6]], [Array.from({ length: 7 }, (_, n) => n)]]
     for (const m of bad) expect(parseComboText(JSON.stringify({ ...base, m })), JSON.stringify(m)).toEqual({ ok: false, error: 'broken' })
 
     const v1 = comboEnvelope(marked)

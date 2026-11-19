@@ -460,7 +460,7 @@ describe('las marcas del núcleo (`sure` y `m`)', () => {
 
   it('`m` mal formado no se acepta: el enlace se rechaza entero, como hoy', () => {
     const steps = marked.steps.length
-    const bad: unknown[] = ['x', {}, null, [[2, 3], [4], []], [[3, 2]], [[2, 2]], [[-1]], [[steps]], [[1.5]], [['2']], [[0]], [[5, 4]], [[], [3]], [[], [5, 6]], [Array.from({ length: steps + 1 }, (_, n) => n)]]
+    const bad: unknown[] = ['x', {}, null, [[2, 3], [4], [], []], [[3, 2]], [[2, 2]], [[-1]], [[steps]], [[1.5]], [['2']], [[0]], [[5, 4]], [[], [3]], [[], [5, 6]], [Array.from({ length: steps + 1 }, (_, n) => n)]]
     for (const m of bad) expect(parseReplayText(JSON.stringify({ ...compactReplayEnvelope(marked), m })), JSON.stringify(m)).toEqual({ ok: false, error: 'broken' })
   })
 

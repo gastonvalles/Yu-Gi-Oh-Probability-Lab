@@ -659,7 +659,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
     const toPile = below ? 'deck-bottom' : pile
     const extra = { ...(to.location === L.REMOVED && (to.position & P.FACEDOWN) !== 0 ? { faceDown: true } : {}), ...(to.location === L.EXTRA && (to.position & P.FACEUP) !== 0 ? { faceUp: true } : {}) }
     // Se fue del campo como Sacrificio (la marca del anfitrión): su efecto sale de la casilla que deja.
-    const tribute = fromSpot && event.tribute ? { tribute: true as const } : {}
+    // Destruida en su casilla (también la marca del anfitrión): su onda, al despegar.
+    const tribute = { ...(fromSpot && event.tribute ? { tribute: true as const } : {}), ...(fromSpot && event.destroyed ? { destroyed: true as const } : {}) }
 
     // Del campo de quien la controlaba a la pila de su dueño.
     if (fromSpot && card.owner !== from.controller) {

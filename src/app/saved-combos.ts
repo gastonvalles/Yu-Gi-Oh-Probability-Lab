@@ -40,7 +40,7 @@ export interface SavedCombo {
  * `m`, `combo-share.ts`); sin nada de eso, da igual, y el enlace no crece.
  */
 export const sureMarks = (actions: readonly MatAction[]): boolean =>
-  actions.some((item) => (item.type === 'batch' ? sureMarks(item.actions) : item.type === 'place' ? item.how === 'pendulum' || item.tribute === true : item.type === 'move' && item.tribute === true))
+  actions.some((item) => (item.type === 'batch' ? sureMarks(item.actions) : item.type === 'place' ? item.how === 'pendulum' || item.tribute === true : item.type === 'move' && (item.tribute === true || item.destroyed === true)))
 
 /**
  * El rival de un combo, como lo vio quien grabó: su mesa al empezar el combo, enmascarada como un lado del replay de un duelo (ids opacos `cN`, las cartas tuyas que controla

@@ -174,5 +174,10 @@ describe.skipIf(!hasCoreData)('las marcas del anfitrión: Péndulo y Sacrificio'
     // Sólo el Sacrificio de Enemy Controller lleva la marca; no hubo Invocación que la lleve.
     expect(toGrave.filter((event) => event.tribute).map((event) => [event.card, event.from.controller, event.from.location])).toEqual([[CELTIC, 0, L.MZONE]])
     expect(of(mine, 'summoning').some((event) => event.tribute)).toBe(false)
+    // Lo destruido (los del rival, por Lightning Vortex y en batalla) lleva `destroyed` (`REASON_DESTROY`); el descarte, el Sacrificio y la Mágica que se va tras resolver, no.
+    const destroyed = toGrave.filter((event) => event.destroyed)
+    expect(destroyed.length).toBeGreaterThanOrEqual(2)
+    expect(destroyed.every((event) => event.from.controller === 1 && event.from.location === L.MZONE)).toBe(true)
+    expect(toGrave.filter((event) => !event.destroyed && event.from.controller === 1 && event.from.location === L.MZONE)).toEqual([])
   })
 })

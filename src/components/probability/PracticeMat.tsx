@@ -63,7 +63,7 @@ import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
-import { activateAt, arrivals, impactOn, sacrificeAt, shakeOf, spellTrapOf, type ArrivalTone } from '../../app/field-impact'
+import { activateAt, arrivals, impactOn, leaveAt, sacrificeAt, shakeOf, spellTrapOf, type ArrivalTone } from '../../app/field-impact'
 import { burstReplaces, playSummonArt, summonArtFits, summonArtOn } from '../../app/summon-art'
 import { PENDULUM_HOLD_MS, arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, playPendulum, surePendulum, type SummonCard } from '../../app/summon-entrance'
 import { useMatView } from '../../app/mat-view'
@@ -123,7 +123,7 @@ import { RivalHandStrip } from './RivalHandStrip'
 import { UndoChip, useUndoPlay, type UndoPlay } from './UndoChip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
-import { CARD_BACK, CARD_BACK_URL, DECK_LAYERS, glowFrame } from './practice-styles'
+import { CARD_BACK, CARD_BACK_URL, DECK_LAYERS, FX_RGB, glowFrame } from './practice-styles'
 import { glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData, type ChainMedal } from '../../app/card-glow'
 
 export interface MatCard {
@@ -605,7 +605,7 @@ interface FxStep {
   initial: MatSession['initial']
   replay: MatSession['replay']
   fx: MatFx
-  step: { action: MatAction; shuffle: boolean; sacrifice?: MatEffects['sacrifice']; activate?: Array<{ id: string; spot: MatSpot; index: number }> } | { cut: true } | null
+  step: { action: MatAction; shuffle: boolean; sacrifice?: MatEffects['sacrifice']; destroyed?: MatEffects['destroyed']; activate?: Array<{ id: string; spot: MatSpot; index: number }> } | { cut: true } | null
   /** Cuántos pasos barajaron el deck: su animación se repite con cada uno, en el mismo dibujo del paso (un estado aparte era otro dibujo entero de la mesa, 60 ms después). */
   shuffles: number
 }
@@ -638,7 +638,7 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
 
   return {
     ...at,
-    step: { action, shuffle: Boolean(effects.shuffle), ...(effects.sacrifice ? { sacrifice: effects.sacrifice } : {}), ...(activate.length > 0 ? { activate } : {}) },
+    step: { action, shuffle: Boolean(effects.shuffle), ...(effects.sacrifice ? { sacrifice: effects.sacrifice } : {}), ...(effects.destroyed ? { destroyed: effects.destroyed } : {}), ...(activate.length > 0 ? { activate } : {}) },
     shuffles: effects.shuffle ? previous.shuffles + 1 : previous.shuffles,
     fx: {
       flash: effects.spotlight ? { ...effects.spotlight, key } : fx.flash,
@@ -1045,6 +1045,11 @@ function PracticeMatBody({
       const rect = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(spot, index)}"]`)?.getBoundingClientRect()
       if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
     }
+    // Lo destruido (la marca del núcleo): su onda cian, desde la casilla que deja, al despegar.
+    for (const { spot, index } of step.destroyed ?? []) {
+      const rect = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(spot, index)}"]`)?.getBoundingClientRect()
+      if (rect) leaveAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width, FX_RGB.cyan)
+    }
     // Lo que se activa en el campo: su resplandor, sobre la activación (la que llega volando, al tocar su casilla).
     for (const { id, spot, index } of step.activate ?? []) {
       activateAt(sectionRef.current?.querySelector(`[data-drop="${dropIdOf(spot, index)}"]`) ?? null, action.type === 'place' ? landingDelay(true, false) : 0, spellTrapOf(cardOf(id).apiCard))
@@ -1285,9 +1290,13 @@ function PracticeMatBody({
     if (!before || !rivalState || before === rivalState || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
     // Su jugada, si la trae (el automático: con las marcas del núcleo): un Sacrificio destella donde estaba la carta, sobre el comienzo de su vuelo (la carta ya no está en la casilla).
     const action = duel?.rivalFlights?.action
-    if (action?.type === 'move' && matEffects(before, action).sacrifice && locateCard(rivalState, action.id)?.kind !== 'spot') {
-      const rect = document.querySelector(`[data-flight-ghost="${CSS.escape(action.id)}"]`)?.getBoundingClientRect()
-      if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
+    const moved = action?.type === 'move' && locateCard(rivalState, action.id)?.kind !== 'spot' ? action : null
+    const left = moved ? matEffects(before, moved) : null
+    if (moved && (left?.sacrifice || left?.destroyed)) {
+      const rect = document.querySelector(`[data-flight-ghost="${CSS.escape(moved.id)}"]`)?.getBoundingClientRect()
+      if (rect && left.sacrifice) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
+      // Destruida: su onda cian, igual que lo tuyo.
+      if (rect && left.destroyed) leaveAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width, FX_RGB.cyan)
     }
     const [arrived, ...more] = arrivals(before, rivalState)
     if (!arrived || more.length > 0) return

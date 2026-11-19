@@ -240,9 +240,9 @@ function action(value: unknown, nested = false): MatAction {
       return { type: 'mill', count: int(v.count, 0, 99) }
     case 'shuffle':
       return { type: 'shuffle', seed: int(v.seed, -SEED, SEED) }
-    // `tribute` y `more`: las marcas del núcleo (`MatAction`); `more`, sólo en una Invocación por Péndulo.
+    // `tribute`, `destroyed` y `more`: las marcas del núcleo (`MatAction`); `more`, sólo en una Invocación por Péndulo.
     case 'move':
-      return clean({ type: 'move', id: id(v.id), to: oneOf(v.to, [...PILE, 'deck-bottom'] as const), ...flags(), shuffle: shuffle(), tribute: opt(v.tribute, yes) })
+      return clean({ type: 'move', id: id(v.id), to: oneOf(v.to, [...PILE, 'deck-bottom'] as const), ...flags(), shuffle: shuffle(), tribute: opt(v.tribute, yes), destroyed: opt(v.destroyed, yes) })
     case 'place': {
       const how = opt(v.how, (raw) => oneOf(raw, ['normal', 'special', 'pendulum', 'scale'] as const))
       return clean({ type: 'place', id: id(v.id), zone: oneOf(v.zone, SPOT), index: index(), pos: oneOf(v.pos, POS), how, shuffle: shuffle(), tribute: opt(v.tribute, yes), more: opt(v.more, how === 'pendulum' ? yes : fail) })
@@ -656,19 +656,23 @@ function readCompact(value: unknown, v: number, marks: unknown): SharedCombo | n
 }
 
 /**
- * Las marcas del núcleo de lo grabado, para `m` (combo y replay): `[sacrificios, más]`, los índices en orden de las jugadas con `tribute` (`move` o `place`) y con `more` (`place`
- * por Péndulo); las listas vacías del final no van (`[]`: seguras, sin marcas). Sólo las de primer nivel: el núcleo no las pone dentro de un lote.
+ * Las marcas del núcleo de lo grabado, para `m` (combo y replay): `[sacrificios, más, destruidas]`, los índices en orden de las jugadas con `tribute` (`move` o `place`), con `more`
+ * (`place` por Péndulo) y con `destroyed` (`move`); las listas vacías del final no van (`[]`: seguras, sin marcas). Sólo las de primer nivel: el núcleo no las pone dentro de un lote.
  */
 export function marksOf(actions: readonly MatAction[]): number[][] {
-  const marks = [actions.flatMap((item, n) => ((item.type === 'move' || item.type === 'place') && item.tribute ? [n] : [])), actions.flatMap((item, n) => (item.type === 'place' && item.more ? [n] : []))]
+  const marks = [
+    actions.flatMap((item, n) => ((item.type === 'move' || item.type === 'place') && item.tribute ? [n] : [])),
+    actions.flatMap((item, n) => (item.type === 'place' && item.more ? [n] : [])),
+    actions.flatMap((item, n) => (item.type === 'move' && item.destroyed ? [n] : [])),
+  ]
   while (marks.length > 0 && marks.at(-1)!.length === 0) marks.pop()
   return marks
 }
 
 /** Lo inverso de `marksOf`: las pone en las jugadas de la forma larga, que después se validan enteras. Lanza si un índice no es de una jugada que exista, en orden, y que acepte la marca. */
 export function applyMarks(value: unknown, actions: readonly unknown[]): void {
-  const [tributes, more] = list(value, 2)
-  const mark = (indices: unknown, key: 'tribute' | 'more', types: readonly string[]) => {
+  const [tributes, more, destroyed] = list(value, 3)
+  const mark = (indices: unknown, key: 'tribute' | 'more' | 'destroyed', types: readonly string[]) => {
     let last = -1
     for (const raw of indices === undefined ? [] : list(indices, actions.length)) {
       last = int(raw, last + 1, actions.length - 1)
@@ -679,6 +683,7 @@ export function applyMarks(value: unknown, actions: readonly unknown[]): void {
   }
   mark(tributes, 'tribute', ['move', 'place'])
   mark(more, 'more', ['place'])
+  mark(destroyed, 'destroyed', ['move'])
 }
 
 /** Lo mismo para otro sobre (el replay de un duelo): una mesa y una jugada se validan igual. Cada lector lanza (`TypeError`) y quien llama lo ataja. */

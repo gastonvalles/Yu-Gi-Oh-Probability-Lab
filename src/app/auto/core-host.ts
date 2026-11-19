@@ -104,16 +104,19 @@ const PENDULUM_ASKS = new Set(['select_unselect_card', 'select_card', 'select_pl
 /** Las que piden la carta siguiente de la misma Invocación: con una de éstas detrás, viene otra (`more`). */
 const NEXT_CARD_ASKS = new Set(['select_place', 'select_position'])
 
+const REASON_DESTROY = 0x1
+
 /**
- * Si el `move` que el núcleo acaba de contar fue un Sacrificio, y si fue el de una Invocación por Sacrificio: el mensaje no trae el motivo, pero la carta lo guarda (`REASON_RELEASE`,
- * con `REASON_SUMMON` en una Invocación). Se consulta en su lugar nuevo antes de que el núcleo siga (`duelProcess` corta tras cada paso que cuenta algo, y en un paso una carta se mueve
- * una vez); si ahí no está la misma carta, no se marca.
+ * El motivo del `move` que el núcleo acaba de contar (de la mano o del campo a otro lado): el mensaje no lo trae, pero la carta lo guarda (`reason`): un Sacrificio (`REASON_RELEASE`,
+ * con `REASON_SUMMON` en una Invocación por Sacrificio) o una destrucción (`REASON_DESTROY`: en batalla o por un efecto; mandarla por costo o por efecto sin destruir no lo lleva).
+ * Se consulta en su lugar nuevo antes de que el núcleo siga (`duelProcess` corta tras cada paso que cuenta algo, y en un paso una carta se mueve una vez); si ahí no está la misma
+ * carta, 0 (no se marca nada).
  */
-function releaseOf(lib: OcgCoreSync, handle: OcgDuelHandle, move: { card: number; from: { location: number }; to: { controller: Seat; location: number; sequence: number } }): number {
+function reasonOf(lib: OcgCoreSync, handle: OcgDuelHandle, move: { card: number; from: { location: number }; to: { controller: Seat; location: number; sequence: number } }): number {
   if ((move.from.location & FROM_PLAY) === 0 || (move.to.location & (OcgLocation.MZONE | OcgLocation.SZONE | OcgLocation.OVERLAY)) !== 0 || move.to.location === 0) return 0
   const card = lib.duelQuery(handle, { flags: RELEASE_FLAGS, controller: move.to.controller, location: move.to.location as OcgLocation, sequence: move.to.sequence, overlaySequence: 0 })
 
-  return card?.code === move.card && card.reason !== undefined && (card.reason & REASON_RELEASE) !== 0 ? card.reason : 0
+  return card?.code === move.card && card.reason !== undefined ? card.reason : 0
 }
 /** El script de una carta sin reglas automáticas (`vanillaScript`). */
 const VANILLA_SCRIPT = 'local s,id=GetID()\nfunction s.initial_effect(c) end\n'
@@ -342,13 +345,15 @@ export function createAutoHost(options: HostOptions): AutoHost {
   let pendulum: Seat | null = null
   let tributeSummon = false
 
-  /** Las marcas del anfitrión en un evento del núcleo, antes de repartirlo: el Sacrificio en `move` y en la Invocación que paga, y el Péndulo en `spsummoning`. */
+  /** Las marcas del anfitrión en un evento del núcleo, antes de repartirlo: el Sacrificio y la destrucción en `move`, el Sacrificio en la Invocación que paga y el Péndulo en `spsummoning`. */
   function mark(event: WireEvent, lib: OcgCoreSync, handle: OcgDuelHandle): WireEvent {
     switch (event.type) {
       case 'move': {
-        const reason = releaseOf(lib, handle, event)
+        const reason = reasonOf(lib, handle, event)
+        // Destruida desde una casilla del campo (no un material de debajo de un Xyz).
+        const destroyed = (reason & REASON_DESTROY) !== 0 && (event.from.location & (OcgLocation.MZONE | OcgLocation.SZONE)) !== 0 && (event.from.location & OcgLocation.OVERLAY) === 0
 
-        if (reason === 0) return event
+        if ((reason & REASON_RELEASE) === 0) return destroyed ? { ...event, destroyed: true } : event
         if ((reason & REASON_SUMMON) !== 0) tributeSummon = true
         return { ...event, tribute: true }
       }
