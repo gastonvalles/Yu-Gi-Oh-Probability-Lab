@@ -183,6 +183,12 @@ interface Paced {
 const sameStart = (a: MatState, b: MatState) => a.deck.join() === b.deck.join() && a.extra.join() === b.extra.join()
 
 const drawIdOf = (code: number) => `card-${code}-1`
+/**
+ * Un toque que empieza en una hoja o un diálogo (su X, deslizarla) o en su fondo no es «tocar la mesa»: cerrarlo no adelanta el duelo (TI-321). Lo de un portal sube en React hasta la
+ * pantalla, pero en el DOM está fuera de ella (`currentTarget`).
+ */
+const onOverlay = (event?: { target: EventTarget | null; currentTarget?: EventTarget | null }) =>
+  event?.target instanceof Element && (event.target.closest('[role="dialog"]') !== null || (event.currentTarget instanceof Node && !event.currentTarget.contains(event.target)))
 
 /** Cuánto se ve el cartel de cada fase del rival, y cada cuánto sale el siguiente: lo del cartel de la mesa (`fx-banner`). */
 const RIVAL_PHASE_MS = 1100
@@ -278,7 +284,7 @@ export interface AutoAsks {
   settled: boolean
   /** El cartel de la fase del rival que se ve ahora (`rivalPhases`; `PracticeMat.duel.notice`). */
   notice: DuelMatLink['notice']
-  skipAhead: (event?: { target: EventTarget | null }) => void
+  skipAhead: (event?: { target: EventTarget | null; currentTarget?: EventTarget | null }) => void
   lane: LaneNotice | null
   /** Lo que la mesa recibe del núcleo (`PracticeMat.duel`): falta lo de cada pantalla (la barra, tus vidas, los botones, las portadas). */
   mat: Omit<DuelMatLink, 'header' | 'tools' | 'life' | 'rivalTurnLabel'>
@@ -478,9 +484,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `stepsDue` lee `steps` y `order`, que ya están
   }, [steps, chainSeen, chainDue, paced.cursor, theirsShown, reviewing, snap.replaying, entering])
 
-  // Tocar la mesa salta hasta el final; repasando, no. Lo del rival, también (sin carteles en ráfaga).
-  const skipAhead = useCallback(() => {
-    if (reviewing || banding || entering) return
+  // Tocar la mesa salta hasta el final; repasando, no. Lo del rival, también (sin carteles en ráfaga). Tocar una hoja o un diálogo, no (`onOverlay`).
+  const skipAhead = useCallback((event?: { target: EventTarget | null; currentTarget?: EventTarget | null }) => {
+    if (reviewing || banding || entering || onOverlay(event)) return
     const to = paced.actions.length
     const theirs = rivalPhases ? Math.max(paced.theirs, theirsUpTo(to, paced.actions)) : paced.theirs
 

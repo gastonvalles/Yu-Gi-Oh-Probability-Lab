@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { LOCATION as L } from '../app/auto/protocol'
 import type { WireAct } from '../app/mat-public'
+import { replayMat } from '../app/practice-mat'
+import { FLIGHT_MS } from '../app/use-card-flights'
 import { fakeSession, pos } from './support/auto-session-fake'
 import { core, dispatches, renderAuto } from './support/auto-screen-harness'
 
@@ -74,6 +76,45 @@ describe('auto-screen · la mano del rival', () => {
     })
     act(() => void vi.runOnlyPendingTimers())
     expect(screen.queryByRole('heading', { name: /^Cartas reveladas/ })).toBeNull()
+    expect(dispatches).toBe(0)
+  })
+
+  // El toque empieza en la hoja (la X; deslizarla empieza igual, en su asa) o en su fondo (tocar afuera, por un portal): sube hasta la pantalla, pero no es «tocar la mesa».
+  it.each([
+    ['la X', (sheet: HTMLElement) => within(sheet).getByRole('button', { name: 'Cerrar' })],
+    ['tocar afuera', (sheet: HTMLElement) => sheet.previousElementSibling as HTMLElement],
+  ])('cerrar las cartas reveladas (%s) no adelanta su turno: lo que sigue se ve de a una jugada, a su ritmo (TI-321)', (_, closer) => {
+    const fake = fakeSession()
+    const shown: WireAct = { action: { type: 'reveal', id: 'c3' }, reveal: {}, seen: { ids: ['c3'], codes: [400], by: 700 } }
+    const summon = (id: string, index: number): WireAct => ({ action: { type: 'place', id, zone: 'mz', index, pos: 'atk', how: 'normal' }, reveal: {} })
+    // Las que invoca (en la mesa de mentira ya tiene `c1` en su campo).
+    const field = () => [...document.querySelectorAll<HTMLElement>('[data-rival-card-id]')].filter((element) => !screen.getByLabelText(/^Mano del rival:/).contains(element)).map((element) => element.dataset.rivalCardId).filter((id) => id !== 'c1')
+    const viewer = () => screen.queryByRole('heading', { name: /^Cartas reveladas/ })?.closest<HTMLElement>('[role="dialog"]') ?? null
+
+    renderAuto(fake)
+    const start = { ...fake.getSnapshot().theirs, hand: HAND }
+    const acts = [shown, summon('c2', 1), summon('c4', 2)]
+
+    core(() => fake.set({ initial: { ...fake.getSnapshot().initial, theirs: start }, theirs: start }))
+    core(() => fake.set({ theirsActs: acts, order: acts.map(() => 'theirs' as const), theirs: replayMat(start, acts.map((wire) => wire.action)) }))
+    for (let ms = 0; ms < 2_000 && !viewer(); ms += 50) act(() => vi.advanceTimersByTime(50))
+    expect(viewer()).not.toBeNull()
+    expect(field()).toEqual([])
+    const close = closer(viewer()!)
+
+    fireEvent.pointerDown(close, { button: 0, pointerId: 1 })
+    fireEvent.click(close)
+    expect(viewer()).toBeNull()
+    expect(field()).toEqual([])
+    // Cuándo llega cada una a su casilla, contado desde el cierre: de a una, con su vuelo en el medio.
+    const landed = new Map<string, number>()
+
+    for (let ms = 0; ms <= 3_000; ms += 50) {
+      for (const id of field()) if (!landed.has(id!)) landed.set(id!, ms)
+      act(() => vi.advanceTimersByTime(50))
+    }
+    expect(landed.get('c2')).toBeGreaterThan(0)
+    expect(landed.get('c4')! - landed.get('c2')!).toBeGreaterThanOrEqual(FLIGHT_MS)
     expect(dispatches).toBe(0)
   })
 })
