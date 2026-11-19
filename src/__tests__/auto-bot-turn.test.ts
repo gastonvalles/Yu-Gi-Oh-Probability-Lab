@@ -1,4 +1,5 @@
 import type { BotCard, BotContext, BotSide, BotView } from '../app/auto/bot/bot'
+import { executorBot } from '../app/auto/bot/executors/executor'
 import { MAX_IDLE, turnBot, type CardFacts } from '../app/auto/bot/turn'
 import { LOCATION as L, type AskOf, type CoreAsk } from '../app/auto/protocol'
 import { autoRival, DEFAULT_HANDTRAP_CONFIG } from '../app/handtraps'
@@ -14,6 +15,9 @@ const AVIAN = 21844576
 const KURIBOH = 40640057
 const INPACHI = 5464695
 const GOBLIN = 78658564
+const PULSE = 15146890
+const PIT = 51531505
+const BEWD = 89631139
 
 const FACTS: Record<number, CardFacts> = {
   [CELTIC]: { type: 0x11, attack: 1400, defense: 1200, level: 4 },
@@ -22,6 +26,9 @@ const FACTS: Record<number, CardFacts> = {
   [INPACHI]: { type: 0x11, attack: 1850, defense: 0, level: 4 },
   [GOBLIN]: { type: 0x21, attack: 2300, defense: 0, level: 4 },
   [ASH]: { type: 0x21, attack: 0, defense: 1800, level: 3 },
+  [PULSE]: { type: 0x1000011, attack: 1200, defense: 600, level: 4, lscale: 1, rscale: 1 },
+  [PIT]: { type: 0x1000011, attack: 2700, defense: 1700, level: 7, lscale: 8, rscale: 8 },
+  [BEWD]: { type: 0x11, attack: 3000, defense: 2500, level: 8 },
 }
 const context = (): BotContext => ({ random: () => 0.5, level: 'normal' })
 const bot = () => turnBot([ASH], [], undefined, undefined, (code) => FACTS[code])
@@ -142,6 +149,42 @@ describe('el rival juega su turno (turnBot)', () => {
     expect(answers.at(-1)).toMatchObject({ action: 7 })
     // Otro turno, la cuenta de nuevo.
     expect(b(offer, view([monster('theirs', KURIBOH)], [], [], 4), context()).answer).toMatchObject({ action: 5 })
+  })
+
+  it('Invoca por Péndulo con sus dos Escalas si entra un monstruo: una vez por turno, el de más ATK primero, en ataque y nunca una handtrap; sin nada que entre, no (también el marco de los ejecutores)', () => {
+    const scaled = (hand: number[]) => {
+      const table = view([], hand)
+
+      table.me.spells[0] = { ref: { side: 'mine', id: 'l' }, code: PULSE, place: null, pos: 'atk' }
+      table.me.spells[4] = { ref: { side: 'mine', id: 'r' }, code: PIT, place: null, pos: 'atk' }
+      return table
+    }
+    const offer = idle({ special_summons: [inHand(PIT), { code: PULSE, controller: 1, location: L.SZONE, sequence: 0 }] })
+    const pick = (select: ReturnType<typeof inHand>[], unselect: ReturnType<typeof inHand>[] = []): CoreAsk => ({
+      type: 'select_unselect_card',
+      player: 1,
+      can_finish: unselect.length > 0,
+      can_cancel: true,
+      min: 1,
+      max: 5,
+      select_cards: select.map((card) => ({ ...card, position: 10 })),
+      unselect_cards: unselect.map((card) => ({ ...card, position: 10 })),
+    })
+    const executor = () => executorBot({ plays: [], chain: () => null, choose: () => null }, (code) => FACTS[code], bot())
+
+    for (const b of [bot(), executor()]) {
+      const table = scaled([INPACHI, CELTIC, ASH])
+
+      expect(b(offer, table, context())).toMatchObject({ answer: { action: 1, index: 1 }, reason: { key: 'auto.bot.reason.play.pendulum', cards: [PULSE] } })
+      expect(b(pick([inHand(ASH), inHand(CELTIC, 1), inHand(INPACHI, 2)]), table, context()).answer).toEqual({ type: 'select_unselect_card', index: 2 })
+      // Sólo queda la handtrap: termina.
+      expect(b(pick([inHand(ASH)], [inHand(CELTIC, 1), inHand(INPACHI, 2)]), table, context()).answer).toEqual({ type: 'select_unselect_card', index: null })
+      expect(b({ type: 'select_position', player: 1, code: INPACHI, positions: 5 }, table, context()).answer).toEqual({ type: 'select_position', position: 1 })
+      // Una vez por turno: si se la vuelven a ofrecer, termina.
+      expect(b(offer, table, context()).answer).toMatchObject({ action: 7 })
+    }
+    // Nada que entre: una handtrap y un Nivel 8 (fuera de las Escalas 1 y 8).
+    for (const b of [bot(), executor()]) expect(b(offer, scaled([ASH, BEWD]), context()).answer).toMatchObject({ action: 7 })
   })
 
   it('apagado (lo de siempre): el rival del simulador no juega su turno; encendido, lo dice autoRival', () => {

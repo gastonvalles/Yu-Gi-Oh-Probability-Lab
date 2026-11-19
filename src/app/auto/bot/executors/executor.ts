@@ -1,12 +1,13 @@
-import { freePlaces, passiveAnswer } from '../../policies'
+import { freePlaces, passiveAnswer, ruleOf, turnRuleOf } from '../../policies'
 import type { AskOf, CardLoc, CoreAnswer, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotDecision, BotReason, BotView } from '../bot'
-import { MAX_IDLE, type CardFacts } from '../turn'
+import { MAX_IDLE, pendulumAnswer, pendulumIndex, type CardFacts } from '../turn'
 
 /**
  * El marco de un ejecutor por mazo (etapa 2 del bot, «un ejecutor por mazo»): el mazo da sus reglas como datos (`DeckExecutor`) y el marco las corre como un `Bot` puro.
  * - **Main Phase** (`select_idlecmd` en su turno): gana la primera `Play` cuya carta está en la lista que ofrece el núcleo (que ya filtra lo legal) y cuyo `when` da verdadero. Si
- *   ninguna gana: la Battle Phase si hay un ataque que conviene (`attackPlan`); si no, terminar el turno. Antes, las posiciones de sus monstruos (`executor.position.*`).
+ *   ninguna gana: la Invocación por Péndulo si suma monstruos (`pendulumIndex`, una vez por turno); la Battle Phase si hay un ataque que conviene (`attackPlan`); si no, terminar el
+ *   turno. Antes de la Battle Phase, las posiciones de sus monstruos (`executor.position.*`).
  * - **Lo que sigue** (costos, objetivos, búsquedas, materiales, sí/no, opciones, casillas): `choose` del mazo con `Scene.current`, el efecto que se está jugando (el eslabón suyo que
  *   se resuelve o, al activarlo, la jugada que acaba de elegir). Las casillas de lo que sale del Extra Deck van a la Zona de Monstruos Extra.
  * - **Cadenas** (`select_chain`): `chain` del mazo; lo que no decide, el de reserva (`fallback`: las handtraps y Called by the Grave de `turnBot`).
@@ -23,6 +24,10 @@ export const PHASE = { DRAW: 0x1, STANDBY: 0x2, MAIN1: 0x4, BATTLE: 0x08 | 0x10 
 export const ATTACK_TIMING = 0x1000
 /** Las respuestas seguidas a preguntas que no son jugadas (costos, objetivos…) que contesta el mazo antes de pasarle la posta al de reserva: un efecto que pregunta sin fin no traba el duelo. */
 const MAX_ASKS = 60
+/** La Invocación por Péndulo (`pendulumIndex`): su id en `done` y como efecto en juego. */
+const PENDULUM = 'pendulum'
+/** Lo que no Invoca por Péndulo desde la mano: lo que usa con una regla (sus handtraps). */
+const keeps = (code: number) => ruleOf(code) !== undefined || turnRuleOf(code) !== undefined
 
 type IdleAsk = AskOf<'select_idlecmd'>
 type IdleList = 'summons' | 'special_summons' | 'pos_changes' | 'monster_sets' | 'spell_sets' | 'activates'
@@ -303,6 +308,16 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
       return { answer: { type: ask.type, action, index }, ...(reason ? { reason } : {}), rule: play.id }
     }
+    // Sin otra jugada del mazo: la Invocación por Péndulo, una vez por turno, antes de la Battle Phase (después de las jugadas, para no cortarle una línea al mazo).
+    const pendulum = done.has(PENDULUM) ? -1 : pendulumIndex(ask, s.view, facts, keeps)
+
+    if (pendulum >= 0) {
+      const scale = ask.special_summons[pendulum]!.code
+
+      done.add(PENDULUM)
+      intent = { id: PENDULUM, code: scale }
+      return { answer: { type: ask.type, action: 1, index: pendulum }, reason: { key: 'auto.bot.reason.play.pendulum', cards: [scale] }, rule: 'executor.pendulum' }
+    }
 
     const empty = monstersOf(s.view.them).length === 0
     const attackerOf = (card: BotCard): Attacker => ({ code: card.code, atk: atkOf(s, card), direct: empty || (deck.direct?.includes(card.code) ?? false) })
@@ -401,6 +416,7 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     if (mine && ask.type === 'select_idlecmd') decision = idle(ask, s)
     else if (mine && ask.type === 'select_battlecmd') decision = battle(ask, s)
     else if (ask.type === 'select_chain') decision = deck.chain(ask, s)
+    else if (mine && intent?.id === PENDULUM && (ask.type === 'select_unselect_card' || ask.type === 'select_position')) decision = { answer: pendulumAnswer(ask, facts, keeps), rule: 'executor.pendulum.pick' }
     else if (asks <= MAX_ASKS) {
       decision = (mine && ask.type === 'select_card' ? attackTargetOf(ask, s) : null) ?? deck.choose(ask, s)
       if (!decision && ask.type === 'select_place' && view.turnPlayer !== null) decision = { answer: placeOf(ask, view) }

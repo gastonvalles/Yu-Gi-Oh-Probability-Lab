@@ -109,6 +109,7 @@ export const auto: Translated<typeof es> = {
   'auto.bot.reason.play.setQuick': 'I Set {card}: I can activate it on your turn.',
   'auto.bot.reason.play.normalEffect': 'I Normal Summoned {card}: its effect keeps my play going.',
   'auto.bot.reason.play.special': 'I Special Summoned {card} from my hand.',
+  'auto.bot.reason.play.pendulum': 'I Pendulum Summoned with {card} and my other Scale: more monsters on my field.',
   'auto.bot.reason.play.synchroLevel': 'I raised {to} by 3 Levels with {card} and used it as Synchro Material.',
   'auto.bot.reason.play.synchroYourTurn': 'I activated {card} in your Main Phase: I Synchro Summon June Pride, and only monsters in the center can attack.',
   'auto.bot.reason.play.synchroNext': 'I Synchro Summoned {card}: I keep building my field.',
