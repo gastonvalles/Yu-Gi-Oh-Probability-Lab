@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { clampOffset, matCardPositionKey, readOffset } from '../app/use-draggable-offset'
 import { MatPrompt } from '../components/duel/MatPrompt'
+import { css } from './support/css-value'
 
 // En escritorio, los carteles de la mesa (la pregunta del medio y su asa) se llevan con el mouse a cualquier lado, como las mascotas: por su cabeza, sin redibujar,
 // acotados a la ventana, recordados por lugar; doble clic, a su lugar; Alt + flechas con el foco adentro. Con el dedo sigue el gesto de minimizar. jsdom no mide: cada cartel está en
@@ -208,6 +209,6 @@ describe('la pregunta del medio (MatPrompt) desde 1101 px', () => {
       </div>,
     )
     drag(head(), -5000, 0)
-    expect(cartel().style.translate).toBe('-324px 0')
+    expect(css(cartel().style.translate)).toBe(css('-324px 0'))
   })
 })

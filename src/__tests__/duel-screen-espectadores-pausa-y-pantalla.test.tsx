@@ -11,6 +11,7 @@ import type { DuelConnect } from '../app/use-duel'
 import { DuelScreen } from '../components/duel/DuelScreen'
 import { COMPACT_FIELD_MEDIA_QUERY, phoneDuelLayout } from '../components/probability/compact-field'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
+import { css } from './support/css-value'
 import { createDuelHarness, asDesktop, asSocket, asSpectatorSocket, closeMore, handOf, hasSave, leaveDuel, mainIds, monsters, moreButton, openGames, phaseChip, render, rulesDialog, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
 
 // La pantalla del duelo arma dos mesas completas por prueba: sola cada una tarda un par de segundos, pero con toda la suite corriendo a la vez alguna pasaba los 5 s de siempre (la de «atacar» fallaba una de cada tantas corridas).
@@ -1047,10 +1048,10 @@ describe('la pantalla del duelo', () => {
     const layout = phoneDuelLayout(390, 844, { tilted: true, bar: 58, bottom: 68 })
     expect(parseFloat(field.style.width)).toBeCloseTo(layout.fieldWidth, 2)
     expect(parseFloat(field.style.height)).toBeCloseTo(layout.fieldHeight, 2)
-    expect(field.style.gridTemplateRows).toBe(`repeat(5, ${layout.row}px)`)
+    expect(css(field.style.gridTemplateRows)).toBe(css(`repeat(5, ${layout.row}px)`))
     const line = host.container.querySelector<HTMLElement>('[data-duel-line]')!
     expect(line).toHaveClass('h-0')
-    expect(line).toHaveStyle({ marginBottom: `${layout.gap}px` })
+    expect(css(line.style.marginBottom)).toBe(css(`${layout.gap}px`))
 
     // Las vidas salen del marcador: la tuya, en tu fila de abajo con el turno y el chat al lado; la del rival, en la fila de los íconos de la barra. La última jugada no está en la mesa.
     expect(within(host.container).queryByTestId('duel-score')).toBeNull()
