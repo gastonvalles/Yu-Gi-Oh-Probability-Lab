@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-9-bot-invoca-por-pendulo",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El bot ya sabe invocar por Péndulo",
+        "novedades": [
+          "Un bot con sus dos Escalas ahora invoca por Péndulo cuando eso le suma monstruos al campo: una vez por turno, después de sus jugadas y antes de atacar.",
+          "Cuando lo hace, ves la escena del Péndulo del lado del rival."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "La escena del Péndulo del rival no salía en el duelo automático; con «Efectos: Livianos» tampoco salía su anillo."
+        ],
+        "ojo": [
+          "Con los mazos de hoy va a pasar muy poco: el bot de Elfnote casi nunca llega a tener sus dos Escalas a la vez.",
+          "No invoca por Péndulo las cartas que guarda para responderte."
+        ]
+      },
+      "en": {
+        "title": "The bot now knows how to Pendulum Summon",
+        "novedades": [
+          "A bot with both its Scales now Pendulum Summons when that adds monsters to its field: once per turn, after its plays and before attacking.",
+          "When it does, you see the Pendulum scene on the opponent's side."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "The opponent's Pendulum scene did not show in the automatic duel; with «Effects: Light» its ring did not show either."
+        ],
+        "ojo": [
+          "With today's decks it will happen rarely: the Elfnote bot almost never has both its Scales at once.",
+          "It does not Pendulum Summon the cards it keeps to respond to you."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-8-video-pendulo-y-cadena",
       "date": "2026-11-19",
       "tags": [
