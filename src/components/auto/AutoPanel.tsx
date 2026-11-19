@@ -75,7 +75,7 @@ const ACTIONS = `flex min-w-0 shrink-0 items-center gap-2 *:whitespace-nowrap gr
  * La carta de la que habla un cartel, al medio (un sí o no de un efecto, la posición): del tamaño de las de la bandeja (`--desk-card` en la ventana, que crece con ella), con la pestaña de su lugar
  * sobre el arte y, si se toca, «Ver carta».
  */
-export function PanelCard({ name, art, place, onInspect }: { name: string; art: string | null; place?: string; onInspect?: () => void }) {
+export function PanelCard({ name, art, place, onInspect }: { name: string; art: string | null; place?: string; onInspect?: (rect: DOMRect) => void }) {
   return (
     <span data-panel-card="" className="relative grid w-14 justify-items-center gap-1 group-data-[auto-panel=floating]/panel:w-18 group-data-[window]/panel:w-(--desk-card)!">
       {place ? (
@@ -85,7 +85,7 @@ export function PanelCard({ name, art, place, onInspect }: { name: string; art: 
       ) : null}
       <span className="relative block aspect-[421/614] w-full overflow-hidden bg-input">
         <CardArt remoteUrl={art} name={name} className="block h-full w-full object-cover" />
-        {onInspect ? <button type="button" aria-label={t('practice.dialog.viewCard')} title={t('practice.dialog.viewCard')} className="absolute inset-0 focus-visible:outline-none focus-visible:shadow-focus" onClick={onInspect} /> : null}
+        {onInspect ? <button type="button" aria-label={t('practice.dialog.viewCard')} title={t('practice.dialog.viewCard')} className="absolute inset-0 focus-visible:outline-none focus-visible:shadow-focus" onClick={(event) => onInspect(event.currentTarget.getBoundingClientRect())} /> : null}
       </span>
     </span>
   )

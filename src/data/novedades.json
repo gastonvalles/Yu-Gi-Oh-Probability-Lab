@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-6-revelar-no-adelanta-el-duelo",
+      "date": "2026-11-19",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Cerrar las cartas reveladas ya no adelanta el duelo",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Contra un bot, cuando un efecto te revelaba cartas y cerrabas esa hoja con la X, el duelo saltaba de golpe hasta tu próxima jugada. Ahora lo que le falta al turno del bot se ve entero y a su ritmo.",
+          "Lo mismo al cerrar tocando afuera o deslizando la hoja, y en las demás hojas y ventanas del duelo automático: tocarlas ya no cuenta como tocar la mesa.",
+          "Con «Menús flotantes» prendido, las cartas reveladas salen en la ventana que se mueve y se agranda, con el nombre de cada carta. Tocá una para ver su detalle."
+        ],
+        "ojo": [
+          "Tocar la mesa sigue adelantando la jugada en curso, como antes.",
+          "En escritorio las cartas reveladas siguen en el panel de siempre."
+        ]
+      },
+      "en": {
+        "title": "Closing the revealed cards no longer fast-forwards the duel",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Against a bot, when an effect revealed cards to you and you closed that sheet with the X, the duel jumped straight to your next play. Now the rest of the bot's turn plays out in full, at its pace.",
+          "The same goes for closing by tapping outside or swiping the sheet down, and for the other sheets and windows of the automatic duel: tapping them no longer counts as tapping the table.",
+          "With «Floating menus» on, the revealed cards show in the window you can move and resize, with each card's name. Tap one to see its details."
+        ],
+        "ojo": [
+          "Tapping the table still fast-forwards the play in progress, as before.",
+          "On desktop the revealed cards stay in the usual panel."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-5-replay-con-sonido",
       "date": "2026-11-19",
       "tags": [
