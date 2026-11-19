@@ -3,7 +3,9 @@ import { flushSync } from 'react-dom'
 
 import { EASE_OUT, EASE_SNAP, cancelWhenDone } from '../../../app/motion'
 import { setEffects, useEffects } from '../../../app/effects'
-import { impactOn, sacrificeAt, type ArrivalTone } from '../../../app/field-impact'
+import { activateAt, impactOn, leaveAt, sacrificeAt, type ArrivalTone } from '../../../app/field-impact'
+import { popPile } from '../../../app/use-card-flights'
+import { FX_RGB } from '../../probability/practice-styles'
 import { BURST, CUT, SPARK } from '../../../app/flipbooks'
 import { burstLayers } from '../../../app/summon-art'
 import { playEntrance, playPendulum, type EntranceKind } from '../../../app/summon-entrance'
@@ -111,6 +113,7 @@ export function GameFeelSamples() {
           <WeightSample />
           <HitSample />
           <SummonSample />
+          <FieldFxSample />
           <ChainSample />
           <FlipbookSample />
           <ScreenSample />
@@ -701,6 +704,65 @@ function SummonSample() {
       <p aria-live="polite" className="text-micro text-soft">
         {busy === 'pendulum' ? 'Invocación por Péndulo en curso. Nada responde hasta que termina.' : busy ? `Entrada en curso: ${ENTRANCES.find(([kind]) => kind === busy)?.[1]}. Nada responde hasta que termina.` : 'Tocá un tipo para ver su entrada.'}
       </p>
+    </Specimen>
+  )
+}
+
+/** Las cartas de la muestra de activar: una Mágica, una Trampa y un monstruo de efecto. */
+const FIELD_FX_CARDS = [
+  ['spell', 'Mágica', '55144522'],
+  ['trap', 'Trampa', '44095762'],
+  ['monster', 'Efecto', '46986414'],
+] as const
+
+/**
+ * Lo que la mesa dibuja sobre una carta del campo sin alargar el duelo (`field-impact.ts`, las piezas reales): el resplandor de la activación y, en Mágica y Trampa, el brillo del marco.
+ */
+function FieldFxSample() {
+  const cells = useRef<Record<string, HTMLSpanElement | null>>({})
+  const deck = useRef<HTMLSpanElement | null>(null)
+  const leave = (rgb: string) => {
+    const rect = cells.current.monster?.getBoundingClientRect()
+    if (rect) leaveAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width, rgb)
+  }
+
+  return (
+    <Specimen
+      title="3d · Activar, destruir y la pila"
+      layout="column"
+      note={
+        <>
+          Como en Master Duel, sin sumar tiempo. Activar: un resplandor cian (<Tag>fx-energia</Tag>) de 3 cartas que sube en 140 ms, queda hasta los 630 y se apaga a los 950 (lo que dura la carta
+          grande), sólo <Tag>opacity</Tag>; la Mágica y la Trampa suman el brillo del marco del color de su marco (<Tag>frame-spell</Tag>, <Tag>frame-trap</Tag>), 600 ms. Destruida (la marca del
+          núcleo, sólo en el automático) o desterrada: una onda de 7 cartas en 500 ms desde su casilla al despegar, cian o ámbar (los de la pila que la recibe). La pila que suelta una carta
+          rebota 1 → 1,1 → 1 en 80 ms. Con «Livianos», el marco y el rebote; con movimiento reducido, nada. Archivos: <Tag>app/field-impact.ts</Tag> y <Tag>app/use-card-flights.ts</Tag>.
+        </>
+      }
+    >
+      <div className="flex flex-wrap gap-2">
+        {FIELD_FX_CARDS.map(([kind, label]) => (
+          <Button key={kind} size="sm" variant="secondary" icon="play" data-sample={`activate-${kind}`} onClick={() => activateAt(cells.current[kind] ?? null, 0, kind === 'monster' ? null : kind)}>
+            {label}
+          </Button>
+        ))}
+        <Button size="sm" variant="secondary" icon="play" data-sample="destroy" onClick={() => leave(FX_RGB.cyan)}>
+          Destruir
+        </Button>
+        <Button size="sm" variant="secondary" icon="play" data-sample="banish" onClick={() => leave(FX_RGB.amber)}>
+          Desterrar
+        </Button>
+        <Button size="sm" variant="secondary" icon="play" data-sample="pile" onClick={() => deck.current && popPile(deck.current)}>
+          Sacar del Deck
+        </Button>
+      </div>
+      <div data-field className="flex justify-center gap-6 bg-background/60 px-2 py-10">
+        {FIELD_FX_CARDS.map(([kind, , id]) => (
+          <span key={kind} ref={(node) => void (cells.current[kind] = node)} className="block aspect-[421/614] w-14 overflow-hidden bg-input">
+            <CardArt instant remoteUrl={small(id)} name={`feel-${kind}`} className="block h-full w-full object-cover" />
+          </span>
+        ))}
+        <span ref={deck} role="img" aria-label="Deck"className="block aspect-[421/614] w-14 border border-border bg-input" />
+      </div>
     </Specimen>
   )
 }

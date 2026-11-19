@@ -226,8 +226,8 @@ export const EVENT_SHAPES = {
   deck_top: { player: 'int', count: 'int', code: 'int', position: 'int' },
   new_turn: { player: 'int' },
   new_phase: { phase: 'int' },
-  /** `tribute`: la carta se fue como Sacrificio (lo marca el anfitrión, `core-host.ts`: el núcleo no lo dice en el mensaje). */
-  move: { card: 'int', from: LOC, to: LOC, tribute: ['opt', 'bool'] },
+  /** `tribute`: la carta se fue como Sacrificio; `destroyed`, destruida desde el campo (los marca el anfitrión, `core-host.ts`: el núcleo no lo dice en el mensaje). */
+  move: { card: 'int', from: LOC, to: LOC, tribute: ['opt', 'bool'], destroyed: ['opt', 'bool'] },
   pos_change: { code: 'int', controller: 'seat', location: 'int', sequence: 'int', prev_position: 'int', position: 'int' },
   /** `tribute`: la Colocación de un monstruo pagó un Sacrificio (el anfitrión lo marca, como en `summoning`). */
   set: { ...PLAYED, tribute: ['opt', 'bool'] },

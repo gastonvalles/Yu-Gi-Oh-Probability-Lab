@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-11-activar-destruir-y-pilas",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Activar, destruir y desterrar se notan en el campo",
+        "novedades": [
+          "Al activar una Mágica, una Trampa o un efecto, la carta se enciende en el campo con un resplandor; en Mágica y Trampa, además, brilla su marco.",
+          "Cuando una carta es destruida o desterrada, una onda sale de su casilla mientras la carta se va.",
+          "Cuando sale una carta del Deck, del Cementerio, del destierro o del Extra Deck, la pila da un rebote corto."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Nada de esto alarga el duelo: corre sobre el tiempo que cada jugada ya tenía.",
+          "La onda de «destruida» sale sólo en el duelo automático, donde el motor dice que la carta fue destruida. En el duelo manual sale la del destierro.",
+          "Con «Efectos: Livianos» quedan sólo el brillo del marco y el rebote de la pila. Con «reducir movimiento», nada."
+        ]
+      },
+      "en": {
+        "title": "Activating, destroying and banishing show on the field",
+        "novedades": [
+          "When you activate a Spell, a Trap or an effect, the card lights up on the field with a glow; for Spells and Traps, its frame shines too.",
+          "When a card is destroyed or banished, a wave comes out of its zone as the card leaves.",
+          "When a card leaves the Deck, the Graveyard, the banished pile or the Extra Deck, the pile gives a short bounce."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "None of this makes the duel longer: it runs over the time each play already had.",
+          "The «destroyed» wave shows only in the automatic duel, where the engine says the card was destroyed. In a manual duel you get the banish wave.",
+          "With «Effects: Light» only the frame shine and the pile bounce remain. With «reduce motion», nothing."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-10-invocaciones-del-rival-con-su-golpe",
       "date": "2026-11-19",
       "tags": [

@@ -9,7 +9,7 @@ import { createMatState, matReducer, type MatAction, type MatState } from '../ap
 import { DuelTable } from '../components/duel/DuelTable'
 import { EASE_IN_OUT, easeInOut } from '../app/motion'
 import { DUST_MS, LIFT_FADE_MS, LIFT_PX, liftAt, liftPathFrames, liftTiltFrames } from '../app/card-lift'
-import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, cardPose, flightMs, poseIn, tiltedOffset, useCardFlights, type Plane } from '../app/use-card-flights'
+import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, PILE_POP, cardPose, flightMs, poseIn, tiltedOffset, useCardFlights, type Plane } from '../app/use-card-flights'
 import { css, expectClose } from './support/css-value'
 
 interface Box {
@@ -633,6 +633,42 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     expect(ghost!.to).toBe('translate(700px, 200px) scale(1)')
     expect(ghost!.element.querySelector('span')).toBeNull()
     expect(ringColor(impacts(document.querySelector('[data-drop="banished"]')!)[0]!)).toContain('251 191 36')
+  })
+
+  it('desterrar desde el campo: la onda ámbar de 7 cartas sale de su casilla cuando despega; mandarla al cementerio, no (destruida o no, eso no se sabe por la mesa)', () => {
+    const placed = play(fresh(), { type: 'place', id: '101', zone: 'mz', index: 0, pos: 'atk' })
+    boxes.set('101', at(300, 300))
+    const leaves = () => [...document.querySelectorAll<HTMLElement>('[data-fx="leave"]')]
+    const { rerender } = render(<PileMat state={placed} />)
+
+    rerender(<PileMat state={play(placed, { type: 'move', id: '101', to: 'gy' })} />)
+    expect(leaves()).toHaveLength(0)
+
+    rerender(<PileMat state={placed} />)
+    rerender(<PileMat state={play(placed, { type: 'move', id: '101', to: 'banished' })} />)
+    expect(leaves()).toHaveLength(1)
+    expect(css(leaves()[0]!.style.translate)).toBe(css('340px 358px'))
+    expect(leaves()[0]!.style.getPropertyValue('--fx-rgb')).toContain('251 191 36')
+    const wave = calls.find(({ element }) => element.parentElement === leaves()[0])!
+    expect(parseFloat((wave.element as HTMLElement).style.width)).toBe(7 * 80)
+    expect(wave.options).toMatchObject({ duration: 500, delay: 0 })
+    expect(wave.keyframes.flatMap((frame) => Object.keys(frame)).every((key) => ['scale', 'opacity', 'offset'].includes(key))).toBe(true)
+    for (const leave of leaves()) leave.remove()
+  })
+
+  it('la pila que suelta una carta rebota corto (1 → 1,1 → 1 en 80 ms, sólo `scale`); la que la recibe, no con ese rebote', () => {
+    const start = fresh()
+    const deck = () => document.querySelector<HTMLElement>('[data-drop="deck"]')!
+    const pops = (element: Element) => calls.filter((call) => call.element === element && call.options.duration === PILE_POP.ms)
+    const { rerender } = render(<PileMat state={start} />)
+
+    rerender(<PileMat state={play(start, { type: 'mill', count: 1 })} />)
+    expect(pops(deck())).toHaveLength(1)
+    expect(pops(deck())[0]!.keyframes).toEqual([{ scale: '1' }, { scale: '1.1', offset: 0.5 }, { scale: '1' }])
+    expect(pops(gy())).toHaveLength(0)
+
+    rerender(<PileMat state={play(start, { type: 'mill', count: 1 }, { type: 'move', id: '103', to: 'banished' })} />)
+    expect(pops(gy())).toHaveLength(1)
   })
 
   it('del Extra al cementerio: sale del Extra de dorso y llega de cara', () => {

@@ -90,8 +90,11 @@ export type MatAction =
   | { type: 'draw'; count: number; ids?: string[] }
   | { type: 'mill'; count: number }
   | { type: 'shuffle'; seed: number }
-  /** `deck` = tope del deck. `faceDown` sólo aplica al destierro. `shuffle`: la carta salió mirando el deck y el resto se baraja con esa semilla en la misma jugada. */
-  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean; faceUp?: boolean; shuffle?: number; tribute?: true }
+  /**
+   * `deck` = tope del deck. `faceDown` sólo aplica al destierro. `shuffle`: la carta salió mirando el deck y el resto se baraja con esa semilla en la misma jugada. `destroyed`: la
+   * destruyeron en el campo (sólo el automático, con la marca del núcleo; en la mesa manual mandarla al Cementerio no dice si fue destruida).
+   */
+  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean; faceUp?: boolean; shuffle?: number; tribute?: true; destroyed?: true }
   /**
    * `tribute` y `more` sólo los pone el automático, con las marcas del núcleo (`auto/core-host.ts`): `tribute` en `move`, se fue del campo como Sacrificio; en `place`, es una Invocación
    * por Sacrificio. `more`, con `how: 'pendulum'`: vienen más de la misma Invocación por Péndulo.

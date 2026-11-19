@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { LethalBlow } from '../components/duel/LethalBlow'
 import { LETHAL_MS } from '../app/end-reveal'
-import { ARRIVAL, HIT_MS, PUNCH, SACRIFICE, SECOND_AT, WAVE_AGAIN_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, arrivalRingFrames, arriveAt, arrivals, chargeOn, punchAt, punchFrames, ringAt, sacrificeAt, settleShake, shakeField, shakeOf } from '../app/field-impact'
+import { ACTIVATE_GLOW, ARRIVAL, HIT_MS, PUNCH, SACRIFICE, SECOND_AT, WAVE_AGAIN_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, activateAt, arrivalRingAt, arrivalRingFrames, arriveAt, arrivals, chargeOn, punchAt, punchFrames, ringAt, sacrificeAt, settleShake, shakeField, shakeOf, spellTrapOf } from '../app/field-impact'
 import { EASE_ASENTAR, EASE_GOLPE } from '../app/motion'
 import { FLIGHT_MS } from '../app/use-card-flights'
 import { TOKEN_KIND, type MatState } from '../app/practice-mat'
@@ -218,6 +218,37 @@ describe('el impacto en la mesa (field-impact)', () => {
       sacrificeAt(0, 0, 50)
       expect(calls).toHaveLength(1)
       expect(classOf(calls[0]!)).toContain('border-white')
+    })
+
+    it('activar: el resplandor cian de 3 cartas (sólo `opacity`: 140 ms, pleno hasta 630, fuera a 950) y, en Mágica y Trampa, el brillo del marco de su color en 600 ms; con «Livianos», sólo el marco', () => {
+      const calls = stubAnimate()
+      const cell = document.body.appendChild(document.createElement('div'))
+      cell.getBoundingClientRect = () => ({ left: 10, top: 20, width: 50, height: 70 }) as DOMRect
+
+      activateAt(cell, 0, 'spell')
+      const glow = calls.find((call) => classOf(call).includes('from-fx-energia'))!
+      expect(parseFloat((glow.el as HTMLElement).style.width)).toBe(150)
+      expect(glow.frames.map((frame) => [frame.offset, frame.opacity])).toEqual([[undefined, 0], [0.147, 1], [0.663, 1], [0.811, 0.18], [undefined, 0]])
+      expect(glow.options).toMatchObject({ duration: ACTIVATE_GLOW.ms })
+      for (const frame of glow.frames) expect(Object.keys(frame).filter((key) => key !== 'offset')).toEqual(['opacity'])
+      const frame = calls.find((call) => classOf(call).includes('border-frame-spell'))!
+      expect(frame.options).toMatchObject({ duration: 600 })
+      // No alarga nada: termina con la carta grande de la activación.
+      expect(Math.max(...calls.map((call) => Number(call.options.duration) + Number(call.options.delay ?? 0)))).toBeLessThanOrEqual(ACTIVATE_GLOW.ms)
+
+      calls.length = 0
+      activateAt(cell, 0, null)
+      expect(calls.map(classOf).some((name) => name.includes('border-frame'))).toBe(false)
+      expect(spellTrapOf({ frameType: 'trap' })).toBe('trap')
+      expect(spellTrapOf({ frameType: 'effect' })).toBeNull()
+
+      calls.length = 0
+      document.documentElement.setAttribute('data-effects', 'lite')
+      activateAt(cell, 0, 'trap')
+      expect(calls).toHaveLength(1)
+      expect(classOf(calls[0]!)).toContain('border-frame-trap')
+      activateAt(cell, 0, null)
+      expect(calls).toHaveLength(1)
     })
 
     it('la carga: la carta que ataca brilla dorada (opaca hasta la mitad) y el polvo converge, siguiendo la embestida; con «Livianos», sin polvo', () => {

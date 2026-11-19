@@ -92,6 +92,15 @@ describe('los efectos de una jugada', () => {
     expect(matEffects(field, { type: 'place', id: 'c1', zone: 'mz', index: 4, pos: 'atk', how: 'pendulum', more: true })).toMatchObject({ landing: { tone: 'special', pendulum: true, more: true } })
   })
 
+  it('destruida (la marca del núcleo): su onda sale de la casilla que deja; sin la marca, mandarla al Cementerio no la lleva, y rumbo al destierro la da el vuelo', () => {
+    const field = after([place('a1', 0)])
+
+    expect(matEffects(field, { type: 'move', id: 'a1', to: 'gy', destroyed: true })).toEqual({ quiet: { ids: ['a1'], kind: 'gy' }, destroyed: [{ spot: 'mz', index: 0 }] })
+    expect(matEffects(field, { type: 'move', id: 'a1', to: 'gy' }).destroyed).toBeUndefined()
+    expect(matEffects(field, { type: 'move', id: 'a1', to: 'banished', destroyed: true }).destroyed).toBeUndefined()
+    expect(matEffects(field, { type: 'batch', actions: [{ type: 'move', id: 'a1', to: 'gy', destroyed: true }] }).destroyed).toEqual([{ spot: 'mz', index: 0 }])
+  })
+
   it('la ficha aparece de la nada y el monstruo que pasa boca arriba a ataque es una Invocación por Volteo', () => {
     expect(matEffects(start(), { type: 'token', zone: 'mz', index: 1 })).toEqual({ landing: { spot: 'mz', index: 1, tone: 'special', flies: false } })
     // Sobre una zona ocupada no se crea nada.
