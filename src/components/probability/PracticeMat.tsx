@@ -258,7 +258,7 @@ export interface DuelMatLink {
   undoAvailable?: boolean
   /** La última jugada de la mesa cambió de manos un monstruo (la otra mesa ya la completó): no se deshace. */
   undoBlocked?: boolean
-  /** Escritorio: Deshacer va arriba, en la barra de la pantalla (`header`, por `MatUndoContext`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). Hasta 1100 px va abajo (`scoreInHeader`). */
+  /** Escritorio, sólo el duelo por enlace manual (los automáticos lo llevan abajo, con su ⚙): Deshacer va arriba, en la barra de la pantalla (`header`, por `MatUndoContext`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). Hasta 1100 px va abajo (`scoreInHeader`). */
   undoInHeader?: boolean
   /**
    * Los duelos hasta 1100 px, celular y tableta (sin efecto en escritorio): la chapa del rival va en la barra (`header`) y tu fila de abajo lleva tu chapa a la izquierda; no hay `corner`. Deshacer, «Pasos y combos» y `dock` van abajo a la
@@ -1225,7 +1225,7 @@ function PracticeMatBody({
   const burst = (tone: ArrivalTone, id: string, art: string | null): boolean => {
     if (!art || isToken(id) || session.replay || !summonArtOn() || !summonArtFits(tone)) return false
     if (burstSeen.current.initial !== session.initial) burstSeen.current = { initial: session.initial, arts: new Set() }
-    if (burstSeen.current.arts.has(art) || !playSummonArt(art)) return false
+    if (burstSeen.current.arts.has(art) || !playSummonArt(art, fieldRef.current)) return false
     burstSeen.current.arts.add(art)
     return true
   }
@@ -3639,14 +3639,24 @@ function PracticeMatBody({
                 <span className="pointer-events-auto flex items-center max-[1101px]:col-start-3 max-[1101px]:row-start-1 max-[1101px]:justify-self-end">
                   {isDesktop || duel.undoInHeader ? null : undoButton}
                   {duel.tools}
-                  {duel.steps ? stepsButton : null}
+                  {duel.steps && !isDesktop ? stepsButton : null}
                   {/* Con la botonera, o con Deshacer arriba (el duelo por enlace), tus vidas van a la izquierda: en la esquina opuesta a las del rival (con laterales, las pone la barra). */}
                   {isDesktop && !rails && (duel.dock || duel.undoInHeader) ? duel.life : null}
                 </span>
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
-                  {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
-                  {isDesktop && !duel.undoInHeader ? undoButton : null}
-                  {isDesktop && duel.dock ? dock : isDesktop && duel.undoInHeader ? null : duel.life}
+                  {/* Deshacer, abajo a la derecha: con la botonera, el primero de su fila (↶ ≡ ⚙, como en el celular; también con laterales); sin ella, junto a tus vidas (las fases y, en la End Phase,
+                      Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
+                  {isDesktop && duel.dock ? (
+                    <span className="flex items-center gap-2">
+                      {duel.undoInHeader ? null : undoButton}
+                      {dock}
+                    </span>
+                  ) : (
+                    <>
+                      {isDesktop && !duel.undoInHeader ? undoButton : null}
+                      {isDesktop && duel.undoInHeader ? null : duel.life}
+                    </>
+                  )}
                 </span>
               </div>
               )}

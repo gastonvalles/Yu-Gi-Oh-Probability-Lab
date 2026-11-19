@@ -28,7 +28,7 @@ import { BotDeckSheet } from '../../duel/BotDeckSheet'
 import { SoloScreen } from '../../duel/SoloScreen'
 import { LifeBadge } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatUndoContext } from '../../probability/MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext } from '../../probability/MatBarActions'
 import { CardMenu, type MenuItem } from '../../probability/MatDialogs'
 import { PhaseRow } from '../../probability/PhaseRow'
 import type { PracticeHandMatch } from '../../probability/practice'
@@ -37,7 +37,6 @@ import { RulesPill, type RulesSummary } from '../../probability/RulesPill'
 import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probability/UndoChip'
 import { SheetHost } from '../../ui/BottomSheet'
 import { Button } from '../../ui/Button'
-import { Icon } from '../../ui/Icon'
 import { IconButton } from '../../ui/IconButton'
 import { Segmented } from '../../ui/Segmented'
 import { cx } from '../../ui/cx'
@@ -1107,24 +1106,9 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
     kind === 'thinking'
       ? { kind: 'thinking', onCancel: () => setPassed((count) => count + 1) }
       : { kind: 'ask', text: t('auto.lane.respondTo', { card: 'Branded Fusion', cards: 'Ash Blossom & Joyous Spring' }), actions: [{ label: t('auto.lane.pass'), onSelect: () => setPassed((count) => count + 1) }] }
-  // Deshacer lo pone la mesa, sólo en escritorio (hasta 1100 px va en la botonera de abajo, con el ⚙).
-  const bar = (
-    <MatUndoContext
-      value={
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} disabled={kind !== 'chain'} className="disabled:opacity-35" onClick={() => setPassed((count) => count + 1)}>
-          <Icon name="undo" />
-        </IconButton>
-      }
-    >
-      <AutoBar
-        rivalName={t('duel.bar.rival')}
-        life={life}
-        myTurn={kind === 'chain'}
-        onExit={() => setPassed((count) => count + 1)}
-        lane={lane}
-      />
-    </MatUndoContext>
-  )
+  // Deshacer no va en la barra: lo pone la mesa abajo, el primero de la botonera (↶ ≡ ⚙), en el celular y en escritorio.
+  const bar = <AutoBar rivalName={t('duel.bar.rival')} life={life} myTurn={kind === 'chain'} onExit={() => setPassed((count) => count + 1)} lane={lane} />
+
 
   return (
     <Specimen title={title} layout="column" className="col-span-full" note={note}>

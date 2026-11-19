@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-13-mesa-en-escritorio",
+      "date": "2026-11-19",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "La mesa en escritorio: deshacer abajo, pilas prolijas y entradas centradas",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "En escritorio, el botón de deshacer la jugada va abajo, junto a los de pasos y ⚙, como en el celular. Antes estaba arriba.",
+          "Las entradas de las Invocaciones del Extra Deck, del Ritual y del Péndulo se centran en el campo, sin contar los paneles de los costados. Antes se centraban en toda la pantalla.",
+          "El Deck se dibuja apilado con un escalón parejo, y el brillo de una pila encendida la rodea entera."
+        ],
+        "ojo": [
+          "En el duelo por enlace manual, deshacer sigue arriba: ahí no hay botonera abajo.",
+          "En el celular no cambia nada a la vista."
+        ]
+      },
+      "en": {
+        "title": "The table on desktop: undo at the bottom, tidy piles and centered entrances",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "On desktop, the undo button now sits at the bottom, next to the steps and ⚙ buttons, as on the phone. It used to be at the top.",
+          "The entrances for Extra Deck, Ritual and Pendulum Summons are centered on the field, not counting the side panels. They used to be centered on the whole screen.",
+          "The Deck is drawn stacked with an even step, and the glow of a lit pile goes all the way around it."
+        ],
+        "ojo": [
+          "In the manual duel by link, undo stays at the top: there is no button row at the bottom there.",
+          "On the phone nothing changes visibly."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-12-moneda-dado-y-final",
       "date": "2026-11-19",
       "tags": [

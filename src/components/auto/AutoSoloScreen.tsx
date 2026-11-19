@@ -457,8 +457,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(asks.notice ? { notice: asks.notice } : {}),
     ...(told?.effect && toldNow && !reviewing ? { rivalEffect: told.effect } : {}),
-    // Deshacer: hasta 1100 px abajo, el primero de la botonera (el pulgar); en escritorio, arriba. Apagado sin una orden que deshacer o con el núcleo pensando.
-    undoInHeader: docked,
+    // Deshacer: abajo, el primero de la botonera (↶ ≡ ⚙), en el celular y en escritorio (Gastón, 2026-11-19: «arriba en vez de abajo como debería»). Apagado sin una orden que deshacer o con el núcleo pensando.
     undoAvailable: canUndo,
     // El panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos. En escritorio, «Pasos» de la botonera lo oculta.
     steps: stepsOpen || !docked,

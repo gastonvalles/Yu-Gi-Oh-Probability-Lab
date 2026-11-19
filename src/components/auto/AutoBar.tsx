@@ -10,7 +10,7 @@ import { Presence } from '../../app/use-presence'
 import { t, type MessageKey } from '../../i18n'
 import { BAR_SEAT, LaneBanner, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
 import { LifeBadge } from '../duel/LifeScore'
-import { MAT_BAR_ROW, MatExitButton, MatRulesContext, MatSaveContext, MatUndoContext, useMatTableItems } from '../probability/MatBarActions'
+import { MAT_BAR_ROW, MatExitButton, MatRulesContext, MatSaveContext, useMatTableItems } from '../probability/MatBarActions'
 import { PaletteSwitcher } from '../ui/PaletteSwitcher'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -304,8 +304,6 @@ export function AutoBar({ rivalName, life, onRails, myTurn, onExit, lane = null,
   const rails = useDuelRails()
   // La píldora de las salidas va antes de la chapa del rival (toma el lugar libre).
   const rules = useContext(MatRulesContext)
-  // Deshacer, sólo en escritorio: lo arma la mesa (hasta 1100 px va en la botonera de abajo).
-  const undo = useContext(MatUndoContext)
 
   useLayoutEffect(() => onRails?.(rails), [rails, onRails])
   // Con laterales (escritorio ancho), las piezas van a la grilla de la mesa como las de `DuelBar`: arriba a la izquierda la flecha y las vidas, y los avisos debajo; arriba a la derecha los íconos
@@ -320,10 +318,7 @@ export function AutoBar({ rivalName, life, onRails, myTurn, onExit, lane = null,
         <div className="col-start-1 row-start-3 flex min-w-0 items-end">
           <LifeBadge name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine active={myTurn} />
         </div>
-        <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
-          <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-2', MAT_BAR_ROW)}>
-            {undo}
-          </div>
+        <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end">
           <LifeBadge name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} active={!myTurn} />
         </div>
         {/* El aviso, en lo que el campo agrandado deja libre del lateral (`--field-overhang`, de la mesa) y por encima del tablero (`z-20`): nunca cortado ni debajo. Con menos de 11 rem libres se apoya sobre el borde del campo.
@@ -339,11 +334,7 @@ export function AutoBar({ rivalName, life, onRails, myTurn, onExit, lane = null,
       // la fila guarda el alto de cuando las llevaba (`min-h-18`): el campo queda donde estaba.
       <div className="relative flex items-center gap-1.5 px-0.5 pt-1.5">
         <MatExitButton onExit={onExit} />
-        <div className="ml-auto flex min-h-18 min-w-0 flex-col items-end justify-center">
-          <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-1', MAT_BAR_ROW)}>
-            {undo}
-          </div>
-        </div>
+        <div className="min-h-18" />
         {/* El aviso, centrado debajo de la barra. */}
         {lane ? (
           <div className="absolute left-1/2 top-full z-20 mt-1 h-11 w-[min(24rem,100%)] -translate-x-1/2">

@@ -817,18 +817,19 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       expect(Math.min(...sides), 'el botón de fase mide ≥ 44 px').toBeGreaterThanOrEqual(44)
     })
 
-    await test.step('TI-220: un solo menú de opciones (sin «⋯»), y deshacer abajo en el celular (arriba en escritorio, como siempre)', async () => {
+    // TI-327 (Gastón, 2026-11-19: «en desktop el boton para volver la jugada esta arriba en vez de abajo como deberia»): en escritorio también va abajo, en la fila de ≡ y ⚙.
+    await test.step('TI-220 / TI-327: un solo menú de opciones (sin «⋯»), y deshacer abajo, el primero de la fila de ⚙ (en el celular y en escritorio)', async () => {
       await expect(page.getByRole('button', { name: 'Más opciones' }), 'Solo no tiene «⋯»').toHaveCount(0)
+      await expect(page.locator('button[aria-label="Deshacer"]').filter({ visible: true }), 'un solo deshacer a la vista').toHaveCount(1)
       const undo = (await boxOf(page, 'button[aria-label="Deshacer"]'))!
       const field = (await boxOf(page, '[aria-label="Campo"]'))!
-      if (isMobile) {
-        expect(undo.y, 'deshacer abajo, en la botonera').toBeGreaterThan(field.y + field.h)
-        expect(Math.min(undo.w, undo.h), 'deshacer mide 44 px').toBeGreaterThanOrEqual(43.5)
-        const gear = (await boxOf(page, '[data-mat-gear]'))!
-        expect(undo.x, 'deshacer, el primero de la derecha (antes de ≡ y ⚙)').toBeLessThan(gear.x)
-        expect(Math.abs(undo.cy - gear.cy), 'en la misma fila que ⚙').toBeLessThanOrEqual(2)
-        await expect(page.locator('[data-undo-chip], [data-testid="undo-chip"]'), 'sin el aviso «Deshacer» con miniatura').toHaveCount(0)
-      } else expect(undo.y, 'en escritorio deshacer sigue arriba').toBeLessThan(field.y)
+      const gear = (await boxOf(page, '[data-mat-gear]'))!
+      expect(undo.y, 'deshacer abajo, debajo del medio del campo').toBeGreaterThan(field.y + field.h / 2)
+      if (isMobile) expect(undo.y, 'en el celular, en la botonera, debajo del campo').toBeGreaterThan(field.y + field.h)
+      expect(Math.min(undo.w, undo.h), 'deshacer mide 44 px').toBeGreaterThanOrEqual(43.5)
+      expect(undo.x, 'deshacer, el primero de la derecha (antes de ≡ y ⚙)').toBeLessThan(gear.x)
+      expect(Math.abs(undo.cy - gear.cy), 'en la misma fila que ⚙').toBeLessThanOrEqual(2)
+      if (isMobile) await expect(page.locator('[data-undo-chip], [data-testid="undo-chip"]'), 'sin el aviso «Deshacer» con miniatura').toHaveCount(0)
     })
 
     await test.step('TI-220 / TI-215: ⚙ Opciones con «La mesa» y «El duelo»; «Colores» cambia la paleta y se recuerda', async () => {

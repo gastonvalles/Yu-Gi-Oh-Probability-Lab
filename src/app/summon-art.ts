@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react'
 import { cardImageSrc } from './card-image-source'
 import type { ArrivalTone } from './field-impact'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, cancelWhenDone } from './motion'
-import { entranceAllowed } from './summon-entrance'
+import { entranceAllowed, stageOf } from './summon-entrance'
 
 /**
  * «Imagen de la carta al invocar (beta)», de Opciones del duelo (el ⚙ del automático y «La mesa» del ⋯ de la mesa manual y del duelo por enlace): la imagen de un monstruo irrumpe en grande la
@@ -87,12 +87,17 @@ const LAYERS = `<div class="absolute -inset-8"><svg viewBox="0 0 100 60" preserv
 
 /**
  * La irrupción en la mesa: la imagen `art` de la carta que se invoca entra en capas en una franja del medio y se va de costado. No tapa toques ni frena el duelo. Con «Efectos: Livianos» o
- * movimiento reducido no va (`entranceAllowed`, lo mismo que las entradas largas). Devuelve la animación de la franja (su final la saca), o `null` si no va.
+ * movimiento reducido no va (`entranceAllowed`, lo mismo que las entradas largas). Centrada en el campo (`field`, sin los paneles laterales: `stageOf`), con el mismo ancho. Devuelve la animación de
+ * la franja (su final la saca), o `null` si no va.
  */
-export function playSummonArt(art: string): Animation | null {
+export function playSummonArt(art: string, field: Element | null = null): Animation | null {
   if (!entranceAllowed()) return null
   const root = document.createElement('div')
   root.className = ROOT
+  // Corrida lo que el centro del campo se aparta del de la ventana (en el celular, nada).
+  const box = stageOf(field)
+  const shift = Math.round(box.left + box.width / 2 - window.innerWidth / 2)
+  if (shift !== 0) Object.assign(root.style, { left: `calc(1rem + ${shift}px)`, right: `calc(1rem - ${shift}px)` })
   root.dataset.fx = 'summon-art'
   root.setAttribute('aria-hidden', 'true')
   root.innerHTML = LAYERS

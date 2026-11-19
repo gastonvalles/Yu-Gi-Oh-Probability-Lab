@@ -14,7 +14,10 @@ export const PileStack = memo(function PileStack({ count }: { count: number }) {
   }
 
   return (
-    <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0">
+    // El brillo de la casilla (su `box-shadow`: se puede usar, se activa, la señalan) se pinta debajo de sus hijos, y las capas que asoman le tapaban el borde de abajo: se repite en una caja
+    // del alto de la pila entera, debajo de las capas, así rodea la pila completa (heredado: el mismo color y el mismo grosor).
+    <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0 [box-shadow:inherit]">
+      <span data-pile-glow className="absolute inset-x-0 top-0 [box-shadow:inherit]" style={{ bottom: `-${depth * PILE_LAYER_PCT}%` }} />
       {Array.from({ length: depth }, (_, index) => {
         // La más lejana primero: cada capa nueva va encima de la anterior.
         const layer = depth - index

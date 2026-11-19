@@ -106,13 +106,13 @@ describe('la barra de la mesa es una sola', () => {
       renderAuto()
       const auto = barButtons()
 
-      // El automático: hasta 1100 px su barra lleva sólo la flecha (Deshacer va abajo, con el ⚙); en escritorio, Deshacer arriba (la flecha va fuera de la fila de íconos). Sin ⋯.
-      expect(auto.map((button) => button.name)).toEqual(layout === 'celular' ? ['Volver a Jugar'] : ['Deshacer'])
+      // El automático: hasta 1100 px su barra lleva sólo la flecha (Deshacer va abajo, con el ⚙); en escritorio la barra de la mesa es la de abajo (↶ ≡ ⚙: TI-327). Sin ⋯.
+      expect(auto.map((button) => button.name)).toEqual(layout === 'celular' ? ['Volver a Jugar'] : ['Deshacer', 'Pasos y combos', 'Opciones'])
       expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
       expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
       expect(practice.map((button) => button.name)).toEqual(['Volver a Jugar', 'Deshacer', 'Más opciones', 'Pasos y combos'])
-      // Ningún ícono de la barra queda en ámbar por un ajuste prendido: ninguno lleva `aria-pressed`.
-      expect([...practice, ...auto].filter((button) => button.pressed !== null)).toEqual([])
+      // Ningún ícono de la barra queda en ámbar por un ajuste prendido: ninguno lleva `aria-pressed` (salvo ≡ de la botonera del automático, que muestra u oculta el panel de los pasos).
+      expect([...practice, ...auto].filter((button) => button.pressed !== null && !(button.name === 'Pasos y combos' && auto.includes(button)))).toEqual([])
       // La práctica no cambia: «La mesa» con sus interruptores (la vista 3D y los sonidos vienen prendidos) y «El duelo».
       expect(practiceRows).toEqual([
         { text: 'Vista 3D', checked: 'true', disabled: false },
@@ -183,7 +183,7 @@ describe('la barra de la mesa es una sola', () => {
     expect(renderHook(() => useDuelFullscreen()).result.current).toBe(false)
   })
 
-  it('deshacer del automático va abajo hasta 1100 px (Gastón, 2026-11-12: «debería estar abajo, no arriba»), el primero de la botonera y de 44 px: apagado sin una orden tuya; con una, deshace la última. En escritorio, arriba', () => {
+  it('deshacer del automático va abajo hasta 1100 px (Gastón, 2026-11-12: «debería estar abajo, no arriba»), el primero de la botonera y de 44 px: apagado sin una orden tuya; con una, deshace la última. En escritorio, también abajo (TI-327)', () => {
     const fake = renderAuto()
     const undo = () => screen.getByRole('button', { name: 'Deshacer' })
 
@@ -201,11 +201,17 @@ describe('la barra de la mesa es una sola', () => {
     expect(undo()).toBeDisabled()
     cleanup()
 
-    // En escritorio (el mouse), arriba con los íconos, y la botonera no lo repite.
-    desktop()
-    renderAuto()
-    expect(screen.getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
-    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Deshacer' })).toBe(undo())
+    // En escritorio (Gastón, 2026-11-19: «arriba en vez de abajo como debería»), también abajo: el primero de la fila de ≡ y ⚙ (la botonera), con o sin laterales, y la barra de arriba no lo repite.
+    for (const wide of [false, true]) {
+      desktop(wide)
+      renderAuto()
+      expect(screen.getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
+      expect([...undo().parentElement!.children].map((element) => element.getAttribute('aria-label'))).toEqual(['Deshacer', 'Botonera del duelo'])
+      expect(within(screen.getByRole('group', { name: 'Botonera del duelo' })).getAllByRole('button').map((element) => element.getAttribute('aria-label'))).toEqual(['Pasos y combos', 'Opciones'])
+      expect(undo()).toHaveClass('size-11')
+      expect(undo()).toBeDisabled()
+      cleanup()
+    }
   })
 
   it('en escritorio (opción D2, «esquinas sin caja»): cada vida en su esquina, plana (Gastón: «la vida de ambos jugadores junta»): el rival arriba a la derecha del campo, junto a su mano, y vos abajo a la izquierda, junto a la tuya; la fase, sólo en su botón', () => {
@@ -226,7 +232,8 @@ describe('la barra de la mesa es una sola', () => {
     expect(document.querySelector('.life-plate, [role="meter"]')).toBeNull()
     expect(after(rival)).toBe(false)
     expect(after(mine)).toBe(true)
-    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    // Arriba no hay fila de íconos (Deshacer va abajo, con el ⚙: TI-327): la única barra «Mesa» es la de abajo.
+    expect(screen.getAllByRole('toolbar', { name: 'Mesa' }).map(after)).toEqual([true])
     // La fase, una sola vez: sin píldora en la barra; su botón va en el medio del campo, entre las dos Zonas Extra (`p2`).
     expect(screen.queryByTestId('auto-phase')).toBeNull()
     expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ }).parentElement).toHaveStyle({ gridArea: 'p2' })

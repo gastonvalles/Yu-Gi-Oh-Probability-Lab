@@ -638,8 +638,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     tools: null,
     // El chat: en escritorio, fijo a la derecha (con las reacciones); hasta 1100 px, en su panel (lo abre su botón de la barra), con las reacciones.
     aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
-    // Deshacer (le pide permiso al rival: `useLinkUndo`): hasta 1100 px abajo, el primero de la botonera (↶ chat ⚙); en escritorio, en la barra de arriba (`MatUndoContext`).
-    undoInHeader: docked,
+    // Deshacer (le pide permiso al rival: `useLinkUndo`): abajo, el primero de la botonera (↶ chat ⚙; en escritorio, ↶ ⚙), como en «Jugar solo automático».
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(notice ? { notice } : {}),
     ...(clock ? { clock: <TurnDial clock={snapshot.turnClock} owner={snapshot.turnClock.running ?? clock.turnPlayer} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} /> } : {}),
