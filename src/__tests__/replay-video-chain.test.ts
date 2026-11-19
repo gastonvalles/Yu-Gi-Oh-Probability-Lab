@@ -8,8 +8,8 @@ import { CHAIN_ALONE_MS, CHAIN_LEAVE_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainFee
 import { buildDuelReplay, replayChainSteps, type ReplayChainStep, type ReplayInput } from '../app/duel-replay'
 import { CHAIN_BEAT_MS } from '../app/card-glow'
 import { createMatState } from '../app/practice-mat'
-import { LAYOUT } from '../components/auto/ChainNotice'
-import { BACK_POSE, CHAIN_TILT, tiltPoint, chainOverlays, chainSnapshots, drawMedal, medalGesture, medalTracks, MEDAL, poseOfClasses, STAGE_MS, stageBox, stageEpisodes, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
+import { ENERGY_LINE, ENERGY_REACH_MS, LAYOUT } from '../components/auto/ChainNotice'
+import { BACK_POSE, CHAIN_TILT, tiltPoint, chainOverlays, chainSnapshots, drawMedal, drawStage, energyAt, medalGesture, medalTracks, MEDAL, poseOfClasses, replayRowLook, STAGE_MS, stageBox, stageEpisodes, stageGeometry, stagePoseOf, START_POSE } from '../components/replays/video/video-chain'
 import { overlaysOf } from '../components/replays/video/video-fx'
 import { cellsOf, fieldRect, placeRect, replayScenes, videoLayout } from '../components/replays/video/video-scene'
 import { chainBeats, chainMs, chainTimeline, frameDurations, INTRO_MS, OUTRO_MS, paceOf, STEP_MS, VIDEO_PACE, videoDurationMs } from '../components/replays/video/video-timeline'
@@ -159,6 +159,45 @@ describe('la escena de la cadena en el video', () => {
       expect(ctx.calls).toBeGreaterThan(0)
     }
     expect(chainOverlays(without, startsOf(frameDurations({ kind: 'duel', replay: without })), 1, videoLayout(720), fakeAssets)).toEqual([])
+  })
+
+  it('la línea de energía une la carta anterior con la nueva con los tiempos de la mesa (`animate-chain-energy`): crece, se queda y se apaga dentro del eslabón; sola o resolviendo, no está', () => {
+    // Los tiempos que lee el video (`ENERGY_LINE`) son los de la animación de la mesa.
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8')
+    expect(css).toContain(`--animate-chain-energy: chain-energy ${ENERGY_LINE.ms}ms var(--ease-out) ${ENERGY_LINE.delay}ms both;`)
+    const frames = css.slice(css.indexOf('@keyframes chain-energy'))
+    expect(frames).toMatch(new RegExp(`^@keyframes chain-energy \\{\\s*0% \\{\\s*scale: 0 1;\\s*opacity: 1;\\s*\\}\\s*${ENERGY_LINE.grow * 100}% \\{\\s*scale: 1 1;\\s*opacity: 1;\\s*\\}\\s*${ENERGY_LINE.hold * 100}% \\{\\s*scale: 1 1;\\s*opacity: 1;\\s*\\}\\s*100% \\{\\s*scale: 1 1;\\s*opacity: 0;`))
+    expect(ENERGY_REACH_MS).toBe(ENERGY_LINE.delay + ENERGY_LINE.ms * ENERGY_LINE.grow)
+    // En la mesa: nada hasta los 250 ms; entera a los 400 (cuando salta la chispa); se apaga desde los 450 y a los 650 ya no está.
+    expect(energyAt(ENERGY_LINE.delay)).toEqual({ scale: 0, alpha: 1 })
+    expect(energyAt(ENERGY_REACH_MS)).toEqual({ scale: 1, alpha: 1 })
+    expect(energyAt(ENERGY_LINE.delay + ENERGY_LINE.hold * ENERGY_LINE.ms).alpha).toBe(1)
+    expect(energyAt(ENERGY_LINE.delay + 0.75 * ENERGY_LINE.ms).alpha).toBeGreaterThan(0)
+    expect(energyAt(ENERGY_LINE.delay + 0.75 * ENERGY_LINE.ms).alpha).toBeLessThan(1)
+    expect(energyAt(ENERGY_LINE.delay + ENERGY_LINE.ms).alpha).toBe(0)
+    expect(ENERGY_LINE.delay + ENERGY_LINE.ms).toBeLessThanOrEqual(CHAIN_LINK_MS)
+
+    // En la escena del video: el color de energía aparece con el CL2, a su ritmo (a 1,25×, todo antes), y no con el CL1 solo ni resolviendo.
+    const speed = VIDEO_PACE
+    const fastStarts = startsOf(frameDurations({ kind: 'duel', replay: withChain }, speed))
+    const [episode] = stageEpisodes(chainSnapshots(steps, fastStarts, speed), fastStarts.at(-1)!, speed)
+    const geo = stageGeometry(videoLayout(720))
+    const energyDrawn = (now: number) => {
+      const stops: string[] = []
+      const ctx = new Proxy({} as Record<string | symbol, unknown>, {
+        get: (target, key) =>
+          key in target ? target[key] : key === 'measureText' ? () => ({ width: 8 }) : key === 'createLinearGradient' || key === 'createRadialGradient' ? () => ({ addColorStop: (_: number, color: string) => stops.push(color) }) : () => {},
+        set: (target, key, value) => ((target[key] = value), true),
+      })
+      drawStage(ctx as never, episode!, now, geo, fakeAssets, speed, replayRowLook(withChain))
+      return stops.includes(`${fakeAssets.theme.fx.energia}cc`)
+    }
+    const second = episode!.mounts[1]!
+    expect(energyDrawn(second + ENERGY_REACH_MS / speed)).toBe(true)
+    expect(energyDrawn(second + (ENERGY_LINE.delay - 10) / speed)).toBe(false)
+    expect(energyDrawn(second + (ENERGY_LINE.delay + ENERGY_LINE.ms + 10) / speed)).toBe(false)
+    expect(energyDrawn(episode!.mounts[0]! + ENERGY_REACH_MS / speed)).toBe(false)
+    expect(energyDrawn(episode!.over! + 1)).toBe(false)
   })
 
   it('con la cadena guardada, lo que se activa no sale grande (lo dice la escena); sin ella, sí', () => {

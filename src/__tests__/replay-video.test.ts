@@ -2,18 +2,19 @@ import { describe, expect, it } from 'vitest'
 
 import { buildDuelReplay, duelReplayAt, type ReplayInput } from '../app/duel-replay'
 import { ARRIVAL } from '../app/field-impact'
-import { ENTRANCE } from '../app/summon-entrance'
+import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../app/deal-flight'
+import { ENTRANCE, PENDULUM_HOLD_MS, pendulumHit } from '../app/summon-entrance'
 import type { WireAct } from '../app/mat-public'
 import { easeInOut } from '../app/motion'
 import { createMatState, type MatAction } from '../app/practice-mat'
 import { muxMp4 } from '../components/replays/video/mp4-mux'
-import { flightsOf, IMPACT, lifeMs, lifeOf, MESA, overlaysOf, shiftAt, type Overlay } from '../components/replays/video/video-fx'
+import { flightsOf, IMPACT, lifeMs, lifeOf, MESA, overlaysOf, replaceOverlays, shiftAt, type Overlay } from '../components/replays/video/video-fx'
 import { placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, phoneDuelLayout } from '../components/probability/compact-field'
 import { drawBanner } from '../components/replays/video/video-draw'
 import { artUrls, fieldRect, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
-import { FPS, frameDurations, frameOf, INTRO_MS, OUTRO_MS, STEP_MS, VIDEO_PACE, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
+import { FPS, frameDurations, frameOf, INTRO_MS, openingDeals, OUTRO_MS, pendulumCues, STEP_MS, VIDEO_PACE, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
 
 // Un duelo chico (como el de `duel-replay.test.ts`): invoco, coloco, activo y paso; el rival roba, invoca y me ataca.
@@ -306,6 +307,89 @@ describe('la entrada larga del Extra Deck en el video (la de la mesa)', () => {
     const ctx = fakeCtx()
     for (const p of [0, 0.2, 0.5, 0.7, 0.8, 0.95, 1]) entrance.draw(ctx, p)
     expect(ctx.calls).toBeGreaterThan(0)
+  })
+})
+
+describe('la Invocación por Péndulo en el video (la escena de la mesa)', () => {
+  // Por enlace (lo manual es seguro): dos cartas de la misma Invocación por Péndulo, cada una su jugada.
+  const pendulumInput = (mode: ReplayInput['mode']): ReplayInput => ({
+    ...input,
+    mode,
+    mine: { initial: mine, actions: [{ type: 'place', id: h0, zone: 'mz', index: 0, pos: 'atk', how: 'pendulum' }, { type: 'place', id: h1, zone: 'mz', index: 1, pos: 'atk', how: 'pendulum' }] },
+    theirs: { initial: theirs, acts: [] },
+    order: ['mine', 'mine'],
+    result: undefined,
+  })
+  const sure = buildDuelReplay(pendulumInput('link'))
+  const speed = VIDEO_PACE
+
+  it('una sola escena por Invocación, en su última carta: la jugada dura lo que la escena más su paso; las de antes esperan escondidas', () => {
+    const cues = pendulumCues({ kind: 'duel', replay: sure })
+    const [a, b] = sure.steps.map(([, action]) => (action as Extract<MatAction, { type: 'place' }>).id)
+    expect(cues).toEqual([{ ids: [a], scene: false }, { ids: [a, b], scene: true }])
+    expect(frameDurations({ kind: 'duel', replay: sure }, speed).slice(1, -1)).toEqual([STEP_MS / speed, (STEP_MS + ENTRANCE.end) / speed])
+    const pendScenes = [...replayScenes(sure, 720)]
+    const wait = overlaysOf(pendScenes[0]!, pendScenes[1]!, [], fakeAssets, speed, 1000, 'duel', false, cues[0]!)
+    expect(wait.map((overlay) => overlay.kind)).toEqual(['pendulum'])
+    expect(wait[0]!.hides).toEqual([`0:${a}`])
+    expect(wait[0]!.duration).toBeCloseTo(PENDULUM_HOLD_MS / speed)
+    const start = 1000 + STEP_MS / speed
+    const list = overlaysOf(pendScenes[1]!, pendScenes[2]!, [], fakeAssets, speed, start, 'duel', false, cues[1]!)
+    const scene = list.find((overlay) => overlay.kind === 'pendulum')!
+    expect([scene.start, scene.duration]).toEqual([start, ENTRANCE.end / speed])
+    expect(scene.hides).toEqual([`0:${a}`, `0:${b}`])
+    // La escena saca a la que esperaba (las dos son del mismo tipo).
+    expect(replaceOverlays(wait, list, start)).not.toContain(wait[0])
+    // La llegada blanca fuerte de cada carta en su golpe (`pendulumHit`, de a una cada 67 ms) y una sola sacudida, fuerte, en el golpe de la primera.
+    const impacts = list.filter((overlay) => overlay.kind === 'impact')
+    expect(impacts.map((overlay) => overlay.start)).toEqual([0, 1].map((index) => start + pendulumHit(index) / speed))
+    expect(impacts[1]!.duration).toBeCloseTo((ARRIVAL.ms + (ARRIVAL.strong.rings - 1) * ARRIVAL.strong.every) / speed)
+    const shakes = list.filter((overlay) => overlay.kind === 'shake')
+    expect(shakes).toHaveLength(1)
+    expect([shakes[0]!.start, shakes[0]!.duration]).toEqual([start + pendulumHit() / speed, IMPACT.shakes.strong.ms / speed])
+    expect(list.some((overlay) => overlay.kind === 'landing')).toBe(false)
+    const ctx = fakeCtx()
+    for (const p of [0, 0.2, 0.4, 0.6, 0.7, 0.8, 1]) scene.draw(ctx, p)
+    expect(ctx.calls).toBeGreaterThan(0)
+  })
+
+  it('sólo cuando la marca es segura: lo grabado del automático sin `sure` llega como Especial y no alarga nada; con `sure`, la escena', () => {
+    const unsure = buildDuelReplay(pendulumInput('solo-auto'))
+    expect(pendulumCues({ kind: 'duel', replay: unsure })).toEqual([null, null])
+    expect(frameDurations({ kind: 'duel', replay: unsure }, speed).slice(1, -1)).toEqual([STEP_MS / speed, STEP_MS / speed])
+    const unsureScenes = [...replayScenes(unsure, 720)]
+    expect(overlaysOf(unsureScenes[1]!, unsureScenes[2]!, [], fakeAssets, speed, 0, 'duel').map((overlay) => overlay.kind)).toEqual(['landing', 'impact', 'shake'])
+    expect(pendulumCues({ kind: 'duel', replay: { ...unsure, sure: true } }).map((cue) => cue?.scene)).toEqual([false, true])
+  })
+})
+
+describe('el reparto de la segunda mano en el video del automático', () => {
+  // El automático arranca con las manos vacías y las reparte con un robo de 5 de cada lado; la tercera jugada espera a que salga la última carta del segundo reparto.
+  const empty = createMatState(deck, [], 0)
+  const theirsEmpty = createMatState(Array.from({ length: 20 }, (_, i) => `c${i + 1}`), [], 0)
+  const auto = buildDuelReplay({
+    ...input,
+    mine: { initial: empty, actions: [{ type: 'draw', count: 5 }, { type: 'phase', phase: 'main1' }] },
+    theirs: { initial: theirsEmpty, acts: [{ action: { type: 'draw', count: 5 }, reveal: {} }] },
+    order: ['mine', 'theirs', 'mine'],
+    result: undefined,
+  })
+
+  it('el paso siguiente espera al reparto, como el replay: la última carta sale a `FIRST_DEAL_MS` + 4 × `NEXT_DEAL_MS` y después su paso; los dos repartos se pisan', () => {
+    const speed = VIDEO_PACE
+    expect(openingDeals(auto)).toEqual([{ at: 1, cards: 5 }, { at: 2, cards: 5 }])
+    const durations = frameDurations({ kind: 'duel', replay: auto }, speed)
+    const dispatch = (FIRST_DEAL_MS + 4 * NEXT_DEAL_MS) / speed
+    // La primera no espera (la que sigue es el reparto del otro lado); la segunda, sí.
+    expect(durations.slice(1, -1)).toEqual([STEP_MS / speed, dispatch + STEP_MS / speed, 400 / speed])
+    // La tercera jugada empieza cuando el segundo reparto ya terminó (con el vuelo de su última carta), no medio segundo antes.
+    const third = INTRO_MS + durations[1]! + durations[2]!
+    const dealEnd = INTRO_MS + durations[1]! + (MESA.firstDeal + 4 * MESA.nextDeal + MESA.deal) / speed
+    expect(third).toBeGreaterThanOrEqual(dealEnd)
+    // Le suma al video lo que espera: 928 ms a 1,25×.
+    expect(Math.round(durations[2]! - STEP_MS / speed)).toBe(928)
+    // Por enlace las manos ya vienen repartidas: nada cambia.
+    expect(openingDeals(replay)).toEqual([])
   })
 })
 

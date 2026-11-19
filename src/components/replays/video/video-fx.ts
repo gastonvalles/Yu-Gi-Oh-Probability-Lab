@@ -2,14 +2,14 @@ import { ARRIVAL, CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LI
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
-import { ENTRANCE, UNKNOWN_SUMMON, entranceOf, landingToneOf, surePendulum } from '../../../app/summon-entrance'
-import { entranceOverlay } from './video-entrance'
+import { ENTRANCE, PENDULUM_HOLD_MS, UNKNOWN_SUMMON, entranceOf, landingToneOf, pendulumHit, surePendulum } from '../../../app/summon-entrance'
+import { entranceOverlay, pendulumOverlay } from './video-entrance'
 import { t } from '../../../i18n'
 import { FX_RGB } from '../../probability/practice-styles'
 import { drawCard, drawTargetMark, FONT, TARGET_LOCK_MS, TARGET_OUT_MS, TARGET_PING_MS, wrap, type Ctx, type VideoAssets } from './video-draw'
 import { placesOf, poseOf, type Motion, type Pose } from './video-motion'
 import { fieldRect, STAGE_TONE, type Rect, type Scene, type SceneCard, type SceneSlot } from './video-scene'
-import type { VideoSpeed } from './video-timeline'
+import type { PendulumCue, VideoSpeed } from './video-timeline'
 
 export { STAGE_TONE }
 
@@ -129,7 +129,7 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake' | 'entrance' | 'sacrifice'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake' | 'entrance' | 'sacrifice' | 'pendulum'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
@@ -179,9 +179,10 @@ function ring(ctx: Ctx, rect: Rect, tone: string, width: number, p: number, roun
 
 /**
  * Lo que dibuja cada efecto de una jugada, con sus tiempos. `start`: cuándo empieza la jugada (ms de video). `chain`: el replay trae la cadena (el duelo automático): lo que se
- * activa no sale grande, lo dice la escena de la cadena (`video-chain.ts`), como en el reproductor.
+ * activa no sale grande, lo dice la escena de la cadena (`video-chain.ts`), como en el reproductor. `pendulum`: la jugada es una carta de una Invocación por Péndulo segura (`pendulumCues`);
+ * sin él, lo que dice Péndulo llega como Especial (`surePendulum`).
  */
-export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight[], assets: VideoAssets, speed: VideoSpeed, start: number, kind: 'duel' | 'combo', chain = false, manual = false): Overlay[] {
+export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight[], assets: VideoAssets, speed: VideoSpeed, start: number, kind: 'duel' | 'combo', chain = false, pendulum: PendulumCue | null = null): Overlay[] {
   const { effects, action, actor } = after
   if (!effects || !action || actor === null) return []
   const s = after.layout.scale
@@ -218,13 +219,26 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     if (poses.length > 0) out.push(sacrificeOverlay(poses, ARRIVAL_UNIT * after.layout.unit, theme, at(0), speed))
   }
 
-  // El destello de una invocación, cuando la carta toca la zona. La de Péndulo, sólo si es segura (`surePendulum`: la del duelo manual), con su llegada blanca; su escena no va en el video.
-  if (effects.landing) {
+  // El destello de una invocación, cuando la carta toca la zona. La de Péndulo, sólo si es segura (`pendulum`), con la escena de la mesa (`playPendulum`): una sola por Invocación, en su
+  // última carta (la jugada dura lo que la escena: `stepMs`); las de antes esperan escondidas, también en su vuelo, como en el replay.
+  const keyOf = (id: string) => `${sides.find((side) => now.has(`${side}:${id}`)) ?? actor}:${id}`
+  if (pendulum) {
+    const keys = pendulum.ids.map(keyOf)
+    if (!pendulum.scene) out.push({ kind: 'pendulum', start, duration: PENDULUM_HOLD_MS / speed, hides: keys, draw: () => {} })
+    else {
+      const cards = pendulum.ids.flatMap((id) => placeIn(now, id, sides) ?? [])
+      out.push(pendulumOverlay(cards.map((place) => ({ to: place.pose, card: place.card })), keys, assets, after.layout.unit, s, start, speed))
+      // La llegada blanca fuerte de cada carta en su golpe y una sola sacudida, la del primero.
+      cards.forEach((place, index) =>
+        out.push(...impactOverlays(place.pose.x, place.pose.y, 'strong', after.layout.unit, theme, start + pendulumHit(index) / speed, start + pendulumHit() / speed, speed, false, 'pendulum').filter((overlay) => index === 0 || overlay.kind !== 'shake')),
+      )
+    }
+  } else if (effects.landing) {
     const id = 'id' in action ? action.id : null
     const pose = id ? placeIn(now, id, sides)?.pose : null
     const rect = pose ? { x: pose.x - after.layout.cell / 2, y: pose.y - after.layout.cell / 2, w: after.layout.cell, h: after.layout.cell } : after.focus[0]
     const hit = start + (effects.landing.flies && id ? landingOf(id) : 0)
-    const tone = landingToneOf(surePendulum(effects.landing, !manual), UNKNOWN_SUMMON)
+    const tone = landingToneOf(surePendulum(effects.landing, true), UNKNOWN_SUMMON)
     const entrance = action.type === 'summon' ? entranceOf(tone) : null
     const place = id ? placeIn(now, id, sides) : undefined
     if (entrance && action.type === 'summon' && place) {

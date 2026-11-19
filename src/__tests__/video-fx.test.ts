@@ -9,6 +9,8 @@ import { DELTA_MS, lifeCountMs } from '../app/life-effects'
 import { DEAL_LAND_AT, DEAL_MS, FIRST_DEAL_MS, NEXT_DEAL_MS } from '../app/deal-flight'
 import { buildDuelReplay } from '../app/duel-replay'
 import { createMatState } from '../app/practice-mat'
+import { ENTRANCE, ENTRANCE_COMMON, PENDULUM, pendulumAt, pendulumHit, playPendulum } from '../app/summon-entrance'
+import { pendulumFrame } from '../components/replays/video/video-entrance'
 import { replayScenes } from '../components/replays/video/video-scene'
 import { DECK_SHUFFLE_MS, HAND_SHUFFLE_MS } from '../app/shuffle-fx'
 import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, flightMs as mesaFlightMs } from '../app/use-card-flights'
@@ -115,5 +117,48 @@ describe('el video anima con los tiempos y los colores de la mesa', () => {
     // El combo (un solo jugador) reparte sólo la suya; la primera mano del automático, desde su robo.
     expect(dealOverlays(scene!, assets, 1, [0]).map((overlay) => overlay.kind)).toEqual(['shuffle', 'deal'])
     expect(dealOverlays(scene!, assets, 1.25, [1], 900).every((overlay) => overlay.start === 900)).toBe(true)
+  })
+
+  it('la escena del Péndulo: cada pieza del video entra y se va cuando la anima la mesa (`playPendulum`), y cada carta toca en su golpe', () => {
+    // La mesa en jsdom: cada `animate` se anota con su elemento y sus tiempos.
+    const calls: Array<{ el: Element; options: KeyframeAnimationOptions }> = []
+    Element.prototype.animate = function (this: Element, _frames: unknown, options?: number | KeyframeAnimationOptions) {
+      calls.push({ el: this, options: options as KeyframeAnimationOptions })
+      return { addEventListener: () => {}, cancel: () => {} } as unknown as Animation
+    }
+    const cards = [0, 1, 2].map((index) => ({ cell: new DOMRect(60 + index * 52, 300, 48, 70), art: null, hide: [] }))
+    playPendulum({ cards, field: null, onDone: () => {} })
+    delete (Element.prototype as Partial<Element>).animate
+    document.body.innerHTML = ''
+    const span = (match: (el: Element) => boolean) => {
+      const { delay, duration } = calls.find((call) => match(call.el))!.options
+      return [Number(delay ?? 0), Number(delay ?? 0) + Number(duration)] as const
+    }
+    const frame = (ms: number) => pendulumFrame(ms, cards.length)
+    // El péndulo y la luz: apagados antes de su tramo, a la vista en el medio y apagados al final (la mesa redondea a ms enteros).
+    const swing = span((el) => el.className.includes('top-1/12'))
+    expect(swing[0]).toBe(Math.round(pendulumAt(PENDULUM.swing)))
+    expect([frame(swing[0] - 2).swing.alpha, frame((swing[0] + swing[1]) / 2).swing.alpha]).toEqual([0, 1])
+    expect(Math.max(...Array.from({ length: 50 }, (_, i) => Math.abs(frame(swing[0] + ((swing[1] - swing[0]) * i) / 50).swing.deg)))).toBeLessThanOrEqual(18)
+    const light = span((el) => el.className.includes('origin-top bg-linear-to-b'))
+    expect([frame(light[0] - 2).light.alpha, frame((light[0] + light[1]) / 2).light.alpha]).toEqual([0, 0.85])
+    // Las escalas suben en su tramo (de 0 a todo el alto) y se quedan hasta el final.
+    const bar = span((el) => el.className.includes('origin-bottom'))
+    expect(frame(bar[0] - 2).scales.alpha).toBe(0)
+    expect(frame(bar[0] + 1).scales.rise).toBeLessThan(0.1)
+    expect(frame(bar[1] + 2).scales.rise).toBe(1)
+    expect(frame(ENTRANCE.end - 300).scales.alpha).toBe(1)
+    // Las cartas: cada una aparece cuando la mesa la suelta y toca su casilla, aplastada, en su golpe (`pendulumHit`); asentada, de su tamaño.
+    const paths = calls.filter((call) => (call.el as HTMLElement).style?.left && call.el.className.includes('absolute opacity-0'))
+    paths.forEach((path, index) => {
+      expect(Number(path.options.delay)).toBe(pendulumHit(index) - ENTRANCE_COMMON.reveal)
+      expect(frame(Number(path.options.delay) - 1).cards[index]!.alpha).toBe(0)
+      expect(frame(Number(path.options.delay) + 1).cards[index]!.alpha).toBeGreaterThan(0)
+      expect(frame(pendulumHit(index)).cards[index]).toMatchObject({ drop: 0, scale: ENTRANCE_COMMON.squash })
+      expect(frame(pendulumHit(index) + ENTRANCE_COMMON.settle).cards[index]).toMatchObject({ alpha: 1, drop: 0, scale: 1 })
+    })
+    expect(paths).toHaveLength(3)
+    // El velo, el de toda entrada.
+    expect([frame(0).veil, frame(ENTRANCE_COMMON.veilIn).veil, frame(ENTRANCE.end).veil]).toEqual([0, ENTRANCE_COMMON.veil, 0])
   })
 })

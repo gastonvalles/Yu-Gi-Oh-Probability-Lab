@@ -8,7 +8,8 @@ import { flightsOf, freshTargets, MESA, overlaysOf, replaceOverlays, targetOverl
 import { transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { videoLayout, type Scene, type SceneCard } from '../components/replays/video/video-scene'
 import { bitrateFor } from '../components/replays/video/video-support'
-import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, VIDEO_PACE, videoFileName } from '../components/replays/video/video-timeline'
+import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, pendulumCues, VIDEO_PACE, videoFileName } from '../components/replays/video/video-timeline'
+import { ENTRANCE } from '../app/summon-entrance'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
 
 // Un combo chico con el simulador de handtraps: paso a la Main, invoco h0, coloco h1, el rival usa su Ash, mando h0 al cementerio y saco una ficha.
@@ -127,6 +128,24 @@ describe('el archivo y los tiempos', () => {
     expect(durations.slice(1, -1)).toEqual(actions.map((action) => (action.type === 'phase' ? MESA.banner : COMBO_STEP_MS) / VIDEO_PACE))
     expect(VIDEO_PACE).toBe(1.25)
     expect(durations.at(-1)).toBe(OUTRO_MS)
+  })
+
+  it('una Invocación por Péndulo de la práctica (segura): su última carta dura lo que la escena, como al reproducirlo (lo más largo); lo grabado del automático sin `sure`, igual que antes', () => {
+    const pendulum: MatAction[] = [
+      { type: 'place', id: h0, zone: 'mz', index: 0, pos: 'atk', how: 'pendulum' },
+      { type: 'place', id: h1, zone: 'mz', index: 1, pos: 'atk', how: 'pendulum' },
+    ]
+    const practice = createSavedCombo({ name: 'Péndulo', deckName: '', initial: table, actions: pendulum, nameOf }, [])
+    expect(pendulumCues({ kind: 'combo', combo: practice }).map((cue) => cue?.scene)).toEqual([false, true])
+    expect(frameDurations({ kind: 'combo', combo: practice }).slice(1, -1)).toEqual([COMBO_STEP_MS / VIDEO_PACE, Math.max(COMBO_STEP_MS, ENTRANCE.end) / VIDEO_PACE])
+    // Un combo del automático grabado antes de la marca: sin `sure`.
+    const { sure: _, ...old } = practice
+    const recorded = { ...old, auto: true as const }
+    expect(pendulumCues({ kind: 'combo', combo: recorded })).toEqual([null, null])
+    expect(frameDurations({ kind: 'combo', combo: recorded }).slice(1, -1)).toEqual([COMBO_STEP_MS / VIDEO_PACE, COMBO_STEP_MS / VIDEO_PACE])
+    expect(pendulumCues({ kind: 'combo', combo: { ...recorded, sure: true } }).map((cue) => cue?.scene)).toEqual([false, true])
+    // El combo no reparte con una jugada (sólo la mano de abajo, al empezar): sus pasos no esperan ningún reparto.
+    expect(frameDurations({ kind: 'combo', combo }).slice(1, -1)).toEqual(actions.map((action) => (action.type === 'phase' ? MESA.banner : COMBO_STEP_MS) / VIDEO_PACE))
   })
 })
 

@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-8-video-pendulo-y-cadena",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El video: la escena del Péndulo y la línea de la cadena",
+        "novedades": [
+          "El video de un duelo ahora dibuja la escena de la Invocación por Péndulo: las escalas, la columna de luz, el péndulo y las cartas que bajan juntas.",
+          "En la cadena, el video dibuja la línea de energía que une cada eslabón con el anterior."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "En el video de un duelo automático, la jugada que sigue al reparto de la segunda mano ya no arranca antes de que termine el reparto."
+        ],
+        "ojo": [
+          "Un video con una Invocación por Péndulo dura casi dos segundos más, y el de un duelo automático, cerca de un segundo más al arrancar.",
+          "La escena del Péndulo sale en lo manual y en lo que grabes de acá en adelante; en un duelo automático grabado antes, no."
+        ]
+      },
+      "en": {
+        "title": "The video: the Pendulum scene and the chain line",
+        "novedades": [
+          "The video of a duel now draws the Pendulum Summon scene: the scales, the column of light, the pendulum and the cards dropping together.",
+          "In a chain, the video draws the energy line that joins each link to the previous one."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "In the video of an automatic duel, the play after the second hand's deal no longer starts before the deal ends."
+        ],
+        "ojo": [
+          "A video with a Pendulum Summon runs almost two seconds longer, and an automatic duel's video about one second longer at the start.",
+          "The Pendulum scene shows for manual duels and for what you record from now on; not for an automatic duel recorded earlier."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-7-imagen-al-invocar-beta",
       "date": "2026-11-19",
       "tags": [
@@ -235,8 +272,7 @@
           "Las flechas del Enlace se apagaban apenas se prendían: se veía sólo un destello."
         ],
         "ojo": [
-          "Las flechas del Enlace pasan por encima de la carta mientras cae.",
-          "El video todavía no dibuja la escena del Péndulo."
+          "Las flechas del Enlace pasan por encima de la carta mientras cae."
         ]
       },
       "en": {
@@ -250,8 +286,7 @@
           "The Link arrows went dark right after lighting up: you only saw a flash."
         ],
         "ojo": [
-          "The Link arrows pass over the card while it falls.",
-          "The video does not draw the Pendulum scene yet."
+          "The Link arrows pass over the card while it falls."
         ]
       }
     },
@@ -473,8 +508,7 @@
         "comoSeUsa": [],
         "arreglos": [],
         "ojo": [
-          "Mientras dura la escena nadie juega. Con «Efectos: Livianos» las cartas llegan enseguida, con un anillo blanco.",
-          "El video todavía no dibuja la escena."
+          "Mientras dura la escena nadie juega. Con «Efectos: Livianos» las cartas llegan enseguida, con un anillo blanco."
         ]
       },
       "en": {
@@ -487,8 +521,7 @@
         "comoSeUsa": [],
         "arreglos": [],
         "ojo": [
-          "While the scene lasts nobody plays. With «Effects: Light» the cards arrive right away, with a white ring.",
-          "The video does not draw the scene yet."
+          "While the scene lasts nobody plays. With «Effects: Light» the cards arrive right away, with a white ring."
         ]
       }
     },
