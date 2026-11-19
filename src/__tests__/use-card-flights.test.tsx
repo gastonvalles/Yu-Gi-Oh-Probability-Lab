@@ -635,6 +635,27 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     expect(ringColor(impacts(document.querySelector('[data-drop="banished"]')!)[0]!)).toContain('251 191 36')
   })
 
+  it('desterrar desde el campo: la onda ámbar de 7 cartas sale de su casilla cuando despega; mandarla al cementerio, no (destruida o no, eso no se sabe por la mesa)', () => {
+    const placed = play(fresh(), { type: 'place', id: '101', zone: 'mz', index: 0, pos: 'atk' })
+    boxes.set('101', at(300, 300))
+    const leaves = () => [...document.querySelectorAll<HTMLElement>('[data-fx="leave"]')]
+    const { rerender } = render(<PileMat state={placed} />)
+
+    rerender(<PileMat state={play(placed, { type: 'move', id: '101', to: 'gy' })} />)
+    expect(leaves()).toHaveLength(0)
+
+    rerender(<PileMat state={placed} />)
+    rerender(<PileMat state={play(placed, { type: 'move', id: '101', to: 'banished' })} />)
+    expect(leaves()).toHaveLength(1)
+    expect(css(leaves()[0]!.style.translate)).toBe(css('340px 358px'))
+    expect(leaves()[0]!.style.getPropertyValue('--fx-rgb')).toContain('251 191 36')
+    const wave = calls.find(({ element }) => element.parentElement === leaves()[0])!
+    expect(parseFloat((wave.element as HTMLElement).style.width)).toBe(7 * 80)
+    expect(wave.options).toMatchObject({ duration: 500, delay: 0 })
+    expect(wave.keyframes.flatMap((frame) => Object.keys(frame)).every((key) => ['scale', 'opacity', 'offset'].includes(key))).toBe(true)
+    for (const leave of leaves()) leave.remove()
+  })
+
   it('del Extra al cementerio: sale del Extra de dorso y llega de cara', () => {
     const start = fresh()
     const { rerender } = render(<PileMat state={start} />)

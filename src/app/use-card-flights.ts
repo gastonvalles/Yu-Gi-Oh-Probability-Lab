@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 
 import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
 import { DUST, DUST_MS, LANDING_AT, LIFT_FADE_MS, LIFT_LIMIT, LIFT_MIN_CARDS, LIFT_PX, dustFrames, liftAt, liftGlossFrames, liftPathFrames, liftShadowFrames, liftTiltFrames, type Spot } from './card-lift'
 import { cardImageSrc } from './card-image-source'
-import { settleShake } from './field-impact'
+import { banishedFromField, leaveAt, settleShake } from './field-impact'
 import { BURST, burstsOf, flipbookAt } from './flipbooks'
 import { EASE_IN_OUT, EASE_OUT, UI_ANIMATION_MS, cancelWhenDone, easeInOut, prefersReducedMotion } from './motion'
 import { allMatIds, locateCard, type MatState } from './practice-mat'
@@ -1048,6 +1048,10 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
     const bursts = ghosts.length ? burstsOf(previous.state, state) : []
 
     for (const { ghost, delay } of launches) if (bursts.includes(ghost.id)) flipbookAt(centerX(ghost.from), centerY(ghost.from), BURST, delay)
+    // La onda de lo que se destierra desde el campo (`leaveAt`, del ámbar del destierro), cuando despega.
+    const banished = ghosts.length ? banishedFromField(previous.state, state) : []
+
+    for (const { ghost, delay } of launches) if (banished.includes(ghost.id)) leaveAt(centerX(ghost.from), centerY(ghost.from), Math.min(ghost.from.width, ghost.from.height), FX_RGB.amber, delay)
 
     for (const [home, { id, first, last }] of landings) {
       // La mano no es una pila: no se infla ni se enciende entera cuando le vuelve una carta (la carta se acomoda sola).

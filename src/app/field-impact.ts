@@ -1,7 +1,7 @@
 import { frameKindOf } from './card-frame'
 import { EASE_ASENTAR, EASE_GOLPE, EASE_IN_OUT, EASE_LLEGADA, EASE_OUT, bezierEase, cancelWhenDone, prefersReducedMotion } from './motion'
 import type { LandingTone } from './mat-effects'
-import type { MatState } from './practice-mat'
+import { locateCard, type MatState } from './practice-mat'
 
 /**
  * El impacto en la mesa («Impacto Ligero»): cuando una carta queda en el campo por una Invocación se abre un anillo de energía desde ella (el cian `fx-energia`) con un destello dorado
@@ -454,6 +454,32 @@ export function sacrificeAt(x: number, y: number, unit = 48): void {
   }
 
   removeAfter(layer, parts)
+}
+
+/**
+ * La salida del campo destruida o desterrada (`fxp_cardbrk_*` / `fxp_exclude_001` de Master Duel: dos ondas de 6,8 y 11,9 cartas que crecen casi lineales de 21 % a 100 % en 500 ms, el
+ * alfa de 0,45 a plena a los 30 ms y a 0): una sola onda de 7 cartas (a lo sumo la diagonal de la pantalla) desde la casilla que deja, cuando despega su vuelo (`delay`), del color `rgb`
+ * (`r g b`: el cian de lo destruido, el ámbar del destierro). Va sobre el vuelo que ya existe: no alarga nada. Con «Livianos» o movimiento reducido, nada.
+ */
+export const LEAVE = { ms: 500, size: 7, from: 0.21, alpha: 0.45, peak: 30 / 500 } as const
+const LEAVE_WAVE = 'pointer-events-none absolute rounded-full border-3 border-[color:rgb(var(--fx-rgb))] outline-2 outline-black/40 opacity-0'
+
+export function leaveAt(x: number, y: number, unit: number, rgb: string, delay = 0): void {
+  if (!canAnimate() || lite()) return
+
+  const layer = layerAt(x, y)
+  layer.dataset.fx = 'leave'
+  layer.style.setProperty('--fx-rgb', rgb)
+  const wave = spanIn(layer, LEAVE_WAVE)
+  const px = Math.round(Math.min(LEAVE.size * unit, Math.hypot(window.innerWidth, window.innerHeight)))
+  Object.assign(wave.style, { width: `${px}px`, height: `${px}px`, marginLeft: `${-px / 2}px`, marginTop: `${-px / 2}px` })
+  const frames = [{ scale: `${LEAVE.from}`, opacity: LEAVE.alpha }, { opacity: 1, offset: r3(LEAVE.peak) }, { scale: '1', opacity: 0 }]
+  removeAfter(layer, [[cancelWhenDone(wave.animate(frames, { duration: LEAVE.ms, delay })), delay + LEAVE.ms]])
+}
+
+/** Las cartas que dejaron una casilla del campo rumbo al destierro entre dos mesas (lo desterrado se sabe por el destino; lo destruido, sólo por la marca del núcleo). */
+export function banishedFromField(before: MatState, after: MatState): string[] {
+  return after.banished.filter((id) => !before.banished.includes(id) && locateCard(before, id)?.kind === 'spot')
 }
 
 /** La llegada entera sobre una casilla (su centro): el anillo del color de su tipo (la fuerte, si sacude fuerte) y la sacudida del campo, a los `delay` ms. */
