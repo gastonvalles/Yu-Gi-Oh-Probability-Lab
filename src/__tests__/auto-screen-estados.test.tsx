@@ -105,6 +105,8 @@ describe('auto-screen · los estados', () => {
 
     core(() => fake.fault({ kind: 'script', message: 'lua: oops', cards: [400] }, false))
     expect(lane()).toHaveTextContent('Falló el script de Nibiru: el duelo sigue.')
+    // Donde el automático falla, la salida a mano va en el mismo aviso (en las preguntas normales, sólo en Opciones).
+    expect(within(lane()!).getByRole('button', { name: 'Seguir en modo manual' })).toBeInTheDocument()
     core(() => fake.fault({ kind: 'crash', message: 'worker error', cards: [] }))
     const cover = screen.getByRole('alertdialog', { name: 'El núcleo se cayó' })
 

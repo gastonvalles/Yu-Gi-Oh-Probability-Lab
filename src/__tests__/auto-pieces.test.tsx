@@ -89,15 +89,13 @@ describe('AskPrompt', () => {
     expect(screen.getByRole('button', { name: 'Pagar 1000 LP' })).toHaveFocus()
   })
 
-  it('con contexto: qué pasó arriba y la pestaña del lugar, sin el nombre ni lo que hace; con «Seguir en modo manual», más ancha y ese primero, lejos de la principal', () => {
-    const manual = vi.fn()
+  it('con contexto: qué pasó arriba y la pestaña del lugar, sin el nombre ni lo que hace; sin «Seguir en modo manual» (está en Opciones)', () => {
     render(
       <AskPrompt
         kicker="Tras la Invocación Normal"
         text="¿Activás el efecto?"
         card={{ name: 'Legendary Fire King Ponix', art: null }}
         place="Campo"
-        manual={{ label: 'Seguir en modo manual', onSelect: manual }}
         yes={{ label: 'Activar efecto', onSelect: () => {} }}
         no={{ label: 'No activar', onSelect: () => {} }}
       />,
@@ -110,19 +108,15 @@ describe('AskPrompt', () => {
     // La pregunta, un paso más chica de la escala (`text-body`).
     expect(within(prompt).getByText('¿Activás el efecto?')).toHaveClass('font-semibold', 'text-body')
     expect(prompt).not.toHaveTextContent(/Ponix|Qué hace/)
-    expect(names(buttons)).toEqual(['Minimizar', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
-    expect(buttons[3]).toHaveFocus()
-    // Los tres en una sola fila y en un renglón, siempre: el pie no se parte; la principal al final (a la derecha) y rellena, lo que descarta sin caja.
+    expect(names(buttons)).toEqual(['Minimizar', 'No activar', 'Activar efecto'])
+    expect(buttons[2]).toHaveFocus()
+    // Los dos en una sola fila y en un renglón, siempre: el pie no se parte; la principal al final (a la derecha) y rellena, lo que descarta sin caja.
     const footer = buttons[1]!.parentElement!
     expect(footer).toHaveClass('flex', '*:whitespace-nowrap')
     expect(footer).not.toHaveClass('flex-wrap')
-    expect(buttons[1]!.parentElement).toBe(footer)
     expect(buttons[2]!.parentElement).toBe(footer)
-    expect(buttons[3]!.parentElement).toBe(footer)
-    expect(buttons[3]).toHaveClass('bg-primary', 'min-h-11')
+    expect(buttons[2]).toHaveClass('bg-primary', 'min-h-11')
     expect(buttons[1]).toHaveClass('bg-transparent', 'min-h-11')
-    fireEvent.click(buttons[1]!)
-    expect(manual).toHaveBeenCalledTimes(1)
   })
 })
 

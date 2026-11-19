@@ -164,7 +164,7 @@ describe('auto-screen · las hojas', () => {
     expect(line()).toBeNull()
   })
 
-  it('un efecto que se dispara: qué pasó justo antes, sin el nombre de lo que lo causó, la carta en la pregunta y, a la izquierda, «Seguir en modo manual»', () => {
+  it('un efecto que se dispara: qué pasó justo antes, sin el nombre de lo que lo causó, la carta en la pregunta y sin «Seguir en modo manual» (está en Opciones)', () => {
     const fake = renderAuto()
 
     core(() => {
@@ -176,7 +176,7 @@ describe('auto-screen · las hojas', () => {
     expect(prompt).toHaveTextContent('Tras la Invocación Normal')
     expect(prompt).not.toHaveTextContent('Blue-Eyes')
     expect(prompt).toHaveTextContent(/¿Activás el efecto de «Nibiru/)
-    expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['', '', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
+    expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['', '', 'No activar', 'Activar efecto'])
   })
 
   it('una lista corta y mixta (cementerio y Extra) va en la banda del medio, sin velo: el título dice para qué, cada carta de dónde es, y «Cancelar» sin caja antes de la principal', () => {

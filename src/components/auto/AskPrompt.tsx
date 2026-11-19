@@ -26,8 +26,6 @@ interface AskPromptProps {
   kicker?: string
   /** El lugar de la carta, en una pestaña sobre ella («Campo», «Cementerio»). */
   place?: string
-  /** El atajo a la mesa manual («Seguir en modo manual»), sin caja y a la izquierda, lejos de la principal. Sólo en escritorio: en el celular está en «Más opciones». */
-  manual?: AskChoice
   /** De qué carta es y si es su costo o su efecto (`AskWhy`): un sí o no a secas (`select_yesno`) que llega mientras se activa o se resuelve una carta. */
   why?: AskWhyView | null
   /** Sólo el catálogo lo fuerza (la ventana de escritorio en su marco); en la mesa, según el ancho. */
@@ -37,9 +35,10 @@ interface AskPromptProps {
 /**
  * Una pregunta de sí o no del núcleo de reglas (`select_effectyn`, `select_yesno`) en el cartel del automático (`AutoPanel`), como M-02: qué pasó (`kicker`, sin nombres) y la pregunta; la carta,
  * por su arte y con la pestaña de su lugar, centrada en la bandeja (en escritorio, a la izquierda del texto); abajo «No activar» sin caja y la principal a la derecha, que nombra la jugada. Hay que
- * contestarla: Escape la minimiza y, al aparecer, el foco va a la principal. Una cadena que se puede pasar no va acá: va en `RespondBand`.
+ * contestarla: Escape la minimiza y, al aparecer, el foco va a la principal. Una cadena que se puede pasar no va acá: va en `RespondBand`. «Seguir en modo manual» no va acá (Gastón, 2026-11-19):
+ * está en Opciones (⚙) y en los carteles donde el duelo no puede seguir.
  */
-export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manual, why, variant }: AskPromptProps) {
+export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, why, variant }: AskPromptProps) {
   const textId = useId()
   const whyId = useId()
   const shown = card ?? (why ? { name: why.name, art: why.art } : undefined)
@@ -63,13 +62,6 @@ export function AskPrompt({ text, card, onInspect, yes, no, kicker, place, manua
       }
       actions={
         <>
-          {/* El atajo a la mesa manual: sólo en escritorio (en el celular está en «Más opciones»). */}
-          {/* En una ventana angosta (menos de 36 rem: los tres botones no entran en un renglón), sube a su propio renglón, a la izquierda: «No activar» y la principal quedan abajo. */}
-          {manual ? (
-            <Button variant="tertiary" className="mr-auto max-[1101px]:hidden group-data-[window]/panel:@max-[36rem]:basis-full group-data-[window]/panel:@max-[36rem]:justify-start" onClick={manual.onSelect}>
-              {manual.label}
-            </Button>
-          ) : null}
           <Button variant="tertiary" onClick={no.onSelect}>
             {no.label}
           </Button>
