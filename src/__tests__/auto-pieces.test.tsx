@@ -17,7 +17,6 @@ import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
 import { PassPrompt } from '../components/duel/PassPrompt'
 import { applyLocale } from '../i18n'
-import { MatUndoContext } from '../components/probability/MatBarActions'
 import { openOptions } from './support/mat-menu'
 
 // Las piezas del duelo automático (fuera del campo): cada una con sus estados, su teclado y sus topes. Son presentacionales: lo que contestan sale por props.
@@ -819,20 +818,15 @@ describe('AutoBar', () => {
     expect(screen.queryByText(/Turno de Rival/)).toBeNull()
   })
 
-  it('en escritorio sin laterales las vidas no van en la barra (van planas en las esquinas del campo: las pone la pantalla) y no hay renglón del turno (lo dice la chapa de quien juega), ni chip ni fase; a la derecha, sólo Deshacer (lo pone la mesa), sin ⋯', () => {
+  it('en escritorio sin laterales las vidas no van en la barra (van planas en las esquinas del campo: las pone la pantalla) y no hay renglón del turno (lo dice la chapa de quien juega), ni chip ni fase; sólo la flecha (Deshacer va abajo, con el ⚙: TI-327), sin ⋯', () => {
     desktop()
-    render(
-      <MatUndoContext value={<button type="button" aria-label="Deshacer" />}>
-        <AutoBar {...props} />
-      </MatUndoContext>,
-    )
+    render(<AutoBar {...props} />)
 
     expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
     expect(screen.queryByTestId('auto-turn')).toBeNull()
     expect(screen.queryByTestId('auto-phase')).toBeNull()
     expect(screen.queryByText('Turno 3')).toBeNull()
-    expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Deshacer'])
-    expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
+    expect(names(screen.getAllByRole('button'))).toEqual(['Volver a Jugar'])
     expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
   })
 
