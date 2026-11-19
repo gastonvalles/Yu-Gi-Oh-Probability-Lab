@@ -4,10 +4,11 @@ import '@testing-library/jest-dom'
 import { describe, expect, it } from 'vitest'
 
 import { PileStack } from '../components/probability/PileStack'
-import { pileDepth } from '../components/probability/practice-styles'
+import { DECK_LAYERS, PILE_LAYER_PCT, pileDepth } from '../components/probability/practice-styles'
+import { css } from './support/css-value'
 import { IconButton, TileButton } from '../components/ui/IconButton'
 
-const layers = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>('[data-pile-edge] > span')]
+const layers = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>('[data-pile-edge] > span:not([data-pile-glow])')]
 const offset = (layer: HTMLElement) => Number(/translateY\((-?[\d.]+)%\)/.exec(layer.style.transform)?.[1])
 const dim = (layer: HTMLElement) => Number(/brightness\(([\d.]+)\)/.exec(layer.style.filter)?.[1])
 
@@ -29,6 +30,23 @@ describe('el volumen de las pilas de cartas', () => {
     expect(Math.min(...stack.map(dim))).toBeGreaterThan(0.4)
     // Cada capa es un dorso de carta (la imagen), no una línea de color.
     expect(stack.every((layer) => layer.className.includes('bg-[url('))).toBe(true)
+  })
+
+  it('un solo escalón (Gastón, 2026-11-19: «parece apilado super mal porque no es uniforme»): las capas del deck que se barajan quedan quietas debajo de la de arriba; el canto lo dibuja sólo esta pila, derecho hacia abajo y con el mismo paso', () => {
+    expect(DECK_LAYERS.filter((layer) => /translate|transform/.test(layer))).toEqual([])
+    const steps = layers(render(<PileStack count={30} />).container).map(offset).reverse()
+    expect(steps.map((step, index) => step - (steps[index - 1] ?? 0))).toEqual(steps.map(() => PILE_LAYER_PCT))
+  })
+
+  it('el brillo de la casilla rodea la pila entera (antes las capas que asoman le tapaban el borde de abajo): una caja del alto de toda la pila, debajo de las capas, lo hereda', () => {
+    const { container } = render(<PileStack count={40} />)
+    const glow = container.querySelector<HTMLElement>('[data-pile-glow]')!
+
+    expect(glow).toHaveClass('[box-shadow:inherit]', 'top-0', 'inset-x-0')
+    expect(glow.parentElement).toHaveClass('[box-shadow:inherit]')
+    // Hasta el borde de abajo de la capa más lejana (7 capas × 2 %), y antes que todas (debajo).
+    expect(css(glow.style.bottom)).toBe(css(`-${7 * PILE_LAYER_PCT}%`))
+    expect(glow.parentElement!.firstElementChild).toBe(glow)
   })
 
   it('sin cartas no hay nada que asome', () => {
