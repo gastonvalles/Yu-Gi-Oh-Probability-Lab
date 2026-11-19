@@ -264,8 +264,10 @@ function Bond({ number, from, to, fromAt, toAt, broken = false, fading = false }
  * 250 a 650 ms de los 700 del eslabón: no alarga `chainDwell`). Un solo elemento HTML que estira `scale` desde su punta y apunta con `rotate` (compositor; en SVG repintaría). Con «Efectos:
  * Livianos» queda (dice qué se encadena con qué); con movimiento reducido no está.
  */
+/** Los tiempos de `animate-chain-energy` (`index.css`; el video los lee de acá y `replay-video-chain.test.ts` vigila que sigan iguales): espera 250 ms y dura 400; crece hasta el 37,5 %, se queda hasta el 50 % y se apaga. */
+export const ENERGY_LINE = { delay: 250, ms: 400, grow: 0.375, hold: 0.5 } as const
 /** Cuándo la línea de energía llega a la carta nueva (lo que espera `animate-chain-energy` más su trazo): ahí salta la chispa (`SPARK`). */
-export const ENERGY_REACH_MS = 400
+export const ENERGY_REACH_MS = ENERGY_LINE.delay + ENERGY_LINE.ms * ENERGY_LINE.grow
 
 function EnergyLine({ from, to }: { from: Point; to: Point }) {
   const [dx, dy] = [to[0] - from[0], to[1] - from[1]]

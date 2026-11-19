@@ -3,7 +3,7 @@ import { CHAIN_BEAT_MS, medalsOf } from '../../../app/card-glow'
 import { replayChainSteps, type DuelReplay, type ReplaySide } from '../../../app/duel-replay'
 import { EASE_LLEGADA, EASE_OUT, bezierEase, easeInOut } from '../../../app/motion'
 import { t } from '../../../i18n'
-import { BOND_TRIM, BURST_RAYS, CELL, CHAIN_LEAVE_MS, chainFeed, CORNER_TIES, DIGIT_STEP, LAYOUT, SAG, SHOWN, SIDE_LEFT, glyphCells, hangingLinks } from '../../auto/ChainNotice'
+import { BOND_TRIM, BURST_RAYS, CELL, CHAIN_LEAVE_MS, chainFeed, CORNER_TIES, DIGIT_STEP, ENERGY_LINE, LAYOUT, SAG, SHOWN, SIDE_LEFT, glyphCells, hangingLinks, trimmed } from '../../auto/ChainNotice'
 import { canvasOf, drawCard, FONT, type ChainColors, type Ctx, type VideoAssets } from './video-draw'
 import { keyed, type Overlay } from './video-fx'
 import { artOfId, cellsOf, fieldRect, placeRect, type Rect, type VideoLayout } from './video-scene'
@@ -419,6 +419,40 @@ function drawBond(ctx: Ctx, bond: Bond, colors: ChainColors, broken: number) {
   )
 }
 
+/**
+ * La línea de energía de `ChainStage` (`EnergyLine`) a los `ms` de la mesa desde que entró el eslabón: cuánto creció desde la carta anterior (`scale`, de 0 a 1) y su opacidad, con los
+ * tiempos de `animate-chain-energy` (`ENERGY_LINE`; cada tramo con `--ease-out`). Antes de arrancar no se ve (ancho 0) y al terminar queda apagada.
+ */
+export function energyAt(ms: number) {
+  const p = (ms - ENERGY_LINE.delay) / ENERGY_LINE.ms
+  return { scale: easeOut(clamp(p / ENERGY_LINE.grow)), alpha: p >= 1 ? 0 : 1 - easeOut(clamp((p - ENERGY_LINE.hold) / (1 - ENERGY_LINE.hold))) }
+}
+
+/**
+ * La línea de la carta anterior a la nueva, de borde a borde de sus lugares (`trimmed`, en el `viewBox` de 300 × 400): la franja de 16 px (`h-4`) de energía (`fx-energia` al 80 %, que se
+ * desvanece arriba y abajo) con su núcleo blanco de 4 px (`h-1`), estirada desde su punta. `px`: unidades del `viewBox` por px del celular.
+ */
+function drawEnergy(ctx: Ctx, count: number, ms: number, px: number, color: string) {
+  const { scale, alpha } = energyAt(ms)
+  if (scale <= 0 || alpha <= 0) return
+  const { bond } = narrow(count % 2 === 0)
+  const [from, to] = trimmed(bond[1]!, bond[0]!, 1, 0)
+  const length = Math.hypot(to[0] - from[0], to[1] - from[1]) * scale
+  faded(ctx, alpha, () => {
+    ctx.translate(from[0], from[1])
+    ctx.rotate(Math.atan2(to[1] - from[1], to[0] - from[0]))
+    const band = ctx.createLinearGradient(0, -8 * px, 0, 8 * px)
+    const hex = /^#[0-9a-f]{6}$/i.test(color)
+    band.addColorStop(0, hex ? `${color}00` : 'transparent')
+    band.addColorStop(0.5, hex ? `${color}cc` : color)
+    band.addColorStop(1, hex ? `${color}00` : 'transparent')
+    ctx.fillStyle = band
+    ctx.fillRect(0, -8 * px, length, 16 * px)
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, -2 * px, length, 4 * px)
+  })
+}
+
 /** La escena en el momento `now` (ms de video). */
 export function drawStage(ctx: Ctx, episode: StageEpisode, now: number, geo: StageGeometry, assets: VideoAssets, speed: VideoSpeed, look: RowLook) {
   const ms = (value: number) => value / speed
@@ -464,6 +498,8 @@ export function drawStage(ctx: Ctx, episode: StageEpisode, now: number, geo: Sta
     for (const bond of bondsOf(count)) faded(ctx, appear, () => drawBond(ctx, bond, colors, broken))
     const fading = (now - changed) / ms(STAGE_MS.fade)
     if (fading < 1) for (const bond of bondsOf(count - 1)) faded(ctx, 1 - easeOut(fading), () => drawBond(ctx, bond, colors, broken))
+    // La línea de energía, encima: de la anterior a la que acaba de entrar, mientras las dos están a la vista (al empezar a resolverse, ya no está).
+    if (!hidden && count > 1) drawEnergy(ctx, count, (now - changed) * speed, geo.unit / geo.svg.k, assets.theme.fx.energia)
     ctx.restore()
   })
 }
