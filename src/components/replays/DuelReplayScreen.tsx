@@ -11,6 +11,9 @@ import { prefersReducedMotion } from '../../app/motion'
 import { isToken } from '../../app/practice-mat'
 import { growHand } from '../../app/practice-hand-layout'
 import { shuffleDeck } from '../../app/shuffle-fx'
+import { playSfx, sfxOfAction, type Sfx } from '../../app/sfx'
+import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
+import { useUnlockAudio } from '../../app/use-unlock-audio'
 import { PENDULUM_HOLD_MS, UNKNOWN_SUMMON, entranceAllowed, entranceOf, landingToneOf, playEntrance, playPendulum, surePendulum, type PendulumCard } from '../../app/summon-entrance'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -170,7 +173,7 @@ const dealAt = (side: ReplaySide, value: number) => (current: Deal): Deal => (si
  * cada `NEXT_DEAL_MS` (el vuelo lo hace `TheirHand`). La primera mano es la del arranque o, en el automático (arranca con las manos vacías), el robo de 5 de la primera jugada de ese lado.
  * Repartida, se apaga (`Infinity`): los robos de después son jugadas, con sus vuelos.
  */
-function useOpeningDeal(side: ReplaySide, dealt: number, count: number, ready: boolean, setDeal: (update: (current: Deal) => Deal) => void, onStart: (side: ReplaySide) => void) {
+function useOpeningDeal(side: ReplaySide, dealt: number, count: number, ready: boolean, setDeal: (update: (current: Deal) => Deal) => void, onStart: (side: ReplaySide) => void, onCard: (side: ReplaySide) => void) {
   useEffect(() => {
     if (!ready || dealt === Infinity || count === 0) return
     if (dealt >= count) {
@@ -178,7 +181,10 @@ function useOpeningDeal(side: ReplaySide, dealt: number, count: number, ready: b
       return
     }
     if (dealt === 0) onStart(side)
-    const timer = window.setTimeout(() => setDeal(dealAt(side, dealt + 1)), dealt === 0 ? FIRST_DEAL_MS : NEXT_DEAL_MS)
+    const timer = window.setTimeout(() => {
+      onCard(side)
+      setDeal(dealAt(side, dealt + 1))
+    }, dealt === 0 ? FIRST_DEAL_MS : NEXT_DEAL_MS)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `onStart` y `setDeal` no cambian lo que se reparte
   }, [ready, dealt, count])
@@ -261,6 +267,12 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     return () => observer.disconnect()
   }, [desktop])
   const names = [playerName(replay, 0), playerName(replay, 1)] as const
+  // El sonido de la mesa (`sfx.ts`, la misma preferencia y el mismo desbloqueo): el toque que abrió el replay vale. Con la pestaña oculta, nada.
+  const sounds = useSoundsOn()
+  useUnlockAudio(true, true)
+  const sound = (kind: Sfx | null) => {
+    if (kind && document.visibilityState !== 'hidden') playSfx(kind)
+  }
 
   const describe = useCallback(
     (at: number) => {
@@ -284,7 +296,10 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       sacrificeStep(replay, shots, from, to, bottom, stageRef.current)
       // El robo que trae la primera mano de un lado (el automático) no vuela: la reparte `TheirHand`. Los vuelos se montan de nuevo, como al saltar.
       const step = to === from + 1 ? replay.steps[from] : undefined
-      if (step?.[1].type === 'draw' && dealRef.current[step[0]] !== Infinity) setFlights((current) => current + 1)
+      const dealDraw = step?.[1].type === 'draw' && dealRef.current[step[0]] !== Infinity
+      if (dealDraw) setFlights((current) => current + 1)
+      // Cada jugada suena como en la mesa (`sfxOfAction`); ese robo ya sonó carta a carta con el reparto. Sólo al avanzar de a uno: saltar no suena.
+      if (step && !dealDraw) sound(sfxOfAction(step[1]))
     },
     [replay, shots, chainSteps, bottom],
   )
@@ -294,9 +309,17 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   const nextStep = replay.steps[cursor]
   const nextDeals = nextStep !== undefined && nextStep[1].type === 'draw' && deal[nextStep[0]] !== Infinity && hands[nextStep[0]] === 0
   const deckOf = (side: ReplaySide) => stageRef.current?.querySelector(`[${side === bottom ? 'data-drop' : 'data-rival-drop'}="deck"]`) ?? null
-  const startDeal = (side: ReplaySide) => shuffleDeck(deckOf(side)?.querySelectorAll('[data-layer]') ?? [])
-  useOpeningDeal(0, deal[0], hands[0], stage !== null, setDeal, startDeal)
-  useOpeningDeal(1, deal[1], hands[1], stage !== null, setDeal, startDeal)
+  // Suena el barajado y cada carta (`shuffle`, `draw`, como en la mesa); si los dos lados reparten a la vez, suena sólo el de abajo (el otro se oiría doble).
+  const alone = (side: ReplaySide) => side === 0 || dealRef.current[0] === Infinity
+  const startDeal = (side: ReplaySide) => {
+    if (alone(side)) sound('shuffle')
+    shuffleDeck(deckOf(side)?.querySelectorAll('[data-layer]') ?? [])
+  }
+  const dealCard = (side: ReplaySide) => {
+    if (alone(side)) sound('draw')
+  }
+  useOpeningDeal(0, deal[0], hands[0], stage !== null, setDeal, startDeal, dealCard)
+  useOpeningDeal(1, deal[1], hands[1], stage !== null, setDeal, startDeal, dealCard)
   useEffect(() => {
     if (shuffled) shuffleDeck(stageRef.current?.querySelectorAll(`[${shuffled.drop}="deck"] [data-layer]`) ?? [])
   }, [shuffled])
@@ -491,6 +514,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
         setFlipped((current) => !current)
       },
     },
+    { label: t('practice.mat.sounds'), icon: sounds ? 'volume' : 'volume-off', checked: sounds, onSelect: () => setSoundsOn(!sounds) },
     ...(restartInRow ? [] : [{ label: t('practice.replay.restart'), icon: 'skip-back' as const, onSelect: () => jump(0) }]),
     ...actions,
   ]
