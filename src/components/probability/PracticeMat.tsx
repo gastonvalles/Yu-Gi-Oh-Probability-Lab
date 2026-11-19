@@ -1204,8 +1204,8 @@ function PracticeMatBody({
     if (!landing || landingKey === undefined) return
     const cell = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(landing.spot, landing.index)}"]`) ?? null
     const placed = landing.spot === 'mz' || landing.spot === 'emz' ? state[landing.spot][landing.index] : null
-    // Un combo guardado que se repasa (`session.replay`) no le dice a la mesa si se grabó en el automático de antes de la marca del núcleo (donde el Péndulo se deducía): ahí no va.
-    const sure = surePendulum(landing, session.replay)
+    // Un combo guardado que se repasa (`session.replay`) grabado antes de la marca del núcleo (sin `sure`: el Péndulo se deducía): ahí no va.
+    const sure = surePendulum(landing, session.replay && !session.sure)
     const tone = landingToneOf(sure, summonCardOf(placed?.id))
     const step = fxStep.step && 'action' in fxStep.step ? fxStep.step.action : null
     // ¿Falta otra de la misma Invocación? Lo marca el núcleo (`more`) o la cola de la mesa manual tiene más sin colocar.

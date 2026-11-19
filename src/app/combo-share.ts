@@ -28,8 +28,8 @@ export type ShareError = 'notCombo' | 'newer' | 'broken' | 'tooBig' | 'duel'
 export type ShareResult = { ok: true; combo: SharedCombo } | { ok: false; error: ShareError }
 
 /** El sobre, listo para JSON. */
-export function comboEnvelope({ name, deckName, savedAt, initial, names, actions, auto, theirs, chain }: SavedCombo | SharedCombo) {
-  return { app: APP, kind: 'combo', v: COMBO_SHARE_VERSION, combo: { name, deckName, savedAt, initial, names, actions, ...(auto ? { auto } : {}), ...(theirs ? { theirs } : {}), ...(chain ? { chain } : {}) } }
+export function comboEnvelope({ name, deckName, savedAt, initial, names, actions, auto, theirs, chain, sure }: SavedCombo | SharedCombo) {
+  return { app: APP, kind: 'combo', v: COMBO_SHARE_VERSION, combo: { name, deckName, savedAt, initial, names, actions, ...(auto ? { auto } : {}), ...(theirs ? { theirs } : {}), ...(chain ? { chain } : {}), ...(sure ? { sure } : {}) } }
 }
 
 // ── Enlace ──
@@ -155,7 +155,7 @@ export function parseComboText(text: string): ShareResult {
   if (!isRecord(value) || value.app !== APP || value.kind !== 'combo' || typeof value.v !== 'number') return { ok: false, error: 'notCombo' }
   if (value.v > DUEL_VERSION) return { ok: false, error: 'newer' }
   if (value.v !== COMBO_SHARE_VERSION && value.v !== COMPACT_VERSION && value.v !== NOTES_VERSION && value.v !== DUEL_VERSION) return { ok: false, error: 'broken' }
-  const combo = value.v === COMBO_SHARE_VERSION ? readCombo(value.combo) : readCompact(value.c, value.v)
+  const combo = value.v === COMBO_SHARE_VERSION ? readCombo(value.combo) : readCompact(value.c, value.v, value.m)
   return combo ? { ok: true, combo } : { ok: false, error: 'broken' }
 }
 
@@ -240,10 +240,13 @@ function action(value: unknown, nested = false): MatAction {
       return { type: 'mill', count: int(v.count, 0, 99) }
     case 'shuffle':
       return { type: 'shuffle', seed: int(v.seed, -SEED, SEED) }
+    // `tribute` y `more`: las marcas del núcleo (`MatAction`); `more`, sólo en una Invocación por Péndulo.
     case 'move':
-      return clean({ type: 'move', id: id(v.id), to: oneOf(v.to, [...PILE, 'deck-bottom'] as const), ...flags(), shuffle: shuffle() })
-    case 'place':
-      return clean({ type: 'place', id: id(v.id), zone: oneOf(v.zone, SPOT), index: index(), pos: oneOf(v.pos, POS), how: opt(v.how, (how) => oneOf(how, ['normal', 'special', 'pendulum', 'scale'] as const)), shuffle: shuffle() })
+      return clean({ type: 'move', id: id(v.id), to: oneOf(v.to, [...PILE, 'deck-bottom'] as const), ...flags(), shuffle: shuffle(), tribute: opt(v.tribute, yes) })
+    case 'place': {
+      const how = opt(v.how, (raw) => oneOf(raw, ['normal', 'special', 'pendulum', 'scale'] as const))
+      return clean({ type: 'place', id: id(v.id), zone: oneOf(v.zone, SPOT), index: index(), pos: oneOf(v.pos, POS), how, shuffle: shuffle(), tribute: opt(v.tribute, yes), more: opt(v.more, how === 'pendulum' ? yes : fail) })
+    }
     case 'tribute':
       return { type: 'tribute', id: id(v.id), tributes: ids(v.tributes, 5), zone: oneOf(v.zone, ZONE), index: index(), pos: oneOf(v.pos, POS) }
     case 'summon':
@@ -395,6 +398,7 @@ function readCombo(value: unknown): SharedCombo | null {
       notes: opt(v.notes, (n) => notes(n, actions.length)),
       theirs: opt(v.theirs, (raw) => theirs(raw, actions.length)),
       chain: opt(v.chain, (raw) => chain(raw, actions.length, MAX_COMBO_CHAIN)),
+      sure: opt(v.sure, yes),
     })
   } catch {
     return null
@@ -414,6 +418,9 @@ function readCombo(value: unknown): SharedCombo | null {
  * sigue en v2, byte a byte, y lo lee cualquier versión de la app; una que no conoce v3 dice `newer`.
  *
  * v4 suma lo de «Jugar solo automático»: `c: [..., auto | null, notas | null, rival | null, cadena | null]`. Se escribe **sólo si hay rival o cadena** (`expandCompact`).
+ *
+ * `m`, al lado de `c` (no adentro: no cambia la versión), dice que las marcas de las jugadas son seguras (`sure`) y las lleva (`marksOf`). Una versión de la app que no la conoce
+ * ignora la clave y abre el combo como antes, sin las marcas (sin escena de Péndulo: nunca una falsa).
  */
 const COMPACT_VERSION = 2
 const NOTES_VERSION = 3
@@ -507,7 +514,12 @@ export function compactTime(savedAt: string): number | string {
 export const readCompactTime = (value: unknown): unknown => (typeof value === 'number' ? new Date(int(value, 0, 8.64e15)).toISOString() : value)
 
 /** El sobre v2 (v3 con notas; v4 con el rival o la cadena), listo para JSON. */
-export function compactEnvelope({ name, deckName, savedAt, initial, actions, auto, notes, theirs, chain }: SavedCombo | SharedCombo) {
+export function compactEnvelope(combo: SavedCombo | SharedCombo) {
+  const envelope = compactCombo(combo)
+  return combo.sure ? { ...envelope, m: marksOf(combo.actions) } : envelope
+}
+
+function compactCombo({ name, deckName, savedAt, initial, actions, auto, notes, theirs, chain }: SavedCombo | SharedCombo) {
   const pairs = (map: Record<string, string> | undefined) => Object.entries(map ?? {})
   // La tabla lleva también lo del rival (sus ids y lo que se vio: `pairs`, las claves también) y las cartas de la cadena.
   const pack = compactWriter([initial, actions, theirs ? [theirs.initial, pairs(theirs.reveal), theirs.steps.map(([, play, shown]) => [play, pairs(shown)])] : [], (chain ?? []).flatMap((item) => (item.link?.code ? [`card-${item.link.code}-1`] : []))])
@@ -596,7 +608,7 @@ export function compactReader(rawTable: unknown) {
  * La forma v1 de un combo v2, v3 o v4 (lanza si no se puede armar); `readCombo` la valida entera. v3 trae las notas (y `auto`, `true` o `null`); v2, a lo sumo `auto`; v4, además,
  * el rival (`[mesa, reveladas, jugadas como [at, ...la del combo], reveladas por jugada]`, como el replay de un duelo) y la cadena (`chainTuple`), cada uno o `null`.
  */
-function expandCompact(value: unknown, v: number): unknown {
+function expandCompact(value: unknown, v: number, marks: unknown): unknown {
   const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto, notes, rawTheirs, rawChain, ...rest] = list(value, v === DUEL_VERSION ? 10 : v === NOTES_VERSION ? 8 : 7)
   if ((v >= NOTES_VERSION && notes === undefined) || (v === DUEL_VERSION && rawChain === undefined) || rest.length > 0) fail()
   const read = compactReader(rawTable)
@@ -618,13 +630,16 @@ function expandCompact(value: unknown, v: number): unknown {
     }
     theirs = { initial: read.mat(mat), reveal: pairs(shown, MAX_REVEAL), steps }
   }
+  const actions = list(rawActions, MAX_ACTIONS).map(read.action)
+  if (marks !== undefined) applyMarks(marks, actions)
   return {
     name,
     deckName,
     savedAt: readCompactTime(savedAt),
     initial: read.mat(rawMat),
     names: {},
-    actions: list(rawActions, MAX_ACTIONS).map(read.action),
+    actions,
+    sure: marks === undefined ? undefined : true,
     auto: v >= NOTES_VERSION && auto === null ? undefined : auto,
     notes: v === DUEL_VERSION && notes === null ? undefined : notes,
     theirs,
@@ -632,16 +647,42 @@ function expandCompact(value: unknown, v: number): unknown {
   }
 }
 
-function readCompact(value: unknown, v: number): SharedCombo | null {
+function readCompact(value: unknown, v: number, marks: unknown): SharedCombo | null {
   try {
-    return readCombo(expandCompact(value, v))
+    return readCombo(expandCompact(value, v, marks))
   } catch {
     return null
   }
 }
 
+/**
+ * Las marcas del núcleo de lo grabado, para `m` (combo y replay): `[sacrificios, más]`, los índices en orden de las jugadas con `tribute` (`move` o `place`) y con `more` (`place`
+ * por Péndulo); las listas vacías del final no van (`[]`: seguras, sin marcas). Sólo las de primer nivel: el núcleo no las pone dentro de un lote.
+ */
+export function marksOf(actions: readonly MatAction[]): number[][] {
+  const marks = [actions.flatMap((item, n) => ((item.type === 'move' || item.type === 'place') && item.tribute ? [n] : [])), actions.flatMap((item, n) => (item.type === 'place' && item.more ? [n] : []))]
+  while (marks.length > 0 && marks.at(-1)!.length === 0) marks.pop()
+  return marks
+}
+
+/** Lo inverso de `marksOf`: las pone en las jugadas de la forma larga, que después se validan enteras. Lanza si un índice no es de una jugada que exista, en orden, y que acepte la marca. */
+export function applyMarks(value: unknown, actions: readonly unknown[]): void {
+  const [tributes, more] = list(value, 2)
+  const mark = (indices: unknown, key: 'tribute' | 'more', types: readonly string[]) => {
+    let last = -1
+    for (const raw of indices === undefined ? [] : list(indices, actions.length)) {
+      last = int(raw, last + 1, actions.length - 1)
+      const action = rec(actions[last])
+      if (!types.includes(action.type as string)) fail()
+      action[key] = true
+    }
+  }
+  mark(tributes, 'tribute', ['move', 'place'])
+  mark(more, 'more', ['place'])
+}
+
 /** Lo mismo para otro sobre (el replay de un duelo): una mesa y una jugada se validan igual. Cada lector lanza (`TypeError`) y quien llama lo ataja. */
-export { action as readMatAction, chain as readChain, clean as withoutUndefined, fail as invalid, id as readId, int as readInt, oneOf as readOneOf, rec as readRecord, reveal as readReveal, state as readMatState, str as readText }
+export { action as readMatAction, chain as readChain, clean as withoutUndefined, fail as invalid, id as readId, int as readInt, oneOf as readOneOf, rec as readRecord, reveal as readReveal, state as readMatState, str as readText, yes as readYes }
 export const SHARE_APP = APP
 
 // ── En el navegador: compartir y bajar ──

@@ -14,6 +14,8 @@ export interface MatSession {
   names: Record<string, string>
   /** Se está viendo un combo guardado (la mesa arrancó con jugadas): sólo entonces se muestran los controles de replay. */
   replay: boolean
+  /** El combo que se repasa trae marcas seguras (`SavedCombo.sure`): la mesa le cree el Péndulo (`surePendulum`). */
+  sure?: boolean
 }
 
 const clamp = (value: number, max: number) => Math.min(Math.max(0, Math.trunc(value)), max)
@@ -22,9 +24,9 @@ export function useMatSession() {
   const [session, setSession] = useState<MatSession | null>(null)
   const state = useMemo(() => (session ? replayMat(session.initial, session.actions, session.cursor) : null), [session])
 
-  /** Nueva mesa; con jugadas (un combo cargado) arranca en el paso 0 para reproducirlo. `live`: sigue en vivo después de la última (la partida que viene del automático). */
-  const start = useCallback((initial: MatState, actions: MatAction[] = [], names: Record<string, string> = {}, live = false) => {
-    setSession({ initial, actions, cursor: live ? actions.length : 0, names, replay: !live && actions.length > 0 })
+  /** Nueva mesa; con jugadas (un combo cargado) arranca en el paso 0 para reproducirlo. `live`: sigue en vivo después de la última (la partida que viene del automático). `sure`: `MatSession.sure`. */
+  const start = useCallback((initial: MatState, actions: MatAction[] = [], names: Record<string, string> = {}, live = false, sure = false) => {
+    setSession({ initial, actions, cursor: live ? actions.length : 0, names, replay: !live && actions.length > 0, sure })
   }, [])
 
   /** Una jugada nueva: lo que seguía en una reproducción se descarta (el combo guardado no cambia). */
