@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-3-sacrificio-texto-y-marca",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Sacrificio: el paso lo dice y los materiales se marcan mejor",
+        "novedades": [
+          "En el duelo automático, una Invocación por Sacrificio ahora dice «Invocación por Sacrificio de…» en los pasos, en vez de «Invocación Normal de…». Colocar por Sacrificio también dice lo suyo.",
+          "La marca violeta de los materiales que elegís es más grande en el celular.",
+          "En el duelo automático, los monstruos que se sacrifican para una Invocación Ritual también destellan."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Con varios materiales seguidos, las marcas de casillas vecinas se tocan entre sí.",
+          "En el duelo manual sólo destella la Invocación por Sacrificio: ahí el Ritual manda sus materiales al Cementerio a mano y la mesa no sabe que es un Sacrificio."
+        ]
+      },
+      "en": {
+        "title": "Tribute: the step says so, and materials are marked better",
+        "novedades": [
+          "In the automatic duel, a Tribute Summon now reads «You Tribute Summon…» in the steps, instead of a Normal Summon. A Tribute Set also says so.",
+          "The violet mark on the materials you pick is larger on the phone.",
+          "In the automatic duel, monsters Tributed for a Ritual Summon also flash."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "With several materials in a row, the marks of neighboring zones touch each other.",
+          "In a manual duel only the Tribute Summon flashes: there the Ritual sends its materials to the Graveyard by hand and the table cannot tell it is a Tribute."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-2-cadena-desde-abajo-y-golpe-letal",
       "date": "2026-11-19",
       "tags": [
