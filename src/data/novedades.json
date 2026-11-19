@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-14-menus-del-automatico",
+      "date": "2026-11-19",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Los menús del duelo automático, más prolijos",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Las cartas van siempre al medio: en las ventanas de elegir, en las preguntas y en el visor de una pila, también cuando el último renglón queda incompleto.",
+          "Cada carta dice dónde está (la mano, el campo, el Cementerio, el destierro, el Deck, el Extra Deck) y si es del rival, cuando un menú junta cartas de lugares distintos. Si todas vienen del mismo lugar, lo dice una sola vez arriba.",
+          "Una ventana que no muestra carta ya no deja un hueco vacío y se puede achicar hasta su contenido.",
+          "«Seguir en modo manual» ya no aparece en las preguntas: está en Opciones (⚙)."
+        ],
+        "ojo": [
+          "«Seguir en modo manual» sigue apareciendo cuando el duelo automático no puede continuar, porque ahí es la única salida, y en el final del duelo.",
+          "En el celular, el visor de una pila ahora muestra cinco cartas por renglón."
+        ]
+      },
+      "en": {
+        "title": "The automatic duel's menus, tidier",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Cards are always centered: in the picking windows, in the questions and in a pile's viewer, also when the last row is incomplete.",
+          "Each card says where it is (hand, field, Graveyard, banished, Deck, Extra Deck) and whether it is the opponent's, when a menu gathers cards from different places. If they all come from the same place, it says so once at the top.",
+          "A window that shows no card no longer leaves an empty gap, and you can shrink it down to its content.",
+          "«Continue in manual mode» no longer shows in the questions: it is in Options (⚙)."
+        ],
+        "ojo": [
+          "«Continue in manual mode» still shows when the automatic duel cannot go on, because it is the only way out there, and at the end of the duel.",
+          "On the phone, a pile's viewer now shows five cards per row."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-13-mesa-en-escritorio",
       "date": "2026-11-19",
       "tags": [
