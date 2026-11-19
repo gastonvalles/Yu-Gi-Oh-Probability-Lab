@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-1-pendulo-y-enlace",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El Péndulo, igual de rápido que las demás, y un Enlace que se lee",
+        "novedades": [
+          "La Invocación por Péndulo ahora dura lo mismo que las otras entradas: 2,2 segundos, con las cartas tocando sus casillas al segundo y medio. Antes duraba 3,7.",
+          "En la entrada de un Enlace, la puerta se ve mejor: más grande, con el borde más grueso, y sus ocho flechas se encienden antes de que aparezca la carta y quedan prendidas hasta el golpe."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Las flechas del Enlace se apagaban apenas se prendían: se veía sólo un destello."
+        ],
+        "ojo": [
+          "Las flechas del Enlace pasan por encima de la carta mientras cae.",
+          "El video todavía no dibuja la escena del Péndulo."
+        ]
+      },
+      "en": {
+        "title": "Pendulum as fast as the rest, and a Link you can read",
+        "novedades": [
+          "A Pendulum Summon now lasts as long as the other entrances: 2.2 seconds, with the cards touching their zones at one and a half. It used to last 3.7.",
+          "In a Link entrance, the gate reads better: larger, with a thicker border, and its eight arrows light up before the card appears and stay lit until the hit."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "The Link arrows went dark right after lighting up: you only saw a flash."
+        ],
+        "ojo": [
+          "The Link arrows pass over the card while it falls.",
+          "The video does not draw the Pendulum scene yet."
+        ]
+      }
+    },
+    {
       "id": "2026-11-14-11-importar-archivo-primero",
       "date": "2026-11-14",
       "tags": [
@@ -212,7 +249,7 @@
         "title": "La Invocación por Péndulo, con su escena",
         "novedades": [
           "En el duelo manual, la Invocación por Péndulo tiene su escena: se encienden las dos escalas, baja una columna de luz, el péndulo se mece y las cartas bajan juntas a sus casillas.",
-          "Es una sola escena aunque invoques varios monstruos a la vez, y dura unos 3,7 segundos.",
+          "Es una sola escena aunque invoques varios monstruos a la vez.",
           "También se ve en el replay de un duelo manual."
         ],
         "comoSeUsa": [],
@@ -226,7 +263,7 @@
         "title": "Pendulum Summon, with its scene",
         "novedades": [
           "In a manual duel, a Pendulum Summon has its own scene: both scales light up, a column of light comes down, the pendulum swings and the cards drop together onto their zones.",
-          "It is a single scene even if you Summon several monsters at once, and it lasts about 3.7 seconds.",
+          "It is a single scene even if you Summon several monsters at once.",
           "It also shows in the replay of a manual duel."
         ],
         "comoSeUsa": [],

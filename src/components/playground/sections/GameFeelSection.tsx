@@ -633,8 +633,8 @@ function SummonSample() {
           Como en Master Duel. La llegada: un anillo del color de su tipo (de 1,7 a 3,5 cartas en 144 ms con <Tag>--ease-llegada</Tag> y a 4,2 en 1 s) con su cruz y su brillo; la fuerte, tres
           anillos y una onda. La entrada del Extra Deck y del Ritual: el velo, la figura del tipo, los materiales que convergen, la carta que cae grande (<Tag>--ease-revelar</Tag>), el golpe
           fuerte y el brillo del marco; el duelo sigue a los ms de Master Duel (Fusión 2583, Xyz 3467, Enlace 4117, Sincronía 4600 o 3483 la corta, Ritual 5200 o 2833). Con «Livianos», la
-          llegada rápida. El Péndulo (sólo el de la mesa manual: en el automático el núcleo no lo dice): una sola escena con todas sus cartas, las escalas a los 417 ms, la luz a los 667, el
-          péndulo a los 1117 y las cartas que tocan a los 2333 (de a una cada 67); sigue a los 3684. El Sacrificio: el disco violeta, el círculo de 1,7 cartas y la columna, en 450 ms, dentro del
+          llegada rápida. El Péndulo (sólo el de la mesa manual: en el automático el núcleo no lo dice): una sola escena con todas sus cartas, las escalas, la luz, el péndulo y las cartas que
+          tocan en el golpe de todas (1500 ms, de a una cada 67); sigue a los 2200, como las demás. El Sacrificio: el disco violeta, el círculo de 1,7 cartas y la columna, en 450 ms, dentro del
           vuelo al Cementerio. El material elegido late a 1,25 Hz (Master Duel, 8 Hz: pasa los tres destellos por segundo). Archivos: <Tag>app/summon-entrance.ts</Tag> y{' '}
           <Tag>app/field-impact.ts</Tag>.
         </>
