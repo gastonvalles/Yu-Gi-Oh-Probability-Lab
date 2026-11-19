@@ -14,7 +14,8 @@ import { autoWindowKey } from '../components/auto/AutoPanel'
  * su lugar de siempre es el de la mesa, centrada en 1280 px y apoyada abajo (800 px), más su corrimiento (`--drag-x`, `--drag-y`).
  */
 const VIEW = { width: 1280, height: 800 }
-const sizeOf = (element: HTMLElement) => ({ width: Number.parseFloat(element.style.width) || 620, height: Number.parseFloat(element.style.height) || 200 })
+// Sin alto propio mide 200, salvo con un alto pedido (`--win-h`): de fábrica simula una ventana con cartas, que crecen con ella.
+const sizeOf = (element: HTMLElement) => ({ width: Number.parseFloat(element.style.width) || 620, height: Number.parseFloat(element.style.height) || Number.parseFloat(element.style.getPropertyValue('--win-h')) || 200 })
 const drag = (element: HTMLElement) => ({ x: Number.parseFloat(element.style.getPropertyValue('--drag-x')) || 0, y: Number.parseFloat(element.style.getPropertyValue('--drag-y')) || 0 })
 
 let desktop = true
@@ -282,7 +283,21 @@ describe('el mínimo de la ventana', () => {
     localStorage.setItem(sizeKey(`${autoWindowKey('ask')}:phone`), JSON.stringify({ width: 50, height: 50 }))
     ask()
     expect(Number.parseFloat(win().style.width)).toBe(296)
-    expect(Number.parseFloat(win().style.height)).toBe(256)
+    // El mínimo es 256 (dos filas de botones), salvo que su contenido mida menos (jsdom: 200): nunca más alta que lo que tiene adentro.
+    expect(Number.parseFloat(win().style.height)).toBe(200)
+  })
+
+  it('una ventana sin carta (lo que tiene adentro no crece con su alto) mide su contenido: un tamaño guardado más alto no le deja un hueco, y se achica hasta su contenido, no hasta 186', () => {
+    // Mide 112 (la barra, los botones y su aire) con cualquier alto pedido: no tiene cartas que crezcan.
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return this.matches('[data-prompt]') ? Number.parseFloat(this.style.height) || 112 : 0 } })
+    localStorage.setItem(sizeKey(autoWindowKey('ask')), JSON.stringify({ width: 420, height: 260 }))
+    ask()
+    expect(Number.parseFloat(win().style.height)).toBe(112)
+    // Lo guardado no se toca: otra pregunta, con carta, vuelve a salir con su alto.
+    expect(saved(sizeKey(autoWindowKey('ask')))).toEqual({ width: 420, height: 260 })
+    bar().focus()
+    key({ key: 'ArrowUp', altKey: true, shiftKey: true })
+    expect(Number.parseFloat(win().style.height)).toBe(112)
   })
 })
 

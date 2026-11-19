@@ -152,8 +152,11 @@ interface Stretch {
 export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean, vars = false, minSize?: Size, touch = false, fit = false) {
   const stored = useRef<FabPosition | null>(null)
   const sized = useRef<Size | null>(null)
-  // `fit`: al aparecer, un alto guardado más chico que su contenido (cartas cortadas, botones fuera) crece hasta él; no se guarda (achicarla de nuevo sigue valiendo hasta la próxima).
+  // `fit`: al aparecer, un alto guardado más chico que su contenido (cartas cortadas, botones fuera) crece hasta él; no se guarda (achicarla de nuevo sigue valiendo hasta la próxima). Y lo
+  // que no crece con el alto (una ventana sin carta) mide su contenido: un alto guardado más grande no le deja un hueco.
   const fitting = useRef(fit)
+  // Lo más bajo que se deja (`fit`): el mínimo, o lo que mide su contenido si es menos (una ventana sin carta se achica hasta sus botones).
+  const floor = useRef<number | null>(null)
   const stretching = useRef<Stretch | null>(null)
   // Lo que tiene puesto el cartel ahora (y en cuál: al minimizarse, el asa es otro elemento).
   const applied = useRef<{ element: HTMLElement | null; offset: FabPosition }>({ element: null, offset: ZERO })
@@ -208,6 +211,23 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
     if (size) element.style.setProperty('--win-h', `${size.height}px`)
     else element.style.removeProperty('--win-h')
   }
+  /** Lo que mide su contenido con ese ancho y sin alto puesto; con `tall`, como si la ventana fuera altísima (lo que crece con su alto, `--win-h`, crece). Lo deja como estaba. */
+  const measure = (element: HTMLElement, width: number, tall = false) => {
+    const { style } = element
+    const [w, h, max, win] = [style.width, style.height, style.maxHeight, style.getPropertyValue('--win-h')]
+
+    paint(element, null)
+    style.width = `${width}px`
+    if (tall) style.setProperty('--win-h', '100000px')
+    const height = element.offsetHeight
+
+    Object.assign(style, { width: w, height: h, maxHeight: max })
+    if (win) style.setProperty('--win-h', win)
+    else style.removeProperty('--win-h')
+    return height
+  }
+  /** El mínimo de ahora: el ancho de `minSize` y el alto de `floor` (o el de `minSize`). */
+  const least = (): Size => ({ width: minSize!.width, height: floor.current ?? minSize!.height })
   /** Estira a `size` dejando quieta la esquina de arriba a la izquierda (`at`): el corrimiento compensa lo que el lugar de siempre se corre con el tamaño (centrado, apoyado abajo). */
   const stretchTo = (element: HTMLElement, size: Size, at: FabPosition, area: Area) => {
     paint(element, size)
@@ -223,6 +243,7 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
     const { right, bottom } = visibleArea(element)
     const at = { x: box.left + x, y: box.top + y }
 
+    if (fit && minSize) floor.current = Math.min(minSize.height, measure(element, box.width))
     return { from: { width: box.width, height: box.height }, at, area: { left: at.x, top: at.y, right, bottom } }
   }
   const keepSize = (size: Size) => {
@@ -249,12 +270,15 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
 
     if (minSize && fitting.current && sized.current) {
       fitting.current = false
-      // Lo que mide su contenido con el ancho guardado (los botones que bajan de renglón también cuentan).
-      paint(element, null)
-      element.style.width = `${sized.current.width}px`
-      sized.current = { ...sized.current, height: Math.max(sized.current.height, element.offsetHeight) }
+      // Lo que mide su contenido con el ancho guardado (los botones que bajan de renglón también cuentan). Si mide lo mismo altísima, no crece con el alto (sin carta): mide eso, ni un hueco
+      // abajo ni más alta que lo que tiene adentro; si crece (sus cartas), el alto guardado, nunca menos que su contenido.
+      const content = measure(element, sized.current.width)
+      const still = measure(element, sized.current.width, true) === content
+
+      floor.current = Math.min(minSize.height, content)
+      sized.current = { ...sized.current, height: still ? content : Math.max(sized.current.height, content) }
     }
-    if (minSize) paint(element, sized.current ? clampSize(sized.current, minSize, visibleArea(element)) : null)
+    if (minSize) paint(element, sized.current ? clampSize(sized.current, least(), visibleArea(element)) : null)
     // En su lugar no hay nada que acotar (ni que medir: sin una lectura de más por cada vez que se dibuja).
     write(x || y ? clampOffset(stored.current!, natural(element), visibleArea(element)) : ZERO)
   }
@@ -273,7 +297,7 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
 
     if (!enabled || !minSize || !element) return
     const { from, at, area } = stretchFrom(element)
-    const size = clampSize({ width: from.width + dw, height: from.height + dh }, minSize, area)
+    const size = clampSize({ width: from.width + dw, height: from.height + dh }, least(), area)
 
     stretchTo(element, size, at, area)
     keepSize(size)
@@ -390,7 +414,7 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
         const dy = y ? event.clientY - now.start.y : 0
 
         if (!now.size && !dx && !dy) return
-        now.size = clampSize({ width: now.from.width + dx, height: now.from.height + dy }, minSize, now.area)
+        now.size = clampSize({ width: now.from.width + dx, height: now.from.height + dy }, least(), now.area)
         stretchTo(element, now.size, now.at, now.area)
       },
       onPointerUp: end,
