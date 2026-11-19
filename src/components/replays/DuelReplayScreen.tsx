@@ -5,10 +5,10 @@ import { medalsOf } from '../../app/card-glow'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { lineCell, railsCell, railsField } from '../../app/duel-rails'
 import { duelReplayAt, replayChainSteps, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
-import { impactOn, sacrificeAt, shakeOf } from '../../app/field-impact'
+import { activateAt, impactOn, sacrificeAt, shakeOf } from '../../app/field-impact'
 import { matEffects, type MatEffects } from '../../app/mat-effects'
 import { prefersReducedMotion } from '../../app/motion'
-import { isToken } from '../../app/practice-mat'
+import { isToken, locateCard } from '../../app/practice-mat'
 import { growHand } from '../../app/practice-hand-layout'
 import { shuffleDeck } from '../../app/shuffle-fx'
 import { playSfx, sfxOfAction, type Sfx } from '../../app/sfx'
@@ -131,6 +131,22 @@ function sacrificeStep(replay: DuelReplay, shots: Parameters<typeof duelReplayAt
   }
 }
 
+/**
+ * Lo que se activa en el campo en un paso, con la misma regla que la mesa (`matEffects`, también dentro de la cadena): su resplandor (`activateAt`), medido ya dibujado el paso (la que
+ * llega volando, al tocar su casilla). Sin el brillo del marco: el replay no guarda de qué tipo es cada carta. Sólo al avanzar de a un paso.
+ */
+type Glow = { key: number; mine: boolean; ids: string[]; delay: number }
+
+function glowAt(replay: DuelReplay, shots: Parameters<typeof duelReplayAt>[2], from: number, to: number, bottom: ReplaySide): Glow | null {
+  const step = to === from + 1 ? replay.steps[to - 1] : undefined
+  const spotlight = step ? matEffects(duelReplayAt(replay, from, shots).states[step[0]], step[1]).spotlight : undefined
+  if (!step || spotlight?.kind !== 'activate') return null
+  const after = duelReplayAt(replay, to, shots).states[step[0]]
+  const ids = (spotlight.ids ?? [spotlight.id]).filter((id) => locateCard(after, id)?.kind === 'spot')
+
+  return ids.length > 0 ? { key: to, mine: step[0] === bottom, ids, delay: step[1].type === 'place' ? landingDelay(true, false) : 0 } : null
+}
+
 /** Los mensajes de la cadena que se muestran:los de la jugada `at` (desde `from`, los que ya se veían antes de ella), de a uno hasta `seen`. */
 interface ChainShown {
   at: number
@@ -210,6 +226,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
   const [flights, setFlights] = useState(0)
   const [shuffled, setShuffled] = useState<{ key: number; drop: 'data-drop' | 'data-rival-drop' } | null>(null)
   const [impact, setImpact] = useState<Impact | null>(null)
+  const [glow, setGlow] = useState<Glow | null>(null)
   // La entrada larga de lo que sale del Extra Deck (la de la mesa): mientras dura, reproducir no avanza (la dice su velo, `onDone`).
   const [entering, setEntering] = useState(false)
   const entrance = useRef<Animation | null>(null)
@@ -293,6 +310,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
       const side = shuffleAt(replay, from, to)
       setShuffled(side === null ? null : { key: to, drop: side === bottom ? 'data-drop' : 'data-rival-drop' })
       setImpact(impactAt(replay, shots, from, to, bottom))
+      setGlow(glowAt(replay, shots, from, to, bottom))
       sacrificeStep(replay, shots, from, to, bottom, stageRef.current)
       // El robo que trae la primera mano de un lado (el automático) no vuela: la reparte `TheirHand`. Los vuelos se montan de nuevo, como al saltar.
       const step = to === from + 1 ? replay.steps[from] : undefined
@@ -395,6 +413,9 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     impactOn(cell, fieldRef.current, shakeOf({ landing: impact.landing.tone }), landingDelay(impact.landing.flies, false), tone)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- una vez por paso (`impact`): la carta y su arte, del cuadro de ese paso
   }, [impact])
+  useEffect(() => {
+    for (const id of glow?.ids ?? []) activateAt(stageRef.current?.querySelector(`[${glow!.mine ? 'data-card-id' : 'data-rival-card-id'}="${CSS.escape(id)}"]`)?.parentElement ?? null, glow!.delay)
+  }, [glow])
   useEffect(() => () => entrance.current?.cancel(), [])
   useEffect(() => {
     if (!activation) return

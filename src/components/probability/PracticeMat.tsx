@@ -63,7 +63,7 @@ import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { shuffleDeck, shuffleHand, shuffling } from '../../app/shuffle-fx'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { FLIGHT_MS, LANDING_AT, cardPose, useCardFlights } from '../../app/use-card-flights'
-import { arrivals, impactOn, sacrificeAt, shakeOf, type ArrivalTone } from '../../app/field-impact'
+import { activateAt, arrivals, impactOn, sacrificeAt, shakeOf, spellTrapOf, type ArrivalTone } from '../../app/field-impact'
 import { burstReplaces, playSummonArt, summonArtFits, summonArtOn } from '../../app/summon-art'
 import { PENDULUM_HOLD_MS, arrivalToneOf, entranceAllowed, entranceOf, landingToneOf, playEntrance, playPendulum, surePendulum, type SummonCard } from '../../app/summon-entrance'
 import { useMatView } from '../../app/mat-view'
@@ -605,7 +605,7 @@ interface FxStep {
   initial: MatSession['initial']
   replay: MatSession['replay']
   fx: MatFx
-  step: { action: MatAction; shuffle: boolean; sacrifice?: MatEffects['sacrifice'] } | { cut: true } | null
+  step: { action: MatAction; shuffle: boolean; sacrifice?: MatEffects['sacrifice']; activate?: Array<{ id: string; spot: MatSpot; index: number }> } | { cut: true } | null
   /** Cuántos pasos barajaron el deck: su animación se repite con cada uno, en el mismo dibujo del paso (un estado aparte era otro dibujo entero de la mesa, 60 ms después). */
   shuffles: number
 }
@@ -624,14 +624,21 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
 
   if (!action) return { ...at, fx: previous.fx, step: null, shuffles: previous.shuffles }
 
-  const effects = matEffects(replayMat(session.initial, session.actions, session.cursor - 1), action)
+  const before = replayMat(session.initial, session.actions, session.cursor - 1)
+  const effects = matEffects(before, action)
   const key = Date.now()
   const { fx } = previous
   const dropped = 'id' in action && action.id === pendingId
+  // Lo que se activa en el campo (no en la mano): su casilla, para el resplandor (`activateAt`).
+  const after = effects.spotlight?.kind === 'activate' ? matReducer(before, action) : null
+  const activate = (after && effects.spotlight ? (effects.spotlight.ids ?? [effects.spotlight.id]) : []).flatMap((id) => {
+    const where = after && locateCard(after, id)
+    return where?.kind === 'spot' ? [{ id, spot: where.spot, index: where.index }] : []
+  })
 
   return {
     ...at,
-    step: { action, shuffle: Boolean(effects.shuffle), ...(effects.sacrifice ? { sacrifice: effects.sacrifice } : {}) },
+    step: { action, shuffle: Boolean(effects.shuffle), ...(effects.sacrifice ? { sacrifice: effects.sacrifice } : {}), ...(activate.length > 0 ? { activate } : {}) },
     shuffles: effects.shuffle ? previous.shuffles + 1 : previous.shuffles,
     fx: {
       flash: effects.spotlight ? { ...effects.spotlight, key } : fx.flash,
@@ -1038,8 +1045,13 @@ function PracticeMatBody({
       const rect = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(spot, index)}"]`)?.getBoundingClientRect()
       if (rect) sacrificeAt(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width)
     }
+    // Lo que se activa en el campo: su resplandor, sobre la activación (la que llega volando, al tocar su casilla).
+    for (const { id, spot, index } of step.activate ?? []) {
+      activateAt(sectionRef.current?.querySelector(`[data-drop="${dropIdOf(spot, index)}"]`) ?? null, action.type === 'place' ? landingDelay(true, false) : 0, spellTrapOf(cardOf(id).apiCard))
+    }
     // El deck se baraja con el dibujo del paso (`shuffles`); la mano, cuando está entera.
     if (step.shuffle) handShuffleRef.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `cardOf` sólo lee la carta
   }, [step])
 
   // Cada efecto se va solo, `FX_MS` después de dibujarse (`shownRef`: cuándo se dibujó cada uno, por su `key`). Un solo temporizador, al más próximo (y de ahí al siguiente): los que vencen
@@ -1251,6 +1263,22 @@ function PracticeMatBody({
   // Las del rival: la mesa no recibe sus jugadas, sólo ve su campo cambiar (`rivalFlights`): un monstruo que llega boca arriba a una zona, de a uno (un `sync` que trae varios no es un golpe).
   const rivalState = duel?.rivalFlights?.state ?? null
   const rivalBefore = useRef(rivalState)
+  // Lo que el rival activa en el campo (su jugada, el automático): el mismo resplandor que lo tuyo. Va antes del efecto de abajo, que pasa `rivalBefore` a la mesa nueva; activar sin costo no cambia
+  // su mesa, así que se sigue por su jugada. En el duelo por enlace (sin jugada), por la carta que muestra al activar (`rivalEffect`).
+  const rivalAction = duel?.rivalFlights?.action
+  const rivalShown = duel?.rivalEffect?.kind === 'activate' && !duel.rivalFlights?.action ? duel.rivalEffect : null
+  useEffect(() => {
+    const before = rivalBefore.current
+    if (!before || !rivalState || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
+    const spotlight = rivalAction ? matEffects(before, rivalAction).spotlight : undefined
+    const ids = spotlight?.kind === 'activate' ? (spotlight.ids ?? [spotlight.id]) : (rivalShown?.cards.map((card) => card.id) ?? [])
+    for (const id of ids) {
+      if (locateCard(rivalState, id)?.kind !== 'spot') continue
+      const card = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(id)}"]`)
+      activateAt(card?.closest('[data-rival-drop], [data-drop]') ?? card?.parentElement ?? null, rivalAction?.type === 'place' ? Math.round(FLIGHT_MS * LANDING_AT) : 0, spellTrapOf(cardOf(id).apiCard))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- una vez por jugada (o por carta mostrada); `cardOf` sólo lee la carta
+  }, [rivalAction, rivalShown?.key])
   useEffect(() => {
     const before = rivalBefore.current
     rivalBefore.current = rivalState

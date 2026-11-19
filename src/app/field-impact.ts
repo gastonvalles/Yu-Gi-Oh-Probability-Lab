@@ -1,3 +1,4 @@
+import { frameKindOf } from './card-frame'
 import { EASE_ASENTAR, EASE_GOLPE, EASE_IN_OUT, EASE_LLEGADA, EASE_OUT, bezierEase, cancelWhenDone, prefersReducedMotion } from './motion'
 import type { LandingTone } from './mat-effects'
 import type { MatState } from './practice-mat'
@@ -119,12 +120,14 @@ export const arrivalRingFrames = (): Keyframe[] => {
  */
 export const OVER_FRAME = { ms: 800, size: 1.35, from: 0.57, fast: 0.81, fastAt: 106 / 800, in: 80 / 800 } as const
 const OVER_FRAME_CLASS = 'pointer-events-none absolute border-3 outline-2 outline-black/40 opacity-0'
+/** El marco de una Mágica o una Trampa que se activa: el color de su marco (`--color-frame-*`, la regla de la casa). */
+const SPELL_TRAP_RING = { spell: 'border-frame-spell', trap: 'border-frame-trap' } as const
 
-export function overFrameAt(x: number, y: number, w: number, h: number, delay: number, tone: ArrivalTone): void {
+export function overFrameAt(x: number, y: number, w: number, h: number, delay: number, tone: ArrivalTone | keyof typeof SPELL_TRAP_RING, ms: number = OVER_FRAME.ms): void {
   if (!canAnimate()) return
 
   const layer = layerAt(x, y)
-  const frame = spanIn(layer, `${OVER_FRAME_CLASS} ${ARRIVAL_CLASS[tone].ring}`)
+  const frame = spanIn(layer, `${OVER_FRAME_CLASS} ${tone === 'spell' || tone === 'trap' ? SPELL_TRAP_RING[tone] : ARRIVAL_CLASS[tone].ring}`)
   const [fw, fh] = [Math.round(w * OVER_FRAME.size), Math.round(h * OVER_FRAME.size)]
   Object.assign(frame.style, { width: `${fw}px`, height: `${fh}px`, marginLeft: `${-fw / 2}px`, marginTop: `${-fh / 2}px` })
   const animation = cancelWhenDone(
@@ -136,10 +139,43 @@ export function overFrameAt(x: number, y: number, w: number, h: number, delay: n
         { opacity: 0.8, offset: 0.5 },
         { scale: '1', opacity: 0 },
       ],
-      { duration: OVER_FRAME.ms, delay },
+      { duration: ms, delay },
     ),
   )
-  removeAfter(layer, [[animation, delay + OVER_FRAME.ms]])
+  removeAfter(layer, [[animation, delay + ms]])
+}
+
+/**
+ * La activación (`fxp_bff_active_001` de Master Duel, la misma para Mágica, Trampa y efecto de monstruo): sobre la casilla de la carta que se activa, un resplandor cian (`fx-energia`)
+ * que sube en 140 ms, queda pleno hasta los 630 y se apaga a los 950 (lo que dura la carta grande, `card-activate-center`), una sola capa que sólo cambia su `opacity`. Mide 3 cartas
+ * (en Master Duel, 5,8: en el celular tapaba media mesa, como el brillo de la llegada). Una Mágica o una Trampa suma el brillo del marco (`overFrameAt`, 600 ms) del color de su marco.
+ * No alarga nada: corre sobre la activación que ya se ve. Con «Livianos», sólo el marco; con movimiento reducido, nada.
+ */
+export const ACTIVATE_GLOW = { ms: 950, size: 3, in: 140, hold: 630, tail: 770, tailAlpha: 0.18, frameMs: 600 } as const
+const ACTIVATE_GLOW_CLASS = 'pointer-events-none absolute rounded-full bg-radial from-fx-energia/60 to-transparent to-70% opacity-0 mix-blend-plus-lighter'
+
+/** Si la carta es una Mágica o una Trampa (por su marco): lleva el brillo del marco al activarse. */
+export function spellTrapOf(card: { frameType?: string | null; cardType?: string | null } | null | undefined): 'spell' | 'trap' | null {
+  const { kind } = frameKindOf(card?.frameType, card?.cardType)
+  return kind === 'spell' || kind === 'trap' ? kind : null
+}
+
+export function activateAt(cell: Element | null, delay = 0, frame: 'spell' | 'trap' | null = null): void {
+  if (!cell || !canAnimate()) return
+
+  const rect = cell.getBoundingClientRect()
+  const [x, y] = [rect.left + rect.width / 2, rect.top + rect.height / 2]
+  if (frame) overFrameAt(x, y, rect.width, rect.height, delay, frame, ACTIVATE_GLOW.frameMs)
+  if (lite()) return
+
+  const layer = layerAt(x, y)
+  layer.dataset.fx = 'activate'
+  const glow = spanIn(layer, ACTIVATE_GLOW_CLASS)
+  const { ms, size, in: rise, hold, tail, tailAlpha } = ACTIVATE_GLOW
+  const px = Math.round(size * rect.width)
+  Object.assign(glow.style, { width: `${px}px`, height: `${px}px`, marginLeft: `${-px / 2}px`, marginTop: `${-px / 2}px` })
+  const frames = [{ opacity: 0 }, { opacity: 1, offset: r3(rise / ms) }, { opacity: 1, offset: r3(hold / ms) }, { opacity: tailAlpha, offset: r3(tail / ms) }, { opacity: 0 }]
+  removeAfter(layer, [[cancelWhenDone(glow.animate(frames, { duration: ms, delay })), delay + ms]])
 }
 
 /** Lo mismo en `p` (0 a 1 de `ARRIVAL.ms`), para el video. */
