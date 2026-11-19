@@ -450,7 +450,9 @@ describe('RespondBand', () => {
     // Texto, bandeja y botones, en ese orden; en la ventana, las cartas crecen con ella y se reparten el ancho (`--n`: 2).
     const listbox = within(group).getByRole('listbox')
     expect(listbox).toHaveClass('grid-flow-col', 'justify-center-safe', '[--n:2]')
-    expect(listbox.className).toContain('group-data-[window]/panel:auto-cols-[clamp(4rem,min(calc((100cqw_-_1.5rem_-_(var(--n,1)_-_1)*0.5rem)/var(--n,1)),var(--fit-h)),var(--card-cap))]!')
+    // El ancho que se reparte es el de la bandeja (`100%`), no el de la ventana: una barra de desplazamiento al costado no la hace deslizarse ni la pega a la izquierda.
+    expect(listbox.className).toContain('group-data-[window]/panel:auto-cols-[clamp(4rem,min(calc((100%_-_(var(--n,1)_-_1)*0.5rem)/var(--n,1)),var(--fit-h)),var(--card-cap))]!')
+    expect(listbox.className).not.toContain('100cqw')
     expect(title.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'Pasar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // El nombre, en un renglón (entero al pasar el mouse): cada píxel de alto es de la carta.
