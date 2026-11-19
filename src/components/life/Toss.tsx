@@ -9,15 +9,45 @@ import { cx } from '../ui/cx'
  * El salto (con su sombra en el piso) va aparte del giro: cada uno es una animación continua y el conjunto se ve fluido. El piso de abajo mide un 30 % del dado (`--die`: 1,5 rem con los 5 rem de siempre) para que
  * un dado chico (`[--die:3.5rem]` en un padre) no deje el mismo hueco.
  */
-function Toss({ shadowWidth, still, children }: { shadowWidth: string; still: boolean; children: React.ReactNode }) {
+function Toss({ kind, still, children }: { kind: keyof typeof TOSS; still: boolean; children: React.ReactNode }) {
+  const toss = TOSS[kind]
+
   return (
     <div className="relative grid place-items-center pb-[calc(var(--die,5rem)*0.3)]">
       {/* Sobre el fondo oscuro una sombra sola no se ve: va una mesa tenue y, encima, la sombra que se achica en el aire. */}
       <span aria-hidden="true" className="absolute bottom-0 h-6 w-40 max-w-full rounded-[50%] bg-tint/10" />
-      <span aria-hidden="true" className={cx('absolute bottom-1.5 h-3 rounded-[50%] bg-black/75 blur-[3px]', !still && 'animate-toss-shadow motion-reduce:animate-none', shadowWidth)} />
-      <div className={cx('[transform-style:preserve-3d]', !still && 'animate-toss-hop motion-reduce:animate-none')}>{children}</div>
+      <span aria-hidden="true" className={cx('absolute bottom-1.5 h-3 rounded-[50%] bg-black/75 blur-[3px]', !still && toss.shadow, toss.shadowWidth)} />
+      <div className={cx('[transform-style:preserve-3d]', !still && toss.hop)}>{children}</div>
+      {still ? null : (
+        <>
+          {/* El resultado se marca una sola vez al quedar quieto (de 1,08 a 1,4 s): el aro dorado que se abre y un destello. Sin «Efectos completos» o con movimiento reducido, no va. */}
+          <span aria-hidden="true" data-toss-mark="" className={cx('pointer-events-none absolute inset-x-0 top-0 mx-auto border-2 border-fx-destello opacity-0 animate-toss-mark fx-lite:hidden motion-reduce:hidden', toss.mark)} />
+          <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 top-0 mx-auto bg-radial from-fx-destello/90 to-transparent to-70% opacity-0 mix-blend-plus-lighter animate-toss-flash fx-lite:hidden motion-reduce:hidden', toss.mark)} />
+        </>
+      )}
     </div>
   )
+}
+
+/**
+ * Con «Efectos completos», lo de Master Duel sin alargar (el resultado sale a los 1,4 s como siempre): la moneda hace el mismo salto en 1,08 s; el dado, cuatro botes que se achican; y de
+ * 1,08 a 1,4 s el resultado queda quieto y marcado. Con «Livianos», el movimiento de antes (un salto de 1,4 s); con movimiento reducido, quieto en el resultado.
+ */
+const TOSS = {
+  coin: {
+    hop: 'animate-toss-hop-mark fx-lite:motion-safe:animate-toss-hop motion-reduce:animate-none',
+    shadow: 'animate-toss-shadow-mark fx-lite:motion-safe:animate-toss-shadow motion-reduce:animate-none',
+    spin: 'animate-coin-spin-mark fx-lite:motion-safe:animate-coin-spin motion-reduce:animate-none',
+    shadowWidth: 'w-20',
+    mark: 'size-[var(--coin,7rem)] rounded-full',
+  },
+  die: {
+    hop: 'animate-toss-bounce fx-lite:motion-safe:animate-toss-hop motion-reduce:animate-none',
+    shadow: 'animate-toss-bounce-shadow fx-lite:motion-safe:animate-toss-shadow motion-reduce:animate-none',
+    spin: 'animate-die-spin-mark fx-lite:motion-safe:animate-die-spin motion-reduce:animate-none',
+    shadowWidth: 'w-16',
+    mark: 'size-[var(--die,5rem)]',
+  },
 }
 
 /** La moneda King of Games: cara adelante, cruz atrás; gira cinco vueltas frenando suave y cae del lado que salió (`still`: quieta, sin tirar). Mide `--coin` (7 rem si nadie lo cambia). */
@@ -25,9 +55,9 @@ export function Coin({ face, still = false }: { face: 0 | 1; still?: boolean }) 
   const coin = currentCoin()
 
   return (
-    <Toss shadowWidth="w-20" still={still}>
+    <Toss kind="coin" still={still}>
       <div
-        className={cx('relative size-[var(--coin,7rem)] [transform-style:preserve-3d]', !still && 'animate-coin-spin motion-reduce:animate-none')}
+        className={cx('relative size-[var(--coin,7rem)] [transform-style:preserve-3d]', !still && TOSS.coin.spin)}
         style={{ transform: `rotateY(${face * 180}deg)`, '--coin-turns': `${1800 + face * 180}deg` } as CSSProperties}
       >
         <img src={coin.heads} alt="" draggable={false} className="absolute inset-0 size-full rounded-full object-cover [backface-visibility:hidden]" />
@@ -52,9 +82,9 @@ export function Die({ value, still = false }: { value: number; still?: boolean }
   const [x, y] = FACE_UP[value] ?? [0, 0]
 
   return (
-    <Toss shadowWidth="w-16" still={still}>
+    <Toss kind="die" still={still}>
       <div
-        className={cx('relative size-[var(--die,5rem)] [transform-style:preserve-3d]', !still && 'animate-die-spin motion-reduce:animate-none')}
+        className={cx('relative size-[var(--die,5rem)] [transform-style:preserve-3d]', !still && TOSS.die.spin)}
         style={{ transform: `rotateX(${x}deg) rotateY(${y}deg)`, '--die-x': `${x + 720}deg`, '--die-y': `${y + 1080}deg` } as CSSProperties}
       >
         {[1, 2, 3, 4, 5, 6].map((face) => (

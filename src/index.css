@@ -159,6 +159,20 @@
   /* Piedra, papel o tijera: las dos manos se sacuden tres veces y aparece lo que eligió cada uno. */
   --animate-rps-reveal: rps-reveal 1.2s var(--ease-out) both;
   --animate-die-spin: die-spin 1.4s var(--ease-snap) both;
+  /* Con «Efectos completos» (Master Duel, sin alargar: ver `Toss.tsx`), la tirada termina en 1,08 s (la moneda, el mismo salto; el dado, cuatro botes que se achican) y de 1,08 a 1,4 s
+     el resultado queda quieto y se marca: un aro dorado que se abre y un destello, una sola vez. Antes del aro no se ve (sólo `forwards`: la clase lo deja en opacidad 0). */
+  --animate-toss-hop-mark: toss-hop 1.08s linear both;
+  --animate-toss-shadow-mark: toss-shadow 1.08s linear both;
+  --animate-coin-spin-mark: coin-spin 1.08s var(--ease-snap) both;
+  --animate-toss-bounce: toss-bounce 1.08s linear both;
+  --animate-toss-bounce-shadow: toss-bounce-shadow 1.08s linear both;
+  --animate-die-spin-mark: die-spin 1.08s var(--ease-snap) both;
+  --animate-toss-mark: feel-ring 320ms var(--ease-out) 1.08s forwards;
+  --animate-toss-flash: feel-flash 320ms var(--ease-out) 1.08s forwards;
+  /* El final (`ResultHero`, Master Duel sin alargar): «Victoria» cae como un golpe (×3 → ×0,9 al 47 %, 283 ms, y se asienta en 1) y «Derrota» / «Empate» entran letra por letra
+     deslizándose desde la izquierda; todo termina a los 600 ms, cuando llegan los botones, como antes. */
+  --animate-result-slam: result-slam 600ms var(--ease-golpe) both;
+  --animate-letter-slide: letter-slide 300ms var(--ease-out) both;
   --animate-rule-in: rule-in var(--motion-duration) var(--ease-snap) both;
   --animate-sheet-up: sheet-up var(--duracion-entrada) var(--ease-snap) both;
   /* Los mensajes rápidos del duelo (🤔 y 👍): el botón rebota al apretarlo y su emoji sube y se desvanece. */
@@ -422,6 +436,141 @@
     100% {
       transform: scale(1);
       opacity: 0.55;
+    }
+  }
+
+  /* Los botes del dado (Master Duel: cuatro, cada uno más bajo, 1 → 0,26 → 0,17 → 0,07 del primero) y su sombra, con la gravedad de la moneda. */
+  @keyframes toss-bounce {
+    0% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    20% {
+      transform: translateY(-4rem);
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    35% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    45% {
+      transform: translateY(-1.04rem);
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    52% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    61% {
+      transform: translateY(-0.68rem);
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    66% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    75% {
+      transform: translateY(-0.28rem);
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    85%,
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes toss-bounce-shadow {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    20% {
+      transform: scale(0.5);
+      opacity: 0.2;
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    35% {
+      transform: scale(1);
+      opacity: 0.55;
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    45% {
+      transform: scale(0.87);
+      opacity: 0.46;
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    52% {
+      transform: scale(1);
+      opacity: 0.55;
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    61% {
+      transform: scale(0.92);
+      opacity: 0.49;
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    66% {
+      transform: scale(1);
+      opacity: 0.55;
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    75% {
+      transform: scale(0.97);
+      opacity: 0.53;
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    85%,
+    100% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+  }
+
+  /* «Victoria» cae como un golpe (la curva va en la animación: `--ease-golpe` en cada tramo). */
+  @keyframes result-slam {
+    0% {
+      scale: 3;
+      opacity: 0;
+    }
+
+    47% {
+      scale: 0.9;
+      opacity: 1;
+    }
+
+    100% {
+      scale: 1;
+      opacity: 1;
+    }
+  }
+
+  /* Cada letra de «Derrota» o «Empate» se desliza desde la izquierda, frenando, sin parpadeo. */
+  @keyframes letter-slide {
+    from {
+      translate: -0.5em 0;
+      opacity: 0;
+    }
+
+    to {
+      translate: 0 0;
+      opacity: 1;
     }
   }
 
