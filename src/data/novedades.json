@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-12-moneda-dado-y-final",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "La moneda, el dado y el cartel del final, con más golpe",
+        "novedades": [
+          "El dado ahora bota cuatro veces, cada vez más bajo, y el resultado queda marcado con un aro dorado. La moneda también marca su resultado.",
+          "Al ganar, «Victoria» cae como un golpe: llega enorme y se asienta en su lugar.",
+          "Al perder o empatar, la palabra entra letra por letra, deslizándose."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Nada dura más que antes: la tirada sigue en 1,4 segundos y el cartel, en 0,6.",
+          "La moneda y el dado están en la calculadora de vidas y en el duelo por enlace.",
+          "Con «Efectos: Livianos» queda el movimiento de antes. Con «reducir movimiento», el resultado aparece quieto."
+        ]
+      },
+      "en": {
+        "title": "The coin, the die and the end banner, with more punch",
+        "novedades": [
+          "The die now bounces four times, lower each time, and the result is marked with a golden ring. The coin marks its result too.",
+          "When you win, «Victory» lands like a hit: it arrives huge and settles into place.",
+          "When you lose or draw, the word comes in letter by letter, sliding."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Nothing lasts longer than before: the toss still takes 1.4 seconds and the banner, 0.6.",
+          "The coin and the die are in the life calculator and in the duel by link.",
+          "With «Effects: Light» the previous motion stays. With «reduce motion», the result shows still."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-11-activar-destruir-y-pilas",
       "date": "2026-11-19",
       "tags": [
