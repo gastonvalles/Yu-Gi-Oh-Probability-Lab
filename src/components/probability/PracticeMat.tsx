@@ -1264,12 +1264,12 @@ function PracticeMatBody({
     const [arrived, ...more] = arrivals(before, rivalState)
     if (!arrived || more.length > 0) return
     const card = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)
-    // La llegada de su jugada (`place` con las marcas del núcleo): por Péndulo, la escena; por Sacrificio, el anillo rojo.
-    const landing = action?.type === 'place' && action.id === arrived.id ? matEffects(before, action).landing : undefined
+    // La llegada de su jugada (el automático: `place` con las marcas del núcleo, `summon` con su mecánica): por Péndulo, la escena; por Sacrificio, el anillo rojo; del Extra Deck, su entrada.
+    const landing = (action?.type === 'place' || action?.type === 'summon') && action.id === arrived.id ? matEffects(before, action).landing : undefined
     // La casilla: la Zona Extra es una de las tuyas (`data-drop`); sus Zonas Principales (`DuelTable`) no llevan marca, así que es la que tiene la carta.
     const cell = card?.closest('[data-rival-drop], [data-drop]') ?? card?.parentElement ?? null
     if (landing?.pendulum && cell && pendulumLanding(arrived.id, cell, false, Boolean(landing.more))) return
-    const tone = landing?.tribute ? 'tribute' : landing?.pendulum ? 'pendulum' : arrivalToneOf(arrived, summonCardOf(arrived.id))
+    const tone = landing ? landingToneOf(landing, summonCardOf(arrived.id)) : arrivalToneOf(arrived, summonCardOf(arrived.id))
     const placed = rivalState[arrived.spot][arrived.index]
     if (cell && enter(tone, arrived.id, cell, false, placed?.materials.length ?? 0, duel?.rivalFlights?.artOf(arrived.id) ?? null)) return
     // La beta reemplaza la carta grande que el duelo por enlace muestra al invocar (`rivalEffect`, que llega un dibujo después): no se suman las dos.
