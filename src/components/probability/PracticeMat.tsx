@@ -1266,8 +1266,8 @@ function PracticeMatBody({
     const card = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)
     // La llegada de su jugada (`place` con las marcas del núcleo): por Péndulo, la escena; por Sacrificio, el anillo rojo.
     const landing = action?.type === 'place' && action.id === arrived.id ? matEffects(before, action).landing : undefined
-    // Sus Zonas de Monstruos Principales (`DuelTable`) no llevan marca: el Péndulo (la escena o, con «Livianos», su llegada blanca) toma la casilla que tiene la carta.
-    const cell = card?.closest('[data-rival-drop], [data-drop]') ?? (landing?.pendulum ? card?.parentElement : null) ?? null
+    // La casilla: la Zona Extra es una de las tuyas (`data-drop`); sus Zonas Principales (`DuelTable`) no llevan marca, así que es la que tiene la carta.
+    const cell = card?.closest('[data-rival-drop], [data-drop]') ?? card?.parentElement ?? null
     if (landing?.pendulum && cell && pendulumLanding(arrived.id, cell, false, Boolean(landing.more))) return
     const tone = landing?.tribute ? 'tribute' : landing?.pendulum ? 'pendulum' : arrivalToneOf(arrived, summonCardOf(arrived.id))
     const placed = rivalState[arrived.spot][arrived.index]
