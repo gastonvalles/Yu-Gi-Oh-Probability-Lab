@@ -527,7 +527,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // Un combo grabado acá con el campo del rival o una cadena (`theirs`, `chain`) los trae: se ven como en el replay de un duelo.
   const load = useCallback(
     (combo: SavedCombo) =>
-      setReview({ name: combo.name, session: { initial: combo.initial, actions: combo.actions, cursor: 0, names: combo.names, replay: true }, ...(combo.theirs ? { theirs: combo.theirs } : {}), ...(combo.chain ? { chain: combo.chain } : {}) }),
+      setReview({ name: combo.name, session: { initial: combo.initial, actions: combo.actions, cursor: 0, names: combo.names, replay: true, sure: combo.sure === true }, ...(combo.theirs ? { theirs: combo.theirs } : {}), ...(combo.chain ? { chain: combo.chain } : {}) }),
     [],
   )
   const back = useCallback(() => setReview(null), [])

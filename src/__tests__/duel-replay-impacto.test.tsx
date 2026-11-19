@@ -162,6 +162,13 @@ describe('los impactos de la mesa en el replay de un duelo', () => {
     next()
     expect(playPendulum).not.toHaveBeenCalled()
     expect(vi.mocked(impactOn).mock.calls[0]![4]).toBe('special')
+
+    // El automático grabado con las marcas del núcleo (`sure`): la escena del Péndulo, como en el manual.
+    cleanup()
+    render(<DuelReplayScreen replay={{ ...build('link-auto'), sure: true }} onClose={() => {}} actions={[]} startAt={0} />)
+    next()
+    next()
+    expect(playPendulum).toHaveBeenCalledTimes(1)
     delete (Element.prototype as Partial<Element>).animate
   })
 

@@ -195,8 +195,8 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
     // La cadena guardada (el duelo automático, o un combo grabado ahí): su escena y sus medallones, con los tiempos de todo el video; lo que se activa no sale grande (lo dice la escena).
     const chain = subjectChain(subject)
     const chained = chain.length > 0
-    // Lo que se jugó a mano (el duelo por enlace, un combo de la práctica): lo único grabado donde la Invocación por Péndulo es segura (`surePendulum`: lo automático pudo grabarse antes de la marca del núcleo).
-    const manual = subject.kind === 'duel' ? subject.replay.mode === 'link' : !chained && !subject.combo.auto
+    // Donde la Invocación por Péndulo es segura (`surePendulum`): lo que se jugó a mano (el duelo por enlace, un combo de la práctica) y lo grabado con las marcas del núcleo (`sure`).
+    const manual = subject.kind === 'duel' ? subject.replay.mode === 'link' || subject.replay.sure === true : (!chained && !subject.combo.auto) || subject.combo.sure === true
     let live: Overlay[] = chainLayers(chain, plan.rowLook, starts, speed, videoLayout(VIDEO_WIDTH), assets)
     let before: Scene | null = null
     // Las manos se reparten como en el replay: al empezar, las que ya están; la primera de un lado que arranca vacía (el automático), con su robo. La del rival, sólo en un duelo.

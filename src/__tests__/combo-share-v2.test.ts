@@ -235,7 +235,7 @@ describe('las marcas del núcleo en un combo (`sure` y `m`)', () => {
     expect(old.ok && old.combo.sure).toBeUndefined()
     expect(old.ok && compactEnvelope(old.combo)).toEqual(await unpacked(V2_LINK.split('#combo=')[1]!))
 
-    const { m: _, ...withoutM } = compactEnvelope(marked)
+    const { m: _, ...withoutM } = compactEnvelope(marked) as Record<string, unknown>
     const read = parseComboText(JSON.stringify(withoutM))
     expect(read.ok && read.combo.sure).toBeUndefined()
     expect(read.ok && JSON.stringify(read.combo.actions)).not.toMatch(/tribute|more/)

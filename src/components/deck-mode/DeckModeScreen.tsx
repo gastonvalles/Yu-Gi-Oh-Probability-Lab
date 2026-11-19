@@ -631,7 +631,7 @@ function usePracticeSession({
   const [sharedCombo, setSharedCombo] = useState<SharedCombo | null>(null)
   const openShared = useCallback((combo: SharedCombo) => {
     setSharedCombo(combo)
-    start(combo.initial, combo.actions, combo.names)
+    start(combo.initial, combo.actions, combo.names, false, combo.sure === true)
   }, [start])
   const shared = useMemo(
     () => (sharedCombo ? { combo: sharedCombo, onSaved: () => setSharedCombo(null), onClose: () => { setSharedCombo(null); clear() } } : undefined),
@@ -652,7 +652,7 @@ function usePracticeSession({
   // `at`: parado en ese paso (el salto de una rama); `seek` es funcional, así que vale en el mismo tick que `start`.
   const loadCombo = useCallback((combo: SavedCombo, at = 0) => {
     setSharedCombo(null)
-    start(combo.initial, combo.actions, combo.names)
+    start(combo.initial, combo.actions, combo.names, false, combo.sure === true)
     if (at) seek(at)
   }, [start, seek])
   // La partida del automático («Seguir en manual»): en vivo, con todo su historial (Deshacer y los Pasos siguen), y sin repartir otra mano al entrar.

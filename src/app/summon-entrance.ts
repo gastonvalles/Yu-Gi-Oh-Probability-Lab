@@ -45,8 +45,8 @@ export const entranceOf = (tone: ArrivalTone): EntranceKind | null => (tone === 
 
 /**
  * Lo que la mesa sabe con certeza que es una Invocación por Péndulo: la jugada de la mesa manual (lo eligió quien juega) y la del automático en vivo (la marca del núcleo, `auto/core-host.ts`).
- * `unsure`: lo grabado que pudo salir del automático de antes de la marca (un replay automático, un combo que se repasa), donde el adaptador ponía `how: 'pendulum'` a todo lo que salía boca
- * arriba del Extra: no se distingue de lo nuevo, así que ahí la llegada queda como Especial.
+ * `unsure`: lo grabado sin `sure` (un replay automático o un combo de antes de la marca, donde el adaptador ponía `how: 'pendulum'` a todo lo que salía boca arriba del Extra): ahí la
+ * llegada queda como Especial. Lo grabado desde la marca lleva `sure` (`saved-combos.ts`, el `m` de los enlaces) y se cree.
  */
 export const surePendulum = <T extends { pendulum?: true }>(landing: T, unsure: boolean): T => {
   if (!unsure || !landing.pendulum) return landing

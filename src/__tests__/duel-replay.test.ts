@@ -452,7 +452,7 @@ describe('las marcas del núcleo (`sure` y `m`)', () => {
   })
 
   it('una versión que no conoce `m` la ignora: abre como siempre, sin las marcas', async () => {
-    const { m: _, ...old } = compactReplayEnvelope(marked)
+    const { m: _, ...old } = compactReplayEnvelope(marked) as Record<string, unknown>
     const read = parseReplayText(JSON.stringify(old))
     expect(read.ok && read.replay.sure).toBeUndefined()
     expect(read.ok && JSON.stringify(read.replay.steps)).not.toMatch(/tribute|more/)

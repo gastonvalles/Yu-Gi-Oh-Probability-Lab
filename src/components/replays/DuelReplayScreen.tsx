@@ -313,9 +313,9 @@ export function DuelReplayScreen({ replay, onClose, shared, actions, startAt, ba
     const landed = stageRef.current?.querySelector(card(impact.mine, impact.id))
     const cell = landed?.parentElement ?? null
     const side = impact.mine ? bottom : bottom === 0 ? 1 : 0
-    // La Invocación por Péndulo, sólo la del duelo manual (uno automático pudo grabarse antes de la marca del núcleo, cuando se deducía, y no se distingue): una sola escena con todas sus cartas, como en la mesa (cada carta es un paso: la que
+    // La Invocación por Péndulo, la del duelo manual y la del automático con marcas seguras (`sure`; uno sin ella se grabó cuando se deducía): una sola escena con todas sus cartas, como en la mesa (cada carta es un paso: la que
     // llega espera escondida mientras la jugada que sigue sea otra por Péndulo del mismo lado).
-    const sure = surePendulum(impact.landing, replay.mode !== 'link')
+    const sure = surePendulum(impact.landing, replay.mode !== 'link' && !replay.sure)
     if (sure.pendulum && cell && landed instanceof HTMLElement && entranceAllowed()) {
       const hide = [landed, ...document.querySelectorAll(`[data-flight-ghost="${impact.id}"]`)]
       const box = cell.getBoundingClientRect()
