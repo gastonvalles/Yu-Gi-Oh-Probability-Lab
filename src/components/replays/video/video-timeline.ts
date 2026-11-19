@@ -1,5 +1,6 @@
 import type { ChainStep } from '../../../app/auto/chain-feed'
-import { replayChainSteps, type DuelReplay } from '../../../app/duel-replay'
+import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../../app/deal-flight'
+import { duelReplayAt, replayChainSteps, walkReplay, type DuelReplay } from '../../../app/duel-replay'
 import { safeFileName, type SharedCombo } from '../../../app/combo-share'
 import type { MatAction } from '../../../app/practice-mat'
 import { comboChainSteps, type SavedCombo } from '../../../app/saved-combos'
@@ -44,13 +45,64 @@ export const OUTRO_MS = 3000
 export const LONG_VIDEO_MS = 6 * 60_000
 
 /**
- * Lo que dura una jugada. Una Invocación del Extra Deck lleva la entrada larga de la mesa (`summon-entrance.ts`): en el replay, la jugada siguiente espera a que termine y después su
- * `STEP_MS`; al reproducir un combo, la mesa espera lo que sea más largo.
+ * Lo que dura una jugada. Una Invocación del Extra Deck (o la última carta de una por Péndulo, `long`) lleva la entrada larga de la mesa (`summon-entrance.ts`): en el replay, la jugada
+ * siguiente espera a que termine y después su `STEP_MS`; al reproducir un combo, la mesa espera lo que sea más largo.
  */
-export const stepMs = (action: MatAction, speed: VideoSpeed = VIDEO_PACE, kind: VideoSubject['kind'] = 'duel') => {
-  const entrance = action.type === 'summon' ? ENTRANCE.end : 0
+export const stepMs = (action: MatAction, speed: VideoSpeed = VIDEO_PACE, kind: VideoSubject['kind'] = 'duel', long = action.type === 'summon') => {
+  const entrance = long ? ENTRANCE.end : 0
   const base = action.type === 'phase' ? (kind === 'combo' ? COMBO_PHASE_MS : PHASE_MS) : kind === 'combo' ? COMBO_STEP_MS : STEP_MS
   return (kind === 'combo' ? Math.max(base, entrance) : base + entrance) / speed
+}
+
+/** Donde la Invocación por Péndulo es segura (`surePendulum`): lo que se jugó a mano (el duelo por enlace, un combo de la práctica) y lo grabado con las marcas del núcleo (`sure`). */
+export const pendulumSure = (subject: VideoSubject) =>
+  subject.kind === 'duel' ? subject.replay.mode === 'link' || subject.replay.sure === true : (subjectChain(subject).length === 0 && !subject.combo.auto) || subject.combo.sure === true
+
+/** Una carta de una Invocación por Péndulo segura: las de la misma Invocación hasta ella (ids) y si con ella va la escena (`scene`: la última). */
+export interface PendulumCue {
+  ids: string[]
+  scene: boolean
+}
+
+/**
+ * Cada carta de una Invocación por Péndulo es una jugada; la escena va una sola vez, con todas, en la última (la que no sigue otra por Péndulo del mismo lado), como en el replay
+ * (`DuelReplayScreen`). Una por jugada (`null`: no es una carta de una Invocación por Péndulo segura).
+ */
+export function pendulumCues(subject: VideoSubject): (PendulumCue | null)[] {
+  const steps: ReadonlyArray<readonly [number, MatAction, ...unknown[]]> = subject.kind === 'duel' ? subject.replay.steps : subject.combo.actions.map((action) => [0, action] as const)
+  const sure = pendulumSure(subject)
+  const isPendulum = (step: readonly [number, MatAction, ...unknown[]] | undefined) => step?.[1].type === 'place' && step[1].how === 'pendulum'
+  let ids: string[] = []
+  return steps.map((step, index) => {
+    if (!sure || !isPendulum(step)) {
+      ids = []
+      return null
+    }
+    ids = [...ids, (step[1] as Extract<MatAction, { type: 'place' }>).id]
+    const next = steps[index + 1]
+    const cue = { ids, scene: !(next && next[0] === step[0] && isPendulum(next)) }
+    if (cue.scene) ids = []
+    return cue
+  })
+}
+
+/**
+ * La primera mano de un lado que arranca vacía (el automático: llega con el robo de 5 de su primera jugada), como `dealOverlays` del video y `useOpeningDeal` del replay: en qué
+ * jugada se reparte (`at`, 1 = la primera) y cuántas cartas.
+ */
+export function openingDeals(replay: DuelReplay): Array<{ at: number; cards: number }> {
+  const open = ([0, 1] as const).filter((side) => replay.sides[side].initial.hand.length === 0)
+  const shots = open.length > 0 ? walkReplay(replay) : []
+  const deals: Array<{ at: number; cards: number }> = []
+  for (let at = 1; at <= replay.steps.length && open.length > 0; at += 1) {
+    const { states } = duelReplayAt(replay, at, shots)
+    for (const side of [...open])
+      if (states[side].hand.length > 0) {
+        open.splice(open.indexOf(side), 1)
+        deals.push({ at, cards: states[side].hand.length })
+      }
+  }
+  return deals
 }
 
 /** La cadena, vista desde quien grabó (abajo en el video): la del replay de un duelo o la de un combo grabado en «Jugar solo automático» (sin ella, vacía). */
@@ -82,10 +134,26 @@ export function chainBeats(steps: readonly ChainStep[], cursor: number): ChainBe
 /** Lo que la cadena le suma a la jugada `cursor` (a 1×): hasta que se ve su último mensaje. */
 export const chainMs = (steps: readonly ChainStep[], cursor: number) => chainBeats(steps, cursor).at(-1)?.at ?? 0
 
-/** Cuánto dura cada tramo: la mesa al empezar (con el título), cada jugada (con lo que tarda su cadena, si la hay) y el cierre con el resultado. Sin jugadas, un solo tramo. */
+/**
+ * Cuánto dura cada tramo: la mesa al empezar (con el título), cada jugada (con lo que tarda su cadena, si la hay) y el cierre con el resultado. Sin jugadas, un solo tramo. En un duelo
+ * que reparte una mano con una jugada (`openingDeals`), la que sigue espera, como el replay, a que salga la última carta y después su `STEP_MS`; salvo que sea el reparto del otro lado
+ * (los dos se pisan, como en la mesa).
+ */
 export function frameDurations(subject: VideoSubject, speed: VideoSpeed = VIDEO_PACE): number[] {
   const chain = subjectChain(subject)
-  const steps = subjectActions(subject).map((action, index) => stepMs(action, speed, subject.kind) + chainMs(chain, index + 1) / speed)
+  const cues = pendulumCues(subject)
+  const deals = subject.kind === 'duel' ? openingDeals(subject.replay) : []
+  const dealt: number[] = []
+  let now = INTRO_MS
+  const steps = subjectActions(subject).map((action, index) => {
+    const deal = deals.find((each) => each.at === index + 1)
+    if (deal) dealt.push(now + (FIRST_DEAL_MS + (deal.cards - 1) * NEXT_DEAL_MS) / speed)
+    const own = stepMs(action, speed, subject.kind, action.type === 'summon' || cues[index]?.scene === true) + chainMs(chain, index + 1) / speed
+    const wait = deals.some((each) => each.at === index + 2) ? 0 : Math.max(0, ...dealt) - now
+    const ms = wait > 0 ? Math.max(own, wait + STEP_MS / speed) : own
+    now += ms
+    return ms
+  })
   return steps.length === 0 ? [INTRO_MS + OUTRO_MS] : [INTRO_MS, ...steps, OUTRO_MS]
 }
 

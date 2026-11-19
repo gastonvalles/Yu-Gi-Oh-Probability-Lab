@@ -1,4 +1,4 @@
-import { ENTRANCE, ENTRANCE_COMMON, ENTRANCE_FIGURE, figureTime, type EntranceKind } from '../../../app/summon-entrance'
+import { ENTRANCE, ENTRANCE_COMMON, ENTRANCE_FIGURE, PENDULUM, figureTime, pendulumAt, pendulumHit, type EntranceKind } from '../../../app/summon-entrance'
 import { EASE_IN_OUT, EASE_OUT, EASE_REVELAR, EASE_SNAP, bezierEase } from '../../../app/motion'
 import { drawCard, type Ctx, type VideoAssets } from './video-draw'
 import type { Overlay } from './video-fx'
@@ -221,6 +221,126 @@ export function entranceOverlay(kind: EntranceKind, to: Pose, card: SceneCard | 
         ctx.globalAlpha = clamp(since / c.show)
         drawCard(ctx, { x: px, y: py, w: to.w * scale, h: to.h * scale, angle: to.angle }, { ...card, faceDown: false, dim: false }, assets, s)
       }
+      ctx.restore()
+    },
+  }
+}
+
+/** En qué punto de su animación va una pieza de `playPendulum` a los `ms` de la escena: la mesa corre cada una entre `pendulumAt` de su principio y de su final. */
+const paced = (ms: number, delay: number, duration: number) => (ms - pendulumAt(delay)) / (pendulumAt(delay + duration) - pendulumAt(delay))
+/** `keep` de la mesa: entra en los primeros 200 ms de su línea (`EASE_OUT`) hasta `alpha` y se apaga en los últimos 200. Fuera de su animación, no se ve (`opacity-0`). */
+const kept = (g: number, total: number, alpha = 1) => (g <= 0 || g >= 1 ? 0 : alpha * Math.min(out(clamp((g * total) / 200)), clamp(((1 - g) * total) / 200)))
+/** El vaivén del péndulo (grados), cada uno más corto, como en la mesa. */
+const SWINGS = [0, 18, -16, 12, -8, 4, 0]
+
+/** Cómo está cada pieza de la Invocación por Péndulo de la mesa (`playPendulum`) a los `ms` de la escena, con `count` cartas: lo que dibuja `pendulumOverlay` (y lo que mide su test). */
+export function pendulumFrame(ms: number, count: number) {
+  const c = ENTRANCE_COMMON
+  const p = PENDULUM
+  const light = paced(ms, p.light, p.lightMs)
+  const swing = paced(ms, p.swing, p.swingMs)
+  const at = clamp(swing) * (SWINGS.length - 1)
+  const segment = Math.min(SWINGS.length - 2, Math.floor(at))
+  const turn = inOut(at - segment)
+  return {
+    veil: c.veil * Math.min(clamp(ms / c.veilIn), clamp((ENTRANCE.end - ms) / c.veilOut)),
+    scales: { alpha: kept(paced(ms, p.scales, p.end - p.scales), p.end - p.scales), rise: out(clamp(paced(ms, p.scales, 400))) },
+    light: { alpha: kept(light, p.lightMs, 0.85), scale: mix(0.4, 1, out(clamp(light))) },
+    swing: { alpha: swing <= 0 || swing >= 1 ? 0 : segment === 0 ? turn : segment === SWINGS.length - 2 ? 1 - turn : 1, deg: mix(SWINGS[segment]!, SWINGS[segment + 1]!, turn) },
+    // Cada carta: de ×1,6 a ×1,15 y a su tamaño en su golpe (`pendulumHit`), con el aplastón; `drop`, cuánto le falta bajar (1: arriba de la pantalla, 0: en su casilla).
+    cards: Array.from({ length: count }, (_, index) => {
+      const f = ms - (pendulumHit(index) - c.reveal)
+      const scale = f < c.show ? 1.6 : f < c.show + c.fall ? mix(1.6, 1.15, reveal((f - c.show) / c.fall)) : f < c.reveal ? mix(1.15, c.squash, reveal((f - c.show - c.fall) / (c.reveal - c.show - c.fall))) : mix(c.squash, 1, snap(clamp((f - c.reveal) / c.settle)))
+      return { alpha: clamp(f / c.show), drop: f < c.show ? 1 : 1 - reveal(clamp((f - c.show) / (c.reveal - c.show))), scale }
+    }),
+  }
+}
+
+/** Un degradé a lo largo de `(x0, y0)`–`(x1, y1)` con sus paradas `[dónde, color, alfa]` (un color `#rrggbb`; otro, entero). */
+function gradient(ctx: Ctx, x0: number, y0: number, x1: number, y1: number, stops: ReadonlyArray<readonly [number, string, number]>) {
+  const fill = ctx.createLinearGradient(x0, y0, x1, y1)
+  for (const [at, color, alpha] of stops) fill.addColorStop(at, /^#[0-9a-f]{6}$/i.test(color) ? `${color}${Math.round(alpha * 255).toString(16).padStart(2, '0')}` : alpha > 0 ? color : 'transparent')
+  return fill
+}
+
+/**
+ * La Invocación por Péndulo de la mesa (`playPendulum`) en el lienzo: una sola escena con todas las cartas de la Invocación (`cards`, en el orden en que llegaron), con las mismas piezas,
+ * más simples: el velo, las dos escalas que suben a los costados (azul y roja) con su gema, la luz blanca entre ellas, el péndulo que oscila colgado del medio y las cartas que bajan
+ * derechas hasta su casilla. Los tiempos los lee de la mesa (`pendulumFrame`). La llegada blanca de cada carta y la sacudida las pone `impactOverlays`. Las cartas de la mesa de abajo
+ * (`keys`) no se pintan mientras dura: las dibuja ésta. `k`: px del lienzo por px del celular.
+ */
+export function pendulumOverlay(cards: ReadonlyArray<{ to: Pose; card: SceneCard | undefined }>, keys: readonly string[], assets: VideoAssets, k: number, s: number, start: number, speed: VideoSpeed): Overlay {
+  const { penduloAzul: azul, penduloRojo: rojo } = assets.theme.fx
+  return {
+    kind: 'pendulum',
+    start,
+    duration: ENTRANCE.end / speed,
+    hides: keys,
+    draw: (ctx, p) => {
+      const now = pendulumFrame(p * ENTRANCE.end, cards.length)
+      const { width, height } = ctx.canvas
+      const r = Math.min(width, height) * 0.36
+      ctx.save()
+      ctx.globalAlpha = now.veil
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, 0, width, height)
+      // Las dos escalas: suben desde abajo a los costados (de abajo hacia arriba, `origin-bottom`) y su gema arriba.
+      const [w, h] = [0.14 * r, 0.78 * height]
+      const [top, bottom] = [(height - h) / 2, (height + h) / 2]
+      if (now.scales.alpha > 0)
+        for (const [x, color] of [[0.1 * width, azul], [0.9 * width, rojo]] as const) {
+          ctx.globalAlpha = now.scales.alpha * 0.75
+          const rise = h * now.scales.rise
+          ctx.fillStyle = gradient(ctx, 0, bottom, 0, top, [[0, color, 0], [0.5, color, 1], [1, color, 0]])
+          ctx.fillRect(x - w / 2, bottom - rise, w, rise)
+          ctx.globalAlpha = now.scales.alpha
+          ctx.save()
+          ctx.translate(x, top)
+          ctx.rotate(Math.PI / 4)
+          ctx.fillStyle = color
+          ctx.fillRect(-8 * k, -8 * k, 16 * k, 16 * k)
+          ctx.lineWidth = 2 * k
+          ctx.strokeStyle = '#fff'
+          ctx.strokeRect(-7 * k, -7 * k, 14 * k, 14 * k)
+          ctx.restore()
+        }
+      // La luz blanca entre las escalas, de arriba hacia abajo (crece desde arriba).
+      if (now.light.alpha > 0) {
+        ctx.globalAlpha = now.light.alpha
+        ctx.globalCompositeOperation = 'lighter'
+        const [lw, lh] = [0.9 * r * now.light.scale, height * now.light.scale]
+        ctx.fillStyle = gradient(ctx, 0, 0, 0, lh, [[0, '#ffffff', 0.45], [0.5, azul, 0.2], [1, azul, 0]])
+        ctx.fillRect(width / 2 - lw / 2, 0, lw, lh)
+        ctx.globalCompositeOperation = 'source-over'
+      }
+      // El péndulo, colgado arriba en el medio: oscila y se va apagando.
+      if (now.swing.alpha > 0) {
+        const length = 0.3 * height
+        const bob = 0.11 * r
+        ctx.globalAlpha = now.swing.alpha
+        ctx.save()
+        ctx.translate(width / 2, height / 12)
+        ctx.rotate((now.swing.deg * Math.PI) / 180)
+        ctx.fillStyle = 'rgb(255 255 255 / 0.85)'
+        ctx.fillRect(-k, 0, 2 * k, length)
+        const fill = ctx.createRadialGradient(0, length, 0, 0, length, bob)
+        fill.addColorStop(0, '#ffffff')
+        fill.addColorStop(0.5, azul)
+        fill.addColorStop(1, rojo)
+        ctx.fillStyle = fill
+        ctx.beginPath()
+        ctx.arc(0, length, bob, 0, Math.PI * 2)
+        ctx.fill()
+        ring(ctx, 0, length, bob, 2 * k, '#ffffff')
+        ctx.restore()
+      }
+      // Las cartas: bajan derechas desde arriba de la pantalla hasta su casilla.
+      now.cards.forEach(({ alpha, drop, scale }, index) => {
+        const { to, card } = cards[index]!
+        if (alpha <= 0 || !card) return
+        ctx.globalAlpha = alpha
+        drawCard(ctx, { x: to.x, y: to.y - drop * (to.y + 1.5 * to.h), w: to.w * scale, h: to.h * scale, angle: to.angle }, { ...card, faceDown: false, dim: false }, assets, s)
+      })
       ctx.restore()
     },
   }

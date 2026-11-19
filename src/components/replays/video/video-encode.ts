@@ -12,7 +12,7 @@ import { comboArtUrls, comboRowLook, comboScenes, resolveComboNames } from './vi
 import { chainLayers, replayRowLook, type RowLook } from './video-chain'
 import { artUrls, fieldRect, replayScenes, videoLayout, type Scene } from './video-scene'
 import { bitrateFor, VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
-import { FPS, frameDurations, frameOf, paceOf, subjectChain, type VideoChoice, type VideoSpeed, type VideoSubject } from './video-timeline'
+import { FPS, frameDurations, frameOf, paceOf, pendulumCues, subjectChain, type VideoChoice, type VideoSpeed, type VideoSubject } from './video-timeline'
 
 /**
  * El video de un replay o un combo, entero en el navegador: cada cuadro se pinta en un lienzo, `VideoEncoder` (WebCodecs) lo codifica en H.264 y `mp4-mux.ts` arma el .mp4.
@@ -195,8 +195,8 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
     // La cadena guardada (el duelo automático, o un combo grabado ahí): su escena y sus medallones, con los tiempos de todo el video; lo que se activa no sale grande (lo dice la escena).
     const chain = subjectChain(subject)
     const chained = chain.length > 0
-    // Donde la Invocación por Péndulo es segura (`surePendulum`): lo que se jugó a mano (el duelo por enlace, un combo de la práctica) y lo grabado con las marcas del núcleo (`sure`).
-    const manual = subject.kind === 'duel' ? subject.replay.mode === 'link' || subject.replay.sure === true : (!chained && !subject.combo.auto) || subject.combo.sure === true
+    // Las cartas de una Invocación por Péndulo segura (`pendulumCues`): una sola escena por Invocación.
+    const cues = pendulumCues(subject)
     let live: Overlay[] = chainLayers(chain, plan.rowLook, starts, speed, videoLayout(VIDEO_WIDTH), assets)
     let before: Scene | null = null
     // Las manos se reparten como en el replay: al empezar, las que ya están; la primera de un lado que arranca vacía (el automático), con su robo. La del rival, sólo en un duelo.
@@ -218,7 +218,7 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
       const dealt = new Set(dealtKeys(scene, dealing))
       if (before && before !== scene) {
         flights = flightsOf(transitionOf(before, scene).filter((motion) => !dealt.has(motion.key)), scene.layout.scale, speed, durations[index]!)
-        live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind, chained, manual), start)
+        live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind, chained, cues[index - 1] ?? null), start)
         live.push(...targetOverlays(before, scene, start, durations[index]!, speed))
         life = lifeOf(before, scene, speed)
         if (dealing.length > 0) live.push(...dealOverlays(scene, assets, speed, dealing, start))
@@ -264,7 +264,9 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
           // La sacudida de un impacto: el campo dibujado, corrido unos px (vuelve a su lugar); lo demás de la mesa y lo de encima, quieto.
           const [dx, dy] = shiftAt(alive, now)
           if (dx !== 0 || dy !== 0) ctx.drawImage(base, shaken.x, shaken.y, shaken.w, shaken.h, shaken.x + dx, shaken.y + dy, shaken.w, shaken.h)
-          if (flying) for (const flight of flights) drawFlight(ctx, flight, ms, assets, scene.layout.scale)
+          // Lo que espera la escena del Péndulo no se ve ni en su vuelo (como en el replay).
+          const held = new Set(alive.flatMap((overlay) => (overlay.kind === 'pendulum' ? overlay.hides! : [])))
+          if (flying) for (const flight of flights) if (!held.has(flight.motion.key)) drawFlight(ctx, flight, ms, assets, scene.layout.scale)
           for (const overlay of alive) overlay.draw(ctx, (now - overlay.start) / overlay.duration)
           clean = !animated
           await emit(frame, true)
