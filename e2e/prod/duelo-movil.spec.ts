@@ -629,7 +629,8 @@ test.describe('duelo automático (donde están el núcleo y /auto-data: el sitio
       expect(k.statusW, 'la línea «Se resuelve del último al primero» no se ve (va oculta, para el lector de pantalla)').toBeLessThanOrEqual(2)
       const tilts = k.stage.filter((frame) => frame.pose === 'slot').map((frame) => Math.abs(parseFloat(frame.rotate)))
       expect(tilts.length, 'la carta se ve en su lugar, inclinada').toBeGreaterThan(0)
-      expect(tilts.some((angle) => angle >= 3 && angle <= 7), `inclinación de la carta (${tilts.slice(0, 3).join(', ')}°)`).toBe(true)
+      // La carta sube desde abajo ya con la inclinación de su lugar (8°, el primer lugar de `ChainNotice`): antes entraba derecha y giraba, y esto buscaba un cuadro a mitad de giro.
+      expect(tilts.every((angle) => Math.abs(angle - 8) <= 0.5), `inclinación de la carta (${tilts.slice(0, 3).join(', ')}°)`).toBe(true)
       expect(k.stage[0]!.w / k.stage[0]!.layer, 'la carta de la cadena mide ≈ 1/3 del ancho de la escena').toBeGreaterThan(0.25)
       expect(k.stage[0]!.w / k.stage[0]!.layer).toBeLessThan(0.45)
       expect(k.stage[0]!.label, 'el eslabón dice su número y su carta').toContain('Ookazi')
