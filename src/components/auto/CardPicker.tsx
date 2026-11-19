@@ -17,7 +17,7 @@ import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
 import { SearchField } from '../ui/SearchField'
 import { Skeleton } from '../ui/Skeleton'
-import { AutoPanel, ON_ART, ON_ART_TAG, PANEL_PRIMARY } from './AutoPanel'
+import { AutoPanel, ON_ART_TAG, PANEL_PRIMARY } from './AutoPanel'
 
 /** De qué lugar es una carta para elegir: la mano, una pila, el campo o debajo de un Xyz. */
 export type PickFrom = MatPile | 'field' | 'material'
@@ -76,14 +76,22 @@ export function pickPlace(from: PickFrom, theirs: boolean): Pick<PickCard, 'plac
 }
 
 /**
- * El chip del lugar sobre la carta: ícono y texto corto («Mano», «Cem. rival»), en **todas** las cartas que lo saben. Opaco (`onImage`: se lee sobre el arte, AA) y siempre con el texto: en una
- * columna angosta (la banda a 390 px) se va el ícono y el texto baja a dos renglones («Cem.» / «rival») antes que esconderse.
+ * El chip del lugar, sobre el arte de la carta, abajo a la izquierda (en la hoja y en la ventana: no suma un renglón ni corre las cartas): ícono y texto corto («Mano», «Cem. rival»), en **todas**
+ * las cartas que lo saben. Opaco (`onImage`: se lee sobre el arte, AA) y siempre con el texto: en una carta angosta (la banda a 390 px) se va el ícono y el texto baja de renglón por sus espacios
+ * («Cem.» / «rival»), nunca a mitad de palabra.
  */
 function PlaceChip({ from, theirs }: { from: PickFrom; theirs: boolean }) {
   const zone = from === 'field' ? t('practice.mat.field') : from === 'material' ? t('auto.picker.chip.material') : PILE_SHORT[from]
 
   return (
-    <Badge size="sm" shape="tag" wrap {...(from === 'hand' && !theirs ? { tone: 'brand', solid: true } : { onImage: true })} aria-hidden="true" data-pick-place="" className={cx('min-w-0 justify-self-start', ON_ART)}>
+    <Badge
+      size="sm"
+      shape="tag"
+      {...(from === 'hand' && !theirs ? { tone: 'brand', solid: true } : { onImage: true })}
+      aria-hidden="true"
+      data-pick-place=""
+      className="absolute bottom-0.5 left-0.5 z-1 h-auto! min-h-5 max-w-[calc(100%-0.25rem)] px-1! py-0.5 leading-tight! whitespace-normal! @[4rem]:px-1.5!"
+    >
       <Icon name={FROM_ICON[from]} size={11} strokeWidth={2} className="hidden shrink-0 @[4rem]:block" />
       <span className="min-w-0">{theirs ? t('auto.picker.chip.theirs', { zone }) : zone}</span>
     </Badge>
@@ -210,7 +218,6 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
             : undefined
         }
       >
-        {card.from ? <PlaceChip from={card.from} theirs={card.theirs ?? false} /> : null}
         {tabs && card.place && !card.from ? (
           <Badge size="sm" shape="tag" aria-hidden="true" className={cx('min-w-0 max-w-full justify-self-start', ON_ART_TAG)}>
             <span className="min-w-0 truncate">{card.place}</span>
@@ -219,6 +226,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
         {/* Al pasar el mouse, el aro fino de las cartas de la mesa. */}
         <span data-pick-art="" className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order < 0 && 'group-hover:outline-1 group-hover:outline-white/60')}>
           {card.art === undefined || !arts ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} {...(card.frame ? { frame: card.frame } : {})} className="block h-full w-full object-cover" />}
+          {card.from ? <PlaceChip from={card.from} theirs={card.theirs ?? false} /> : null}
           {/* Las copias juntas: cuántas son, arriba a la izquierda. */}
           {count > 1 ? (
             <span aria-hidden="true" data-pick-copies="" className={COPIES}>
