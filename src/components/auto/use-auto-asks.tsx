@@ -53,7 +53,8 @@ import { FLIGHT_MS } from '../../app/use-card-flights'
 import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
-import { AutoCardSheet } from './AutoPanel'
+import { AutoCardSheet, AutoPanel, PanelCard } from './AutoPanel'
+import { useMatMenus } from '../../app/mat-menus'
 import { BAND_MAX, CardPicker, PickBand, copyGroups, pickPlace, type PickCard, type PickFrom } from './CardPicker'
 import { announceMatches } from '../../app/auto/announce'
 import { useAnnounceCatalog } from './use-announce-catalog'
@@ -1043,6 +1044,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   /** El visor de una pila del rival (información pública): su Cementerio, su Destierro o lo boca arriba de su Extra. Repasando, su lado está vacío. */
   const [rivalPileOpen, setRivalPile] = useState<'gy' | 'banished' | 'extra' | 'hand' | null>(null)
   const rivalPile = reviewing ? null : rivalPileOpen
+  // Con «Menús flotantes» en el celular, lo que te mostró un efecto va en la ventana que se mueve y se agranda, como los demás carteles (TI-321); el visor de la mesa queda libre.
+  const menus = useMatMenus()
+  const revealFloats = menus === 'floating' && !desktop && rivalPile === 'hand'
   // Lo que un efecto te mostró del rival (su mano, lo colocado: `WireAct.seen`), cuando la mesa llega a esa jugada: cara arriba en el visor de su lado (`'hand'`), con la carta del
   // efecto arriba, hasta que lo cierres (su abanico lo pierde al barajar, como en el núcleo). Si la pregunta que sigue elige entre su mano, no: la bandeja y su abanico ya las muestran.
   const seenAt = useMemo(() => snap.theirsActs.findLastIndex((wire, i) => i < theirsShown && wire.seen !== undefined), [snap.theirsActs, theirsShown])
@@ -1519,7 +1523,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     onPeek: dock.lock,
     onHover: dock.hover,
     onRivalHover,
-    rivalViewing: rivalPile !== null,
+    rivalViewing: rivalPile !== null && !revealFloats,
     onActivity,
     onBanding: setBanding,
     onEntering: setEntering,
@@ -1631,6 +1635,37 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // Lo que te mostró un efecto va con el código que tenía al mostrarse (`revealed`); lo demás, sólo lo público (`rivalPeekOf`).
     const shownCode = (id: string) => (rivalPile === 'hand' && revealed ? (revealed.codes[revealed.ids.indexOf(id)] ?? 0) : 0)
     const peekOf = (id: string): CardPeek => (shownCode(id) ? { drawId: drawIdOf(shownCode(id)) } : rivalPeekOf(id))
+    const info = (id: string) => {
+      const code = shownCode(id)
+      const open = code !== 0 || 'drawId' in rivalPeekOf(id)
+
+      const ref = code ? null : { side: 'theirs' as const, id }
+
+      return { name: open ? nameOf(ref, code) : t('duel.mark.rivalCard'), art: open ? artOf(ref, code) : null, faceDown: !open, faceUp: rivalPile === 'extra' }
+    }
+    const kicker = revealed?.by ? nameOf(null, revealed.by) : null
+
+    if (revealFloats) {
+      const ids = revealed?.ids ?? []
+
+      return (
+        <Presence>
+          {rivalViewerHidden ? null : (
+            <AutoPanel kind="revealed" label={`${t('auto.revealed.title')} · ${ids.length}`} top={kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null} onDismiss={() => setRivalPile(null)}>
+              <ul aria-label={t('practice.dialog.cards')} className="m-0 flex list-none flex-wrap justify-center gap-2 p-0">
+                {ids.map((id) => (
+                  <li key={id} className="grid gap-1">
+                    <PanelCard name={info(id).name} art={info(id).art} onInspect={(rect) => showRival(peekOf(id), rect)} />
+                    {/* El nombre, del ancho de la carta (`w-0 min-w-full`: no la ensancha). */}
+                    <span className="block w-0 min-w-full truncate text-center text-micro text-foreground">{info(id).name}</span>
+                  </li>
+                ))}
+              </ul>
+            </AutoPanel>
+          )}
+        </Presence>
+      )
+    }
 
     return (
       <PileViewer
@@ -1638,15 +1673,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         // Eligiendo en la mesa (o con la mesa tapada por el final) se esconde sin cerrarse, como el tuyo.
         hidden={rivalViewerHidden}
         ids={rivalPile === 'hand' ? (revealed?.ids ?? []) : rivalPile ? (rivalPile === 'extra' ? theirs.extraUp : theirs[rivalPile]) : []}
-        {...(rivalPile === 'hand' ? { title: t('auto.revealed.title'), ...(revealed?.by ? { kicker: nameOf(null, revealed.by) } : {}) } : {})}
-        info={(id) => {
-          const code = shownCode(id)
-          const open = code !== 0 || 'drawId' in rivalPeekOf(id)
-
-          const ref = code ? null : { side: 'theirs' as const, id }
-
-          return { name: open ? nameOf(ref, code) : t('duel.mark.rivalCard'), art: open ? artOf(ref, code) : null, faceDown: !open, faceUp: rivalPile === 'extra' }
-        }}
+        {...(rivalPile === 'hand' ? { title: t('auto.revealed.title'), ...(kicker ? { kicker } : {}) } : {})}
+        info={info}
         targeted={rivalTargeted}
         glow={(id) => (rivalActing.has(id) ? 'act' : null)}
         onPick={(id, rect) => {
@@ -1657,7 +1685,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         onClose={() => setRivalPile(null)}
       />
     )
-  }, [rivalPile, rivalViewerHidden, theirs, revealed, rivalPeekOf, nameOf, artOf, rivalTargeted, rivalActing, desktop, showRival, lockDock, hoverDock])
+  }, [rivalPile, revealFloats, rivalViewerHidden, theirs, revealed, rivalPeekOf, nameOf, artOf, rivalTargeted, rivalActing, desktop, showRival, lockDock, hoverDock])
   return {
     rivalViewer,
     lifeHeld: lifeHeld || reveal.holding,

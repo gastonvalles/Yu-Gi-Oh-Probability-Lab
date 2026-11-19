@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import { LOCATION as L } from '../app/auto/protocol'
+import { setMatMenus } from '../app/mat-menus'
 import type { WireAct } from '../app/mat-public'
 import { replayMat } from '../app/practice-mat'
 import { FLIGHT_MS } from '../app/use-card-flights'
@@ -116,5 +117,39 @@ describe('auto-screen · la mano del rival', () => {
     expect(landed.get('c2')).toBeGreaterThan(0)
     expect(landed.get('c4')! - landed.get('c2')!).toBeGreaterThanOrEqual(FLIGHT_MS)
     expect(dispatches).toBe(0)
+  })
+
+  it('con «Menús flotantes», las cartas reveladas van en la ventana que se mueve y se agranda, con la carta del efecto; la X la cierra sin adelantar su turno (TI-321)', () => {
+    setMatMenus('floating')
+    try {
+      const fake = fakeSession()
+      const shown: WireAct = { action: { type: 'reveal', id: 'c3' }, reveal: {}, seen: { ids: ['c3'], codes: [400], by: 700 } }
+      const acts = [shown, { action: { type: 'place', id: 'c2', zone: 'mz', index: 1, pos: 'atk', how: 'normal' }, reveal: {} } satisfies WireAct]
+      const start = { ...fake.getSnapshot().theirs, hand: HAND }
+      const panel = () => document.querySelector<HTMLElement>('[data-prompt="revealed"]')
+
+      renderAuto(fake)
+      core(() => fake.set({ initial: { ...fake.getSnapshot().initial, theirs: start }, theirs: start }))
+      core(() => fake.set({ theirsActs: acts, order: ['theirs', 'theirs'], theirs: replayMat(start, acts.map((wire) => wire.action)) }))
+      for (let ms = 0; ms < 2_000 && !panel(); ms += 50) act(() => vi.advanceTimersByTime(50))
+      // La ventana (no la hoja de abajo): con su barra para llevarla y su esquina para estirarla.
+      expect(panel()).toHaveAttribute('data-auto-panel', 'floating')
+      expect(panel()!.querySelector('[data-window-bar]')).not.toBeNull()
+      expect(panel()!.querySelector('[data-window-corner]')).not.toBeNull()
+      expect(document.querySelector('[data-pile-sheet]:not([hidden])')).toBeNull()
+      expect(within(panel()!).getByRole('heading', { name: 'Cartas reveladas · 1' })).toBeInTheDocument()
+      expect(within(panel()!).getByText('Blue-Eyes White Dragon')).toBeInTheDocument()
+      expect(within(panel()!).getByText('Nibiru')).toBeInTheDocument()
+      const close = within(panel()!).getByRole('button', { name: 'Cerrar' })
+
+      fireEvent.pointerDown(close, { button: 0, pointerId: 1 })
+      fireEvent.click(close)
+      act(() => vi.advanceTimersByTime(50))
+      expect(panel()).toBeNull()
+      expect(document.querySelector('[data-rival-card-id="c2"]')).toBeNull()
+      expect(dispatches).toBe(0)
+    } finally {
+      setMatMenus('docked')
+    }
   })
 })
