@@ -1225,7 +1225,7 @@ function PracticeMatBody({
   const burst = (tone: ArrivalTone, id: string, art: string | null): boolean => {
     if (!art || isToken(id) || session.replay || !summonArtOn() || !summonArtFits(tone)) return false
     if (burstSeen.current.initial !== session.initial) burstSeen.current = { initial: session.initial, arts: new Set() }
-    if (burstSeen.current.arts.has(art) || !playSummonArt(art)) return false
+    if (burstSeen.current.arts.has(art) || !playSummonArt(art, fieldRef.current)) return false
     burstSeen.current.arts.add(art)
     return true
   }

@@ -127,6 +127,24 @@ const TONE: Record<EntranceKind, { border: string; flash: string }> = {
 const ROOT = 'pointer-events-none fixed inset-0 z-[140] overflow-hidden'
 const VEIL = 'absolute inset-0 bg-black opacity-0'
 const STAGE = 'absolute left-1/2 top-1/2'
+/** La franja del campo (`stageOf`): lo que se centra en él va adentro; el velo y las cartas que caen a su casilla, afuera (en coordenadas de la pantalla). */
+const BAND = 'absolute inset-y-0'
+
+/**
+ * Dónde va la figura: a lo ancho, el campo (`field`, sin los paneles laterales: el centro, el radio y el tamaño de la carta grande salen de él); a lo alto, la ventana (el velo y la caída no
+ * cambian). En el celular el campo ocupa todo el ancho y queda igual. Sin campo, la ventana.
+ */
+export function stageOf(field: Element | null): { left: number; width: number; height: number } {
+  const box = field?.getBoundingClientRect()
+  return box && box.width > 0 ? { left: box.left, width: box.width, height: window.innerHeight } : { left: 0, width: window.innerWidth, height: window.innerHeight }
+}
+
+/** La franja del campo dentro de la capa de la entrada. */
+function bandOf(root: Element, stage: { left: number; width: number }): HTMLSpanElement {
+  const band = el(root, BAND)
+  Object.assign(band.style, { left: `${Math.round(stage.left)}px`, width: `${Math.round(stage.width)}px` })
+  return band
+}
 const PIECE = 'absolute opacity-0'
 /** Un disco que se desvanece hacia el borde (una máscara quieta: no se anima). */
 const SOFT = 'rounded-full mask-radial-from-20% mask-radial-to-70%'
@@ -286,21 +304,24 @@ export function playEntrance({ kind, cell, art, materials, hide, field, onDone }
   const add: Add = (element, frames, duration, delay, easing) => {
     cancelWhenDone(element.animate(frames, { duration: Math.max(1, Math.round(duration)), delay: Math.round(delay), ...(easing ? { easing } : {}) }))
   }
-  const [vw, vh] = [window.innerWidth, window.innerHeight]
+  // El campo a lo ancho (sin los paneles laterales) y la ventana a lo alto: de ahí el centro, el radio y la carta grande.
+  const box = stageOf(field)
+  const [vw, vh] = [box.width, box.height]
   const r = Math.min(vw, vh) * 0.36
 
   // La carta de la mesa y el fantasma de su vuelo, escondidos hasta que la de la entrada toca la casilla.
   for (const element of hide) cancelWhenDone(element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: t.hit + c.settle }))
 
   const veil = el(root, VEIL)
-  const stage = el(root, STAGE)
+  const band = bandOf(root, box)
+  const stage = el(band, STAGE)
   // La figura y los materiales, con su línea de tiempo acomodada al golpe de todas (`figureAt`): cada pieza arranca y termina donde caen su principio y su final.
   const paced: Add = (element, frames, duration, delay, easing) => {
     const from = figureAt(kind, delay)
     add(element, frames, figureAt(kind, delay + duration) - from, from, easing)
   }
   figureOf(kind, stage, ENTRANCE_FIGURE[kind], r, paced)
-  materialsOf(kind, root, ENTRANCE_FIGURE[kind], materials, r, paced)
+  materialsOf(kind, band, ENTRANCE_FIGURE[kind], materials, r, paced)
 
   // La revelación: el destello en el centro (de ×1 a ×2 en 500 ms; sube en 167 y se apaga en 333) y la carta que cae grande hasta su casilla.
   const reveal = t.hit - c.reveal
@@ -319,7 +340,7 @@ export function playEntrance({ kind, cell, art, materials, hide, field, onDone }
   const big = Math.max(1, Math.min((0.42 * vw) / Math.max(1, cell.width), (0.62 * vh) / Math.max(1, cell.height)))
   const total = c.reveal + c.settle
   const at = (ms: number) => Math.round((ms / total) * 1000) / 1000
-  const [dx, dy] = [Math.round(vw / 2 - (cell.left + cell.width / 2)), Math.round(vh / 2 - (cell.top + cell.height / 2))]
+  const [dx, dy] = [Math.round(box.left + vw / 2 - (cell.left + cell.width / 2)), Math.round(vh / 2 - (cell.top + cell.height / 2))]
   add(path, [
     { offset: 0, translate: `${dx}px ${dy}px`, opacity: 0 },
     { offset: at(c.show), translate: `${dx}px ${dy}px`, opacity: 1, easing: EASE_IN_OUT },
@@ -411,9 +432,12 @@ export function playPendulum({ cards, field, onDone }: { cards: readonly Pendulu
   const add: Add = (element, frames, duration, delay, easing) => {
     cancelWhenDone(element.animate(frames, { duration: Math.max(1, Math.round(duration)), delay: Math.round(delay), ...(easing ? { easing } : {}) }))
   }
-  const [vw, vh] = [window.innerWidth, window.innerHeight]
+  // Como en `playEntrance`: las escalas, la luz y el péndulo, en la franja del campo; las cartas caen derechas a su casilla.
+  const box = stageOf(field)
+  const [vw, vh] = [box.width, box.height]
   const r = Math.min(vw, vh) * 0.36
   const veil = el(root, VEIL)
+  const band = bandOf(root, box)
   // Las escalas, la luz y el péndulo, con su línea de tiempo acomodada al golpe de todas (`pendulumAt`).
   const paced: Add = (element, frames, duration, delay, easing) => {
     const from = pendulumAt(delay)
@@ -423,7 +447,7 @@ export function playPendulum({ cards, field, onDone }: { cards: readonly Pendulu
   // Las dos escalas: suben desde abajo a los costados y se quedan hasta el final; su gema arriba.
   const pillar = [Math.round(0.14 * r), Math.round(0.78 * vh)] as const
   for (const [x, color, gem] of [[0.1, 'via-fx-pendulo-azul/75', 'bg-fx-pendulo-azul'], [0.9, 'via-fx-pendulo-rojo/75', 'bg-fx-pendulo-rojo']] as const) {
-    const group = el(root, `${PIECE} left-0 top-0 size-0`)
+    const group = el(band, `${PIECE} left-0 top-0 size-0`)
     group.style.translate = `${Math.round(x * vw)}px ${Math.round(vh / 2)}px`
     const bar = el(group, `${SCALE} ${color}`, pillar)
     paced(bar, [{ scale: '1 0', easing: EASE_OUT }, { scale: '1 1' }], 400, p.scales)
@@ -431,11 +455,11 @@ export function playPendulum({ cards, field, onDone }: { cards: readonly Pendulu
     paced(group, keep(0, p.end - p.scales, p.end - p.scales, [1, 1]), p.end - p.scales, p.scales)
   }
   // La luz blanca entre las escalas, de arriba hacia abajo.
-  const light = el(root, `${PIECE} left-1/2 top-0 h-full origin-top bg-linear-to-b from-white/45 via-fx-pendulo-azul/20 to-transparent mix-blend-plus-lighter`)
+  const light = el(band, `${PIECE} left-1/2 top-0 h-full origin-top bg-linear-to-b from-white/45 via-fx-pendulo-azul/20 to-transparent mix-blend-plus-lighter`)
   Object.assign(light.style, { width: `${Math.round(0.9 * r)}px`, marginLeft: `${-Math.round(0.45 * r)}px` })
   paced(light, keep(0, p.lightMs, p.lightMs, [0.4, 1], 0.85), p.lightMs, p.light)
   // El péndulo, colgado arriba en el medio: oscila y se va apagando (gira; no se traslada).
-  const swing = el(root, `${PIECE} left-1/2 top-1/12 size-0 origin-top`)
+  const swing = el(band, `${PIECE} left-1/2 top-1/12 size-0 origin-top`)
   const rod = el(swing, 'absolute -ml-px w-0.5 bg-white/85 outline-1 outline-black/40')
   const length = Math.round(0.3 * vh)
   rod.style.height = `${length}px`

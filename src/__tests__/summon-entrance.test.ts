@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ENTRANCE, ENTRANCE_COMMON, ENTRANCE_FIGURE, PENDULUM, UNKNOWN_SUMMON, entranceAllowed, entranceOf, figureAt, figureTime, landingToneOf, type EntranceKind, pendulumAt, pendulumHit, playEntrance, playPendulum, surePendulum } from '../app/summon-entrance'
+import { css } from './support/css-value'
 
 /** jsdom no anima: cada `animate` se anota con su elemento y devuelve una animación que se termina a mano. */
 function stubAnimate() {
@@ -49,6 +50,51 @@ describe('la entrada larga de la invocación (Master Duel)', () => {
       const stage = document.querySelector('[data-fx="entrance"]')!
       for (const call of calls) if (stage.contains(call.el)) expect(Number(call.options.delay ?? 0)).toBeLessThanOrEqual(ENTRANCE.hit)
       document.body.innerHTML = ''
+    }
+  })
+
+  it('se centra en el campo, no en la ventana (Gastón, 2026-11-19: «ignorando los paneles laterales»): la figura, los materiales, el radio y la carta grande salen del campo a lo ancho; el velo sigue cubriendo toda la pantalla', () => {
+    const [width, height] = [window.innerWidth, window.innerHeight]
+    Object.assign(window, { innerWidth: 1440, innerHeight: 900 })
+    try {
+      const fieldAt = () => {
+        const field = document.body.appendChild(document.createElement('div'))
+        field.getBoundingClientRect = () => new DOMRect(400, 250, 600, 420)
+        field.getAnimations = () => []
+        return field
+      }
+      const cell = new DOMRect(500, 600, 48, 70)
+      const band = () => document.querySelector<HTMLElement>('[data-fx="entrance"] > .inset-y-0')!
+      const bandBox = () => [css(band().style.left), css(band().style.width)]
+      // El vuelo de la carta grande: su primer cuadro sale del centro de la figura.
+      const fall = (calls: ReturnType<typeof stubAnimate>) => calls.find((call) => call.el.parentElement === document.querySelector('[data-fx="entrance"]') && call.frames[0]?.translate)!.frames[0]!.translate
+
+      // Con el campo: la franja es la del campo; la figura (su centro, `left-1/2 top-1/2`) va adentro y la carta grande cae desde el centro del campo (700) a la altura del medio de la ventana (450).
+      let calls = stubAnimate()
+      playEntrance({ kind: 'xyz', cell, art: null, materials: 2, hide: [], field: fieldAt(), onDone: () => {} })
+      expect(bandBox()).toEqual([css('400px'), css('600px')])
+      expect(band().querySelector('.left-1\\/2.top-1\\/2')).not.toBeNull()
+      expect(document.querySelector('[data-fx="entrance"] > .bg-black.inset-0'), 'el velo, de toda la pantalla').not.toBeNull()
+      expect(fall(calls)).toBe(`${700 - 524}px ${450 - 635}px`)
+      // El radio sale del ancho del campo (600, menos que los 900 de alto): el agujero del Xyz mide 0,9 × 0,36 × 600.
+      expect(parseFloat((calls.find((call) => call.el.className.includes('bg-black outline-4'))!.el as HTMLElement).style.width)).toBe(Math.round(0.9 * 0.36 * 600))
+      document.body.innerHTML = ''
+
+      // Sin campo, la ventana (como antes).
+      calls = stubAnimate()
+      playEntrance({ kind: 'xyz', cell, art: null, materials: 2, hide: [], field: null, onDone: () => {} })
+      expect(bandBox()).toEqual([css('0px'), css('1440px')])
+      expect(fall(calls)).toBe(`${720 - 524}px ${450 - 635}px`)
+      document.body.innerHTML = ''
+
+      // El Péndulo: las dos escalas, la luz y el péndulo, en la franja del campo.
+      stubAnimate()
+      playPendulum({ cards: [{ cell, art: null, hide: [] }], field: fieldAt(), onDone: () => {} })
+      expect(bandBox()).toEqual([css('400px'), css('600px')])
+      expect(band().querySelectorAll('.origin-bottom')).toHaveLength(2)
+      expect(band().querySelector('.origin-top.h-full')).not.toBeNull()
+    } finally {
+      Object.assign(window, { innerWidth: width, innerHeight: height })
     }
   })
 
