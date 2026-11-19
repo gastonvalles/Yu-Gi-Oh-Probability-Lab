@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
+import { cardImageSrc } from './card-image-source'
 import type { ArrivalTone } from './field-impact'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, cancelWhenDone } from './motion'
 import { entranceAllowed } from './summon-entrance'
@@ -59,8 +60,11 @@ export const summonArtFits = (tone: ArrivalTone) => tone === 'special' || tone =
 export const burstReplaces = (effect: { kind: string; key: number; cards: readonly { id: string }[] }, burst: { id: string; at: number } | null) =>
   burst !== null && (effect.kind === 'normal' || effect.kind === 'special') && effect.cards.length === 1 && effect.cards[0]!.id === burst.id && Math.abs(effect.key - burst.at) < 1500
 
-/** Cuánto dura, de punta a punta: entra en 340 ms, se queda y sale en los últimos 150. Corre sobre el vuelo y el golpe de la llegada (≈510 ms): nadie la espera. */
-export const SUMMON_ART_MS = 900
+/**
+ * Cuánto dura, de punta a punta: entra en 340 ms, se queda y sale en los últimos 150. Corre sobre el vuelo de la llegada y se va cuando la carta toca su casilla (el golpe, a ~410 ms de un vuelo
+ * largo, y su anillo, que dura ~1 s, se ven): nadie la espera.
+ */
+export const SUMMON_ART_MS = 650
 const LEAVE_MS = 150
 
 /**
@@ -93,7 +97,10 @@ export function playSummonArt(art: string): Animation | null {
   root.setAttribute('aria-hidden', 'true')
   root.innerHTML = LAYERS
   const [back, mid, front, flash] = [...root.children]
-  mid!.querySelector('img')!.src = art
+  // La misma dirección que la casilla (`CardArt`, por el proxy): sale de la caché del navegador. Si el proxy falla, la directa, como hace la casilla.
+  const image = mid!.querySelector('img')!
+  image.addEventListener('error', () => (image.src = art), { once: true })
+  image.src = cardImageSrc(art)
   document.body.append(root)
   burstLayers([back!, mid!, front!], flash!, easeOutBack())
   const master = root.animate(

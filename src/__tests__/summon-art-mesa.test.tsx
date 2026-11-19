@@ -3,6 +3,7 @@ import { act, cleanup } from '@testing-library/react'
 import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { cardImageSrc } from '../app/card-image-source'
 import type { MatAction, MatState } from '../app/practice-mat'
 import { SUMMON_ART_MS, burstReplaces, setSummonArt, summonArtFits } from '../app/summon-art'
 import { useMatSession } from '../app/use-mat-session'
@@ -93,7 +94,8 @@ describe('la irrupción al invocar (beta) en la mesa', () => {
 
     expect(bursts()).toHaveLength(1)
     expect(bursts()[0]).toHaveProperty('className', expect.stringContaining('pointer-events-none'))
-    expect(bursts()[0]!.querySelector('img')!.getAttribute('src')).toBe(WITH_ART.get('card-1-1')!.art)
+    // La misma dirección que la casilla (por el proxy): nada que bajar de nuevo.
+    expect(bursts()[0]!.querySelector('img')!.getAttribute('src')).toBe(cardImageSrc(WITH_ART.get('card-1-1')!.art!))
 
     // Vuelve a la mano y se invoca de nuevo: la llegada de siempre, sin irrupción.
     document.querySelectorAll('[data-fx="summon-art"]').forEach((element) => element.remove())
