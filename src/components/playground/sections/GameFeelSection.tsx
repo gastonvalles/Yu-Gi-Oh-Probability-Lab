@@ -9,7 +9,9 @@ import { playEntrance, playPendulum, type EntranceKind } from '../../../app/summ
 import { useMediaQuery } from '../../../app/use-media-query'
 import { PANEL_LIME } from '../../auto/AutoPanel'
 import { ChainStage, type ChainNoticeRow } from '../../auto/ChainNotice'
+import { LETHAL_MS } from '../../../app/end-reveal'
 import { CardArt } from '../../CardArt'
+import { LethalBlow } from '../../duel/LethalBlow'
 import type { ChainMedal } from '../../../app/card-glow'
 import { AttackFx, measureStrike, type Strike } from '../../probability/AttackFx'
 import { ChainBadge, MATERIAL_MARK } from '../../probability/MatFx'
@@ -545,7 +547,15 @@ function Impact({ onDone }: { onDone: () => void }) {
 function HitSample() {
   const board = useRef<HTMLDivElement | null>(null)
   const [strike, setStrike] = useState<Strike | null>(null)
+  const [lethal, setLethal] = useState(0)
   const attack = (direct: boolean) => setStrike(measureStrike({ from: '[data-card-id="feel-atacante"]', ...(direct ? {} : { to: '[data-card-id="feel-objetivo"]' }), bounds: board.current }))
+
+  useEffect(() => {
+    if (!lethal) return
+    const timer = window.setTimeout(() => setLethal(0), LETHAL_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [lethal])
 
   return (
     <Specimen
@@ -555,7 +565,9 @@ function HitSample() {
         <>
           Con los tiempos y los colores medidos en Master Duel: la carta que ataca brilla dorada mientras embiste (300 ms, opaca hasta la mitad) y el polvo converge hacia ella; el golpe es
           dorado, llega al pico en 50 ms con <Tag>--ease-golpe</Tag> y se encoge a la mitad hasta los 560 ms, con una gemela oscura debajo (se lee sobre un arte claro); 200 ms después,
-          líneas y polvo. El directo suma la onda que cruza la pantalla (300 ms, lineal). Con «Livianos», sólo el aro. Archivos: <Tag>app/field-impact.ts</Tag> y <Tag>AttackFx.tsx</Tag>.
+          líneas y polvo. El directo suma la onda que cruza la pantalla (300 ms, lineal). El golpe letal (<Tag>LethalBlow</Tag>, en cámara lenta) lanza dos ondas, la segunda 100 ms
+          después (<Tag>WAVE_AGAIN_MS</Tag>, como el puño final de Master Duel), dentro de su 1,5 s. Con «Livianos», sólo el aro y ninguna onda. Archivos: <Tag>app/field-impact.ts</Tag> y{' '}
+          <Tag>AttackFx.tsx</Tag>.
         </>
       }
     >
@@ -566,7 +578,11 @@ function HitSample() {
         <Button size="sm" variant="secondary" icon="play" onClick={() => attack(true)}>
           Ataque directo
         </Button>
+        <Button size="sm" variant="secondary" icon="play" onClick={() => setLethal((n) => n + 1)}>
+          Golpe letal
+        </Button>
       </div>
+      {lethal ? <LethalBlow key={lethal} damage={3100} mine={false} /> : null}
       <div ref={board} data-field className="grid justify-items-center gap-12 bg-background/60 px-2 py-6">
         {(['feel-objetivo', 'feel-atacante'] as const).map((id, index) => (
           <span key={id} data-card-id={id} className="block aspect-[421/614] w-14 overflow-hidden bg-input">
@@ -717,7 +733,8 @@ function ChainSample() {
       layout="column"
       note={
         <>
-          La pieza real (<Tag>ChainStage</Tag>, la escena de la cadena del duelo): al encadenar, una línea de energía (<Tag>fx-energia</Tag>, núcleo blanco) une la carta anterior con la nueva de
+          La pieza real (<Tag>ChainStage</Tag>, la escena de la cadena del duelo): la carta de cada eslabón sube desde abajo a su lugar con su fundido (280 ms con{' '}
+          <Tag>--ease-llegada</Tag> tras 100 ms, como en Master Duel pero sin alargar el eslabón; con movimiento reducido, sólo el fundido); al encadenar, una línea de energía (<Tag>fx-energia</Tag>, núcleo blanco) une la carta anterior con la nueva de
           un trazo en 150 ms (<Tag>animate-chain-energy</Tag>: un solo elemento que estira <Tag>scale</Tag> desde su punta y apunta con <Tag>rotate</Tag>), salta la chispa donde toca (el
           flipbook) y recién después asienta la cadena de metal; todo dentro de los 0,7 s del eslabón. Con «livianos», la línea queda y la chispa no; con movimiento reducido, ninguna.
           Los gestos de Master Duel (<Tag>CHAIN_BEAT_MS</Tag>), sin alargar nada: la carta que espera respuesta late (su marco celeste, de 1 a 0,5 cada 1333 ms); al resolver, los

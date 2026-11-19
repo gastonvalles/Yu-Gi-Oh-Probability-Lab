@@ -278,12 +278,15 @@ function addWave(layer: Element, delay: number): readonly [Animation, number] {
   return [cancelWhenDone(wave.animate(waveFrames(), { duration: WAVE_MS, delay })), delay + WAVE_MS]
 }
 
-/** La onda de pantalla completa sola, en `(x, y)` (el golpe letal). Con «Livianos» o movimiento reducido, nada. */
-export function waveAt(x: number, y: number, delay = 0): void {
+/** La segunda onda del golpe letal: en Master Duel, el puño final lanza dos ondas y la segunda sale 100 ms después (termina a los 400 ms: dentro de `LETHAL_MS`). */
+export const WAVE_AGAIN_MS = 100
+
+/** La onda de pantalla completa sola, en `(x, y)`; `twice` (el golpe letal), con su segunda onda. Con «Livianos» o movimiento reducido, nada. */
+export function waveAt(x: number, y: number, delay = 0, { twice = false }: { twice?: boolean } = {}): void {
   if (!canAnimate() || lite()) return
 
   const layer = layerAt(x, y)
-  removeAfter(layer, [addWave(layer, delay)])
+  removeAfter(layer, twice ? [addWave(layer, delay), addWave(layer, delay + WAVE_AGAIN_MS)] : [addWave(layer, delay)])
 }
 
 /** Un grupo de piezas quietas a `radius` px del centro, cada una girada hacia afuera; el grupo es la capa que se anima. */

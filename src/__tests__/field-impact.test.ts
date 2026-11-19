@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
+import { render } from '@testing-library/react'
+import { createElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ARRIVAL, HIT_MS, PUNCH, SACRIFICE, SECOND_AT, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, arrivalRingFrames, arriveAt, arrivals, chargeOn, punchAt, punchFrames, ringAt, sacrificeAt, settleShake, shakeField, shakeOf } from '../app/field-impact'
+import { LethalBlow } from '../components/duel/LethalBlow'
+import { LETHAL_MS } from '../app/end-reveal'
+import { ARRIVAL, HIT_MS, PUNCH, SACRIFICE, SECOND_AT, WAVE_AGAIN_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, arrivalRingFrames, arriveAt, arrivals, chargeOn, punchAt, punchFrames, ringAt, sacrificeAt, settleShake, shakeField, shakeOf } from '../app/field-impact'
 import { EASE_ASENTAR, EASE_GOLPE } from '../app/motion'
 import { FLIGHT_MS } from '../app/use-card-flights'
 import { TOKEN_KIND, type MatState } from '../app/practice-mat'
@@ -119,6 +123,20 @@ describe('el impacto en la mesa (field-impact)', () => {
       expect(wave.frames[1]).toMatchObject({ opacity: 1, offset: WAVE_HOLD })
       expect(wave.frames.at(-1)).toEqual({ scale: '1', opacity: 0 })
       expect(WAVE_MS * WAVE_HOLD).toBeCloseTo(165)
+    })
+
+    it('el golpe letal (`LethalBlow`) lanza dos ondas de pantalla, la segunda 100 ms después, y terminan antes que el golpe lento (no alargan el final); en el catálogo, ninguna', () => {
+      const calls = stubAnimate()
+      const waves = () => calls.filter((call) => call.el.getAttribute('data-fx') === 'wave')
+      const view = render(createElement(LethalBlow, { damage: 3000, mine: false }))
+
+      expect(waves().map((call) => call.options.delay)).toEqual([0, WAVE_AGAIN_MS])
+      for (const wave of waves()) expect(wave.options.duration).toBe(WAVE_MS)
+      expect(WAVE_AGAIN_MS + WAVE_MS).toBeLessThan(LETHAL_MS)
+      view.unmount()
+      calls.length = 0
+      render(createElement(LethalBlow, { damage: 3000, mine: true, inline: true }))
+      expect(waves()).toHaveLength(0)
     })
 
     it('con «Livianos» queda sólo el aro con su curva; con movimiento reducido, nada', () => {
