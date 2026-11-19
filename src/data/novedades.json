@@ -1,6 +1,39 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-2-cadena-desde-abajo-y-golpe-letal",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "La cadena sube desde abajo y el golpe final pega dos veces",
+        "novedades": [
+          "En la escena de la cadena, la carta de cada eslabón ahora sube desde abajo hasta su lugar, en vez de aparecer grande en el centro.",
+          "El golpe que termina el duelo lanza una segunda onda de pantalla, una décima de segundo después de la primera."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Ninguna de las dos cosas alarga el duelo: la cadena dura lo mismo que antes y el golpe final también.",
+          "Con «Efectos: Livianos» la carta sube igual y la onda no sale. Con «reducir movimiento» la carta sólo aparece."
+        ]
+      },
+      "en": {
+        "title": "The chain rises from below and the final blow hits twice",
+        "novedades": [
+          "In the chain scene, each link's card now rises from below into place, instead of popping up large in the center.",
+          "The blow that ends the duel fires a second screen wave, a tenth of a second after the first."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Neither makes the duel longer: the chain lasts the same as before, and so does the final blow.",
+          "With «Effects: Light» the card still rises and the wave does not show. With «reduce motion» the card just appears."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-1-pendulo-y-enlace",
       "date": "2026-11-19",
       "tags": [

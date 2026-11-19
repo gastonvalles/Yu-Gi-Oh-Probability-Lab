@@ -364,7 +364,8 @@ function Burst() {
 /**
  * La cadena en grande del duelo automático, **sólo al encadenar**, igual a Master Duel (Gastón: «debemos clonar esto, debe quedar igual de ser posible»; todo dibujado por nosotros).
  * La pone la mesa en `duel.chain`, en la capa centrada sobre el campo: llena su alto (3:4; quien la usa le da un alto).
- * - **Armar:** cada activación entra grande y derecha desde el centro y cae inclinada a su lugar (`starting:`), con un estallido de rayos dorados detrás (`Burst`) y un destello
+ * - **Armar:** cada activación sube desde abajo a su lugar con su fundido (`starting:`, 280 ms con `--ease-llegada` tras 100 ms: dentro del eslabón, antes de que la línea de energía
+ *   la toque), con un estallido de rayos dorados detrás (`Burst`) y un destello
  *   amarillo alrededor de la carta y de su número. La última va adelante y abajo, la más grande, alternando de lado (impar a la izquierda, par a la derecha); la anterior, arriba en la
  *   esquina opuesta; las de antes, más chicas y más arriba (`LAYOUT`); desde la quinta, se van hacia arriba. Cada carta entera, con su halo blanco (una sombra quieta), una leve
  *   inclinación 3D y atada por dos esquinas con cadena; entre carta y carta la cadena, de eslabones chicos, cuelga en curva por delante. El número, enorme, blanco en bloques con
@@ -492,9 +493,10 @@ export function ChainStage({
               data-chain-card={link.number}
               data-pose={at}
               className={cx(
-                'absolute left-1/3 top-2/7 aspect-[421/614] w-1/3 shadow-chain-halo transition-[translate,rotate,scale,opacity,transform] duration-350 ease-in-out starting:translate-x-0 starting:translate-y-0 starting:rotate-0 starting:scale-150 starting:opacity-0 motion-reduce:transition-opacity',
+                'absolute left-1/3 top-2/7 aspect-[421/614] w-1/3 shadow-chain-halo transition-[translate,rotate,scale,opacity,transform] starting:translate-y-full starting:opacity-0 motion-reduce:transition-opacity',
                 link.art ? 'bg-input' : link.frame ? frameClass(link.frame) : 'bg-input',
-                newest && 'delay-100',
+                // La nueva sube desde abajo a su lugar (Master Duel), corta y frenando (`--ease-llegada`); las demás se corren de lugar en 350 ms.
+                newest ? 'delay-100 duration-280 ease-llegada' : 'duration-350 ease-in-out',
                 at === 'out' ? '-translate-y-1/4 scale-80 opacity-0' : at === 'back' ? '-translate-y-full scale-50 opacity-0' : DEPTH[depth(index)],
               )}
             >

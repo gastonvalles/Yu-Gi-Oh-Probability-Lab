@@ -13,9 +13,9 @@ const RAYS = Array.from({ length: 14 }, (_, at) => (at * 360) / 14)
  * reducido, sin destello ni rayos: el número quieto. No ataja toques. `inline`: dentro de su marco (el catálogo) en vez de la pantalla.
  */
 export function LethalBlow({ damage, mine, inline = false }: { damage: number; /** Caés vos (rojo); si no, el rival (lima, el color de ganar). */ mine: boolean; inline?: boolean }) {
-  // El golpe fuerte: la onda que cruza la pantalla desde el punto del golpe (`waveAt`; con «Livianos» o movimiento reducido, nada). En el catálogo (`inline`), no: saldría de su marco.
+  // El golpe fuerte: dos ondas que cruzan la pantalla desde el punto del golpe (`waveAt`; con «Livianos» o movimiento reducido, nada). En el catálogo (`inline`), no: saldrían de su marco.
   useEffect(() => {
-    if (!inline) waveAt(window.innerWidth / 2, window.innerHeight * (mine ? 2 / 3 : 1 / 3))
+    if (!inline) waveAt(window.innerWidth / 2, window.innerHeight * (mine ? 2 / 3 : 1 / 3), 0, { twice: true })
   }, [inline, mine])
 
   return (

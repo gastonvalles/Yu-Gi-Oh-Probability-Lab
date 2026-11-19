@@ -1,7 +1,7 @@
 import type { ChainFeed, ChainRow, ChainStep } from '../../../app/auto/chain-feed'
 import { CHAIN_BEAT_MS, medalsOf } from '../../../app/card-glow'
 import { replayChainSteps, type DuelReplay, type ReplaySide } from '../../../app/duel-replay'
-import { EASE_OUT, bezierEase, easeInOut } from '../../../app/motion'
+import { EASE_LLEGADA, EASE_OUT, bezierEase, easeInOut } from '../../../app/motion'
 import { t } from '../../../i18n'
 import { BOND_TRIM, BURST_RAYS, CELL, CHAIN_LEAVE_MS, chainFeed, CORNER_TIES, DIGIT_STEP, LAYOUT, SAG, SHOWN, SIDE_LEFT, glyphCells, hangingLinks } from '../../auto/ChainNotice'
 import { canvasOf, drawCard, FONT, type ChainColors, type Ctx, type VideoAssets } from './video-draw'
@@ -16,9 +16,9 @@ import { chainTimeline, type VideoSpeed } from './video-timeline'
  * (`fieldRect`); los colores, de `--color-chain-*`; el ritmo, de `chainTimeline`. Sólo se dibuja en el lienzo; sin cadena guardada no hay nada (el video sigue con la carta grande).
  */
 
-/** Los tiempos de `ChainStage` (sus clases): la carta viaja 350 ms (`duration-350`) y la nueva espera 100 (`delay-100`); la cadena entre cartas entra 400 ms después (`delay-400`, pasada la línea de energía) en 200; el
+/** Los tiempos de `ChainStage` (sus clases): la carta viaja 350 ms (`duration-350`) y la nueva espera 100 (`delay-100`) y sube en 280 (`duration-280`); la cadena entre cartas entra 400 ms después (`delay-400`, pasada la línea de energía) en 200; el
  * velo, la salida y lo que se apaga, 200 (`duration-200`); el estallido y los destellos, `animate-fx-flash` (560); el campo baja de más `animate-chain-veil` (700). */
-export const STAGE_MS = { move: 350, newest: 100, bondDelay: 400, fade: 200, flash: 560, dim: 700 } as const
+export const STAGE_MS = { move: 350, newest: 100, rise: 280, bondDelay: 400, fade: 200, flash: 560, dim: 700 } as const
 
 /** Dónde queda una carta de la escena respecto de su lugar sin correr: cuánto se corre (en fracciones de su ancho y de su alto), cuánto gira (radianes), su escala y su opacidad. */
 export interface StagePose {
@@ -61,13 +61,14 @@ export function poseOfClasses(classes: string): StagePose {
   return pose
 }
 
-/** De donde entra la carta nueva (`starting:` de `ChainStage`) y adonde se van las de antes del cuarto lugar (`back`). */
-export const START_POSE = poseOfClasses('translate-x-0 translate-y-0 rotate-0 scale-150 opacity-0')
+/** De donde entra la carta nueva (`starting:` de `ChainStage`: su lugar, corrido hacia abajo) y adonde se van las de antes del cuarto lugar (`back`). */
+export const START_POSE = poseOfClasses('translate-y-full opacity-0')
 export const BACK_POSE = poseOfClasses('-translate-y-full scale-50 opacity-0')
 
 const mix = (a: number, b: number, e: number) => a + (b - a) * e
 const clamp = (x: number) => Math.min(1, Math.max(0, x))
 const easeOut = bezierEase(EASE_OUT)
+const easeLlegada = bezierEase(EASE_LLEGADA)
 const mixPose = (a: StagePose, b: StagePose, e: number): StagePose => ({ x: mix(a.x, b.x, e), y: mix(a.y, b.y, e), rotate: mix(a.rotate, b.rotate, e), scale: mix(a.scale, b.scale, e), opacity: mix(a.opacity, b.opacity, e), tiltX: mix(a.tiltX, b.tiltX, e), tiltY: mix(a.tiltY, b.tiltY, e) })
 
 /** Dónde cae el punto (`x`, `y`, desde el centro de la carta) con `perspective(p) rotateX(ax) rotateY(ay)`, como lo dibuja el navegador. */
@@ -441,14 +442,14 @@ export function drawStage(ctx: Ctx, episode: StageEpisode, now: number, geo: Sta
     })
 
   faded(ctx, 1 - leave, () => {
-    // Las cartas, de la primera a la última (la nueva, adelante): cada una viaja de su lugar de antes al de ahora; la nueva entra grande y derecha desde el centro.
+    // Las cartas, de la primera a la última (la nueva, adelante): cada una viaja de su lugar de antes al de ahora; la nueva sube desde abajo a su lugar.
     const mirror = count % 2 === 0
     for (let index = 0; index < count; index += 1) {
       const depth = count - 1 - index
       const newest = index === count - 1
       const to = stagePoseOf(depth, count)
-      // La nueva entra ya inclinada (`starting:` no toca su `transform`).
-      const pose = newest ? mixPose({ ...START_POSE, tiltX: to.tiltX, tiltY: to.tiltY }, to, easeInOut(clamp((now - episode.mounts[index]! - ms(STAGE_MS.newest)) / ms(STAGE_MS.move)))) : mixPose(stagePoseOf(depth - 1, count - 1), to, easeInOut(clamp((now - changed) / ms(STAGE_MS.move))))
+      // La nueva sale de su lugar corrido hacia abajo y transparente (`starting:` sólo toca eso): ya inclinada, girada y de su tamaño.
+      const pose = newest ? mixPose({ ...to, y: START_POSE.y, opacity: START_POSE.opacity }, to, easeLlegada(clamp((now - episode.mounts[index]! - ms(STAGE_MS.newest)) / ms(STAGE_MS.rise)))) : mixPose(stagePoseOf(depth - 1, count - 1), to, easeInOut(clamp((now - changed) / ms(STAGE_MS.move))))
       const born = newest && !hidden ? (now - episode.mounts[index]!) / ms(STAGE_MS.flash) : null
       const wait = newest && !hidden ? pulseAt((now - episode.mounts[index]!) / ms(CHAIN_BEAT_MS.wait)) : 0
       if (pose.opacity > 0) drawStageCard(ctx, episode.rows[index]!, pose, geo, sideOf(depth, mirror), born, assets, look, wait)
