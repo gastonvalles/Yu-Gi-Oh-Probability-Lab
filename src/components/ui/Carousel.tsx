@@ -95,7 +95,8 @@ export function Carousel({ label, children, bleed = false, className }: Carousel
           <IconButton tone="ghost" size="sm" className="pointer-coarse:hidden" aria-label={t('common.scrollBack')} disabled={current === 0} onClick={() => go(current - 1)}>
             <Icon name="chevron-left" />
           </IconButton>
-          <div className="flex items-center">
+          {/* Con el dedo cada punto mide 44 px de ancho (el dibujo sigue de 8 px; sólo se separan): son de 44 px de paso, así que ninguna zona pisa a la vecina. Si no entran en una línea, bajan de renglón antes que salirse. */}
+          <div className="flex min-w-0 flex-wrap items-center justify-center">
             {slides.map((_, index) => (
               <button
                 key={index}
@@ -103,7 +104,7 @@ export function Carousel({ label, children, bleed = false, className }: Carousel
                 aria-label={t('common.carousel.goTo', { index: index + 1, count })}
                 aria-current={index === current || undefined}
                 onClick={() => go(index)}
-                className="group grid h-11 w-6 cursor-pointer place-items-center rounded-full focus-visible:outline-none focus-visible:shadow-focus"
+                className="group grid h-11 w-6 pointer-coarse:w-11 cursor-pointer place-items-center rounded-full focus-visible:outline-none focus-visible:shadow-focus"
               >
                 <span className={cx('block h-2 rounded-full transition-[width,background-color] duration-150 motion-reduce:transition-none', index === current ? 'w-5 bg-info' : 'w-2 bg-tint/30 group-hover:bg-tint/60')} />
               </button>

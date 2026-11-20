@@ -84,7 +84,8 @@ export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, 
       className={cx(
         'flex gap-1.5 overflow-auto overscroll-contain p-0.5',
         // En columna llena la caja que la contiene (la del alto de la carta): así no aporta alto a la fila y, con muchos artes, scrollea por dentro.
-        direction === 'column' ? 'absolute inset-0 flex-col overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'flex-row [&>:first-child]:ml-auto [&>:last-child]:mr-auto',
+        // Con el dedo la galería sale 2 px a cada lado de la franja (y el relleno la devuelve a su lugar) para que entre la zona tocable de 44 px de cada miniatura: no mueve nada.
+        direction === 'column' ? 'absolute inset-0 flex-col overflow-x-hidden pointer-coarse:-inset-x-0.5 pointer-coarse:px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'flex-row [&>:first-child]:ml-auto [&>:last-child]:mr-auto',
         className,
       )}
     >
@@ -99,7 +100,8 @@ export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, 
             title={art.label || undefined}
             aria-label={t('search.arts.pick', { n: index + 1, count: arts.length })}
             className={cx(
-              'relative aspect-[421/614] w-9 shrink-0 overflow-hidden rounded-tag border bg-input p-0 transition-[opacity,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+              // Con el dedo la zona tocable llega a 44 px de ancho (`touch-area`) sin agrandar la miniatura; el recorte de la imagen va en su propia caja porque un `overflow` del botón recortaría esa zona.
+              'relative aspect-[421/614] w-9 shrink-0 rounded-tag border bg-input p-0 transition-[opacity,border-color,box-shadow] duration-150 pointer-coarse:touch-area focus-visible:outline-none focus-visible:shadow-focus',
               selected ? 'border-success opacity-100 shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'border-tint/25 opacity-70 hover:border-tint/60 hover:opacity-100',
             )}
             onClick={(event) => {
@@ -108,7 +110,9 @@ export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, 
               onSelect(art.id)
             }}
           >
-            <CardArt remoteUrl={art.imageUrlSmall ?? art.imageUrl} fallbackUrl={fallbackUrl} name="" className="block h-full w-full object-cover" />
+            <span className="block size-full overflow-hidden rounded-[inherit]">
+              <CardArt remoteUrl={art.imageUrlSmall ?? art.imageUrl} fallbackUrl={fallbackUrl} name="" className="block h-full w-full object-cover" />
+            </span>
           </button>
         )
       })}

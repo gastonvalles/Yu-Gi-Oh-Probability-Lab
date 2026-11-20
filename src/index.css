@@ -2324,6 +2324,26 @@
 }
 
 /*
+ * Zona tocable de 44 px sin agrandar el dibujo: una caja invisible (`::before`) centrada en el elemento que mide, como mínimo, 44 px de ancho y de alto (si ya los mide, copia
+ * su caja y no cambia nada). Va con `pointer-coarse:` (con el mouse no hace falta) y sólo en lo que se dibuja chico: las miniaturas de artes y los chips de salidas. Ojo: no se
+ * agranda hacia donde algo la recorta (un `overflow` del propio botón o de la lista) ni pisa a su vecino: la separación entre vecinos tiene que ser de 44 px de paso.
+ */
+@utility touch-area {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    translate: -50% -50%;
+  }
+}
+
+/*
  * «Impacto Ligero», la cadena (módulo C): la línea de energía que une la carta anterior con la nueva (`ChainNotice.tsx`, `EnergyLine`). Crece desde su punta en 150 ms (a los 250 ms,
  * cuando las cartas ya casi llegaron), se queda y se apaga mientras asienta la cadena de metal: termina a los 650 ms, dentro de los 700 del eslabón. Sólo `scale` y `opacity`.
  */
