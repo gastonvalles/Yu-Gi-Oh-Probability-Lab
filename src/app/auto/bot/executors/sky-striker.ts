@@ -3,7 +3,7 @@ import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
 import { SKY, SKY_STRIKER_DECK } from '../../../bot-deck-lists'
 import { mayInterrupt } from '../interrupt'
-import { turnBot, type CardFacts } from '../turn'
+import { turnReactions, type CardFacts } from '../turn'
 import {
   ATTACK_TIMING,
   atkOf,
@@ -48,7 +48,7 @@ import {
  * En tu turno: Widow Anchor o Forbidden Crown contra el efecto de tu monstruo en el campo; Shark Cannon contra el que activás en el cementerio (si no tiene Called by the Grave);
  * Zero y Raye responden a tu eslabón; al declarar un ataque, The Fallen & The Virtuous o Zero destruyen al atacante y Hornet Drones pone una Ficha si el ataque es directo; en tu End
  * Phase, Linkage! (manda su Enlace al cementerio y trae a Shizuku, que busca), Hornet Drones y Mystical Space Typhoon contra lo que colocaste. Sus handtraps (Ash, Ghost Ogre, Ghost
- * Belle, Droll & Lock Bird) y Called by the Grave, como el rival de handtraps (`turnBot`).
+ * Belle, Droll & Lock Bird) y Called by the Grave, como el rival de handtraps (`turnReactions`).
  */
 
 const SS_SPELLS = new Set<number>([SKY.engage, SKY.linkage, SKY.hornet, SKY.lemnisgate, SKY.shark, SKY.widow])
@@ -438,9 +438,9 @@ function choose(ask: CoreAsk, s: Scene): DeckDecision | null {
 
 export const SKY_STRIKER_EXECUTOR: DeckExecutor = { plays: PLAYS, chain, choose, direct: [SKY.hayate] }
 
-/** El bot de Sky Striker: el ejecutor y, para lo que no decide, sus handtraps y Called by the Grave como el rival que juega su turno (`turnBot`). */
+/** El bot de Sky Striker: el ejecutor y, para lo que no decide, sus handtraps y Called by the Grave como el rival que juega su turno (`turnReactions`). */
 export function skyStrikerBot(facts: (code: number) => CardFacts | undefined, aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number): Bot {
-  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
+  const reacts = turnReactions(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
   // «Tenía X y no la usé: todavía no sé cuándo conviene» es de las handtraps sin regla; sus Mágicas tienen regla (`chain`): si no la usó, no era el momento, y no se cuenta.
   const fallback: Bot = (ask, view, context) => {
     const decision = reacts(ask, view, context)
