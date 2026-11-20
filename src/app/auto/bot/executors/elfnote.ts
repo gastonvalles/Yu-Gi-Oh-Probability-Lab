@@ -3,7 +3,7 @@ import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
 import { ELFNOTE as E, ELFNOTE_DECK } from '../../../bot-deck-lists'
 import { mayInterrupt } from '../interrupt'
-import { turnBot, type CardFacts } from '../turn'
+import { turnReactions, type CardFacts } from '../turn'
 import {
   ATTACK_TIMING,
   atPlace,
@@ -41,7 +41,7 @@ import {
  * 5. Psychic End Punisher destierra tu mejor carta; un monstruo que ataque si no queda otra jugada; colocar Rhapsodia e Impasto si están en la mano.
  * En tu turno: Lucina y Fortuna cambian de lugar con el centro y te devuelven un monstruo o una Mágica o Trampa a la mano; Power Patron Invoca a June Pride (o a Junora, que niega
  * tus cartas boca arriba) en tu Main Phase; Number 90 e Impasto contra tu efecto de monstruo, Diactorus y Rhapsodia contra tu carta. Sus handtraps (Ash, Ghost Ogre, Effect
- * Veiler, Nibiru, Droll & Lock Bird, Mulcharmy Fuwalos), como el rival de handtraps (`turnBot`). Sin regla (no las juega): Dragite, Haggard Lizardose, Clockwork Knight.
+ * Veiler, Nibiru, Droll & Lock Bird, Mulcharmy Fuwalos), como el rival de handtraps (`turnReactions`). Sin regla (no las juega): Dragite, Haggard Lizardose, Clockwork Knight.
  */
 
 /** Sus handtraps, en ese orden de preferencia (y después las que se le pueden poner, «Cambiar cartas»): las usa como el rival de handtraps. */
@@ -491,9 +491,9 @@ function choose(ask: CoreAsk, s: Scene): DeckDecision | null {
 
 export const ELFNOTE_EXECUTOR: DeckExecutor = { plays: PLAYS, chain, choose }
 
-/** El bot de Elfnote: el ejecutor y, para lo que no decide, sus handtraps como el rival que juega su turno (`turnBot`). */
+/** El bot de Elfnote: el ejecutor y, para lo que no decide, sus handtraps como el rival que juega su turno (`turnReactions`). */
 export function elfnoteBot(facts: (code: number) => CardFacts | undefined, aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number): Bot {
-  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
+  const reacts = turnReactions(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
   // Sus cartas con regla (`chain`): si no la usó, no era el momento, y no se cuenta como «no sé cuándo conviene».
   const fallback: Bot = (ask, view, context) => {
     const decision = reacts(ask, view, context)

@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-12-el-rival-juega-mejor-su-turno",
+      "date": "2026-11-20",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "«El rival juega su turno» ahora juega mejor",
+        "novedades": [
+          "Con «El rival juega su turno» prendido, el rival ahora va por la victoria cuando la tiene, ordena sus ataques y no se quema contra tus cartas que lo castigan, igual que los tres bots.",
+          "También ataca lo que tenés boca abajo con su monstruo más fuerte y, si no le conviene atacar, sigue jugando en su Main Phase 2."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Sigue siendo un rival sencillo: invoca, barre y ataca. Para un duelo más exigente, elegí uno de los tres bots."
+        ]
+      },
+      "en": {
+        "title": "«The opponent plays its turn» now plays better",
+        "novedades": [
+          "With «The opponent plays its turn» on, the opponent now goes for the win when it has it, orders its attacks and does not burn itself against your cards that punish it, just like the three bots.",
+          "It also attacks your face-down monsters with its strongest monster and, if attacking is not worth it, keeps playing in its Main Phase 2."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "It is still a simple opponent: it Summons, clears and attacks. For a tougher duel, pick one of the three bots."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-10-bot-usa-el-extra",
       "date": "2026-11-20",
       "tags": [

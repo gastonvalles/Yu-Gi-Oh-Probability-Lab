@@ -3,7 +3,7 @@ import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotReason, BotView } from '../bot'
 import { ANGELECHY as A, ANGELECHY_DECK } from '../../../bot-deck-lists'
 import { mayInterrupt } from '../interrupt'
-import { turnBot, type CardFacts } from '../turn'
+import { turnReactions, type CardFacts } from '../turn'
 import { atPlace, attackPlan, atkOf, cardsOf, executorBot, firstOf, isMine, LOC, monstersOf, PHASE, ranked, threatOf, type DeckDecision, type DeckExecutor, type Play, type Scene } from './executor'
 
 /**
@@ -20,7 +20,7 @@ import { atPlace, attackPlan, atkOf, cardsOf, executorBot, firstOf, isMine, LOC,
  *    adelante, para tener con qué atacar) y los destierros de sus Sincronías en el campo.
  * 5. Antes de terminar, coloca Opening to e4 y Verdict.
  * En tu turno: Opening to e4 apenas puede (en tu Standby Phase, o desde la mano si empezaste vos); Verdict niega tu carta que activa un efecto en el campo o, con 5 Angelechy en el
- * campo, destierra todo lo tuyo. Sus handtraps (Ash, Ghost Ogre, Droll & Lock Bird, Mulcharmy Fuwalos y las Dominus), como el rival de handtraps (`turnBot`).
+ * campo, destierra todo lo tuyo. Sus handtraps (Ash, Ghost Ogre, Droll & Lock Bird, Mulcharmy Fuwalos y las Dominus), como el rival de handtraps (`turnReactions`).
  * Sin regla: Disturbance (sólo su búsqueda desde el cementerio), Bastion en el campo (destierra en su columna, también lo suyo) y las Sincronías que no son Angelechy (son el costo
  * de Bifrost).
  */
@@ -286,9 +286,9 @@ function choose(ask: CoreAsk, s: Scene): DeckDecision | null {
 
 export const ANGELECHY_EXECUTOR: DeckExecutor = { plays: PLAYS, chain, choose }
 
-/** El bot de Angelechy: el ejecutor y, para lo que no decide, sus handtraps como el rival que juega su turno (`turnBot`). */
+/** El bot de Angelechy: el ejecutor y, para lo que no decide, sus handtraps como el rival que juega su turno (`turnReactions`). */
 export function angelechyBot(facts: (code: number) => CardFacts | undefined, aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number): Bot {
-  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
+  const reacts = turnReactions(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
   // Sus Mágicas y Trampas tienen regla (`chain`): si no la usó, no era el momento, y no se cuenta como «no sé cuándo conviene».
   const fallback: Bot = (ask, view, context) => {
     const decision = reacts(ask, view, context)

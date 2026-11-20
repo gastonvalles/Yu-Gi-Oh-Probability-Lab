@@ -111,7 +111,7 @@ describe('el rival juega su turno (turnBot)', () => {
     expect(b(pick([inHand(ASH, 1), inHand(INPACHI, 2)]), table, context())).toMatchObject({ answer: { index: 1 } })
   })
 
-  it('ataca seguro: directo sin monstruos tuyos; si no, al tuyo boca arriba de más ATK que destruye sin perder el suyo; ni a uno más fuerte ni a lo boca abajo', () => {
+  it('ataca como los bots con mazo (el marco): directo sin monstruos tuyos; al tuyo boca arriba que destruye sin perder el suyo; a ciegas lo boca abajo; nunca a uno más fuerte', () => {
     const own = [monster('mine', INPACHI)]
     const battle = (yours: (BotCard | null)[], can_direct = false) => {
       const b = bot()
@@ -125,8 +125,9 @@ describe('el rival juega su turno (turnBot)', () => {
 
     expect(battle([], true).first).toMatchObject({ answer: { action: 1, index: 0 }, reason: { key: 'auto.bot.reason.battle.direct', cards: [INPACHI] } })
     expect(battle([monster('theirs', KURIBOH), monster('theirs', CELTIC), monster('theirs', GOBLIN)]).then).toMatchObject({ answer: { indices: [1] }, reason: { key: 'auto.bot.reason.battle.safe', cards: [INPACHI, CELTIC] } })
-    expect(battle([monster('theirs', GOBLIN)]).first).toMatchObject({ answer: { action: 3 }, reason: { key: 'auto.bot.reason.end.noSafeAttack', cards: [INPACHI, GOBLIN] } })
-    expect(battle([monster('theirs', CELTIC, 'set')]).first).toMatchObject({ answer: { action: 3 }, reason: { key: 'auto.bot.reason.end.faceDown', cards: [INPACHI] } })
+    // Sin ataque que convenga, a la Main Phase 2 (el porqué de terminar lo dice al terminar el turno).
+    expect(battle([monster('theirs', GOBLIN)]).first).toMatchObject({ answer: { action: 2 }, rule: 'executor.battle.end' })
+    expect(battle([monster('theirs', CELTIC, 'set')]).then).toMatchObject({ answer: { indices: [0] }, reason: { key: 'auto.bot.reason.battle.blind', cards: [INPACHI] } })
     // En defensa, contra su DEF: Celtic (DEF 1200) cae ante Inpachi (1850).
     expect(battle([monster('theirs', CELTIC, 'def')]).then).toMatchObject({ answer: { indices: [0] } })
   })
@@ -139,14 +140,14 @@ describe('el rival juega su turno (turnBot)', () => {
     expect(bot()(idle({ summons: [inHand(ASH)] }), view([]), context()).answer).toMatchObject({ action: 7 })
   })
 
-  it(`un turno no pasa de ${MAX_IDLE} jugadas: después termina, aunque le ofrezcan más`, () => {
+  it(`la misma jugada con la mesa igual no vuelve ese turno (el marco; el tope de ${MAX_IDLE} jugadas también es suyo)`, () => {
     const b = bot()
     const table = view([monster('theirs', KURIBOH)])
     const offer = idle({ activates: [{ ...inHand(12580477), description: '0', client_mode: 0 }] })
-    const answers = Array.from({ length: MAX_IDLE + 1 }, () => b(offer, table, context()).answer)
+    const answers = Array.from({ length: 3 }, () => b(offer, table, context()).answer)
 
-    expect(answers.slice(0, MAX_IDLE).every((answer) => answer.type === 'select_idlecmd' && answer.action === 5)).toBe(true)
-    expect(answers.at(-1)).toMatchObject({ action: 7 })
+    expect(answers[0]).toMatchObject({ action: 5 })
+    expect(answers.slice(1)).toMatchObject([{ action: 7 }, { action: 7 }])
     // Otro turno, la cuenta de nuevo.
     expect(b(offer, view([monster('theirs', KURIBOH)], [], [], 4), context()).answer).toMatchObject({ action: 5 })
   })

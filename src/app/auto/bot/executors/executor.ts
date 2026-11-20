@@ -13,7 +13,7 @@ import { MAX_IDLE, pendulumAnswer, pendulumIndex, type CardFacts } from '../turn
  * - **Lo que sigue** (costos, objetivos, búsquedas, materiales, sí/no, opciones, casillas): `choose` del mazo con `Scene.current`, el efecto que se está jugando (el eslabón suyo que
  *   se resuelve o, al activarlo, la jugada que acaba de elegir). Las casillas de lo que sale del Extra Deck van a la Zona de Monstruos Extra.
  * - **Cadenas** (`select_chain`): `chain` del mazo; en tu End Phase, la regla general con lo que colocó (`spareChain`); lo que no decide, el de reserva (`fallback`: las handtraps
- *   y Called by the Grave de `turnBot`).
+ *   y Called by the Grave de `turnReactions`). El rival genérico (`turnBot`, cualquier mazo sin ejecutor) es un ejecutor más: sin `plays`, con su línea calculada (`idle`).
  * - **Battle Phase**: los ataques de `attackPlan` (directo, seguro, a ciegas contra lo boca abajo, el empate que conviene); después, a la Main Phase 2 (ahí coloca sus Mágicas Rápidas).
  * - **Letal** (`lethalPlan`): si lo que ataca alcanza tus vidas, va a la batalla y ordena los ataques (primero lo que limpia, después lo directo); con un precio aprendido, antes de
  *   su línea y sin pagar, y paga por encima del tope la jugada que le da el letal (`closesLethal`) mientras no lo deje en 0.
@@ -105,6 +105,8 @@ export interface DeckExecutor {
   chain: (ask: AskOf<'select_chain'>, s: Scene) => DeckDecision | null
   /** Lo demás que pregunta el núcleo (costos, objetivos, búsquedas, materiales, sí/no, opciones): `null` es del de reserva. */
   choose: (ask: CoreAsk, s: Scene) => DeckDecision | null
+  /** Su línea calculada en el momento (el rival genérico, `turn.ts`), después de las `plays`: una jugada de su Main Phase (Invocar, activar, colocar) o `null`. */
+  idle?: (ask: IdleAsk, s: Scene) => DeckDecision | null
 }
 
 // ── Lo que sirve a cualquier mazo ──────────────────────────────────────────────────────────────────────────────────────────
@@ -540,6 +542,19 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
       const reason = lethalPaid ?? play.reason?.(s, card)
 
       return { answer: { type: ask.type, action, index }, ...(reason ? { reason } : {}), rule: play.id }
+    }
+    // Su línea calculada (el rival genérico): pasa por los precios, el letal y la jugada repetida como las `plays`.
+    const line = deck.idle?.(ask, s)
+
+    if (line?.answer.type === 'select_idlecmd' && line.answer.index !== null) {
+      const { action } = line.answer
+      const card = ask[IDLE_LISTS[action]!]?.[line.answer.index]
+      const id = `line.${line.rule}.${card?.code ?? 0}`
+
+      if (card && affordable(s.view, idleClass(action, card.code), card.code, () => closesLethal(ask, s.view, action, card)) && fresh(id)) {
+        intent = { id, code: card.code }
+        return lethalPaid ? { ...line, reason: lethalPaid } : line
+      }
     }
     const extra = spare(ask, s, fresh)
 

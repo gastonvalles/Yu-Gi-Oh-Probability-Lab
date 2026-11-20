@@ -2,23 +2,23 @@ import type { TurnRule } from '../../handtraps'
 import { passiveAnswer, ruleOf, tributePick, turnRuleOf } from '../policies'
 import type { AskOf, CardLoc, CoreAnswer, CoreAsk } from '../protocol'
 import type { Bot, BotCard, BotDecision, BotReason, BotView } from './bot'
+import { executorBot, type DeckDecision, type Scene } from './executors/executor'
 import { handtrapBot } from './rivals'
 
 /**
- * «El rival juega su turno» (beta): el rival de handtraps que además juega su Main Phase y su Battle Phase con lo que le ofrece el núcleo (que ya filtra lo legal). Decide sólo con su
- * vista (`BotView`) y con los datos impresos de las cartas (`factsOf`, del `.cdb`: lo sabe cualquiera que lea la carta). En cada `select_idlecmd`, la primera que conviene de:
+ * «El rival juega su turno» (beta): el rival de handtraps que además juega su Main Phase y su Battle Phase con lo que le ofrece el núcleo (que ya filtra lo legal), como un ejecutor
+ * más del marco (`turnBot`: `executors/executor.ts`). Decide sólo con su vista (`BotView`) y con los datos impresos de las cartas (`factsOf`, del `.cdb`: lo sabe cualquiera que lea
+ * la carta). Su línea, en cada `select_idlecmd`, la primera que conviene de:
  * 1. traer a Ra con Sphere Mode que volvió a su campo (si el núcleo se lo ofrece, tiene a Ra en la mano o el Deck);
  * 2. un barrido (`sweepMonsters` / `sweepSpells` / `storm`) si se lleva al menos una carta tuya (el bot no tiene un plan donde valga más después y abre el ataque directo);
  * 3. las que Tributan tus monstruos, de la que más te saca a la que menos: Sphere Mode (3, con su campo vacío), Gallant Bandit con 2 de los tuyos, Lava Golem (2; antes de la
  *    Invocación Normal, porque después ya no se puede) y Gallant Bandit con uno tuyo y relleno de su mano (sólo con su relleno, no: se juega para sacarte monstruos);
  * 4. Invocar de modo Normal su monstruo de más ATK (sin Tributar salvo que el nuevo valga más), o colocarlo si tenés uno boca arriba con más ATK;
- * 5. colocar sus negaciones (`counter`) y lo que usa en tu turno (Evenly Matched, Book of Moon, Called by the Grave);
- * 6. Invocar por Péndulo, una vez por turno, si eso suma monstruos al campo (`pendulumIndex`);
- * 7. la Battle Phase si tiene un ataque seguro: directo sin monstruos tuyos, o contra uno boca arriba que destruye sin perder el suyo (ATK contra ATK o DEF). Lo boca abajo no lo ataca;
- * 8. terminar el turno.
+ * 5. colocar sus negaciones (`counter`) y lo que usa en tu turno (Evenly Matched, Book of Moon, Called by the Grave).
+ * Lo demás es del marco, igual que para los bots con mazo: la regla general, el Péndulo, el Extra Deck, las posiciones, el letal, la Battle Phase, los precios, el tope de jugadas.
  * Los Tributos que elige: tus monstruos de más ATK primero (boca abajo, al final), después lo suyo de menos valor, y nunca primero una handtrap con regla. En tus turnos responde como el de
- * handtraps; además niega con sus `counter` colocadas (contra tu eslabón o tu Invocación), usa los dos efectos de Gallant Bandit, Book of Moon y Called by the Grave. Un tope de `MAX_IDLE` jugadas por turno evita
- * un turno eterno; el núcleo rechaza lo ilegal y la sesión contesta entonces con la de reserva.
+ * handtraps; además niega con sus `counter` colocadas (contra tu eslabón o tu Invocación), usa los dos efectos de Gallant Bandit, Book of Moon y Called by the Grave (`turnReactions`,
+ * también el de reserva de los ejecutores). El núcleo rechaza lo ilegal y la sesión contesta entonces con la de reserva.
  */
 
 /** Lo impreso de una carta (`.cdb`): `type` con los bits del núcleo (`TYPE_MONSTER` 0x1); `category`, sus categorías de búsqueda (`CardRow.category`). */
@@ -54,9 +54,8 @@ const SET_FOR_YOUR_TURN: Partial<Record<TurnRule, BotReason['key']>> = { evenly:
 const HOLD_FOR: Partial<Record<TurnRule, string>> = { moon: 'attack', called: 'graveyard' }
 
 type Pending =
-  | { play: Exclude<TurnRule, 'storm' | 'moon'> | 'summon' | 'pendulum' }
+  | { play: Exclude<TurnRule, 'storm' | 'moon'> | 'summon' }
   | { play: 'storm'; choice: number }
-  | { play: 'attack'; attacker: number; target: number }
   | { play: 'moon'; attacker: number }
 type IdleAsk = AskOf<'select_idlecmd'>
 
@@ -93,8 +92,23 @@ export function pendulumAnswer(ask: AskOf<'select_unselect_card'> | AskOf<'selec
   return { type: ask.type, index: index >= 0 ? index : null }
 }
 
-/** `spend`: cuándo gasta una handtrap contra tu eslabón (`handtrapBot`); el bot con mazo pasa `mayInterrupt`. */
+/**
+ * El rival genérico (cualquier mazo sin ejecutor) es un ejecutor más del marco (`executorBot`): sin `plays`, con su línea (`genericTurn().line`) y, de reserva, sus reacciones. Del marco
+ * hereda la regla general, el Péndulo, el Extra Deck, las posiciones, el letal, la Battle Phase, los precios y el tope. `spend`: cuándo gasta una handtrap contra tu eslabón.
+ */
 export function turnBot(priority: readonly number[], extra: readonly number[] = [], aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number, factsOf: (code: number) => CardFacts | undefined = NO_FACTS, spend?: (view: BotView) => boolean): Bot {
+  const generic = genericTurn(priority, extra, aliasOf, attributeOf, factsOf, spend)
+
+  return executorBot({ plays: [], idle: generic.line, chain: () => null, choose: () => null }, factsOf, generic.reactions)
+}
+
+/** Lo que el rival genérico hace fuera de su Main Phase y su Battle Phase (sus handtraps, sus cartas en el campo en tu turno, Tributos, objetivos): el de reserva de los ejecutores. */
+export function turnReactions(priority: readonly number[], extra: readonly number[] = [], aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number, factsOf: (code: number) => CardFacts | undefined = NO_FACTS, spend?: (view: BotView) => boolean): Bot {
+  return genericTurn(priority, extra, aliasOf, attributeOf, factsOf, spend).reactions
+}
+
+/** La línea del rival genérico en su Main Phase (pasos 1 a 5) y sus reacciones, con el estado que comparten (lo que eligió y le van a preguntar: Tributos, opción de Lightning Storm). */
+function genericTurn(priority: readonly number[], extra: readonly number[], aliasOf: (code: number) => number, attributeOf: ((code: number) => number) | undefined, factsOf: (code: number) => CardFacts | undefined, spend?: (view: BotView) => boolean): { line: (ask: IdleAsk, s: Pick<Scene, 'view'>) => DeckDecision | null; reactions: Bot } {
   const reacts = handtrapBot(priority, extra, aliasOf, attributeOf, spend)
   const turnRule = (code: number) => turnRuleOf(code, aliasOf)
   /** Lo que no conviene gastar como Tributo ni Invocar de relleno: lo que el bot usa con una regla. */
@@ -103,33 +117,9 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
   /** Lo que vale uno de tus monstruos para sacártelo: su ATK si está boca arriba; boca abajo no se sabe (al final). */
   const worth = (card: BotCard | null | undefined) => (card && card.code !== 0 && card.pos !== 'set' ? atkOf(card) : -1)
   let pending: Pending | null = null
-  let idle = { turn: -1, history: 0, count: 0 }
-  /** El turno en que ya Invocó por Péndulo (una vez por turno: si la canceló, no la repite). */
-  let pendulumTurn = -1
 
   /** La carta de la vista en ese lugar del campo (tuya o suya). */
   const onField = (view: BotView, card: CardLoc) => (card.location === MZONE ? (card.controller === view.seat ? view.me : view.them).monsters[card.sequence] : undefined) ?? null
-
-  /** El mejor ataque seguro: directo sin monstruos tuyos, o contra el tuyo boca arriba de más ATK que destruye sin perder el suyo. */
-  function bestAttack(view: BotView, attackers: readonly { atk: number; code: number; direct: boolean }[]) {
-    const yours = view.them.monsters.filter((card): card is BotCard => card !== null)
-    let best: { i: number; target: number | null; value: number } | null = null
-
-    attackers.forEach((attacker, i) => {
-      if (yours.length === 0) {
-        if (attacker.direct && (!best || attacker.atk > best.value)) best = { i, target: null, value: attacker.atk }
-        return
-      }
-      view.them.monsters.forEach((card, sequence) => {
-        if (!card || card.code === 0 || card.pos === 'set' || !card.stats) return
-        const safe = card.pos === 'atk' ? card.stats.attack < attacker.atk : card.stats.defense < attacker.atk
-
-        if (safe && (!best || (best.target !== null && card.stats.attack > best.value))) best = { i, target: sequence, value: card.stats.attack }
-      })
-    })
-
-    return best as { i: number; target: number | null; value: number } | null
-  }
 
   /**
    * Tu ataque recién declarado (el último del historial), si conviene frenarlo con Book of Moon: destruye un monstruo suyo, o es directo de 2000 o más (o letal). Un golpe chico no
@@ -150,30 +140,9 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
     return target && atk > guard ? { code: last.code } : null
   }
 
-  /** Sus monstruos boca arriba en ataque (los que pueden atacar). */
-  const attackersOf = (view: BotView) => view.me.monsters.filter((card): card is BotCard => card !== null && card.pos === 'atk').map((card) => ({ atk: atkOf(card), code: card.code, direct: true }))
-
-  /** Terminar el turno, y por qué: sin ataque seguro teniendo con qué atacar, o porque no le queda nada que convenga. */
-  function end(view: BotView, answer: BotDecision['answer']): BotDecision {
-    const attackers = attackersOf(view)
-    const yours = view.them.monsters.filter((card): card is BotCard => card !== null)
-
-    pending = null
-    if (view.turn > 1 && attackers.length > 0 && yours.length > 0 && !bestAttack(view, attackers)) {
-      const strongest = attackers.reduce((top, card) => (card.atk > top.atk ? card : top))
-      const threat = yours.reduce((top, card) => (worth(card) > worth(top) ? card : top))
-
-      if (worth(threat) < 0) return { answer, reason: { key: 'auto.bot.reason.end.faceDown', cards: [strongest.code] }, rule: 'turn.end.faceDown' }
-      return { answer, reason: { key: 'auto.bot.reason.end.noSafeAttack', cards: [strongest.code, threat.code] }, rule: 'turn.end.noSafeAttack' }
-    }
-    return { answer, reason: { key: 'auto.bot.reason.end.done' }, rule: 'turn.end' }
-  }
-
-  function idleTurn(ask: IdleAsk, view: BotView): BotDecision {
-    if (view.turn !== idle.turn || view.history.length < idle.history) idle = { turn: view.turn, history: 0, count: 0 }
-    idle.history = view.history.length
-    idle.count += 1
-    const play = (action: number, index: number, reason: BotReason, rule: string, next: Pending | null = null): BotDecision => {
+  /** Su línea en la Main Phase: la primera jugada que conviene de los pasos 1 a 5, o `null` (lo demás lo decide el marco). */
+  function line(ask: IdleAsk, { view }: Pick<Scene, 'view'>): DeckDecision | null {
+    const play = (action: number, index: number, reason: BotReason, rule: string, next: Pending | null = null): DeckDecision => {
       pending = next
       return { answer: { type: ask.type, action, index }, reason, rule }
     }
@@ -181,8 +150,7 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
     const yours = view.them.monsters.filter((card): card is BotCard => card !== null)
     const own = view.me.monsters.filter((card): card is BotCard => card !== null)
 
-    if (idle.count > MAX_IDLE) return ask.to_ep ? end(view, { type: ask.type, action: 7, index: null }) : { answer: passiveAnswer(ask, () => 0) }
-
+    pending = null
     // 1. Sphere Mode volvió: Tributarla trae a Ra (el núcleo la ofrece sólo con Ra en la mano o el Deck).
     const sphere = find(ask.activates, (card) => card.location === MZONE && turnRule(card.code) === 'sphere')
 
@@ -239,44 +207,7 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
 
     if (counter >= 0) return play(4, counter, { key: 'auto.bot.reason.play.setCounter', cards: [ask.spell_sets[counter]!.code] }, 'turn.setCounter')
     if (later >= 0) return play(4, later, { key: setKey(ask.spell_sets[later]!.code)!, cards: [ask.spell_sets[later]!.code] }, `turn.set.${turnRule(ask.spell_sets[later]!.code)}`)
-
-    // 6. La Invocación por Péndulo, si suma monstruos al campo (después de lo suyo y antes de la Battle Phase: los que entran también atacan).
-    const pendulum = pendulumTurn === view.turn ? -1 : pendulumIndex(ask, view, factsOf, keeps)
-
-    if (pendulum >= 0) {
-      pendulumTurn = view.turn
-      return play(1, pendulum, { key: 'auto.bot.reason.play.pendulum', cards: [ask.special_summons[pendulum]!.code] }, 'turn.pendulum', { play: 'pendulum' })
-    }
-
-    // 7. La Battle Phase, si tiene un ataque seguro.
-    if (ask.to_bp && bestAttack(view, attackersOf(view))) {
-      pending = null
-      return { answer: { type: ask.type, action: 6, index: null }, rule: 'turn.battle' }
-    }
-
-    // 8. Terminar.
-    return ask.to_ep ? end(view, { type: ask.type, action: 7, index: null }) : { answer: passiveAnswer(ask, () => 0) }
-  }
-
-  function battle(ask: AskOf<'select_battlecmd'>, view: BotView): BotDecision {
-    const attack = bestAttack(
-      view,
-      ask.attacks.map((card) => ({ atk: atkOf(onField(view, card)), code: card.code, direct: card.can_direct })),
-    )
-
-    if (attack) {
-      const attacker = ask.attacks[attack.i]!
-
-      if (attack.target === null) {
-        pending = null
-        return { answer: { type: ask.type, action: 1, index: attack.i }, reason: { key: 'auto.bot.reason.battle.direct', cards: [attacker.code] }, rule: 'turn.attack.direct' }
-      }
-      // El objetivo lo pregunta el núcleo después (`select_card`): el motivo va ahí, con las dos cartas.
-      pending = { play: 'attack', attacker: attacker.code, target: attack.target }
-      return { answer: { type: ask.type, action: 1, index: attack.i }, rule: 'turn.attack' }
-    }
-
-    return end(view, { type: ask.type, action: ask.to_ep ? 3 : 2, index: null })
+    return null
   }
 
   /** El orden de preferencia para Tributar: tus monstruos de más valor; después lo suyo, lo de menos ATK primero y lo que usa con una regla al final. */
@@ -296,13 +227,10 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
     return seen && seen.code !== 0 && seen.pos !== 'set' ? { reason: { key: 'auto.bot.reason.target.threat', cards: [seen.code] }, rule: 'turn.tribute' } : { rule: 'turn.tribute' }
   }
 
-  return (ask: CoreAsk, view: BotView, context) => {
+  const reactions: Bot = (ask: CoreAsk, view: BotView, context) => {
     const mine = view.turnPlayer === 'me'
 
-    if (mine && ask.type === 'select_idlecmd') return idleTurn(ask, view)
-    if (mine && ask.type === 'select_battlecmd') return battle(ask, view)
-    if (mine && pending?.play === 'pendulum' && (ask.type === 'select_unselect_card' || ask.type === 'select_position')) return { answer: pendulumAnswer(ask, factsOf, keeps), rule: 'turn.pendulum.pick' }
-    if (mine && ask.type === 'select_tribute' && pending && pending.play !== 'attack') {
+    if (mine && ask.type === 'select_tribute' && pending) {
       const indices = tributePick(ask, tributeOrder(view, ask.selects), () => false)
 
       return { answer: { type: ask.type, indices }, ...tributeReason(view, ask.selects[indices[0]!]) }
@@ -311,13 +239,6 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
       const index = tributeOrder(view, ask.select_cards)[0]!
 
       return { answer: { type: ask.type, index }, ...tributeReason(view, ask.select_cards[index]) }
-    }
-    if (mine && ask.type === 'select_card' && pending?.play === 'attack') {
-      const { attacker, target } = pending
-      const index = ask.selects.findIndex((card) => card.controller !== view.seat && card.location === MZONE && card.sequence === target)
-
-      pending = null
-      if (index >= 0) return { answer: { type: ask.type, indices: [index] }, reason: { key: 'auto.bot.reason.battle.safe', cards: [attacker, view.them.monsters[target]?.code ?? 0] }, rule: 'turn.attack.safe' }
     }
     // Lightning Storm: la opción (`n` del `desc`: 0 tus monstruos en ataque, 1 tus Mágicas y Trampas) que eligió al activarla.
     if (mine && ask.type === 'select_option' && pending?.play === 'storm') {
@@ -361,18 +282,18 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
       const its = turnRule(card.code)
       const rule = card.location === MZONE || card.location === SZONE || its === 'called' ? its : undefined
       const n = Number(BigInt(card.description) & 0xfffffn)
-      const use = (reason: BotReason, id: string): BotDecision => ({ answer: { type: ask.type, index }, reason, rule: id })
+      const respond = (reason: BotReason, id: string): BotDecision => ({ answer: { type: ask.type, index }, reason, rule: id })
 
-      if (rule === 'called' && fromYourGrave) return use({ key: 'auto.bot.reason.play.called', cards: [card.code, top.code] }, 'turn.called')
+      if (rule === 'called' && fromYourGrave) return respond({ key: 'auto.bot.reason.play.called', cards: [card.code, top.code] }, 'turn.called')
       if (rule === 'moon' && attack) {
         pending = { play: 'moon', attacker: attack.code }
-        return use({ key: 'auto.bot.reason.play.moon', cards: [card.code, attack.code] }, 'turn.moon')
+        return respond({ key: 'auto.bot.reason.play.moon', cards: [card.code, attack.code] }, 'turn.moon')
       }
-      if (rule === 'counter' && yours) return use({ key: 'auto.bot.reason.handtrap.respond', cards: [card.code, top.code] }, 'turn.counter')
-      if (rule === 'counter' && !mine && view.chain.length === 0) return use({ key: 'auto.bot.reason.play.counterSummon', cards: [card.code] }, 'turn.counter.summon')
-      if (rule === 'bandit' && n === 1 && yours) return use({ key: 'auto.bot.reason.handtrap.respond', cards: [card.code, top.code] }, 'turn.bandit.negate')
+      if (rule === 'counter' && yours) return respond({ key: 'auto.bot.reason.handtrap.respond', cards: [card.code, top.code] }, 'turn.counter')
+      if (rule === 'counter' && !mine && view.chain.length === 0) return respond({ key: 'auto.bot.reason.play.counterSummon', cards: [card.code] }, 'turn.counter.summon')
+      if (rule === 'bandit' && n === 1 && yours) return respond({ key: 'auto.bot.reason.handtrap.respond', cards: [card.code, top.code] }, 'turn.bandit.negate')
       if (rule === 'bandit' && n === 2 && !mine && view.chain.length === 0 && (view.phase & BATTLE_PHASES) !== 0 && view.them.monsters.some((monster) => monster?.pos === 'atk')) {
-        return use({ key: 'auto.bot.reason.play.banditDefense', cards: [card.code] }, 'turn.bandit.defense')
+        return respond({ key: 'auto.bot.reason.play.banditDefense', cards: [card.code] }, 'turn.bandit.defense')
       }
     }
     // Las que guardó contra tu eslabón dicen para qué, en vez de «no sé cuándo conviene».
@@ -380,4 +301,6 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
 
     return held ? { ...decision, reason: { ...decision.reason!, key: `auto.bot.reason.hold.${held}` }, rule: `handtrap.hold.${held}` } : decision
   }
+
+  return { line, reactions }
 }

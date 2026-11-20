@@ -92,13 +92,14 @@ const CASES: Case[] = [
     check: ({ events }) => (!rivalAttacked(events) && has(events, (event) => event.type === 'set' && event.controller === 1 && event.location === L.MZONE) ? null : 'atacó o no colocó'),
   },
   {
-    what: 'no ataca lo boca abajo (no sabe qué es): Invoca y termina sin atacar',
-    kind: 'hold',
+    // Como los bots con mazo (el marco, `attackPlan`): a lo boca abajo, a ciegas con el más fuerte desde 1000 de ATK. Celtic Guardian (DEF 1200) cae ante Inpachi (1850).
+    what: 'ataca a ciegas lo boca abajo con su más fuerte: Invoca y destruye a tu Celtic Guardian colocado',
+    kind: 'use',
     scenario: { deck: RELLENO, hand: [CELTIC], steps: [{ do: 'mset', code: CELTIC }, { do: 'end' }] },
     rival: [INPACHI],
-    reasons: ['play.summon', 'end.faceDown'],
-    never: ['battle.safe', 'battle.direct'],
-    check: ({ events }) => (!rivalAttacked(events) ? null : 'atacó'),
+    reasons: ['play.summon', 'battle.blind'],
+    never: ['battle.direct'],
+    check: ({ events }) => (rivalAttacked(events) && toGrave(events, CELTIC) ? null : 'no atacó a ciegas o no destruyó a Celtic Guardian'),
   },
   {
     what: 'barrido: Raigeki con un monstruo tuyo, y después ataca directo',
