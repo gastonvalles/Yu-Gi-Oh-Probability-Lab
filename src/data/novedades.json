@@ -1,6 +1,33 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-7-registro-del-bot",
+      "date": "2026-11-20",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "El registro del bot, más prolijo",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "En «Qué hizo el bot y por qué», «Terminé el turno» ya no deja un cuadro vacío al lado.",
+          "Las cartas con arte alternativo ahora salen con su nombre y su imagen."
+        ],
+        "ojo": []
+      },
+      "en": {
+        "title": "A tidier bot log",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "In «What the bot did and why», «I ended my turn» no longer leaves an empty box next to it.",
+          "Cards with alternate art now show their name and image."
+        ],
+        "ojo": []
+      }
+    },
+    {
       "id": "2026-11-20-6-bot-va-por-la-victoria",
       "date": "2026-11-20",
       "tags": [
