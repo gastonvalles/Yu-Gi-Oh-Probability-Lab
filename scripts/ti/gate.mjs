@@ -44,7 +44,10 @@ function plan(files) {
   const lintArgs = files.includes('eslint.config.mjs') ? ['.'] : lintable
   const related = files.filter((file) => file.startsWith('src/'))
 
-  return { tests, lintArgs, related }
+  // `typecheck` sólo compila `src/`: el tsconfig de `e2e/` (que también lee los playwright*.config.ts) se mira sólo si cambió esa zona.
+  const e2e = files.some((file) => file.startsWith('e2e/') || /^playwright[^/]*\.config\.ts$/.test(file))
+
+  return { tests, lintArgs, related, e2e }
 }
 
 // --- carpeta del tablero y eventos -------------------------------------------------------------
@@ -142,9 +145,10 @@ const npm = (script) => ({ cmd: `npm run ${script}`, args: [], shell: true })
 // `typecheck` ya compila lo mismo que `tsc -p src/tsconfig.json` (el de pruebas lo extiende y no excluye nada): el build se corre sin ese tsc.
 const BUILD = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).scripts.build.replace(/tsc -p src\/tsconfig\.json\s*&&\s*/, '')
 
-function steps({ tests, lintArgs, related }) {
+function steps({ tests, lintArgs, related, e2e }) {
   return [
     { name: 'typecheck', run: npm('typecheck') },
+    e2e ? { name: 'tsc e2e', run: node('typescript/bin/tsc', ['-p', 'e2e/tsconfig.json', '--noEmit']), detail: 'e2e/ o playwright*.config.ts cambiaron' } : { name: 'tsc e2e', skip: 'no cambió e2e/ ni playwright*.config.ts' },
     lintArgs.length ? { name: 'eslint', run: node('eslint/bin/eslint.js', ['--no-warn-ignored', ...lintArgs]), detail: `${lintArgs.length === 1 && lintArgs[0] === '.' ? 'todo' : `${lintArgs.length} archivos`}` } : { name: 'eslint', skip: 'ningún archivo que ESLint lea' },
     { name: 'vitest', run: node('vitest/vitest.mjs', ['related', ...related, ...tests, '--run', '--passWithNoTests']), detail: `${new Set([...related, ...tests]).size} archivos de entrada, ${tests.length} guardas` },
     { name: 'build', run: { cmd: BUILD, args: [], shell: true }, detail: 'sin el tsc que typecheck ya cubre' },
