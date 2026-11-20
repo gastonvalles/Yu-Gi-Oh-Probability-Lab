@@ -30,8 +30,7 @@ En orden de valor sobre costo.
    la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
 6. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists;
    en la sala, mientras gira, el dado de un jugador tapa su chip «Listo» (`DieSeat` en `toss-views.tsx`); en un celular bajo,
-   antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo); en Jugar solo, salir de
-   la mesa a otro paso y volver con Atrás cambia la mano y la fase (medido con «Inicio» y con «Tier lists»): la práctica no se conserva.
+   antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo).
 7. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
 8. **Arranque de «Inicio»** (M): la visita nueva en `/` baja ~349 KB gz de JS (la app entera; lo mide y le pone tope `scripts/check-weight.mjs`). Los textos en español viajan todos
    en el archivo principal (56 KB gz de sus 143): separarlos por área toca `i18n/index.ts`. Además `MainApp` pide reglas de
