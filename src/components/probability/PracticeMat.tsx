@@ -296,6 +296,8 @@ export interface DuelMatLink {
   onBanding?: (busy: boolean) => void
   /** Hay una entrada larga en curso (una Invocación del Extra Deck o Ritual, `summon-entrance.ts`): nada sigue hasta que termina, ni las fases. */
   onEntering?: (busy: boolean) => void
+  /** La mesa se monta sobre una partida ya contada (volver a ella): la mano con la que arranca ya estaba repartida y no se baraja ni se reparte; una mano nueva después, sí. */
+  dealt?: boolean
   /** El visor de las pilas del rival (`rivalViewer`) está abierto: el de la mesa se cierra, porque los dos van en el mismo lugar. */
   rivalViewing?: boolean
   /** El reloj de turnos: en la fila del medio, a la izquierda de la Zona Extra (la casilla `p1`). */
@@ -1122,7 +1124,9 @@ function PracticeMatBody({
 
   // La mano: el orden que le dio el jugador, y el reparto de a una carta desde el mazo (que se baraja con cada mano nueva).
   const [handOrder, setHandOrder] = useState<string[]>([])
-  const [dealt, setDealt] = useState(0)
+  const [dealt, setDealt] = useState(() => (duel?.dealt ? state.hand.length : 0))
+  // La mesa de arranque que ya llegó repartida (`duel.dealt`): con ésa, ni barajado ni reparto.
+  const [dealtStart] = useState(() => (duel?.dealt ? session.initial : null))
   const [shuffleKey, setShuffleKey] = useState(0)
   // El deck se baraja a la vista con una mano nueva o un barajado a mano (`shuffleKey`) y con cada paso que baraja (`fxStep.shuffles`, que cambia en el mismo dibujo del paso): sus capas, después del dibujo.
   const deckKey = shuffleKey + fxStep.shuffles
@@ -1441,6 +1445,7 @@ function PracticeMatBody({
   const initialDealRef = useRef(true)
 
   useEffect(() => {
+    if (session.initial === dealtStart) return
     initialDealRef.current = true
     handShuffleRef.current = false
     setHandOrder([])
@@ -1451,7 +1456,7 @@ function PracticeMatBody({
     setPendulumPick(null)
     setPendulumQueue(null)
     playSfx('shuffle')
-  }, [session.initial])
+  }, [session.initial, dealtStart])
 
   const handTotal = state.hand.length
   // Un efecto barajó tu mano (`duel.handShuffle`): como un paso que baraja, cuando está entera. Sólo al subir (montarse con la cuenta puesta no baraja) y si no se está barajando ya.

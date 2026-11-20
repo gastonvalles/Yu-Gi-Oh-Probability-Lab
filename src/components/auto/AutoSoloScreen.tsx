@@ -123,7 +123,8 @@ const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options)
 export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, onManual, lab, resume, keep, connect = connectLive }: AutoSoloScreenProps) {
   // Las handtraps del rival: las del simulador de «Jugar solo» (`app/handtraps.ts`); cambiarlas arma otra sesión con la misma semilla.
   const [handtraps, setHandtraps] = useState<HandtrapConfig>(readHandtrapConfig)
-  const [live, setLive] = useState<{ session: AutoSession; seat: Seat; n: number } | null>(null)
+  // `restored`: re-simula la partida a la que se volvió (`keep`), hasta que termina.
+  const [live, setLive] = useState<{ session: AutoSession; seat: Seat; n: number; restored: boolean } | null>(null)
   // La partida de antes de salir de la mesa (`keep`), si se armó con lo mismo: la primera sesión la re-simula (hasta que arranca: `StrictMode` monta dos veces).
   const [origin] = useState(() => resume?.state)
   const [kept] = useState(() => {
@@ -159,7 +160,7 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
     const session = connect(deckOf(mainIds, extraIds, cardsRef.current), { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), seed: at, seat, ...(from ? { resume: resumeOf(from) } : {}), ...(back ? { restore: { answers: back.answers } } : {}) })
 
     // Otra sesión, otra mesa: la pantalla arranca de cero (`key`).
-    setLive((current) => ({ session, seat, n: (current?.n ?? 0) + 1 }))
+    setLive((current) => ({ session, seat, n: (current?.n ?? 0) + 1, restored: back !== null }))
 
     // La semilla con la que termina (la de la última «Nueva mano»): la que sigue, al cambiar las handtraps, es el mismo duelo. Y la partida, para volver a ella (`keep`):
     // mientras carga no se jugó nada, así que valen las respuestas que se estaban re-simulando.
@@ -201,10 +202,19 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
     [first],
   )
 
-  return live ? (
+  // La partida a la que se vuelve (`keep`) no es noticia: la mesa se monta recién cuando la sesión terminó de re-simularla, así arranca en su estado final, quieta y callada
+  // (sin reparto, entradas, hojas ni avisos de lo que ya pasó). Hasta entonces, la portada de carga. Después, deshacer o reiniciar re-simulan con la mesa a la vista, como siempre.
+  const session = live?.session
+  const subscribe = useCallback((listener: () => void) => (session ? session.subscribe(listener) : NOTHING), [session])
+  const snap = useSyncExternalStore(subscribe, () => session?.getSnapshot() ?? null)
+  const catching = live?.restored === true && snap !== null && (snap.status === 'loading' || snap.replaying)
+
+  if (live?.restored && !catching) setLive({ ...live, restored: false })
+
+  return live && !catching ? (
     <AutoDuel key={live.n} session={live.session} seat={live.seat} {...(redeal ? { redeal } : {})} cardsById={cardsById} deckName={deckName} onExit={onExit} {...(onManual ? { onManual } : {})} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} {...(from ? { resumed: { rival: from.rival, onNewHand: () => setFrom(undefined) } } : {})} />
   ) : (
-    <LoadingCover progress={{ done: 0, total: 0 }} note={rivalLine(handtraps)} />
+    <LoadingCover progress={snap?.progress ?? { done: 0, total: 0 }} note={rivalLine(handtraps)} />
   )
 }
 

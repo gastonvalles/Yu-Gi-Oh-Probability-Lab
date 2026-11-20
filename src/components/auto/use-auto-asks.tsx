@@ -349,6 +349,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     return { initial: snap.initial.mine, actions: snap.mineActions, cursor, theirs: theirsUpTo(cursor, snap.mineActions) }
   })
   const [seen, setSeen] = useState(snap.initial)
+  // La mesa se montó sobre una partida ya contada (volver a ella: `keep` de «Jugar solo»): su mano ya estaba repartida (`DuelMatLink.dealt`).
+  const [joined] = useState(() => snap.status !== 'loading' && !snap.replaying && snap.mineActions.length > 0)
   // La cadena (la escena en grande, `ChainStage`): sus mensajes (`snap.chainSteps`) se muestran de a uno con su tiempo (`chainDwell`), cada uno cuando la mesa contó
   // hasta donde llegó, y la mesa no pasa del próximo hasta mostrarlo: primero los eslabones que se encadenan y después cada uno resolviéndose, con sus jugadas. Al rearmarse
   // o al tocar la mesa, lo que ya pasó se da por visto. `chainGone`: la cadena terminada que ya se escondió.
@@ -1530,6 +1532,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     onBanding: setBanding,
     onEntering: setEntering,
     onHighlight: setHighlight,
+    ...(joined ? { dealt: true } : {}),
     auto,
     limits,
     menus: AUTO_MENUS,
