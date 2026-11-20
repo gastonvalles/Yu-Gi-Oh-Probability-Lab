@@ -2,7 +2,6 @@ import type { ApiCardReference, DeckFormat } from '../types'
 import { BOT_DECK_LISTS, type BotDeckList } from './bot-deck-lists'
 import { getDerivedCardId } from './calculator-state'
 import { deckFormatIssues } from './duel-format'
-import { mainMissing } from './duel-siding'
 
 /**
  * El mazo prestado: sin un deck propio completo (`mainMissing`), Online y Solo juegan con uno de los mazos de los bots (`bot-deck-lists.ts`), así quien entra por primera vez
@@ -18,6 +17,13 @@ export interface LoanerDeck {
   extraIds: string[]
   cardsById: Map<string, { name: string; apiCard: ApiCardReference | null }>
 }
+
+/**
+ * Con menos de esto en el Main se presta: el mínimo de un duelo (`MAIN_MINIMUM` de `duel-siding.ts`, lo vigila su prueba). Copiado y no importado: el menú (`DeckModeScreen`) lee
+ * este módulo y `duel-siding` es del duelo, que baja aparte.
+ */
+export const LOAN_BELOW = 40
+export const needsLoan = (ownMain: number) => ownMain < LOAN_BELOW
 
 /** Los que se prestan, en su orden (Sky Striker primero): los mazos listos de los bots. */
 export const LOANER_LISTS = BOT_DECK_LISTS.filter((list) => list.ready)
@@ -58,4 +64,4 @@ export function pickLoaner(decks: readonly LoanerDeck[], chosen: string, usable:
  * si todavía no llegaron: entonces vale tu deck, como siempre.
  */
 export const soloLoaner = (decks: readonly LoanerDeck[], chosen: string, ownMain: number, rivalBot: string | null): LoanerDeck | null =>
-  mainMissing(ownMain) === 0 ? null : pickLoaner(decks, chosen, (deck) => deck.list.id !== rivalBot)
+  !needsLoan(ownMain) ? null : pickLoaner(decks, chosen, (deck) => deck.list.id !== rivalBot)

@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { autoPrefs, setAutoPref } from '../app/auto-prefs'
 import { PREFS_KEY } from '../app/duel-prefs'
 import { writeHandtrapConfig, DEFAULT_HANDTRAP_CONFIG } from '../app/handtraps'
-import { buildLoanerDecks, loanerFits, loanerPasscodes, pickLoaner, soloLoaner } from '../app/loaner-deck'
+import { MAIN_MINIMUM } from '../app/duel-siding'
+import { buildLoanerDecks, LOAN_BELOW, loanerFits, loanerPasscodes, pickLoaner, soloLoaner } from '../app/loaner-deck'
 import { PlayHome } from '../components/duel/PlayHome'
 import { SoloScreen } from '../components/duel/SoloScreen'
 import type { Loaners } from '../components/duel/use-loaners'
@@ -60,6 +61,10 @@ describe('los mazos prestados (loaner-deck)', () => {
     expect(pickLoaner(decks, 'sky-striker', (deck) => deck.list.id !== 'sky-striker')?.list.id).toBe('angelechy')
     expect(pickLoaner(decks, '', () => false)).toBeNull()
     expect(pickLoaner([], '')).toBeNull()
+  })
+
+  it('se presta con menos del mínimo de un duelo (la misma cuenta que la sala)', () => {
+    expect(LOAN_BELOW).toBe(MAIN_MINIMUM)
   })
 
   it('en Solo: con tu deck completo, ninguno; si no, nunca el del bot rival', () => {

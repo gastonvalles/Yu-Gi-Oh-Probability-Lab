@@ -11,8 +11,7 @@ import { curatePatterns } from '../../app/pattern-curation'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { dealRival, readHandtrapConfig, rivalKindOf } from '../../app/handtraps'
-import { mainMissing } from '../../app/duel-siding'
-import { soloLoaner } from '../../app/loaner-deck'
+import { needsLoan, soloLoaner } from '../../app/loaner-deck'
 import type { CardEntry, HandPattern } from '../../types'
 import { useLoaners } from '../duel/use-loaners'
 import { createMatState, randomSeed, shuffleWithSeed, type MatState } from '../../app/practice-mat'
@@ -153,7 +152,7 @@ export function DeckModeScreen() {
   const ownDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra, controller.exportDeck.deckBuilder.side)
   // Sin deck propio completo, Online y Solo juegan con un mazo prestado (`loaner-deck.ts`): se pide al llegar a Jugar. La mesa de Solo reparte con el mismo que muestra su pantalla.
   const atPlay = atPlayHome || activeStep === 'practice'
-  const loaners = useLoaners(atPlay && mainMissing(ownDeck.mainIds.length) > 0)
+  const loaners = useLoaners(atPlay && needsLoan(ownDeck.mainIds.length))
   const autoPrefs = useAutoPrefs()
   const soloLoan = useMemo(() => {
     if (activeStep !== 'practice' || loaners.status !== 'ready') return null
