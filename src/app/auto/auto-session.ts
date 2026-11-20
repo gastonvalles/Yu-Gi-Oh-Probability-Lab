@@ -14,7 +14,7 @@ import { botDeckOf } from './bot/decks'
 import { turnBot, type CardFacts } from './bot/turn'
 import { mulberry32, randomLegalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
-import { RESUME_FLAGS, setupOf } from './resume'
+import { RESUME_FLAGS, seenCodeOf, setupOf } from './resume'
 
 /**
  * «Jugar solo automático»: la sesión de un duelo contra el rival, sin React (F2b la lee con `useSyncExternalStore`). Junta el
@@ -297,7 +297,13 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const resume = options.resume ?? null
   /** Con la mesa rearmada, el núcleo todavía va por una fase anterior a la de la mesa (las pasa al empezar; las fases del núcleo crecen con la del turno). */
   // (El asiento 0 es el que tiene el turno: su mesa dice hasta qué fase; los dos adaptadores ven las mismas fases del núcleo.)
-  const catchingUp = () => adapters[0] !== undefined && adapters[0]!.overlay.phase < (CORE_PHASE[adapters[0]!.mine.phase] ?? 0)
+  // Se mide con mi adaptador (el invitado del duelo por enlace sólo recibe lo de su asiento: el del asiento 0 no se mueve) y sólo en el primer turno del núcleo (sin esto, el
+  // invitado en el asiento 1 se salteaba su Main Phase 1 en cada turno suyo: se le contestaba sola la ida a la Battle Phase).
+  const catchingUp = () => {
+    const own = adapters[me]
+
+    return own !== undefined && own.overlay.turn <= 1 && own.overlay.phase < (CORE_PHASE[(me === 0 ? own.initial.mine : own.initial.theirs).phase] ?? 0)
+  }
   /** El Extra Deck del rival (`[passcode, 1]` en orden de preferencia): el suyo, o el de siempre (también el del pasivo). */
   /** El rival «Bot» (`rival.botDeck`): su lista fija y su ejecutor; un id que no existe juega como siempre. */
   const deckBot = botDeckOf(rival?.botDeck)
@@ -415,6 +421,9 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   /** La mesa desde cero (una tanda nueva): adaptadores nuevos y ninguna jugada. Sin avisar: si es una re-simulación, se avisa al final. */
   function project() {
     const command = create!
+    // Cada asiento ve la mesa del otro sin lo boca abajo (el núcleo recibe todo en el `create`; las mesas, no).
+    const seenTheirs = resume ? seenCodeOf(theirsState, theirsCode) : theirsCode
+    const seenMine = resume ? seenCodeOf(resume.mine, (id) => resume.codeOf('mine', id)) : theirsCode
 
     adapters = ([0, 1] as const).map((seat) =>
       createAdapter({
@@ -422,7 +431,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         mine: { deck: seat === bagged ? bagOrder(command.decks[seat]!.main) : teamOrder(command, seat), extra: command.decks[seat]!.extra },
         theirs: { deck: command.decks[1 - seat]!.main.length, extra: command.decks[1 - seat]!.extra.length },
         lp: resume ? (seat === me ? [...resume.lp] : [resume.lp[1], resume.lp[0]]) : [PLAYER.lp, PLAYER.lp],
-        ...(resume ? { setup: seat === me ? { mine: resume.mine, theirs: theirsState, codeOf: (side, id) => (side === 'mine' ? resume.codeOf('mine', id) : theirsCode(id)) } : (resume.rival ?? { mine: theirsState, theirs: resume.mine, codeOf: (side, id) => (side === 'mine' ? theirsCode(id) : resume.codeOf('mine', id)) }) } : {}),
+        ...(resume ? { setup: seat === me ? { mine: resume.mine, theirs: theirsState, codeOf: (side, id) => (side === 'mine' ? resume.codeOf('mine', id) : seenTheirs(id)) } : (resume.rival ?? { mine: theirsState, theirs: resume.mine, codeOf: (side, id) => (side === 'mine' ? theirsCode(id) : seenMine(id)) }) } : {}),
         typeOf,
         bag: seat === bagged,
       }),

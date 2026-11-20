@@ -1,69 +1,8 @@
 // Un duelo 1 vs 1 por enlace de punta a punta: dos navegadores (contextos separados, cada uno con su localStorage) contra el relay
 // y la app locales que levanta `playwright.config.ts`. Ana abre la sala y Beto entra por el enlace.
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
-// Un deck de 40 normales de Nivel 4 o menos (más una Mágica y una Trampa): cualquier mano de apertura tiene algo que invocar.
-const VANILLAS: [number, string, string, number, number][] = [
-  [43096270, 'Alexandrite Dragon', 'Dragon', 2000, 100],
-  [69247929, 'Gene-Warped Warwolf', 'Beast-Warrior', 2000, 100],
-  [11091375, 'Luster Dragon', 'Dragon', 1900, 1600],
-  [15025844, 'Mystical Elf', 'Spellcaster', 800, 2000],
-  [91152256, 'Celtic Guardian', 'Warrior', 1400, 1200],
-  [5053103, 'Battle Ox', 'Beast-Warrior', 1700, 1000],
-  [13039848, 'Giant Soldier of Stone', 'Rock', 1300, 2000],
-  [97590747, 'La Jinn the Mystical Genie of the Lamp', 'Fiend', 1800, 1000],
-  [14898066, 'Vorse Raider', 'Beast-Warrior', 1900, 1200],
-  [11321183, 'Dark Blade', 'Warrior', 1800, 1500],
-  [40374923, 'Mammoth Graveyard', 'Dinosaur', 1200, 800],
-  [69140098, 'Gemini Elf', 'Spellcaster', 1900, 900],
-  [1184620, 'Kojikocy', 'Warrior', 1500, 1200],
-]
-
-const card = (id: number, name: string, extra: Record<string, unknown>) => ({
-  name,
-  apiCard: { ygoprodeckId: id, description: null, archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null, banlist: { tcg: null, ocg: null, goat: null }, genesys: { points: null }, linkValue: null, ...extra },
-  origin: 'engine',
-  roles: [],
-  needsReview: false,
-})
-
-const main = [
-  ...VANILLAS.flatMap(([id, name, race, atk, def], index) =>
-    Array.from({ length: index === VANILLAS.length - 1 ? 2 : 3 }, () => card(id, name, { cardType: 'Normal Monster', frameType: 'normal', race, attribute: 'EARTH', level: 4, atk: String(atk), def: String(def) })),
-  ),
-  card(53129443, 'Dark Hole', { cardType: 'Spell Card', frameType: 'spell', race: 'Normal', attribute: null, level: null, atk: null, def: null }),
-  card(44095762, 'Mirror Force', { cardType: 'Trap Card', frameType: 'trap', race: 'Normal', attribute: null, level: null, atk: null, def: null }),
-]
-
-const deckState = (deckName: string) =>
-  JSON.stringify({ version: 16, handSize: 5, deckFormat: 'unlimited', patternsSeeded: true, patternsSeedVersion: 1, disabledGenericRuleIds: [], systemRuleNames: {}, deckBuilder: { deckName, main, extra: [], side: [] }, patterns: [] })
-
-const SHOTS = process.env.E2E_SHOTS || 'test-results/shots'
-
-/** Un navegador nuevo para cada jugador (nada compartido), en español, sin mascotas ni sonidos y con su deck en el builder. */
-async function player(browser: Browser, name: string): Promise<Page> {
-  const context = await browser.newContext()
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
-  await context.addInitScript(
-    ({ deck }) => {
-      // Sólo la primera vez: recargar no tiene que pisar lo que la app guardó.
-      if (localStorage.getItem('ygo-probability-lab:v2')) return
-      localStorage.setItem('ygo-lab:locale', 'es')
-      localStorage.setItem('ygo-lab:mascots', '[]')
-      localStorage.setItem('ygo-lab:sounds', 'off')
-      localStorage.setItem('ygo-probability-lab:v2', deck)
-    },
-    { deck: deckState(`Deck de ${name}`) },
-  )
-  const page = await context.newPage()
-  page.on('pageerror', (error) => console.log(`[${name}] pageerror: ${error.message}`))
-  page.on('console', (message) => {
-    if (message.type() === 'error') console.log(`[${name}] console.error: ${message.text()}`)
-  })
-  return page
-}
-
-const shot = (page: Page, name: string) => page.screenshot({ path: `${SHOTS}/${name}.png` })
+import { field, hand, phaseChip, player, rivalHand, shot } from './support/duelo'
 
 test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => {
   const ana = await player(browser, 'Ana')
@@ -186,7 +125,9 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     await expect.poll(() => logLines(beto)).toContain('Ana pierde 100 LP (7900)')
     await expect.poll(() => logLines(ana)).toContain('Perdés 100 LP (7900)')
     await ana.getByRole('group', { name: 'Zona de monstruo 1', exact: true }).getByRole('button').first().click()
+    // «Al cementerio» abre un submenú (Enviar, Destruir, Sacrificar).
     await ana.getByRole('menuitem', { name: 'Al cementerio', exact: true }).click()
+    await ana.getByRole('menuitem', { name: 'Enviar', exact: true }).click()
     await expect(beto.getByRole('group', { name: 'GY: 1' })).toBeVisible()
     await expect(field(beto, 'rival')).toHaveCount(1)
     await shot(beto, '07-beto-ve-combate')
@@ -332,14 +273,6 @@ async function changeLife(page: Page, keys: string[]) {
 async function letPass(page: Page) {
   await page.getByRole('button', { name: 'Dejar pasar' }).click()
 }
-
-const hand =(page: Page) => page.getByRole('list', { name: 'Mano', exact: true }).getByRole('listitem')
-const rivalHand = (page: Page) => page.getByRole('img', { name: /^Mano del rival/ })
-const phaseChip = (page: Page) => page.getByRole('button', { name: /^Fases:/ })
-
-/** Las cartas en el campo (zonas de monstruo, de magia y trampa, de campo y extra) de un lado, vistas desde `page`. */
-const field = (page: Page, side: 'mine' | 'rival') =>
-  side === 'mine' ? page.locator('[role=group][aria-label^="Zona"] [data-card-id]') : page.locator('[role=group][aria-label^="Rival, Zona"] [data-rival-card-id]')
 
 /** Pasar de fase le pregunta al rival si va a hacer algo: el rival lo deja pasar. */
 async function phase(page: Page, rival: Page, name: string) {

@@ -2,8 +2,8 @@
 // Levanta todo en esta máquina, nunca contra producción: el relay local (`wrangler dev`, docs/duelo-relay.md) y la app con Vite
 // apuntando a él por el entorno (sin `.env.local`). Puertos poco comunes para no chocar con `npm run dev` (5173) ni con otro relay.
 //
-// El navegador: `@playwright/test` va fijo en 1.63.0 porque es la versión que pide Chromium 1243, el que ya está en el caché
-// (`%LOCALAPPDATA%\ms-playwright\chromium-1243`); subirla pide bajar otro (`npx playwright install chromium`).
+// El navegador: `@playwright/test` 1.65.1 pide Chromium 1255, y en el caché de esta PC sólo está el 1243 (de la 1.63.0).
+// Sin bajarlo (`npx playwright install chromium`), `E2E_CHANNEL=msedge` corre con el Edge del sistema, sin sonido.
 // Al terminar Playwright cierra los dos servidores con su árbol de procesos (en Windows, `taskkill /T`): no quedan `workerd` ni Vite.
 import { defineConfig, devices } from '@playwright/test'
 
@@ -25,6 +25,7 @@ export default defineConfig({
   outputDir: process.env.E2E_OUTPUT_DIR || 'test-results',
   use: {
     ...devices['Desktop Chrome'],
+    ...(process.env.E2E_CHANNEL ? { channel: process.env.E2E_CHANNEL, launchOptions: { args: ['--mute-audio'] } } : {}),
     baseURL: APP,
     viewport: { width: 1366, height: 768 },
     locale: 'es-AR',

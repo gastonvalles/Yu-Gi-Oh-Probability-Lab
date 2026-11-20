@@ -51,8 +51,7 @@ En orden de valor sobre costo.
 - **En celulares reales (iOS y Android):** el video nuevo, los carteles de fase, el toque largo y el arrastre de la mesa, el
   teclado sobre la botonera, la barra blanca de Android tras reinstalar la PWA y la mascota flotante, que a 390 px tapaba el ⏮
   del reproductor.
-- **Con dos navegadores y el relay:** el duelo por enlace automático (pasar de manual a automático y volver, reconexión, revancha)
-  y el aviso de cadena del manual.
+- **Con dos navegadores y el relay:** el aviso de cadena del manual.
 - **En producción:** que el Strategy Score de Angelechy excluya sus copias (cartas ascendidas del núcleo).
 - **Decisiones:** la dependencia `motion` (hoy no está instalada); las filas del creador de tier lists entre 390 y 413 px (tres
   cartas por renglón: ¿achicar la carta o ir de borde a borde?); qué secciones faltan en Descubrir y en qué orden; qué más suma
