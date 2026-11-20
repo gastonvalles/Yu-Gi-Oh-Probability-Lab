@@ -25,8 +25,8 @@ export interface DuelPrefs {
 export interface RoomOptions extends DuelPrefs {
   isPublic: boolean
   /**
-   * Reglas automáticas (beta): el interruptor del modo automático (`auto-prefs.ts`) estaba prendido al abrirla y no es «Jugar ahora». Se decide al abrir y queda fijo
-   * mientras dure la sala (no es una regla que se recuerde: cambiar el interruptor después no cambia una sala abierta). Una sala así es privada.
+   * Reglas automáticas: «Modo del duelo» (`auto-prefs.ts`, automático de entrada) estaba en automático al abrirla, también con «Jugar ahora» (Gastón, 2026-11-20). Se decide al abrir
+   * y queda fijo mientras dure la sala (cambiar el modo después no cambia una sala abierta). Pública, figura en la lista mientras espera rival y nunca como duelo en vivo (no se mira).
    */
   auto?: boolean
 }
