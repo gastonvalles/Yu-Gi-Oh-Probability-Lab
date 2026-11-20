@@ -125,7 +125,7 @@ export function BottomSheet({ label, head, footer, children, raiseKey, escape = 
       )}
     >
       {/* Lo que la hoja deja abajo al bajar se recorta en el borde de arriba del pie. `overflow-clip` y no `hidden`: una caja `hidden` se deja desplazar (un `scrollIntoView` de adentro la subía). */}
-      <div className="flex min-h-0 flex-1 items-end overflow-clip">
+      <div className="flex min-h-0 flex-1 items-end overflow-clip pointer-coarse:-mt-4 pointer-coarse:pt-4">
         <div ref={panelRef} style={tab ? { ...drag.style, translate: `0 calc(100% - ${TAB_PX}px)` } : drag.style} className="pointer-events-auto flex max-h-full w-full flex-col rounded-t-panel border border-b-0 border-border bg-card-background shadow-overlay">
           <div
             {...(tab ? swipe : drag.handlers)}
@@ -141,7 +141,8 @@ export function BottomSheet({ label, head, footer, children, raiseKey, escape = 
               type="button"
               aria-expanded={!lowered}
               aria-label={lowered ? t('common.sheet.raise', { title: label }) : t('common.sheet.lower')}
-              className={cx('group flex w-full items-center justify-center px-4 outline-none', lowered ? 'h-11' : 'h-7')}
+              // Subida, con el dedo el asa mide 44 px de alto sin mover nada: los 16 px de más salen hacia arriba (margen negativo) y el relleno deja la pastilla donde estaba (el recorte de arriba los incluye).
+              className={cx('group flex w-full items-center justify-center px-4 outline-none', lowered ? 'h-11' : 'h-7 pointer-coarse:-mt-4 pointer-coarse:h-11 pointer-coarse:pt-4')}
             >
               {/* El aro del foco va en la pastilla de adentro: el de todo el botón lo cortaría el borde de la hoja. Como un botón de ícono, se enciende en lima al apuntarla. */}
               <span className={cx('flex min-w-0 items-center gap-1.5 px-3 text-foreground group-hover:text-info group-focus-visible:shadow-focus', lowered ? 'h-8' : 'h-5')}>

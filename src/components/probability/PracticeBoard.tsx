@@ -12,7 +12,7 @@ import { RULE_COLOR } from './practice-styles'
  * a la izquierda en el panel de escritorio). Gastón los quiere chicos, como los de la práctica original.
  */
 const RULE_BUTTON =
-  'pointer-events-auto min-h-8 max-w-full rounded-full border border-[color-mix(in_srgb,var(--rule-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--rule-color)_12%,transparent)] px-3 text-left text-micro font-semibold text-foreground transition-[background,box-shadow,transform] duration-150 [overflow-wrap:anywhere] [-webkit-tap-highlight-color:transparent] animate-rule-in active:scale-[0.96] aria-pressed:bg-[color-mix(in_srgb,var(--rule-color)_32%,transparent)] aria-pressed:shadow-[0_0_14px_color-mix(in_srgb,var(--rule-color)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info motion-reduce:animate-none motion-reduce:transition-none'
+  'pointer-events-auto min-h-8 max-w-full pointer-coarse:touch-area rounded-full border border-[color-mix(in_srgb,var(--rule-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--rule-color)_12%,transparent)] px-3 text-left text-micro font-semibold text-foreground transition-[background,box-shadow,transform] duration-150 [overflow-wrap:anywhere] [-webkit-tap-highlight-color:transparent] animate-rule-in active:scale-[0.96] aria-pressed:bg-[color-mix(in_srgb,var(--rule-color)_32%,transparent)] aria-pressed:shadow-[0_0_14px_color-mix(in_srgb,var(--rule-color)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info motion-reduce:animate-none motion-reduce:transition-none'
 const RULE_ITEM = 'min-w-0'
 const EXPLAIN_TEXT = 'm-0 text-micro text-white/92 [overflow-wrap:anywhere]'
 const ODDS_TEXT = 'm-0 col-span-full text-micro text-white/62 [overflow-wrap:anywhere]'
@@ -91,7 +91,8 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
         ) : null}
         {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-1.5 [&>ul]:contents max-[1101px]:justify-center">
+      {/* Con el dedo, las filas de chips se separan 12 px (zonas de 44 px de paso: la de un chip no pisa la de su vecino de abajo). */}
+      <div className="flex flex-wrap items-center gap-1.5 pointer-coarse:gap-y-3 [&>ul]:contents max-[1101px]:justify-center">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayable} onToggle={onToggle} />
       </div>

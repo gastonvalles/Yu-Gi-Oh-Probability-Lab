@@ -1,6 +1,35 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-15-mas-facil-de-tocar",
+      "date": "2026-11-20",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Más fácil de tocar con el dedo",
+        "novedades": [
+          "En el celular, las miniaturas de artes de una carta, los puntos de los carruseles, el asa de las hojas de abajo y las salidas y problemas de tu mano ahora tienen una zona de toque más grande."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Con el dedo, los puntos de los carruseles y las filas de salidas quedan un poco más separados; con el mouse no cambia nada."
+        ]
+      },
+      "en": {
+        "title": "Easier to tap with your finger",
+        "novedades": [
+          "On a phone, a card's art thumbnails, the carousel dots, the handle of bottom sheets and the starters and problems of your hand now have a bigger touch area."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "With a finger, the carousel dots and the rows of starters sit a bit further apart; with a mouse nothing changes."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-14-recargar-sin-repetir",
       "date": "2026-11-20",
       "tags": [
