@@ -4,7 +4,7 @@ import type { CardRef, ChainLink } from '../../app/auto/adapter'
 import type { MatSession } from '../../app/use-mat-session'
 import { namesList } from '../../app/auto/ask-ui'
 import { createDataLoader, httpSource } from '../../app/auto/auto-data'
-import { createAutoSession, workerTransport, type AutoSession, type SessionOptions } from '../../app/auto/auto-session'
+import { createAutoSession, workerTransport, type AutoSession, type SessionAnswer, type SessionOptions } from '../../app/auto/auto-session'
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
@@ -79,14 +79,29 @@ export interface AutoSoloScreenProps {
    */
   resume?: { state: MatState; lp: readonly [number, number] }
   /**
+   * La partida que sigue al volver (salir de la mesa a otro paso y volver, por Atrás o por el menú, la retoma: `docs/ux-ui-guidelines.md`, Zeigarnik): la guarda quien monta la
+   * pantalla, que sigue vivo cuando la mesa se desmonta. Al salir se anotan la semilla, el asiento y las respuestas; al volver, con el mismo deck, las mismas handtraps y la misma mesa
+   * manual de la que sigue, el núcleo re-simula esas respuestas (`restore` de la sesión): la misma mano, el mismo campo, la misma fase y el mismo Deshacer. No se guarda: recargar empieza otra.
+   */
+  keep?: { current: KeptDuel | null }
+  /**
    * Arma la sesión (una de mentira en las pruebas); sin esto, la de verdad: los datos por HTTP y el núcleo en un Worker. `rival`: el de handtraps del simulador (`null`, el
    * pasivo); `seed`: la del duelo de antes (cambiar las handtraps reinicia el mismo duelo, como «Reiniciar el mismo duelo»); `resume`: la mesa manual de la que sigue.
    */
-  connect?: (deck: DeckList, options: { handSize?: number; rival?: AutoRival | null; seed?: number; seat?: Seat; resume?: SessionOptions['resume'] }) => AutoSession
+  connect?: (deck: DeckList, options: { handSize?: number; rival?: AutoRival | null; seed?: number; seat?: Seat; resume?: SessionOptions['resume']; restore?: SessionOptions['restore'] }) => AutoSession
 }
 
 /** La mano de handtraps del rival en la mesa manual (sin las que ya usó) y sus nombres: la que sigue en el automático y la que vuelve a la manual. */
 type ResumedRival = { hand: string[]; names: Record<string, string> } | null
+
+/** La partida al salir de la mesa (`keep`): con qué se armó (`inputs`, comparadas una por una) y lo que hace falta para re-simularla. */
+export interface KeptDuel {
+  inputs: readonly unknown[]
+  seed: number
+  seat: Seat
+  answers: readonly SessionAnswer[]
+  from: { state: MatState; lp: readonly [number, number]; rival: ResumedRival } | undefined
+}
 const rivalCode = (id: string) => Number(rivalCardOf(id).split('-')[1] ?? 0)
 
 function resumedRival(rival: RivalHand | undefined, config: HandtrapConfig): ResumedRival {
@@ -105,18 +120,26 @@ const rivalLine = (config: HandtrapConfig) => t(rivalKindOf(config) === 'bot' ? 
 
 const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options) => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...options })
 
-export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, onManual, lab, resume, connect = connectLive }: AutoSoloScreenProps) {
+export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, onManual, lab, resume, keep, connect = connectLive }: AutoSoloScreenProps) {
   // Las handtraps del rival: las del simulador de «Jugar solo» (`app/handtraps.ts`); cambiarlas arma otra sesión con la misma semilla.
   const [handtraps, setHandtraps] = useState<HandtrapConfig>(readHandtrapConfig)
   const [live, setLive] = useState<{ session: AutoSession; seat: Seat; n: number } | null>(null)
-  const seed = useRef<number | undefined>(undefined)
+  // La partida de antes de salir de la mesa (`keep`), si se armó con lo mismo: la primera sesión la re-simula (hasta que arranca: `StrictMode` monta dos veces).
+  const [origin] = useState(() => resume?.state)
+  const [kept] = useState(() => {
+    const inputs = [mainIds, extraIds, handSize, JSON.stringify(handtraps), origin]
+
+    return keep?.current && keep.current.inputs.every((input, index) => input === inputs[index]) ? keep.current : null
+  })
+  const restoring = useRef(kept)
+  const seed = useRef<number | undefined>(kept?.seed)
   // Quién empieza (la hoja de reglas de Jugar): el asiento sale de la semilla al armar la sesión. Con «Al azar», «Nueva mano» arma otra sesión con una semilla nueva
   // (`fresh`: el asiento puede cambiar y el de una sesión es fijo); si no, la misma sesión reparte otra (`restart`).
   const { first } = useAutoPrefs()
   const fresh = useRef<number | undefined>(undefined)
   const [deal, setDeal] = useState(0)
   // La mesa manual de la que sigue (`resume`): cambiar las handtraps le suelta la mano del rival (reparte la semilla) y «Nueva mano», la mesa entera.
-  const [from, setFrom] = useState(() => resume && { ...resume, rival: rivalKindOf(handtraps) === 'bot' ? null : resumedRival(resume.state.rival, handtraps) })
+  const [from, setFrom] = useState(() => (kept ? kept.from : resume && { ...resume, rival: rivalKindOf(handtraps) === 'bot' ? null : resumedRival(resume.state.rival, handtraps) }))
 
   // Las cartas del deck (para la fila de una que no esté en ninguna base): se leen al armar la sesión; otro mapa con las mismas cartas no arma otra.
   const cardsRef = useRef(cardsById)
@@ -128,21 +151,28 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   useEffect(() => {
     const resumeOf = (at: NonNullable<typeof from>): SessionOptions['resume'] => ({ mine: at.state, codeOf: (_, id) => parseDerivedCardId(cardIdOfDrawId(id)) ?? 0, lp: at.lp, ...(at.rival ? { rivalHand: at.rival.hand.map(rivalCode) } : {}) })
     const at = fresh.current ?? seed.current ?? randomSeed()
+    const back = restoring.current
 
     fresh.current = undefined
     // Seguir de la mesa manual es seguir tu turno: vas en el asiento 0, el que tiene el turno.
-    const seat = from ? 0 : seatOf(first, at)
-    const session = connect(deckOf(mainIds, extraIds, cardsRef.current), { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), seed: at, seat, ...(from ? { resume: resumeOf(from) } : {}) })
+    const seat = back ? back.seat : from ? 0 : seatOf(first, at)
+    const session = connect(deckOf(mainIds, extraIds, cardsRef.current), { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), seed: at, seat, ...(from ? { resume: resumeOf(from) } : {}), ...(back ? { restore: { answers: back.answers } } : {}) })
 
     // Otra sesión, otra mesa: la pantalla arranca de cero (`key`).
     setLive((current) => ({ session, seat, n: (current?.n ?? 0) + 1 }))
 
-    // La semilla con la que termina (la de la última «Nueva mano»): la que sigue, al cambiar las handtraps, es el mismo duelo.
+    // La semilla con la que termina (la de la última «Nueva mano»): la que sigue, al cambiar las handtraps, es el mismo duelo. Y la partida, para volver a ella (`keep`):
+    // mientras carga no se jugó nada, así que valen las respuestas que se estaban re-simulando.
     return () => {
-      seed.current = session.getSnapshot().seed
+      const snapshot = session.getSnapshot()
+      const loading = snapshot.status === 'loading'
+
+      seed.current = snapshot.seed
+      if (keep) keep.current = { inputs: [mainIds, extraIds, handSize, JSON.stringify(handtraps), origin], seed: snapshot.seed, seat, answers: loading && back ? back.answers : snapshot.answers, from }
+      if (!loading) restoring.current = null
       session.destroy()
     }
-  }, [connect, mainIds, extraIds, handSize, handtraps, from, first, deal])
+  }, [connect, mainIds, extraIds, handSize, handtraps, from, first, deal, keep, origin])
   // La ventana grande es de la mesa: al salir de ella se apaga (como en el duelo).
   useEffect(() => () => setDuelFullscreen(false), [])
   // Hasta 1100 px los avisos van arriba, debajo del marcador: sin la barra de abajo, abajo caían sobre tu mano (ver index.css).
