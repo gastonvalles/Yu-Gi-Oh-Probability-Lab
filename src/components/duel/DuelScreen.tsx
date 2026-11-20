@@ -13,7 +13,9 @@ import { fieldStatsOf, printedStat, type PickStat } from '../../app/field-stats'
 import { clearDuelSave, findPausedDuel, readDuelSave, readSidingSave, savedRole, writeSidingSave, type PausedDuel, type SidingDraft } from '../../app/duel-save'
 import { createParticipantId, createRoomCode, LIVE_HEARTBEAT_MS } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
-import { validGenesysCap, validTurnBonusMin, validTurnMin, type RoomOptions } from '../../app/duel-prefs'
+import { readPrefs, validGenesysCap, validTurnBonusMin, validTurnMin, type RoomOptions } from '../../app/duel-prefs'
+import { useAutoPrefs } from '../../app/auto-prefs'
+import { loanerFits, pickLoaner } from '../../app/loaner-deck'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelFinished, duelResult } from '../../app/duel-games'
@@ -84,6 +86,7 @@ import { RoomDeck } from './RoomDeck'
 import { STAGE_CARD, STAGE_INNER } from './room-stage'
 import { RoomFold, RoomRules, rulesSummary } from './RoomRules'
 import { PlayHome } from './PlayHome'
+import type { Loaners } from './use-loaners'
 import { DuelOffline } from './DuelOffline'
 import { formatName } from './room-chips'
 import { DuelSiding } from './DuelSiding'
@@ -122,6 +125,8 @@ interface DuelScreenProps {
   onLobbyChange?: (inLobby: boolean) => void
   /** La mesa de una sala con reglas automáticas (la carga a pedido quien usa la pantalla); sin esto, en una sala así nadie puede estar listo. */
   autoDuel?: ComponentType<AutoDuelScreenProps>
+  /** Los mazos prestados (`useLoaners`): sin deck propio completo, la sala y el núcleo juegan con el que muestra el lobby. Sin esto, siempre el del builder. */
+  loaners?: Loaners
 }
 
 interface Intent {
@@ -226,7 +231,7 @@ function showRoomInUrl(room: string | null, watch = false) {
  * El duelo por enlace: sin sala, el lobby (crear una o unirse con un código); en la sala, el enlace para el rival hasta que los dos
  * reparten su mano; y después la mesa de práctica con el campo del rival arriba. No sabe de redes: `connect` (el relay) lo pone quien la usa.
  */
-export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms, onImmersiveChange, onLobbyChange, autoDuel: AutoDuel }: DuelScreenProps) {
+export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms, onImmersiveChange, onLobbyChange, autoDuel: AutoDuel, loaners }: DuelScreenProps) {
   // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
   useEffect(() => {
     // `data-duel` hace que, hasta 1100 px, los avisos salgan arriba, debajo del marcador (ver index.css).
@@ -270,8 +275,18 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const sided = siding.deck
   const sidingOpen = siding.open
   const setSided = (next: SideDeck | null) => updateSiding({ deck: next })
+  // Sin deck propio completo, el prestado que vale en el formato de las reglas del lobby (el mismo que muestra `PlayHome`): sólo con qué se juega, el builder no cambia.
+  // Se vuelve a mirar al entrar a una sala (`intent`): el lobby guarda sus reglas antes de abrirla.
+  const chosenLoaner = useAutoPrefs().loaner
+  const loanerDecks = loaners?.decks
+  const ownShort = mainMissing(mainIds.length) > 0
+  const loan = useMemo(() => {
+    if (!loanerDecks || !ownShort) return null
+    const rules = readPrefs()
+    return pickLoaner(loanerDecks, chosenLoaner, (one) => loanerFits(one, rules.format, rules.genesysCap))
+  }, [loanerDecks, ownShort, chosenLoaner, intent])
   const deck = useMemo<DuelDeck>(() => {
-    const base = { name: deckName, mainIds, extraIds, sideIds, cardsById }
+    const base = loan ? { name: loan.list.name, mainIds: loan.mainIds, extraIds: loan.extraIds, sideIds: [], cardsById: loan.cardsById } : { name: deckName, mainIds, extraIds, sideIds, cardsById }
 
     if (!sided) return base
 
@@ -279,7 +294,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     const restored = renumberDeck(sided, base.cardsById)
 
     return { ...base, mainIds: restored.deck.main, extraIds: restored.deck.extra, sideIds: restored.deck.side, cardsById: restored.cardsById }
-  }, [sided, deckName, mainIds, extraIds, sideIds, cardsById])
+  }, [sided, deckName, mainIds, extraIds, sideIds, cardsById, loan])
   const roomCode = intent?.room
   const options = useMemo(() => optionsFor(roomCode), [roomCode])
   const settings = useMemo(
@@ -592,8 +607,10 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
         onName={setName}
         deckName={deckName}
         onOpenBuilder={openBuilderFromPlay}
-        deckReady={deckReady}
-        deckSize={deck.mainIds.length}
+        // El lobby recibe tu deck (no el prestado): decide él si presta uno, con las reglas que tenga a la vista.
+        deckReady={mainIds.length >= handSize}
+        deckSize={mainIds.length}
+        {...(loaners ? { loaners } : {})}
         onCreate={(options) => enter(createRoomCode(), 'host', false, options)}
         rooms={rooms}
         onJoin={(room, watch) => enter(room, watch ? 'guest' : (savedRole(room) ?? 'guest'), watch)}
@@ -654,7 +671,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
       name={name}
       onRename={rename}
       deckReady={deckReady}
-      deck={{ name: deckName, mainIds: deck.mainIds, extraIds: deck.extraIds, cardsById: deck.cardsById, size: deck.mainIds.length, min: handSize, onOpenBuilder: openBuilderFromPlay }}
+      deck={{ name: deck.name, mainIds: deck.mainIds, extraIds: deck.extraIds, cardsById: deck.cardsById, size: deck.mainIds.length, min: handSize, onOpenBuilder: openBuilderFromPlay }}
       isPublic={rooms && intent.role === 'host' ? options.isPublic : null}
       onLeave={leave}
       onLeaveToCreate={leaveToCreate}
@@ -808,6 +825,7 @@ interface DuelLobbyProps {
   onOpenBuilder: () => void
   deckReady: boolean
   deckSize: number
+  loaners?: Loaners
   onCreate: (options: RoomOptions) => void
   /** La lista de salas públicas, si el relay la tiene. */
   rooms?: RoomsApi
@@ -819,7 +837,7 @@ interface DuelLobbyProps {
   onDropPaused: () => void
 }
 
-function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, deckName, onOpenBuilder, deckReady, deckSize, onCreate, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
+function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, deckName, onOpenBuilder, deckReady, deckSize, loaners, onCreate, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
   const [watching, setWatching] = useState(view === 'watch')
   const online = useOnline()
 
@@ -857,6 +875,7 @@ function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, on
         onOpenBuilder={onOpenBuilder}
         deckReady={deckReady}
         deckSize={deckSize}
+        {...(loaners ? { loaners } : {})}
         rooms={rooms}
         onOpenDuel={onCreate}
         onJoin={onJoin}

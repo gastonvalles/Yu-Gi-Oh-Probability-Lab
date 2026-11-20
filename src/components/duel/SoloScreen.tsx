@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom'
 import { canRunAuto, setAutoPref, useAutoPrefs, type AutoPrefs } from '../../app/auto-prefs'
 import { botDeckList } from '../../app/bot-deck-lists'
 import { cardSmallImageUrl } from '../../app/card-prices'
+import { mainMissing } from '../../app/duel-siding'
+import { soloLoaner } from '../../app/loaner-deck'
 import { BOT_DECK_MENU, botDeckMain, hasHandtrapConfig, isBotModified, poolCount, readHandtrapConfig, rivalKindOf, withBotFlex, withRival, writeHandtrapConfig, type BotDeckInfo, type HandtrapConfig, type HandtrapPick, type RivalKind } from '../../app/handtraps'
 import { STARTING_LP } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -28,6 +30,8 @@ import { overline, textLink } from '../ui/typography'
 import { BotDeckEditor } from './BotDeckEditor'
 import { BotDeckSheet } from './BotDeckSheet'
 import { HandtrapPicker } from './HandtrapPool'
+import { DeckArt, LoanerSheet, PlayDeckRow } from './LoanerSheet'
+import type { Loaners } from './use-loaners'
 
 /** Cómo se abre la mesa: con el núcleo de reglas o la manual de siempre. */
 export type SoloMode = 'auto' | 'manual'
@@ -43,6 +47,8 @@ interface SoloScreenProps {
   onPlay: (mode: SoloMode) => void
   /** El orden fijo de los bots (los mazos listos); se cambia en las pruebas. */
   decks?: readonly BotDeckInfo[]
+  /** Los mazos prestados (`useLoaners`): sin deck propio completo se juega con uno (nunca el del bot rival) y «Cambiar» abre su hoja. Sin esto, el deck del builder. */
+  loaners?: Loaners
 }
 
 /** Lo elegido: el rival y, con el bot, su mazo. */
@@ -53,20 +59,6 @@ interface Pick {
 
 /** Cuántas cartas tiene una lista (la suma de las copias). */
 const copies = (cards: readonly (readonly [number, number])[]) => cards.reduce((total, [, count]) => total + count, 0)
-
-/**
- * El recuadro de un mazo: su primera carta (la que lo define, por el proxy de imágenes), recta como toda carta. Es decorativo: el nombre ya va en texto.
- * Sin imagen, las iniciales de `CardArt`.
- */
-function DeckArt({ deck, large = false }: { deck: BotDeckInfo; large?: boolean }) {
-  const face = botDeckList(deck.id)?.main[0]?.[0]
-
-  return (
-    <span aria-hidden="true" className={cx('block aspect-[421/614] shrink-0 overflow-hidden rounded-none bg-input', large ? 'w-16' : 'w-10')}>
-      <CardArt remoteUrl={face ? cardSmallImageUrl(face) : null} name={deck.name} className="block h-full w-full object-cover" />
-    </span>
-  )
-}
 
 /** El ícono del pasivo, en su círculo (el de las filas de `ListRow`). */
 function PassiveIcon({ large = false }: { large?: boolean }) {
@@ -135,7 +127,7 @@ function SettingRow({ label, hint, below, children }: { label: string; hint?: st
  * pegada sobre la de navegación, con lo elegido a la izquierda. Los bots juegan siempre en automático; sin bot, el modo es el de Online (una sola preferencia). Sin núcleo en el navegador
  * (`canRunAuto`) los bots se ven apagados con el porqué y lo demás va en manual. Cada ajuste va en su fila, con su nombre: nunca dos segmentados seguidos.
  */
-export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay, decks = BOT_DECK_MENU }: SoloScreenProps) {
+export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay, decks = BOT_DECK_MENU, loaners }: SoloScreenProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const prefs = useAutoPrefs()
   const engine = canRunAuto()
@@ -161,13 +153,19 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
   const choose = (next: RivalKind, deck?: string) => save(withRival(config, next, deck))
   // Sin bot, el modo de siempre; los bots, siempre automáticos.
   const auto = canAuto && (kind === 'bot' || prefs.duel)
-  const deckReady = deckSize >= minDeck
+  // Sin deck propio completo, uno prestado (el mismo cálculo que la mesa, `soloLoaner`); mientras llegan, se espera; si no llegan, tu deck como siempre.
+  const ownShort = Boolean(loaners) && mainMissing(deckSize) > 0
+  const loan = loaners ? soloLoaner(loaners.decks, prefs.loaner, deckSize, pick.deck?.id ?? null) : null
+  const loading = ownShort && (loaners?.status === 'loading' || loaners?.status === 'idle')
+  const [loanerOpen, setLoanerOpen] = useState(false)
+  const deckReady = loan !== null || (!loading && deckSize >= minDeck)
   const count = poolCount(config.picks)
   const summary = t('handtraps.row.summary', { hand: Math.min(config.hand, count), count })
   // Un bot con cartas cambiadas lo dice en su nombre («Sky Striker · modificado»).
   const botName = (deck: BotDeckInfo) => (isBotModified(config, botDeckList(deck.id)) ? t('solo.deck.modified', { name: deck.name }) : deck.name)
   const name = pick.deck ? botName(pick.deck) : t(`auto.rival.kind.${kind}`)
-  const playLabel = !deckReady
+  const canPlay = deckReady || loading
+  const playLabel = !canPlay
     ? t('solo.needDeck')
     : pick.deck
       ? t('solo.play', { name: pick.deck.name })
@@ -178,6 +176,8 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
           : t('solo.playTable')
 
   const play = () => {
+    if (loading) return
+
     if (!deckReady) {
       onOpenBuilder()
       return
@@ -188,6 +188,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
     setSheetOpen(false)
     setDeckOpen(false)
     setEditing(false)
+    setLoanerOpen(false)
     onPlay(auto ? 'auto' : 'manual')
   }
 
@@ -201,21 +202,18 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
   const ownTurn = kind === 'handtraps' && auto && config.ownTurn === true
 
   const deckRow = (
-    <div className="flex min-w-0 items-center gap-3">
-      <span className="grid min-w-0 flex-1">
-        <span className="text-micro text-muted">{t('duel.room.deckTitle')}</span>
-        <span className="truncate text-body font-semibold text-foreground">{deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}</span>
-      </span>
-      <button type="button" aria-label={t('duel.room.deckChange')} className={cx('inline-flex min-h-11 shrink-0 items-center rounded-control px-1 text-body', textLink)} onClick={onOpenBuilder}>
-        {t('duel.play.deckChange')}
-      </button>
-    </div>
+    <PlayDeckRow
+      name={loan ? `${loan.list.name} · ${loan.mainIds.length}` : loading ? t('duel.loaner.loading') : deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}
+      loan={loan}
+      popup={ownShort}
+      onChange={ownShort ? () => setLoanerOpen(true) : onOpenBuilder}
+    />
   )
 
   // A todo el ancho (la hoja del celular) va en `md`: con `lg`, «Jugar contra …» con un nombre de mazo largo se parte en dos renglones a 390 px.
   const playButton = (fullWidth: boolean) => (
     <ShineFrame className={fullWidth ? 'w-full' : 'ml-auto'} active={deckReady}>
-      <Button variant="primary" color="success" size={fullWidth ? 'md' : 'lg'} icon={deckReady ? 'play' : 'cards'} fullWidth={fullWidth} onClick={play}>
+      <Button variant="primary" color="success" size={fullWidth ? 'md' : 'lg'} icon={canPlay ? 'play' : 'cards'} fullWidth={fullWidth} aria-busy={loading || undefined} disabled={loading} onClick={play}>
         {playLabel}
       </Button>
     </ShineFrame>
@@ -306,7 +304,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
           {t(engine ? 'duel.offline.solo' : 'solo.noAuto')}
         </Callout>
       )}
-      {deckReady ? null : (
+      {canPlay ? null : (
         <Callout tone="warning" icon="alert">
           {t('duel.lobby.needDeck', { count: deckSize, min: minDeck })}
         </Callout>
@@ -392,8 +390,8 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
               </span>
             </button>
             <ShineFrame active={deckReady}>
-              <Button variant="primary" color="success" icon={deckReady ? 'play' : 'cards'} aria-label={playLabel} onClick={play}>
-                {deckReady ? t('solo.playShort') : t('solo.needDeck')}
+              <Button variant="primary" color="success" icon={canPlay ? 'play' : 'cards'} aria-label={playLabel} aria-busy={loading || undefined} disabled={loading} onClick={play}>
+                {canPlay ? t('solo.playShort') : t('solo.needDeck')}
               </Button>
             </ShineFrame>
           </div>, document.body)}
@@ -426,6 +424,23 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
             save(withBotFlex(config, list, flex))
             setEditing(false)
           }}
+        />
+      ) : null}
+      {loaners ? (
+        <LoanerSheet
+          isOpen={loanerOpen}
+          onClose={() => setLoanerOpen(false)}
+          loaners={loaners}
+          current={loan?.list.id ?? null}
+          blocked={(deck) => (deck.list.id === pick.deck?.id ? t('duel.loaner.rival') : null)}
+          onPick={(id) => setAutoPref('loaner', id)}
+          own={deckSize}
+          onOpenBuilder={onOpenBuilder}
+          footer={
+            <Button variant="primary" color="success" icon="play" fullWidth disabled={!loan} onClick={play}>
+              {loan ? t('duel.loaner.play', { name: loan.list.name }) : t('solo.playShort')}
+            </Button>
+          }
         />
       ) : null}
       <HandtrapPicker
