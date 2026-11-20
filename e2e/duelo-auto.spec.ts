@@ -3,7 +3,7 @@
 // (Ana abre la pública, Beto entra). docs/duelo-automatico-enlace.md
 import { writeFileSync } from 'node:fs'
 
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test'
 
 import { field, hand, phaseChip, player, rivalHand, shot } from './support/duelo'
 
@@ -115,13 +115,25 @@ async function phase(page: Page, name: string) {
   await page.getByRole('menuitem', { name: new RegExp(`^(Ir a )?${name}`) }).click()
 }
 
+/**
+ * Toca `card` hasta que aparece `play`. Con un cartel de fase o de turno en curso las cartas no abren su menú y el toque no se guarda (`PracticeMat`, `banding`): justo al
+ * llegar a una fase su cartel puede estar entrando, y un toque solo a veces cae ahí (así fallaban «Atacar» y la invocación tras recargar). Una persona vuelve a tocar.
+ */
+async function tapUntil(card: Locator, play: Locator) {
+  await expect(async () => {
+    if (!(await play.isVisible())) await card.click()
+    await expect(play).toBeVisible({ timeout: 2_000 })
+  }).toPass(CORE)
+}
+
 /** Invoca de modo Normal el primer monstruo de la mano (si el núcleo pregunta la zona, la primera) y devuelve cuál era. */
 async function normalSummon(page: Page): Promise<string> {
   const before = await field(page, 'mine').count()
   const first = hand(page).and(page.locator(':not([aria-label="Dark Hole"]):not([aria-label="Mirror Force"])')).first()
   const name = (await first.getAttribute('aria-label')) ?? ''
-  await first.click()
-  await page.getByRole('menuitem', { name: 'Invocación Normal', exact: true }).click()
+  const summon = page.getByRole('menuitem', { name: 'Invocación Normal', exact: true })
+  await tapUntil(first, summon)
+  await summon.click()
   const zone = page.getByRole('button', { name: /^Zona de monstruo \d: elegir$/ }).first()
   await expect(zone.or(field(page, 'mine').nth(before))).toBeVisible()
   if (await zone.isVisible()) await zone.click()
@@ -179,9 +191,12 @@ test('sala privada automática: de la sala a la primera vuelta, con las dos pant
     await expect(phaseChip(beto)).toHaveAccessibleName('Fases: Battle Phase', CORE)
     await shot(beto, 'auto-02-beto-batalla')
     // Recién con la pregunta de batalla del núcleo el monstruo lleva la espada («Puede atacar»): tocarlo antes no abre nada.
-    await field(beto, 'mine').and(beto.locator('[aria-description="Puede atacar"]')).first().click(CORE)
+    const attacker = field(beto, 'mine').and(beto.locator('[aria-description="Puede atacar"]')).first()
+    await expect(attacker).toBeVisible(CORE)
     // Con una sola jugada, la carta tocada no abre menú: muestra la etiqueta «Atacar · <carta>».
-    await beto.getByRole('menuitem', { name: 'Atacar', exact: true }).or(beto.getByRole('button', { name: /^Atacar · / })).click()
+    const attack = beto.getByRole('menuitem', { name: 'Atacar', exact: true }).or(beto.getByRole('button', { name: /^Atacar · / }))
+    await tapUntil(attacker, attack)
+    await attack.click()
     // El objetivo: el monstruo de Ana, en la mesa (`data-attack-target`) o en la lista que abre el núcleo.
     const target = beto.locator('[data-attack-target="true"]').first()
     const listed = beto.getByRole('dialog').getByRole('button', { name: /ATK|Ana/ }).first()
@@ -413,4 +428,87 @@ test('revancha: Beto se rinde, los dos la aceptan y arranca otro duelo automáti
     await sameTable(ana, beto)
     await shot(beto, 'auto-09-beto-revancha')
   })
+})
+
+// Si el otro se va (cierra la pestaña, se queda sin señal), el que se queda nunca queda colgado (TI-352): la mesa se tapa con «Duelo en pausa» y el nombre del que salió,
+// y desde ahí puede salir y abrir otra sala sin recargar. Si el que se fue es el anfitrión, el invitado no puede seguir solo (no tiene el núcleo): lo mismo.
+
+/** Cierra la pestaña de `page` (su socket se corta como al cerrar el navegador). */
+async function closeTab(page: Page) {
+  open.splice(open.findIndex((item) => item.page === page), 1)
+  await page.close()
+}
+
+/** El que se queda (`stay`): la pausa dice que `gone` salió, en segundos; sale con su ✕ y puede abrir otra sala sin recargar. */
+async function strandedCanLeave(stay: Page, gone: string, since: number) {
+  const pause = stay.getByRole('alertdialog', { name: 'Duelo en pausa' })
+  await expect(pause).toBeVisible({ timeout: 30_000 })
+  const waited = Date.now() - since
+  console.log(`${gone} se fue → la pausa de quien se queda: ${waited} ms`)
+  test.info().annotations.push({ type: 'pausa-ms', description: String(waited) })
+  await expect(pause.getByRole('status')).toHaveText(`${gone} salió del duelo. Sigue cuando vuelva, con la mesa como la dejaron.`)
+  const code = /room=([A-Za-z0-9]{8})/.exec(stay.url())![1]!
+  await pause.getByRole('button', { name: 'Salir del duelo', exact: true }).click()
+  await stay.getByRole('button', { name: /^Retar a un amigo/ }).click()
+  await expect(stay).toHaveURL(/#duel\?room=[A-Za-z0-9]{8}$/)
+  expect(/room=([A-Za-z0-9]{8})/.exec(stay.url())![1], 'otra sala').not.toBe(code)
+  await expect(stay.getByRole('region', { name: 'Reglas' }).getByText('Automáticas')).toBeVisible()
+}
+
+test('abandono: Beto (invitado) cierra la pestaña en su turno y Ana no queda colgada', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await normalSummon(ana)
+  await phase(ana, 'End Phase')
+  await toMain1(beto)
+  const since = Date.now()
+  await closeTab(beto)
+  await strandedCanLeave(ana, 'Beto', since)
+})
+
+test('abandono: Beto (invitado) cierra la pestaña en el turno de Ana y Ana no queda colgada', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  const since = Date.now()
+  await closeTab(beto)
+  await strandedCanLeave(ana, 'Beto', since)
+})
+
+test('abandono: Ana (anfitriona, corre el núcleo) cierra la pestaña en su turno y Beto no queda colgado', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await normalSummon(ana)
+  const since = Date.now()
+  await closeTab(ana)
+  await strandedCanLeave(beto, 'Ana', since)
+})
+
+test('abandono: Ana (anfitriona) cierra la pestaña en el turno de Beto y Beto no queda colgado', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await phase(ana, 'End Phase')
+  await toMain1(beto)
+  const since = Date.now()
+  await closeTab(ana)
+  await strandedCanLeave(beto, 'Ana', since)
+})
+
+test('sin señal un rato: Beto se queda sin conexión 10 s y vuelve; no es abandono y el duelo sigue', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await normalSummon(ana)
+  const table = await sameTable(ana, beto)
+
+  await beto.context().setOffline(true)
+  await beto.waitForTimeout(10_000)
+  await beto.context().setOffline(false)
+  // Nadie ganó ni perdió: la mesa vuelve como estaba y Ana sigue jugando.
+  await expect(ana.getByRole('alertdialog', { name: 'Duelo en pausa' })).toBeHidden(CORE)
+  await expect(beto.getByRole('alertdialog', { name: 'Duelo en pausa' })).toBeHidden(CORE)
+  await expect(ana.getByRole('heading', { name: '¡Ganaste!' })).toHaveCount(0)
+  expect(await sameTable(ana, beto)).toEqual(table)
+  await phase(ana, 'End Phase')
+  await toMain1(beto)
+  await normalSummon(beto)
+  await sameTable(ana, beto)
 })
