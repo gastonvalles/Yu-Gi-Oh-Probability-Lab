@@ -203,7 +203,15 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   draw: (a) => isInt(a.count, 0, MAX_CARDS) && optional(a.ids, (v) => isCardIds(v)),
   mill: (a) => isInt(a.count, 0, MAX_CARDS),
   shuffle: (a) => isSeed(a.seed),
-  move: (a) => isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom') && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.faceUp, (v) => typeof v === 'boolean') && optional(a.shuffle, isSeed),
+  // `destroyed` / `tribute`: por qué se fue (las marcas de «Al cementerio ›»); sólo `true`.
+  move: (a) =>
+    isCardId(a.id) &&
+    (isPile(a.to) || a.to === 'deck-bottom') &&
+    optional(a.faceDown, (v) => typeof v === 'boolean') &&
+    optional(a.faceUp, (v) => typeof v === 'boolean') &&
+    optional(a.shuffle, isSeed) &&
+    optional(a.destroyed, (v) => v === true) &&
+    optional(a.tribute, (v) => v === true),
   place: (a) => isCardId(a.id) && isSpot(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.how, oneOf(['normal', 'special', 'pendulum', 'scale'])) && optional(a.shuffle, isSeed),
   tribute: (a) => isCardId(a.id) && isCardIds(a.tributes, 10) && isZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos),
   summon: (a) => isCardId(a.id) && oneOf(['fusion', 'synchro', 'xyz', 'link'])(a.how) && isCardIds(a.materials, 10) && isZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos),
