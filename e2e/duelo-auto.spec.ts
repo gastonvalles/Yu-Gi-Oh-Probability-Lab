@@ -414,3 +414,86 @@ test('revancha: Beto se rinde, los dos la aceptan y arranca otro duelo automáti
     await shot(beto, 'auto-09-beto-revancha')
   })
 })
+
+// Si el otro se va (cierra la pestaña, se queda sin señal), el que se queda nunca queda colgado (TI-352): la mesa se tapa con «Duelo en pausa» y el nombre del que salió,
+// y desde ahí puede salir y abrir otra sala sin recargar. Si el que se fue es el anfitrión, el invitado no puede seguir solo (no tiene el núcleo): lo mismo.
+
+/** Cierra la pestaña de `page` (su socket se corta como al cerrar el navegador). */
+async function closeTab(page: Page) {
+  open.splice(open.findIndex((item) => item.page === page), 1)
+  await page.close()
+}
+
+/** El que se queda (`stay`): la pausa dice que `gone` salió, en segundos; sale con su ✕ y puede abrir otra sala sin recargar. */
+async function strandedCanLeave(stay: Page, gone: string, since: number) {
+  const pause = stay.getByRole('alertdialog', { name: 'Duelo en pausa' })
+  await expect(pause).toBeVisible({ timeout: 30_000 })
+  const waited = Date.now() - since
+  console.log(`${gone} se fue → la pausa de quien se queda: ${waited} ms`)
+  test.info().annotations.push({ type: 'pausa-ms', description: String(waited) })
+  await expect(pause.getByRole('status')).toHaveText(`${gone} salió del duelo. Sigue cuando vuelva, con la mesa como la dejaron.`)
+  const code = /room=([A-Za-z0-9]{8})/.exec(stay.url())![1]!
+  await pause.getByRole('button', { name: 'Salir del duelo', exact: true }).click()
+  await stay.getByRole('button', { name: /^Retar a un amigo/ }).click()
+  await expect(stay).toHaveURL(/#duel\?room=[A-Za-z0-9]{8}$/)
+  expect(/room=([A-Za-z0-9]{8})/.exec(stay.url())![1], 'otra sala').not.toBe(code)
+  await expect(stay.getByRole('region', { name: 'Reglas' }).getByText('Automáticas')).toBeVisible()
+}
+
+test('abandono: Beto (invitado) cierra la pestaña en su turno y Ana no queda colgada', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await normalSummon(ana)
+  await phase(ana, 'End Phase')
+  await toMain1(beto)
+  const since = Date.now()
+  await closeTab(beto)
+  await strandedCanLeave(ana, 'Beto', since)
+})
+
+test('abandono: Beto (invitado) cierra la pestaña en el turno de Ana y Ana no queda colgada', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  const since = Date.now()
+  await closeTab(beto)
+  await strandedCanLeave(ana, 'Beto', since)
+})
+
+test('abandono: Ana (anfitriona, corre el núcleo) cierra la pestaña en su turno y Beto no queda colgado', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await normalSummon(ana)
+  const since = Date.now()
+  await closeTab(ana)
+  await strandedCanLeave(beto, 'Ana', since)
+})
+
+test('abandono: Ana (anfitriona) cierra la pestaña en el turno de Beto y Beto no queda colgado', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await phase(ana, 'End Phase')
+  await toMain1(beto)
+  const since = Date.now()
+  await closeTab(ana)
+  await strandedCanLeave(beto, 'Ana', since)
+})
+
+test('sin señal un rato: Beto se queda sin conexión 10 s y vuelve; no es abandono y el duelo sigue', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await normalSummon(ana)
+  const table = await sameTable(ana, beto)
+
+  await beto.context().setOffline(true)
+  await beto.waitForTimeout(10_000)
+  await beto.context().setOffline(false)
+  // Nadie ganó ni perdió: la mesa vuelve como estaba y Ana sigue jugando.
+  await expect(ana.getByRole('alertdialog', { name: 'Duelo en pausa' })).toBeHidden(CORE)
+  await expect(beto.getByRole('alertdialog', { name: 'Duelo en pausa' })).toBeHidden(CORE)
+  await expect(ana.getByRole('heading', { name: '¡Ganaste!' })).toHaveCount(0)
+  expect(await sameTable(ana, beto)).toEqual(table)
+  await phase(ana, 'End Phase')
+  await toMain1(beto)
+  await normalSummon(beto)
+  await sameTable(ana, beto)
+})
