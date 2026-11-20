@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 
 import type { ManualGame } from '../../app/auto/manual-handover'
+import type { KeptDuel } from '../auto/AutoSoloScreen'
 import { canRunAuto, useAutoPrefs } from '../../app/auto-prefs'
 import { comboPayloadOf, decodeComboPayload, type SharedCombo } from '../../app/combo-share'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -174,6 +175,8 @@ export function DeckModeScreen() {
   const [autoHere, setAutoHere] = useState(false)
   // Y al revés, «Seguir en automático» de la práctica: la mesa manual desde la que sigue el núcleo (no se guarda: recargar vuelve a empezar).
   const [resumeFrom, setResumeFrom] = useState<MatState | null>(null)
+  // La partida automática, como la manual de arriba: vive acá y no en su pantalla, así salir de la mesa y volver (Atrás, el menú) la retoma.
+  const keptDuel = useRef<KeptDuel | null>(null)
 
   if (manualHere && atPlayHome) setManualHere(false)
   if (autoHere && atPlayHome) setAutoHere(false)
@@ -415,7 +418,7 @@ export function DeckModeScreen() {
           {autoSolo && matDeck.mainIds.length > 0 ? (
             // Con las reglas del Lab de la práctica: las salidas y problemas de la mano de apertura, también acá. Si su pantalla no baja (sin señal), lo dice el borde y no cae la app.
             <StepErrorBoundary title={t('duel.offline.autoFailed')} backLabel={t('duel.offline.backSolo')} onBack={() => { window.location.hash = '#solo' }}>
-              <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#solo' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
+              <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} keep={keptDuel} onExit={() => { window.location.hash = '#solo' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
             </StepErrorBoundary>
           ) : practice ? (
             <LazyPracticeSection {...practice} {...(canAuto ? { onAuto: (state: MatState) => { setResumeFrom(state); setManualHere(false) } } : {})} />
