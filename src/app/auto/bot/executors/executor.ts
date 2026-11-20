@@ -41,6 +41,12 @@ const SUMMONS = 0x100000
 const TAKES = 0xff | 0x40000 | 0x40000000
 /** Las de lo que puede sacarte una carta: destruir, devolver a la mano o al Deck, desterrar, negar, tomar el control. */
 const REMOVES = 0x1 | 0x2 | 0x20 | 0x40 | 0x80 | 0x10000 | 0x20000 | 0x40000000
+/**
+ * Los pesos de la nota del campo (`extraSummon`): cada monstruo suyo vale su ATK más `RESPONSE` si tiene un efecto que este turno no usó (una respuesta que le queda); lo que sale
+ * del Extra Deck suma además `ARRIVES` si llega haciendo algo (roba o busca, Invoca, se lleva cartas: lo que el material ya no hace). Con la vara (TI-339).
+ */
+const RESPONSE = 500
+const ARRIVES = 500
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
 const nOf = (description: string) => Number(BigInt(description) & 0xfffffn)
 
@@ -376,6 +382,108 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     return adds && lethalPlan({ view }, [...attackersOf(view), attackerOf(view, { code: card.code })]) !== null
   }
 
+  /** Las cartas que activó este turno (desde su Draw Phase): un efecto usado ya no es una respuesta que le queda. ponytail: supone una vez por turno por carta. */
+  const usedThisTurn = (view: BotView) => {
+    const start = view.history.findLastIndex((event) => event.kind === 'phase' && event.phase === 'draw')
+
+    return new Set(view.history.slice(start + 1).flatMap((event) => (event.kind === 'activate' && event.side === 'me' ? [event.code] : [])))
+  }
+  /** La nota de un monstruo: su ATK (el `?` impreso cuenta 0) más `RESPONSE` si tiene un efecto que este turno no usó. */
+  const worthOf = (card: Pick<BotCard, 'code' | 'stats'>, used: ReadonlySet<number>) => {
+    const printed = facts(card.code)
+    const effect = !!printed && (printed.type & TYPE.EFFECT) !== 0 && (printed.category ?? 0) !== 0
+
+    return Math.max(0, atkOf({ facts }, card)) + (effect && !used.has(card.code) ? RESPONSE : 0)
+  }
+  /**
+   * Lo que la regla general no gasta como material: lo que salió del Extra Deck (vale más que uno del Main Deck, como en `attackPlan`) y las piezas de su línea (un monstruo con una
+   * jugada del mazo: la usa en su línea, este turno o el próximo). Con la vara: gastar las piezas le costaba a Elfnote el turno 3 (semillas 3, 7, 10, 13…).
+   */
+  const guarded = (code: number) => isType({ facts }, code, EXTRA_TYPES) || deck.plays.some((play) => play.code === code)
+  /**
+   * Lo suyo boca arriba que puede ser material, de menor a mayor nota (a igual nota, primero el de la Zona de Monstruos Extra). `climb`: lo que sale es un Enlace; entonces el
+   * Enlace de su Zona de Monstruos Extra también sirve (el nuevo ocupa su lugar y no llena una Zona Principal).
+   */
+  const materialOrder = (view: BotView, used: ReadonlySet<number>, climb: boolean) =>
+    view.me.monsters
+      .flatMap((card, sequence) =>
+        card && card.code !== 0 && card.pos !== 'set' && (!guarded(card.code) || (climb && sequence >= 5 && isType({ facts }, card.code, TYPE.LINK))) ? [{ card, sequence, worth: worthOf(card, used) }] : [],
+      )
+      .sort((a, b) => a.worth - b.worth || b.sequence - a.sequence)
+  /** El Extra Deck que está en juego: con qué nota sale, qué gastó en materiales y si lo Invoca por el letal (entonces no se cancela por la nota). */
+  let extraStep: { budget: number; spent: number; lethal: boolean; plan: number[] } | null = null
+  /** Lo que acaba de salir del Extra Deck todavía puede preguntar su posición: en ataque. */
+  let extraPosition = false
+
+  /**
+   * La regla general del Extra Deck, al terminar su línea (ninguna jugada del mazo le sirve ya): una Invocación del Extra que ofrece el núcleo, si la nota del campo sube (mirada
+   * de un paso: lo que sale, con `ARRIVES` si llega haciendo algo, contra los materiales de menor nota: la clasificación de Enlace o 2) o si con eso llega a tu 0 (`lethalPlan`). Con
+   * precio aprendido, respeta el tope salvo letal. Los materiales los elige después con los de verdad (`extraMaterials`).
+   */
+  function extraSummon(ask: IdleAsk, s: Scene, fresh: (id: string) => boolean, lethalOnly: boolean): DeckDecision | null {
+    const used = usedThisTurn(s.view)
+    // Con letal en la mesa, nada que le gaste atacantes sin dejarle el letal.
+    const lethalNow = ask.to_bp && lethalPlan(s, attackersOf(s.view)) !== null
+
+    for (const [index, card] of ask.special_summons.entries()) {
+      const printed = facts(card.code)
+
+      if (card.location !== LOC.EXTRA || !printed || (printed.type & TYPE.MONSTER) === 0) continue
+      const count = (printed.type & TYPE.LINK) !== 0 ? Math.max(1, printed.level) : 2
+      const spent = materialOrder(s.view, used, (printed.type & TYPE.LINK) !== 0).slice(0, count)
+
+      if (spent.length < count) continue
+      const budget = worthOf({ code: card.code }, new Set()) + (((printed.category ?? 0) & (DRAWS | SUMMONS | REMOVES)) !== 0 ? ARRIVES : 0)
+      // La nota sube y el ATK del campo no baja (lo que se ve en tu turno sigue igual de fuerte).
+      const weaker = Math.max(0, printed.attack) < spent.reduce((sum, item) => sum + Math.max(0, atkOf({ facts }, item.card)), 0)
+      const gain = weaker ? 0 : budget - spent.reduce((sum, item) => sum + item.worth, 0)
+      const left = attackersOf(s.view)
+
+      for (const item of spent) {
+        const at = left.findIndex((attacker) => attacker.code === item.card.code)
+
+        if (at >= 0) left.splice(at, 1)
+      }
+      const lethal = ask.to_bp && lethalPlan(s, [...left, attackerOf(s.view, { code: card.code })]) !== null
+
+      if (((gain <= 0 || lethalOnly) && !lethal) || (lethalNow && !lethal) || !affordable(s.view, 'special', card.code, () => lethal) || !fresh(`extra.${card.code}`)) continue
+      intent = { id: `extra.${card.code}`, code: card.code }
+      extraStep = { budget, spent: 0, lethal, plan: spent.map((item) => item.card.code) }
+      const reason: BotReason = lethalPaid ?? { key: lethal ? 'auto.bot.reason.play.fromExtraLethal' : 'auto.bot.reason.play.fromExtra', cards: [card.code] }
+
+      return { answer: { type: ask.type, action: 1, index }, reason, rule: 'executor.extra' }
+    }
+    return null
+  }
+
+  /** Los materiales de lo que sale del Extra Deck: los suyos de menor nota; si los de verdad ya cuestan lo que vale lo que sale (y no es por el letal), cancela si puede. */
+  function extraMaterials(ask: CoreAsk, s: Scene): DeckDecision | null {
+    if (!extraStep || (ask.type !== 'select_card' && ask.type !== 'select_unselect_card')) return null
+    const step = extraStep
+    const list = ask.type === 'select_card' ? ask.selects : ask.select_cards
+
+    if (list.length === 0 || !list.every((card) => isMine(s.view, card) && card.location === LOC.MZONE)) return null
+    const used = usedThisTurn(s.view)
+    const worth = (card: CardLoc) => worthOf(atPlace(s.view, card) ?? card, used)
+    // Lo que no gasta va al final: si hay que llegar a eso, cancela (si se puede).
+    const picks = ranked(list, (card) => -worth(card) + (card.sequence >= 5 ? 0.5 : 0) - (step.plan.includes(card.code) ? 0 : 1e6))
+    const cost = (indices: number[]) => step.spent + indices.reduce((sum, i) => sum + worth(list[i]!), 0)
+    // Fuera de lo que contó al decidir (lo que no gasta, o un atacante que el letal necesitaba), o más caro que lo que sale: no.
+    const bad = (indices: number[]) => indices.some((i) => !step.plan.includes(list[i]!.code)) || (!step.lethal && cost(indices) >= step.budget)
+
+    if (ask.type === 'select_unselect_card') {
+      if (ask.can_finish) return { answer: { type: ask.type, index: null }, rule: 'executor.extra.material' }
+      if (bad([picks[0]!]) && ask.can_cancel) return { answer: { type: ask.type, index: null }, rule: 'executor.extra.cancel' }
+      step.spent = cost([picks[0]!])
+      return { answer: { type: ask.type, index: picks[0]! }, rule: 'executor.extra.material' }
+    }
+    const indices = picks.slice(0, ask.min)
+
+    if (bad(indices) && ask.can_cancel) return { answer: { type: ask.type, indices: null }, rule: 'executor.extra.cancel' }
+    step.spent = cost(indices)
+    return { answer: { type: ask.type, indices }, rule: 'executor.extra.material' }
+  }
+
   const boardKey = (view: BotView) =>
     JSON.stringify([view.me.hand.map((card) => card.code), cardsOf(view.me).map((card) => [card.code, card.pos]), view.me.grave.length, view.me.banished.length, cardsOf(view.them).length, view.lp, view.chain.length])
 
@@ -446,6 +554,10 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
       intent = { id: PENDULUM, code: scale }
       return { answer: { type: ask.type, action: 1, index: pendulum }, reason: { key: 'auto.bot.reason.play.pendulum', cards: [scale] }, rule: 'executor.pendulum' }
     }
+    // Antes de la batalla, el Extra Deck sólo si le da el letal; lo que sube la nota, al terminar el turno (abajo): a mitad de su línea le gastaba las piezas.
+    const lethalExtra = ask.to_bp ? extraSummon(ask, s, fresh, true) : null
+
+    if (lethalExtra) return lethalExtra
 
     // Las posiciones, sólo con lo que ofrece el núcleo (no lo Invocado este turno, ni lo que ya atacó o cambió): antes de la Battle Phase, a ataque lo que tiene en defensa y ahora
     // tiene un ataque que conviene; al terminar, a defensa lo que quedó en ataque y es más débil que un monstruo tuyo (no te deja daño de combate).
@@ -472,6 +584,9 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     // `affordable` lo anota desde una función: TypeScript no lo ve.
     const skipped = priced as { code: number; lp: number } | null
 
+    const fromExtra = extraSummon(ask, s, fresh, false)
+
+    if (fromExtra) return fromExtra
     return skipped ? end({ key: 'auto.bot.reason.end.price', cards: [skipped.code], params: { lp: skipped.lp } }, 'executor.end.price') : end(endReason(s), 'executor.end')
   }
 
@@ -597,15 +712,26 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     const mine = view.turnPlayer === 'me'
     let decision: DeckDecision | null = null
 
-    if (ask.type === 'select_idlecmd' || ask.type === 'select_battlecmd' || ask.type === 'select_chain') asks = 0
-    else asks += 1
+    if (ask.type === 'select_idlecmd' || ask.type === 'select_battlecmd' || ask.type === 'select_chain') {
+      asks = 0
+      extraStep = null
+      extraPosition = false
+    } else asks += 1
 
     if (mine && ask.type === 'select_idlecmd') decision = idle(ask, s)
     else if (mine && ask.type === 'select_battlecmd') decision = battle(ask, s)
     else if (ask.type === 'select_chain') decision = deck.chain(ask, s) ?? spareChain(ask, s)
     else if (mine && intent?.id === PENDULUM && (ask.type === 'select_unselect_card' || ask.type === 'select_position')) decision = { answer: pendulumAnswer(ask, facts, keeps), rule: 'executor.pendulum.pick' }
-    else if (asks <= MAX_ASKS) {
-      decision = (mine && ask.type === 'select_card' ? attackTargetOf(ask, s) : null) ?? deck.choose(ask, s)
+    else if (mine && extraPosition && ask.type === 'select_position') {
+      extraPosition = false
+      decision = { answer: pendulumAnswer(ask, facts, keeps), rule: 'executor.extra.position' }
+    } else if (asks <= MAX_ASKS) {
+      // Lo que sale del Extra Deck: sus materiales hasta que elige la casilla; después, si pregunta, la posición.
+      if (mine && extraStep && ask.type === 'select_place') {
+        extraStep = null
+        extraPosition = true
+      }
+      decision = (mine ? extraMaterials(ask, s) : null) ?? (mine && ask.type === 'select_card' ? attackTargetOf(ask, s) : null) ?? deck.choose(ask, s)
       if (!decision && ask.type === 'select_place' && view.turnPlayer !== null) decision = { answer: placeOf(ask, view) }
     }
 
