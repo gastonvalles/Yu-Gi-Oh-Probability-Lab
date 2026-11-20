@@ -1,6 +1,51 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-16-mazo-prestado",
+      "date": "2026-11-20",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "Jugá ya, con un mazo prestado",
+        "novedades": [
+          "Si todavía no armaste un deck, el sitio te presta uno para jugar ya: en Online y en Jugar solo, «Tu deck» muestra el mazo prestado y el botón principal te lleva directo al duelo.",
+          "En «Cambiar» elegís entre tres mazos listos (Sky Striker, Angelechy y Elfnote) o vas a armar o importar el tuyo.",
+          "Contra un bot nunca te toca un espejo: se te presta un mazo distinto al suyo."
+        ],
+        "comoSeUsa": [
+          "Entrá a Online o a Jugar solo sin deck.",
+          "Tocá «Jugar ahora», o elegí un bot en Solo: jugás con el mazo prestado.",
+          "Para jugar con otro, tocá «Cambiar»."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "El prestado no toca tu deck ni tu Lab: es sólo para jugar. Con tu deck completo, se usa el tuyo.",
+          "En Jugar solo, si tu deck alcanza para repartir la mano, practicás con el tuyo aunque esté a medio armar.",
+          "Se presta en TCG, Sin límite y GOAT; en OCG, Edison y Genesys, no."
+        ]
+      },
+      "en": {
+        "title": "Play right away, with a loaned deck",
+        "novedades": [
+          "If you have not built a deck yet, the site lends you one to play right away: in Online and in Solo play, «Your deck» shows the loaned deck and the main button takes you straight to the duel.",
+          "In «Change» you pick among three ready decks (Sky Striker, Angelechy and Elfnote) or go build or import yours.",
+          "Against a bot you never get a mirror match: you are lent a deck different from its own."
+        ],
+        "comoSeUsa": [
+          "Open Online or Solo play without a deck.",
+          "Tap «Play now», or pick a bot in Solo: you play with the loaned deck.",
+          "To play with another one, tap «Change»."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "The loaned deck does not touch your deck or your Lab: it is only for playing. With your deck complete, yours is used.",
+          "In Solo play, if your deck can deal the hand, you practice with yours even if it is half built.",
+          "It is lent in TCG, No limit and GOAT; not in OCG, Edison or Genesys."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-15-mas-facil-de-tocar",
       "date": "2026-11-20",
       "tags": [
