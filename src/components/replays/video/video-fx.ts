@@ -1,4 +1,4 @@
-import { ARRIVAL, CHARGE_SIZE, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LINE_RADIUS, SACRIFICE, SECOND_AT, SECOND_KEYS, SECOND_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, punchAt, shakeOf, type ArrivalTone, type Shake } from '../../../app/field-impact'
+import { ACTIVATE_GLOW, ARRIVAL, CHARGE_SIZE, LEAVE, PILE_POP, DUST_ANGLES, DUST_RADIUS, HIT_MS, LINE_ANGLES, LINE_RADIUS, SACRIFICE, SECOND_AT, SECOND_KEYS, SECOND_MS, WAVE_FROM, WAVE_HOLD, WAVE_MS, arrivalRingAt, punchAt, shakeOf, type ArrivalTone, type Shake } from '../../../app/field-impact'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
@@ -129,7 +129,7 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake' | 'entrance' | 'sacrifice' | 'pendulum'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title' | 'chain' | 'medal' | 'target' | 'impact' | 'shake' | 'entrance' | 'sacrifice' | 'pendulum' | 'glow' | 'leave' | 'pop'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
@@ -218,6 +218,9 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const poses = action.tributes.flatMap((id) => placeIn(was, id, sides)?.pose ?? [])
     if (poses.length > 0) out.push(sacrificeOverlay(poses, ARRIVAL_UNIT * after.layout.unit, theme, at(0), speed))
   }
+
+  // El resplandor al activar, la onda al destruir o desterrar y el rebote de la pila (la mesa, sin sumarle tiempo a la jugada).
+  out.push(...pieceOverlays(before, after, flights, theme, speed, start))
 
   // El destello de una invocación, cuando la carta toca la zona. La de Péndulo, sólo si es segura (`pendulum`), con la escena de la mesa (`playPendulum`): una sola por Invocación, en su
   // última carta (la jugada dura lo que la escena: `stepMs`); las de antes esperan escondidas, también en su vuelo, como en el replay.
@@ -813,6 +816,129 @@ export function sacrificeOverlay(poses: readonly { x: number; y: number }[], uni
       ctx.globalAlpha = 1
     },
   }
+}
+
+const linear = (x: number) => x
+/** `from-fx-energia/60 to-transparent`: el mismo color sin alfa (un degradé a `transparent` se oscurece en el lienzo). */
+const clearOf = (color: string) => (/^#[0-9a-f]{6}$/i.test(color) ? `${color}00` : 'transparent')
+
+/**
+ * El resplandor al activar (`activateAt` de `field-impact.ts`, con `ACTIVATE_GLOW`) sobre la casilla `cell`: un círculo aditivo de `size` casillas, del `fx-energia` al 60 %, que sube en `in` ms, queda
+ * pleno hasta `hold`, baja a `tailAlpha` a los `tail` y se apaga a los `ms`. Sólo el resplandor: el replay no guarda de qué tipo es la carta, así que el brillo del marco de la Mágica y la Trampa no va.
+ */
+export function glowOverlay(cell: Rect, theme: VideoAssets['theme'], start: number, speed: VideoSpeed): Overlay {
+  const { ms, size, in: rise, hold, tail, tailAlpha, alpha } = ACTIVATE_GLOW
+  const keys = [[0, 0], [rise / ms, 1], [hold / ms, 1], [tail / ms, tailAlpha], [1, 0]] as const
+  const [x, y, radius] = [cell.x + cell.w / 2, cell.y + cell.h / 2, (size * cell.w) / 2]
+  return {
+    kind: 'glow',
+    start,
+    duration: ms / speed,
+    draw: (ctx, p) => {
+      const opacity = keyed(p, keys, linear)
+      if (opacity <= 0) return
+      const fill = ctx.createRadialGradient(x, y, 0, x, y, radius * Math.SQRT2)
+      fill.addColorStop(0, theme.fx.energia)
+      fill.addColorStop(0.7, clearOf(theme.fx.energia))
+      ctx.globalAlpha = alpha * opacity
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.fillStyle = fill
+      ctx.beginPath()
+      ctx.arc(x, y, radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.globalAlpha = 1
+    },
+  }
+}
+
+/**
+ * La onda al destruir o desterrar (`leaveAt` de `field-impact.ts`, con `LEAVE`) desde `(x, y)`: un aro de `size` cartas (a lo sumo la diagonal del lienzo) que crece lineal de `from` a 1 en `ms`,
+ * con su gemela oscura, del color `rgb` (`r g b`, `FX_RGB`); el alfa sube de `alpha` a 1 en `peak` y baja a 0. `unit`: el ancho de la carta en px del lienzo.
+ */
+export function leaveOverlay(x: number, y: number, unit: number, rgb: string, start: number, speed: VideoSpeed): Overlay {
+  const k = unit / ARRIVAL_UNIT
+  return {
+    kind: 'leave',
+    start,
+    duration: LEAVE.ms / speed,
+    draw: (ctx, p) => {
+      const scale = mix(LEAVE.from, 1, p)
+      ctx.globalAlpha = keyed(p, [[0, LEAVE.alpha], [LEAVE.peak, 1], [1, 0]], linear)
+      twinRing(ctx, x, y, (Math.min(LEAVE.size * unit, Math.hypot(ctx.canvas.width, ctx.canvas.height)) / 2) * scale, 3 * k * scale, 2 * k * scale, rgba(rgb, 1))
+      ctx.globalAlpha = 1
+    },
+  }
+}
+
+/**
+ * El rebote de la pila que suelta una carta (`popPile` de `use-card-flights.ts`, con `PILE_POP`): la casilla `rect`, tal como está en el cuadro, se vuelve a pintar de 1 a `scale` y de vuelta en `ms`
+ * (con `EASE_OUT` a lo largo de todo el rebote, como la mesa), desde su centro.
+ */
+export function popOverlay(rect: Rect, start: number, speed: VideoSpeed): Overlay {
+  return {
+    kind: 'pop',
+    start,
+    duration: PILE_POP.ms / speed,
+    draw: (ctx, p) => {
+      const scale = keyed(easeOut(p), [[0, 1], [0.5, PILE_POP.scale], [1, 1]], linear)
+      if (scale <= 1) return
+      const [w, h] = [rect.w * scale, rect.h * scale]
+      ctx.drawImage(ctx.canvas, rect.x, rect.y, rect.w, rect.h, rect.x + (rect.w - w) / 2, rect.y + (rect.h - h) / 2, w, h)
+    },
+  }
+}
+
+const PILES = ['deck', 'extra', 'gy', 'banished'] as const
+
+/**
+ * Lo que la mesa suma a una jugada sin alargarla (los tiempos son los de la mesa, y ninguno toca `stepMs` ni `frameDurations`): el resplandor de lo que se activa en el campo (también dentro de la
+ * cadena; la que llega volando, al tocar su casilla), la onda de lo que sale del campo destruido (la marca del núcleo: cian) o desterrado (por el destino: ámbar), al despegar, y el rebote de la pila
+ * que suelta una carta, apenas empieza la jugada.
+ */
+export function pieceOverlays(before: Scene, after: Scene, flights: readonly Flight[], theme: VideoAssets['theme'], speed: VideoSpeed, start: number): Overlay[] {
+  const { action, effects, actor } = after
+  if (!action || !effects || actor === null) return []
+  const sides = [actor, 1 - actor] as const
+  const out: Overlay[] = []
+  const onField = (scene: Scene, side: number, id: string) => scene.sides[side]!.slots.find((slot) => !slot.pile && slot.card?.id === id)
+  const pileOf = (scene: Scene, side: number, name: (typeof PILES)[number]) => scene.sides[side]!.slots.find((slot) => slot.pile === name)
+  const flightOf = (side: number, id: string) => flights.find((flight) => flight.motion.key === `${side}:${id}`)
+
+  if (effects.spotlight?.kind === 'activate') {
+    for (const id of effects.spotlight.ids ?? [effects.spotlight.id]) {
+      const side = sides.find((each) => onField(after, each, id))
+      const cell = side === undefined ? undefined : onField(after, side, id)?.rect
+      const flight = side === undefined ? undefined : flightOf(side, id)
+      if (cell) out.push(glowOverlay(cell, theme, start + (action.type === 'place' && flight ? flight.delay + flight.duration * MESA.landingAt : 0), speed))
+    }
+  }
+
+  // Quién deja el campo: lo destruido (sólo con la marca) y lo que va al destierro; cada uno, desde donde estaba, cuando despega su vuelo.
+  const parts = action.type === 'batch' ? action.actions : [action]
+  const destroyed = effects.destroyed ? parts.flatMap((part) => (part.type === 'move' && part.destroyed && part.to !== 'banished' ? [part.id] : [])) : []
+  const leaving = new Map<string, { side: number; id: string; rgb: string }>()
+  for (const id of destroyed) for (const side of sides) leaving.set(`${side}:${id}`, { side, id, rgb: FX_RGB.cyan })
+  for (const side of sides) {
+    const was = pileOf(before, side, 'banished')?.ids ?? []
+    for (const id of pileOf(after, side, 'banished')?.ids ?? []) if (!was.includes(id)) leaving.set(`${side}:${id}`, { side, id, rgb: FX_RGB.amber })
+  }
+  for (const { side, id, rgb } of leaving.values()) {
+    const slot = onField(before, side, id)
+    if (!slot?.card) continue
+    const pose = poseOf(slot.rect, slot.card)
+    out.push(leaveOverlay(pose.x, pose.y, Math.min(pose.w, pose.h), rgb, start + (flightOf(side, id)?.delay ?? 0), speed))
+  }
+
+  // Cada pila que suelta una carta.
+  for (const side of sides) {
+    for (const name of PILES) {
+      const was = pileOf(before, side, name)
+      const now = pileOf(after, side, name)
+      if (was && now && was.ids.some((id) => !now.ids.includes(id))) out.push(popOverlay(now.rect, start, speed))
+    }
+  }
+  return out
 }
 
 const TWIN = 'rgb(0 0 0 / 0.4)'

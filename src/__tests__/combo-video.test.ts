@@ -8,7 +8,8 @@ import { flightsOf, freshTargets, MESA, overlaysOf, replaceOverlays, targetOverl
 import { transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { videoLayout, type Scene, type SceneCard } from '../components/replays/video/video-scene'
 import { bitrateFor } from '../components/replays/video/video-support'
-import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, pendulumCues, VIDEO_PACE, videoFileName } from '../components/replays/video/video-timeline'
+import { COMBO_STEP_MS, frameDurations, INTRO_MS, OUTRO_MS, pendulumCues, stepMs, VIDEO_PACE, videoFileName } from '../components/replays/video/video-timeline'
+import { ACTIVATE_GLOW, LEAVE, PILE_POP } from '../app/field-impact'
 import { ENTRANCE } from '../app/summon-entrance'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
 
@@ -236,5 +237,45 @@ describe('los objetivos en el video', () => {
       leave!.draw(ctx, p)
     }
     expect(ctx.calls).toBeGreaterThan(40)
+  })
+})
+
+describe('las piezas nuevas de la mesa en el video de un combo', () => {
+  // Activo una Mágica, invoco y destierro, invoco y destruyo (con la marca), y robo.
+  const pieces: MatAction[] = [
+    { type: 'place', id: h0, zone: 'st', index: 0, pos: 'atk' },
+    { type: 'place', id: h1, zone: 'mz', index: 0, pos: 'atk', how: 'normal' },
+    { type: 'move', id: h1, to: 'banished' },
+    { type: 'move', id: h0, to: 'gy', destroyed: true },
+    { type: 'draw', count: 1 },
+  ]
+  const made = createSavedCombo({ name: 'Piezas', deckName: 'Snake-Eye', initial, actions: pieces, nameOf }, [], new Date('2026-10-29T12:00:00Z'))
+  const shots = [...comboScenes(made, made.names, 720)]
+  const stepFx = (index: number) => {
+    const flights = flightsOf(transitionOf(shots[index - 1]!, shots[index]!), 1, VIDEO_PACE, COMBO_STEP_MS / VIDEO_PACE)
+    return overlaysOf(shots[index - 1]!, shots[index]!, flights, fakeAssets, VIDEO_PACE, 3000, 'combo')
+  }
+  const kinds = (index: number) => stepFx(index).map((overlay) => overlay.kind)
+
+  it('activar lleva su resplandor; desterrar y destruir, su onda; robar, el rebote del deck; invocar, nada de eso', () => {
+    expect(kinds(1)).toContain('glow')
+    expect(kinds(2)).not.toContain('glow')
+    expect(kinds(3)).toContain('leave')
+    expect(kinds(4)).toContain('leave')
+    expect(kinds(5)).toContain('pop')
+    for (const index of [1, 2]) expect(kinds(index)).not.toContain('leave')
+    // Cada una dura lo de la mesa, al ritmo del video.
+    expect(stepFx(1).find((overlay) => overlay.kind === 'glow')!.duration).toBeCloseTo(ACTIVATE_GLOW.ms / VIDEO_PACE)
+    expect(stepFx(3).find((overlay) => overlay.kind === 'leave')!.duration).toBeCloseTo(LEAVE.ms / VIDEO_PACE)
+    expect(stepFx(5).find((overlay) => overlay.kind === 'pop')!.duration).toBeCloseTo(PILE_POP.ms / VIDEO_PACE)
+    // Todo se pinta sin romperse.
+    const ctx = fakeCtx()
+    for (const index of [1, 3, 4, 5]) for (const overlay of stepFx(index)) for (const p of [0, 0.3, 0.7, 0.99]) overlay.draw(ctx, p)
+    expect(ctx.calls).toBeGreaterThan(10)
+  })
+
+  it('no suman tiempo: cada jugada del combo dura lo de siempre', () => {
+    expect(frameDurations({ kind: 'combo', combo: made }).slice(1, -1)).toEqual(pieces.map((action) => stepMs(action, VIDEO_PACE, 'combo')))
+    expect(frameDurations({ kind: 'combo', combo: made }).slice(1, -1)).toEqual(pieces.map(() => COMBO_STEP_MS / VIDEO_PACE))
   })
 })

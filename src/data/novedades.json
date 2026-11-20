@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-11-19-15-video-piezas-nuevas",
+      "date": "2026-11-19",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El video, al día con la mesa",
+        "novedades": [
+          "El video de un duelo o de un combo ahora dibuja el resplandor de una carta que se activa, la onda cuando una carta es destruida o desterrada y el rebote de la pila cuando sale una carta."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "El video dura lo mismo que antes.",
+          "En el video, una Mágica o Trampa que se activa lleva el resplandor pero no el brillo de su marco."
+        ]
+      },
+      "en": {
+        "title": "The video, caught up with the table",
+        "novedades": [
+          "The video of a duel or a combo now draws the glow of a card being activated, the wave when a card is destroyed or banished, and the pile's bounce when a card leaves it."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "The video lasts the same as before.",
+          "In the video, a Spell or Trap being activated gets the glow but not its frame shine."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-14-menus-del-automatico",
       "date": "2026-11-19",
       "tags": [
