@@ -232,8 +232,7 @@ test('de automático a manual: los dos aceptan y la mesa manual sigue como estab
   await expect(phaseChip(beto)).toHaveAccessibleName('Fases: End Phase')
 })
 
-// Falla de la app (TI-350): al volver a automático, el anfitrión ve la mano del invitado boca arriba («Mano del rival: Celtic Guardian, …»).
-test.fixme('de manual a automático: Ana (su turno, Main Phase 1) lo pide, Beto acepta y el núcleo sigue con la mesa como estaba', async ({ browser }) => {
+test('de manual a automático: Ana (su turno, Main Phase 1) lo pide, Beto acepta y el núcleo sigue con la mesa como estaba', async ({ browser }) => {
   const { ana, beto, auto } = await autoToManual(browser)
 
   await test.step('Ana (su turno, Main Phase 1) pide seguir en automático y Beto acepta', async () => {
@@ -245,11 +244,19 @@ test.fixme('de manual a automático: Ana (su turno, Main Phase 1) lo pide, Beto 
     await beto.getByRole('button', { name: 'Pasar a automático', exact: true }).click(CORE)
     await expect(ana.getByRole('button', { name: 'Opciones', exact: true })).toBeVisible(CORE)
     await expect(beto.getByRole('button', { name: 'Opciones', exact: true })).toBeVisible(CORE)
-    // El turno vuelve a empezar (límite aceptado), con la mesa como estaba; la mano de Beto sigue oculta para Ana.
+    // El turno vuelve a empezar (límite aceptado), con la mesa como estaba; ninguno ve la mano del otro (la anfitriona corre el núcleo con todo: su mesa no lo muestra).
     await toMain1(ana)
     await expect(rivalHand(ana), 'la mano de Beto, vista por Ana').toHaveAccessibleName(/^Mano del rival: \d+$/)
+    await expect(rivalHand(beto), 'la mano de Ana, vista por Beto').toHaveAccessibleName(/^Mano del rival: \d+$/)
     expect(await sameTable(ana, beto), 'la mesa automática sigue a la manual').toEqual(auto)
     await shot(ana, 'auto-07-ana-otra-vez-automatico')
+  })
+
+  await test.step('Ana recarga el duelo rearmado: la mesa vuelve igual y la mano de Beto sigue oculta', async () => {
+    await ana.reload()
+    await expect.poll(() => view(ana, 'Ana', 'Beto'), CORE).toEqual(auto)
+    await expect(rivalHand(ana)).toHaveAccessibleName(/^Mano del rival: \d+$/)
+    await sameTable(ana, beto)
   })
 
   await test.step('El núcleo sigue: Ana termina el turno y Beto invoca', async () => {
