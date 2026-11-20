@@ -12,11 +12,13 @@ export interface AutoPrefs {
   blind: boolean
   botHand: boolean
   first: 'me' | 'rival' | 'random'
+  /** El mazo prestado que elegiste (el `id` de su lista, `loaner-deck.ts`) para jugar sin un deck propio completo; vacío, el de siempre. */
+  loaner: string
 }
 
-export const AUTO_KEYS = { duel: 'ygo-lab:auto-duel', chain: 'ygo-lab:auto-chain', place: 'ygo-lab:auto-place', blind: 'ygo-lab:auto-blind', botHand: 'ygo-lab:auto-bot-hand', first: 'ygo-lab:auto-first' } as const
+export const AUTO_KEYS = { duel: 'ygo-lab:auto-duel', chain: 'ygo-lab:auto-chain', place: 'ygo-lab:auto-place', blind: 'ygo-lab:auto-blind', botHand: 'ygo-lab:auto-bot-hand', first: 'ygo-lab:auto-first', loaner: 'ygo-lab:loaner' } as const
 /** Lo de quien no tocó nada. `duel: true` (Gastón, 2026-10-27: «la idea es que siempre se juegue en automático»): se arranca en el automático donde se puede (`canRunAuto`); quien lo apagó lo sigue teniendo apagado. */
-export const DEFAULT_AUTO_PREFS: AutoPrefs = { duel: true, chain: 'ask', place: 'ask', blind: false, botHand: false, first: 'me' }
+export const DEFAULT_AUTO_PREFS: AutoPrefs = { duel: true, chain: 'ask', place: 'ask', blind: false, botHand: false, first: 'me', loaner: '' }
 
 /** El núcleo corre en WebAssembly y en un Worker: un navegador sin alguno de los dos no lo puede correr, y entonces el interruptor va apagado y la preferencia no se usa. */
 export const canRunAuto = (scope: { WebAssembly?: unknown; Worker?: unknown } = globalThis): boolean => typeof scope.WebAssembly === 'object' && typeof scope.Worker === 'function'
@@ -51,6 +53,7 @@ export function readAutoPrefs(storage: () => Storage = () => localStorage): Auto
     blind: get(AUTO_KEYS.blind) === 'on',
     botHand: get(AUTO_KEYS.botHand) === 'on',
     first: first === 'rival' || first === 'random' ? first : 'me',
+    loaner: get(AUTO_KEYS.loaner) ?? '',
   }
 }
 

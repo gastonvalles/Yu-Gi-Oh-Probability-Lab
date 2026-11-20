@@ -4,7 +4,7 @@ Dos personas juegan la mesa de práctica una contra la otra, cada una en su apar
 
 ## Lobby y sala
 
-- **El deck es siempre el del builder:** todo lo que nombra el mazo en Jugar lleva ahí (`openBuilderFromPlay`; el builder ofrece «Volver a Jugar»), así las cartas se tocan en un lugar; importa `ydke://` y `.ydk` para jugar desde un celular sin deck armado. Por eso Jugar no tiene selector de deck.
+- **El deck es el del builder:** lo que nombra el mazo en Jugar lleva ahí (`openBuilderFromPlay`, con «Volver a Jugar»; importa `ydke://` y `.ydk`). Sin uno completo se juega con uno **prestado** de los bots (`loaner-deck.ts`, `LoanerSheet`), que no toca el builder.
 - «Jugar ahora» hace lo que dice (`pickRoom`), sin esperas falsas. «Estoy listo» revisa el deck con las reglas del builder (`deckFormatIssues`, 40 cartas en el Main): es una revisión de cada lado, no una garantía (el rival no ve el deck).
 - Quien llega por un enlace no pasa por el lobby: escribe su nombre en la sala y elige su deck en el builder, que vuelve a ella. El enlace no se dibuja (se copia o se comparte; lo vigila `link-rules.test.ts`) y la X pide confirmar.
 - Dónde vive: `PlayHome` (Jugar) y `DuelScreen.tsx`.

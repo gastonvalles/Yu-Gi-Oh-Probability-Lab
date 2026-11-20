@@ -10,7 +10,10 @@ import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles
 import { curatePatterns } from '../../app/pattern-curation'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
-import { dealRival, readHandtrapConfig } from '../../app/handtraps'
+import { dealRival, readHandtrapConfig, rivalKindOf } from '../../app/handtraps'
+import { needsLoan, soloLoaner } from '../../app/loaner-deck'
+import type { CardEntry, HandPattern } from '../../types'
+import { useLoaners } from '../duel/use-loaners'
 import { createMatState, randomSeed, shuffleWithSeed, type MatState } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
 import { Presence } from '../../app/use-presence'
@@ -81,6 +84,10 @@ const comboHash = (hash: string) => (hash.startsWith('#combo=') ? comboPayloadOf
 /** Los datos de un enlace de replay de un duelo (`#replay=…`), o null: los decodifica y valida la pantalla de Replays (`duel-replay-share.ts`). */
 const replayHash = (hash: string) => /^#replay=([A-Za-z0-9_-]+)$/.exec(hash)?.[1] ?? null
 
+/** La práctica con un mazo prestado no lleva las reglas del Lab de tu deck. */
+const NO_CARDS: CardEntry[] = []
+const NO_PATTERNS: HandPattern[] = []
+
 /** Crear tier list es «La tuya» de Tier lists (`buildTierListHash` en `app/meta.ts`, que no se importa acá: trae los datos del meta). */
 const MY_TIER_LIST_HASH = '#meta?vista=tuya'
 
@@ -142,7 +149,20 @@ export function DeckModeScreen() {
   // En el celular sólo la mesa del duelo es a pantalla completa (sin pie ni barra de abajo); el lobby, la sala y el siding llevan el armazón de siempre. En escritorio no cambia: el duelo ocupa todo.
   const [duelTable, setDuelTable] = useState(false)
   // La práctica y el duelo juegan con las mismas copias del deck armado.
-  const matDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra, controller.exportDeck.deckBuilder.side)
+  const ownDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra, controller.exportDeck.deckBuilder.side)
+  // Se presta un mazo (`loaner-deck.ts`) sólo si tu deck no alcanza para lo que vas a hacer: Online, el Main de un duelo; Solo, repartir la mano. Sólo entonces se piden sus cartas.
+  // La mesa de Solo reparte con el mismo que muestra su pantalla.
+  const ownMain = ownDeck.mainIds.length
+  const handSize = controller.probability.handSize
+  const loaners = useLoaners((isDuelStep && needsLoan(ownMain)) || ((activeStep === 'solo' || activeStep === 'practice') && ownMain < handSize))
+  const autoPrefs = useAutoPrefs()
+  const soloLoan = useMemo(() => {
+    if (activeStep !== 'practice' || loaners.status !== 'ready') return null
+    const config = readHandtrapConfig()
+    return soloLoaner(loaners.decks, autoPrefs.loaner, ownMain, handSize, canRunAuto() && rivalKindOf(config) === 'bot' ? (config.botDeck ?? null) : null)
+  }, [activeStep, loaners.status, loaners.decks, autoPrefs.loaner, ownMain, handSize])
+  const matDeck = useMemo(() => (soloLoan ? { mainIds: soloLoan.mainIds, extraIds: soloLoan.extraIds, sideIds: [], cardsById: soloLoan.cardsById } : ownDeck), [soloLoan, ownDeck])
+  const matDeckName = soloLoan ? soloLoan.list.name : controller.exportDeck.deckName
   // El duelo por enlace se ofrece sólo si la app sabe a qué relay conectarse (`VITE_DUEL_RELAY_URL`).
   const duelConnect = useMemo(() => {
     const url = duelRelayUrl()
@@ -158,16 +178,16 @@ export function DeckModeScreen() {
   const { props: practice, resume: resumePractice, openShared } = usePracticeSession({
     active: isPracticeStep,
     handSize: controller.probability.handSize,
-    derivedMainCards: controller.probability.derivedMainCards,
+    // Con el prestado, sin las reglas del Lab de tu deck (hablan de otras cartas).
+    derivedMainCards: soloLoan ? NO_CARDS : controller.probability.derivedMainCards,
     deck: matDeck,
-    deckName: controller.exportDeck.deckName,
-    patterns: controller.probability.patterns,
+    deckName: matDeckName,
+    patterns: soloLoan ? NO_PATTERNS : controller.probability.patterns,
     disabledGenericRuleIds: controller.probability.disabledGenericRuleIds,
     systemRuleNames: controller.probability.systemRuleNames,
     hasCompletedClassification: hasCompletedRoleStep,
   })
-  // El duelo automático: con el modo prendido (y un navegador que pueda correr el núcleo), la mesa (`#practice`) es la del núcleo de reglas en vez de la práctica manual.
-  const autoPrefs = useAutoPrefs()
+  // El duelo automático: con el modo prendido (y un navegador que pueda correr el núcleo), la mesa (`#practice`) es la del núcleo de reglas en vez de la práctica manual (`autoPrefs`, arriba).
   // «Seguir en manual» del automático es de esta partida, no del interruptor (que queda como estaba): al volver a Solo o a Online, se olvida. Lo mismo el Manual elegido en Solo.
   const [manualHere, setManualHere] = useState(false)
   // Un bot de Solo juega siempre en automático, aunque el modo esté en Manual: es de esta partida, como el de arriba.
@@ -417,7 +437,7 @@ export function DeckModeScreen() {
           {autoSolo && matDeck.mainIds.length > 0 ? (
             // Con las reglas del Lab de la práctica: las salidas y problemas de la mano de apertura, también acá. Si su pantalla no baja (sin señal), lo dice el borde y no cae la app.
             <StepErrorBoundary title={t('duel.offline.autoFailed')} backLabel={t('duel.offline.backSolo')} onBack={() => { window.location.hash = '#solo' }}>
-              <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} keep={keptDuel} onExit={() => { window.location.hash = '#solo' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
+              <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={matDeckName} handSize={controller.probability.handSize} keep={keptDuel} onExit={() => { window.location.hash = '#solo' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
             </StepErrorBoundary>
           ) : practice ? (
             <LazyPracticeSection {...practice} {...(canAuto ? { onAuto: (state: MatState) => { setResumeFrom(state); setManualHere(false) } } : {})} />
@@ -431,8 +451,9 @@ export function DeckModeScreen() {
         <div id="solo" className="min-w-0 min-[1101px]:min-h-full">
           <LazySoloScreen
             deckName={controller.exportDeck.deckName}
-            deckSize={matDeck.mainIds.length}
+            deckSize={ownDeck.mainIds.length}
             minDeck={controller.probability.handSize}
+            loaners={loaners}
             onOpenBuilder={openBuilderFromPlay}
             onPlay={(mode) => {
               setManualHere(mode === 'manual')
@@ -459,7 +480,7 @@ export function DeckModeScreen() {
             {t('shell.nav.group.duel')}
           </Heading>
           {duelConnect ? (
-            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} sideIds={matDeck.sideIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} onImmersiveChange={setDuelTable} onLobbyChange={setDuelLobby} autoDuel={LazyAutoDuel} />
+            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={ownDeck.mainIds} extraIds={ownDeck.extraIds} sideIds={ownDeck.sideIds} cardsById={ownDeck.cardsById} deckName={controller.exportDeck.deckName} loaners={loaners} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} onImmersiveChange={setDuelTable} onLobbyChange={setDuelLobby} autoDuel={LazyAutoDuel} />
           ) : (
             <Callout tone="info" className="m-4">{t('duel.unavailable')}</Callout>
           )}

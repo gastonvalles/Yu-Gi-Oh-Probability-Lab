@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
-import { useAutoPrefs } from '../../app/auto-prefs'
+import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { extractRoomCode, isWatchLink, type DuelView } from '../../app/duel-link'
 import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } from '../../app/duel-prefs'
@@ -8,6 +8,7 @@ import { DUEL_FORMATS, DUEL_LIMIT_CHOICES, GENESYS_CAP_RANGE, MAX_NAME_LENGTH, T
 import type { RoomsApi } from '../../app/duel-rooms'
 import type { PausedDuel } from '../../app/duel-save'
 import { MAIN_MINIMUM, mainMissing } from '../../app/duel-siding'
+import { loanerFits, pickLoaner, type LoanerDeck } from '../../app/loaner-deck'
 import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
 import { Button } from '../ui/Button'
@@ -21,9 +22,10 @@ import { ShortcutGrid, ShortcutTile } from '../ui/ShortcutGrid'
 import { Stepper } from '../ui/Stepper'
 import { field, surface } from '../ui/surfaces'
 import { Switch } from '../ui/Switch'
-import { textLink } from '../ui/typography'
 import { ArenaPanel } from './ArenaPanel'
 import { DuelModeRow, useAutoRooms, type AutoRooms } from './DuelModeRow'
+import { LoanerSheet, PlayDeckRow } from './LoanerSheet'
+import type { Loaners } from './use-loaners'
 import { formatName } from './room-chips'
 
 /** Lo que dice la búsqueda de «Jugar ahora» mientras pasa de verdad: se busca, se entra o se abre la tuya. */
@@ -40,6 +42,8 @@ interface PlayHomeProps {
   onOpenBuilder: () => void
   deckReady: boolean
   deckSize: number
+  /** Los mazos prestados (`useLoaners`): sin deck propio completo se juega con uno y «Cambiar» abre su hoja. Sin esto, como siempre (el deck del builder). */
+  loaners?: Loaners
   /** Las salas y los duelos públicos del relay, si lo tiene. Sin esto «Jugar ahora» abre una sala privada y no hay arena que mostrar. */
   rooms?: RoomsApi
   /** Abrir una sala (el anfitrión): con las reglas y si aparece en la lista mientras espera. */
@@ -59,22 +63,29 @@ const rulesLine = (prefs: DuelPrefs, auto: boolean) => [formatName(prefs.format,
  * a un toque) y por último las otras formas de entrar. No es un formulario: nada es obligatorio antes del botón, y las reglas y el deck están a un toque. Jugar solo es otra
  * entrada del menú (Solo, `SoloScreen`).
  */
-export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckReady: handReady, deckSize, rooms, onOpenDuel, onJoin, paused, onResume, onDropPaused }: PlayHomeProps) {
+export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckReady: handReady, deckSize, loaners, rooms, onOpenDuel, onJoin, paused, onResume, onDropPaused }: PlayHomeProps) {
   // La misma regla que la sala (`mainMissing`): con menos del Main de un duelo se entraría para quedar bloqueado adentro. Vale para toda entrada que pide deck.
   const missing = mainMissing(deckSize)
-  const deckReady = handReady && missing === 0
+  const ownReady = handReady && missing === 0
   const [prefs, setPrefs] = useState<DuelPrefs>(() => readPrefs())
+  const autoPrefs = useAutoPrefs()
+  // Sin deck propio completo, uno prestado que valga en el formato de tus reglas (el mismo cálculo que hace `DuelScreen` para la sala): con él no falta nada.
+  const fits = (deck: LoanerDeck) => loanerFits(deck, prefs.format, prefs.genesysCap)
+  const loan = ownReady || !loaners ? null : pickLoaner(loaners.decks, autoPrefs.loaner, fits)
+  const loading = !ownReady && (loaners?.status === 'loading' || loaners?.status === 'idle')
+  const deckReady = ownReady || loan !== null
+  const [loanerOpen, setLoanerOpen] = useState(false)
   const [search, setSearch] = useState<Search>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [codeOpen, setCodeOpen] = useState(false)
-    const [code, setCode] = useState('')
+  const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
   const codeRef = useRef<HTMLInputElement | null>(null)
   const nameId = useId()
   const alive = useRef(true)
   // El modo automático («Modo del duelo» de las reglas; automático de entrada): la sala que abrís, pública o privada, tiene reglas automáticas si está
   // prendido y se puede. Se decide al abrirla y queda así mientras dure.
-  const autoDuel = useAutoPrefs().duel
+  const autoDuel = autoPrefs.duel
   const autoRooms = useAutoRooms(rulesOpen || autoDuel)
   const autoRoom = autoDuel && autoRooms === 'on'
 
@@ -188,20 +199,27 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
             </div>
           ) : null}
 
-          {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.mainShort', { count: missing, have: deckSize, min: MAIN_MINIMUM })}</Callout>}
+          {deckReady || loading ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.mainShort', { count: missing, have: deckSize, min: MAIN_MINIMUM })}</Callout>}
 
           {/* La portada (movimiento 4 de G): arriba el deck con que entrás (lleva al builder: ahí se tocan las cartas), el titular y lo que va a pasar; en la última fila, las reglas con que
               entrás a la izquierda y la acción principal a la derecha, al pulgar (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}
           <section aria-label={t('duel.play.now')} className="grid gap-3 rounded-panel border border-nav-raised bg-nav p-4 min-[1101px]:p-5">
-            <div className="flex items-center gap-3">
-              <span className="grid min-w-0 flex-1">
-                <span className="text-micro text-muted">{t('duel.room.deckTitle')}</span>
-                <span className="truncate text-body font-semibold text-foreground">{deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}</span>
-              </span>
-              <button type="button" aria-label={t('duel.room.deckChange')} className={cx('inline-flex min-h-11 shrink-0 items-center rounded-control px-1 text-body', textLink)} onClick={onOpenBuilder}>
-                {t('duel.play.deckChange')}
-              </button>
-            </div>
+            <PlayDeckRow
+              name={
+                loan
+                  ? `${loan.list.name} · ${loan.mainIds.length}`
+                  : ownReady
+                    ? `${deckName} · ${deckSize}`
+                    : loading
+                      ? t('duel.loaner.loading')
+                      : loaners?.status === 'ready'
+                        ? t('duel.loaner.noneIn', { format })
+                        : t('duel.play.deckNone')
+              }
+              loan={loan}
+              popup={Boolean(loaners) && !ownReady}
+              onChange={loaners && !ownReady ? () => setLoanerOpen(true) : onOpenBuilder}
+            />
             {/* El titular dice lo que va a pasar y, mientras busca, cómo va (una sola línea, sin eslogan). */}
             <div role="status" aria-live="polite">
               <h2 className="m-0 text-title font-extrabold leading-tight text-foreground">{statusText}</h2>
@@ -215,8 +233,8 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
               {/* Lo que se distingue de la vista: verde lleno con el texto blanco sobre la portada violeta («listo, a jugar»; el violeta lleno no se despegaba de ella y la lavanda clara no tenía color) y, con
                   deck, el marco lima que se mueve (`ShineFrame`). Con un duelo en pausa, lo principal es volver a él. */}
               <ShineFrame className="ml-auto" active={!paused && deckReady && !busy}>
-                <Button variant={paused ? 'secondary' : 'primary'} color={paused ? 'brand' : 'success'} icon="play" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
-                  {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
+                <Button variant={paused ? 'secondary' : 'primary'} color={paused ? 'brand' : 'success'} icon="play" aria-busy={busy || loading} disabled={busy || loading} onClick={() => void playNow()}>
+                  {deckReady || loading ? t('duel.play.now') : t('duel.play.needDeck')}
                 </Button>
               </ShineFrame>
             </div>
@@ -309,6 +327,26 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
         }}
       />
 
+      {loaners ? (
+        <LoanerSheet
+          isOpen={loanerOpen}
+          onClose={() => setLoanerOpen(false)}
+          loaners={loaners}
+          current={loan?.list.id ?? null}
+          blocked={(deck) => (fits(deck) ? null : t('duel.loaner.notIn', { format }))}
+          onPick={(id) => setAutoPref('loaner', id)}
+          own={deckSize}
+          onOpenBuilder={onOpenBuilder}
+          footer={
+            <Button variant="primary" color="success" icon="play" fullWidth disabled={!loan || busy} onClick={() => {
+              setLoanerOpen(false)
+              void playNow()
+            }}>
+              {loan ? t('duel.loaner.play', { name: loan.list.name }) : t('duel.play.now')}
+            </Button>
+          }
+        />
+      ) : null}
     </>
   )
 }
