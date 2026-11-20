@@ -179,6 +179,10 @@ export const duel = {
   'duel.lobby.joinPlaceholder': 'Enlace o código',
   'duel.lobby.joinAction': 'Unirme',
   'duel.lobby.joinInvalid': 'Ese no parece un código de duelo: son 8 letras y números.',
+  'duel.lobby.mainShort': {
+    one: 'Un duelo se juega con {min} cartas en el Main como mínimo y tu deck tiene {have}: te falta una. Armalo en el builder (ahí también podés importar un enlace ydke:// o un archivo .ydk).',
+    other: 'Un duelo se juega con {min} cartas en el Main como mínimo y tu deck tiene {have}: te faltan {count}. Armalo en el builder (ahí también podés importar un enlace ydke:// o un archivo .ydk).',
+  },
   'duel.lobby.needDeck': 'Para repartir la mano hacen falta {min} cartas en el Main y tu deck tiene {count}: armalo en el builder (ahí también podés importar un enlace ydke:// o un archivo .ydk).',
 
   // La sala, hasta que los dos tienen su mano.

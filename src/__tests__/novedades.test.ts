@@ -29,6 +29,8 @@ describe('novedades: helpers', () => {
     const list = [entry('a', '2026-01-02', ['arreglo']), entry('c', '2026-03-01', ['nuevo', 'mejora']), entry('b', '2026-03-01', ['mejora'])]
 
     expect(sortEntries(list).map((item) => item.id)).toEqual(['c', 'b', 'a'])
+    // El número de orden del día se lee como número: la décima entrada es más nueva que la novena.
+    expect(sortEntries([entry('2026-03-01-9-x', '2026-03-01'), entry('2026-03-01-10-y', '2026-03-01'), entry('2026-03-01-2-z', '2026-03-01')]).map((item) => item.id)).toEqual(['2026-03-01-10-y', '2026-03-01-9-x', '2026-03-01-2-z'])
     expect(filterByTag(list, 'mejora').map((item) => item.id)).toEqual(['c', 'b'])
     expect(filterByTag(list, 'all')).toHaveLength(3)
     expect(filterByTag(list, 'arreglo').map((item) => item.id)).toEqual(['a'])

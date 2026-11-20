@@ -4,7 +4,7 @@ import type { RoomAutoState } from '../../app/auto/online'
 import { createResumeLink, type ResumeLink, type ResumeSnapshot } from '../../app/auto/online-resume'
 import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
 import { deckFormatIssues } from '../../app/duel-format'
-import { MAIN_MINIMUM, renumberDeck, type SideDeck } from '../../app/duel-siding'
+import { MAIN_MINIMUM, mainMissing, renumberDeck, type SideDeck } from '../../app/duel-siding'
 import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, sameName, uniqueName, type MarkTarget } from '../../app/duel-protocol'
 import { formatDataLoaded, loadFormatData } from '../../app/format-data'
 import type { DeckFormat } from '../../types'
@@ -594,7 +594,6 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
         onOpenBuilder={openBuilderFromPlay}
         deckReady={deckReady}
         deckSize={deck.mainIds.length}
-        minDeck={handSize}
         onCreate={(options) => enter(createRoomCode(), 'host', false, options)}
         rooms={rooms}
         onJoin={(room, watch) => enter(room, watch ? 'guest' : (savedRole(room) ?? 'guest'), watch)}
@@ -809,7 +808,6 @@ interface DuelLobbyProps {
   onOpenBuilder: () => void
   deckReady: boolean
   deckSize: number
-  minDeck: number
   onCreate: (options: RoomOptions) => void
   /** La lista de salas públicas, si el relay la tiene. */
   rooms?: RoomsApi
@@ -821,7 +819,7 @@ interface DuelLobbyProps {
   onDropPaused: () => void
 }
 
-function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, deckName, onOpenBuilder, deckReady, deckSize, minDeck, onCreate, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
+function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, deckName, onOpenBuilder, deckReady, deckSize, onCreate, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
   const [watching, setWatching] = useState(view === 'watch')
   const online = useOnline()
 
@@ -859,7 +857,6 @@ function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, on
         onOpenBuilder={onOpenBuilder}
         deckReady={deckReady}
         deckSize={deckSize}
-        minDeck={minDeck}
         rooms={rooms}
         onOpenDuel={onCreate}
         onJoin={onJoin}
@@ -1061,7 +1058,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
 
   const issues = useMemo(() => (needsTables && !tablesLoaded ? [] : deckFormatIssues([...roomDeck.mainIds, ...roomDeck.extraIds], roomDeck.cardsById, settings.format, settings.genesysCap)), [roomDeck, settings.format, settings.genesysCap, needsTables, tablesLoaded])
   // Un duelo se juega con 40 cartas en el Main como mínimo (jugar solo, la práctica, no lo pide).
-  const mainShort = roomDeck.mainIds.length < MAIN_MINIMUM
+  const mainShort = mainMissing(roomDeck.mainIds.length) > 0
   const canReady = peerPresent && settingsKnown && !incompatible && deckReady && !mainShort && issues.length === 0 && (!needsTables || tablesLoaded) && (auto?.canReady ?? true)
   // Sin espectadores en una sala con reglas automáticas: no se ofrece el enlace para mirar.
   const watchable = !settings.auto

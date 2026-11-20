@@ -118,9 +118,20 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps()} />)
     createRoom(host)
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    // Pegado en el lobby, el lobby no deja entrar con 39 y dice que falta una (el bloqueo de la sala no se alcanza por ahí).
     window.history.replaceState(null, '', '#duel')
+    const lobby = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 39) })} />)
+    expect(within(lobby.container).getByText(/tu deck tiene 39: te falta una\./)).toBeInTheDocument()
+    click(lobby, 'Tengo un código')
+    typeInto(lobby, 'Enlace o código', link)
+    expect(within(lobby.container).getByRole('button', { name: 'Unirme' })).toBeDisabled()
+    lobby.unmount()
+
+    // Abriendo el enlace de invitación (`#duel?room=CÓDIGO`) se entra directo a la sala, sin pasar por el lobby: ahí sigue el bloqueo, con el mismo número.
+    // (Otro navegador: el rol que la sala del anfitrión dejó en esta pestaña de prueba no es del invitado.)
+    sessionStorage.clear()
+    window.history.replaceState(null, '', new URL(link).hash)
     const guest = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 39) })} />)
-    joinByLink(guest, link)
     flush()
 
     expect(within(guest.container).getByText(/Tu Main tiene 39 cartas y un duelo se juega con 40 como mínimo/)).toBeInTheDocument()
