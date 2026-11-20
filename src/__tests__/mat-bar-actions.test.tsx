@@ -95,7 +95,7 @@ function mountAuto() {
 afterEach(() => act(() => setDuelFullscreen(false)))
 
 describe('la barra de la mesa es una sola', () => {
-  it('la práctica lleva arriba salir, deshacer, el ⋯ y sus pasos; «Jugar solo automático» no tiene ⋯ (Gastón, 2026-11-12: «compite con el de configuración»): todo va en ⚙, en «La mesa» y «El duelo», sin repetir nada (en el celular y en escritorio)', () => {
+  it('la práctica lleva arriba salir, el ⋯ y sus pasos (deshacer va abajo: TI-331); «Jugar solo automático» no tiene ⋯ (Gastón, 2026-11-12: «compite con el de configuración»): todo va en ⚙, en «La mesa» y «El duelo», sin repetir nada (en el celular y en escritorio)', () => {
     for (const layout of ['celular', 'escritorio'] as const) {
       if (layout === 'escritorio') desktop()
       render(<Practice />)
@@ -110,7 +110,7 @@ describe('la barra de la mesa es una sola', () => {
       expect(auto.map((button) => button.name)).toEqual(layout === 'celular' ? ['Volver a Jugar'] : ['Deshacer', 'Pasos y combos', 'Opciones'])
       expect(screen.queryByRole('button', { name: 'Más opciones' })).toBeNull()
       expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
-      expect(practice.map((button) => button.name)).toEqual(['Volver a Jugar', 'Deshacer', 'Más opciones', 'Pasos y combos'])
+      expect(practice.map((button) => button.name)).toEqual(['Volver a Jugar', 'Más opciones', 'Pasos y combos'])
       // Ningún ícono de la barra queda en ámbar por un ajuste prendido: ninguno lleva `aria-pressed` (salvo ≡ de la botonera del automático, que muestra u oculta el panel de los pasos).
       expect([...practice, ...auto].filter((button) => button.pressed !== null && !(button.name === 'Pasos y combos' && auto.includes(button)))).toEqual([])
       // La práctica no cambia: «La mesa» con sus interruptores (la vista 3D y los sonidos vienen prendidos) y «El duelo».

@@ -12,7 +12,7 @@ import { duelTurnNumber } from '../../app/duel-turn'
 import { duelClockMs, formatClock } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useSwipeAway } from '../../app/use-swipe-away'
-import { MatMoreMenu, MatReplayContext, MatUndoContext } from '../probability/MatBarActions'
+import { MatMoreMenu, MatReplayContext } from '../probability/MatBarActions'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -290,7 +290,7 @@ const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
 /**
  * La barra de arriba de un duelo por enlace (manual y automático), hermana de `AutoBar` (Gastón, 2026-10-27: sin placas ni barra de abajo). Arriba, el reloj de la ronda (tocarlo lo pausa) y los
- * íconos: el chat (hasta 1100 px), deshacer (`MatUndoContext`: lo arma la mesa), el ⋯ y salir (pide confirmación). Hasta 1100 px, debajo, el marcador plano: tus vidas, el turno dicho una sola vez
+ * íconos: el chat (hasta 1100 px), el ⋯ y salir (pide confirmación; deshacer lo pone la mesa abajo). Hasta 1100 px, debajo, el marcador plano: tus vidas, el turno dicho una sola vez
  * («Turno de Ana · 3», en el color de quién es; la fase la dice sólo el botón del campo) y las del rival (`LifeScore`: en el manual se tocan y abren la calculadora), y la línea del registro. En escritorio
  * cada vida va en su chapa y su esquina (las pone la pantalla: `RivalLife` en `corner` y `DuelLife` en `life`) y el turno debajo de los íconos; con laterales, las chapas las pone la barra en los mismos
  * lugares (la del rival arriba a la derecha, la tuya abajo a la izquierda).
@@ -311,7 +311,6 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   const result = duelResult(life.lp, snapshot.conceded)
   // Con el rival presente y el duelo sin terminar, salir es abandonar: se pierde. Con el rival ausente (se cayó) o el duelo terminado, sólo se sale.
   const abandoning = result === null && peerPresent && onAbandon !== undefined
-  const undo = useContext(MatUndoContext)
   // El turno, una sola vez (sin la píldora de la fase: la dice el botón del campo).
   const turnLine = (className: string) => (
     // Bajo 360 px un paso más chica: entre las dos vidas, «Turno de Beto · 3» se cortaba antes del número (el alto de la fila no cambia).
@@ -423,7 +422,6 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
         {/* Las chapas, en los mismos lugares que sin laterales y que en el celular: la del rival arriba a la derecha (debajo del turno) y la tuya abajo a la izquierda. */}
         <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
           <span className="-mr-2 flex flex-wrap items-center justify-end">
-            {undo}
             {actions}
           </span>
           {turnLine('max-w-full text-right')}
@@ -450,7 +448,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
     )
   }
 
-  // Escritorio sin laterales: una sola fila. A la izquierda el reloj (y los chips); a la derecha deshacer, el ⋯ y salir y, debajo, el turno. Las vidas van en las esquinas del campo (las pone la
+  // Escritorio sin laterales: una sola fila. A la izquierda el reloj (y los chips); a la derecha el ⋯ y salir y, debajo, el turno. Las vidas van en las esquinas del campo (las pone la
   // pantalla) y el aviso, centrado debajo de la barra.
   if (docked) {
     return (
@@ -465,7 +463,6 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
         {/* Sin aire entre los íconos y el turno (y su renglón justo): la barra no suma alto y la columna no scrollea a 1440 × 900. */}
         <div className="ml-auto flex min-w-0 flex-col items-end">
           <span className="-mr-1 flex items-center">
-            {undo}
             {actions}
           </span>
           {turnLine('max-w-full leading-tight')}
@@ -482,7 +479,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   }
 
   return (
-    // Hasta 1100 px (celular y tableta, la misma barra): la fila de los íconos (la hamburguesa, el reloj, la chapa del rival y, a la derecha, deshacer, el ⋯ y salir: a 360 px entran 304 px). La tuya va
+    // Hasta 1100 px (celular y tableta, la misma barra): la fila de los íconos (la hamburguesa, el reloj, la chapa del rival y, a la derecha, el ⋯ y salir: a 360 px entran 304 px). La tuya va
     // abajo, con la botonera y el chat; los avisos y el resultado flotan debajo de la barra, sobre la mano del rival (no ocupan lugar).
     <div className="relative flex flex-col gap-1.5 px-0.5 pt-1.5">
       <div className="flex h-11 min-w-0 items-center gap-1.5 max-[339px]:gap-1">
@@ -493,7 +490,6 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
           <RivalLife snapshot={snapshot} onOpen={onOpenLife} signal={rivalSignal} signalKey={rivalSignalKey} badge compact active={turn !== 'mine'} />
         </span>
         <span className="-mr-2 flex shrink-0 items-center">
-          {undo}
           {actions}
         </span>
       </div>

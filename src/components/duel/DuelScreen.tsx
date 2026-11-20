@@ -1956,8 +1956,7 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       ...(docked ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} badge active={turn !== 'mine'} /> } : {}),
       ...(docked ? {} : { scoreInHeader: true }),
       ...(phone ? { ...(lane ? { line: <DuelLine lane={lane} rivalName={rivalName} /> } : {}), dock: chatToggle } : {}),
-      // Deshacer: hasta 1100 px abajo, el primero de la botonera (↶ chat); en escritorio, en la barra de arriba (`MatUndoContext`).
-      undoInHeader: docked,
+      // Deshacer lo pone la mesa abajo: hasta 1100 px, el primero de la botonera (↶ chat); en escritorio, solo en la esquina de abajo a la derecha.
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (

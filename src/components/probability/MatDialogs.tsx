@@ -102,9 +102,9 @@ interface CardMenuProps {
 
 /**
  * Una carta sin jugadas en el duelo automático: «Ahora no tiene jugadas», por qué si se sabe (cada razón, una línea; las restricciones, con el texto de su carta) o que el automático
- * no ofrece ninguna, y debajo el atajo discreto a seguir en la mesa manual. Va en el menú pegado a la carta y en la hoja del celular, en el lugar de la lista vacía.
+ * no ofrece ninguna. Va en el menú pegado a la carta y en la hoja del celular, en el lugar de la lista vacía. «Seguir en modo manual» no va acá (no es una salida de emergencia): vive en Opciones.
  */
-export function NoPlays({ reasons, onManual }: { reasons: readonly string[]; onManual?: () => void }) {
+export function NoPlays({ reasons }: { reasons: readonly string[] }) {
   return (
     <div className="grid gap-1 text-left" data-testid="no-plays">
       <p className="m-0 text-body font-semibold text-foreground">{t('auto.why.title')}</p>
@@ -113,15 +113,6 @@ export function NoPlays({ reasons, onManual }: { reasons: readonly string[]; onM
           {reason}
         </p>
       ))}
-      {onManual ? (
-        // El botón a lo ancho del menú y con el texto en dos renglones si hace falta: uno de su ancho natural («Continue in manual mode») se pasaba del panel y le sumaba un scroll de costado.
-        <div className="mt-1 grid gap-1">
-          <p className="m-0 text-micro text-soft">{t('auto.why.mismatch')}</p>
-          <Button variant="tertiary" size="sm" fullWidth onClick={onManual}>
-            {t('auto.bar.manual')}
-          </Button>
-        </div>
-      ) : null}
     </div>
   )
 }

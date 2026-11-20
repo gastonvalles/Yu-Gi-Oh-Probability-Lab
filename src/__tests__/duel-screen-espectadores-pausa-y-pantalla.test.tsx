@@ -1306,11 +1306,17 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByTestId('duel-turn')).toHaveTextContent(/^Tu turno · 1$/)
     expect(within(host.container).queryByText(/Draw Phase/)).not.toBeInTheDocument()
     expect(within(host.container).queryByTestId('duel-score')).not.toBeInTheDocument()
-    // La del rival, arriba a la derecha del campo; la tuya, abajo a la izquierda (sin Deshacer al lado: está arriba).
+    // La del rival, arriba a la derecha del campo; la tuya, abajo a la izquierda.
     expect(host.container.querySelector('[data-lp="theirs"]')?.closest('[data-corner="theirs"]')).not.toBeNull()
     expect(host.container.querySelector('[data-lp="mine"]')?.closest('[data-corner="mine"]')).not.toBeNull()
     expect(host.container.querySelectorAll('[data-life-score]')).toHaveLength(2)
     expect(within(host.container).getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
+    // Deshacer, abajo (Gastón, 2026-11-19: «en el modo manual el boton para volver la jugada tambien debe estar abajo»): después del campo, en la fila de tus vidas (a la derecha), de 44 px;
+    // la barra de arriba ya no lo lleva.
+    const undo = within(host.container).getByRole('button', { name: 'Deshacer' })
+    expect(within(host.container).getByLabelText('Campo').compareDocumentPosition(undo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(undo.closest('[role="toolbar"]')).toContainElement(host.container.querySelector<HTMLElement>('[data-lp="mine"]'))
+    expect(undo).toHaveClass('size-11')
   })
 
   it('con laterales (escritorio ancho) la barra se reparte a los costados del campo: el reloj y tu chapa a la izquierda; íconos, deshacer, el turno y la chapa del rival a la derecha', () => {

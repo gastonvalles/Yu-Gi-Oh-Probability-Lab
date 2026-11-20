@@ -941,9 +941,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
             return [...(known.length > 0 ? known : [t('auto.why.unknown')]), ...(limitTexts.length > 0 ? [t('auto.why.limits'), ...limitTexts] : [])]
           },
-      manual: onManual ?? null,
     }
-  }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, tallies.mine, vanilla, codeOf, placeBack, session, zoneLabel])
+  }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, cardPick, why, fieldStats.mine, tallies.mine, vanilla, codeOf, placeBack, session, zoneLabel])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   // Repasando tus jugadas, la cadena de cada paso como en vivo (`snap.chainSteps`): un paso adelante muestra sus mensajes desde lo que ya se veía, con el mismo ritmo (`chainDwell`);

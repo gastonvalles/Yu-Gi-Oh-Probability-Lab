@@ -294,7 +294,7 @@ export function AutoDock({ steps, onConcede, ...options }: AutoOptions & { steps
 
 /**
  * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace: la flecha de «Volver a Jugar» a la
- * izquierda y, sólo en escritorio, Deshacer a la derecha (`MatUndoContext`: hasta 1100 px va abajo, en la botonera). Sin ⋯: todo lo demás va en el ⚙ de abajo (`AutoDock`). Hasta 1100 px (celular y
+ * izquierda (Deshacer va abajo, en la botonera, en todos los tamaños). Sin ⋯: todo lo demás va en el ⚙ de abajo (`AutoDock`). Hasta 1100 px (celular y
  * tableta, la misma barra): la hamburguesa, la flecha y, a la derecha, la chapa del rival (repasando, «Volver al duelo» en su lugar); los avisos los pone la mesa debajo. El turno no se dice con texto: lo
  * dice el borde grueso de la chapa de quien juega (`LifeBadge` con `active`), en los mismos lugares con laterales o sin ellos. Nada de esto suma alto cuando aparece o se va: el campo no se
  * mueve. Todo el estado entra por props.

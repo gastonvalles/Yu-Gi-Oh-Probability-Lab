@@ -39,9 +39,6 @@ export const MatRulesContext = createContext<ReactNode>(null)
  */
 export const MatReplayContext = createContext<{ step: string } | null>(null)
 
-/** Deshacer de un duelo en escritorio, para su barra de arriba (`DuelBar` y `AutoBar`, con `undoInHeader`): lo arma la mesa con su estado (sin jugadas, esperando el permiso del rival). Sin él, nada. */
-export const MatUndoContext = createContext<ReactNode>(null)
-
 /**
  * «La mesa», el primer grupo del menú ⋯ de toda mesa (la práctica, «Jugar solo automático» y el duelo por enlace): la vista 3D, los sonidos, la ventana grande (sólo en escritorio: en el celular la mesa
  * ya ocupa todo) y la imagen de la carta al invocar (beta, apagada de fábrica), cada uno con su interruptor. Vienen prendidos de fábrica (la vista 3D y los sonidos) y por eso no van a la vista ni en color: su estado se lee en el interruptor.
@@ -71,9 +68,6 @@ export function MatMoreMenu({ items, defaultOpen = false, view = true }: { items
 const NOTHING = () => {}
 
 interface MatBarActionsProps {
-  /** Deshacer: la última jugada (la práctica) o tu última orden al núcleo (el automático); `canUndo` apagado si no hay. */
-  onUndo: () => void
-  canUndo: boolean
   /** «Nueva mano»: la práctica reparte otra; el automático arma otro duelo, con otra semilla (otras cartas). */
   onNewHand: () => void
   /** Se aplicaron las handtraps del rival (ya quedaron guardadas): la práctica reparte otra mano. */
@@ -83,7 +77,7 @@ interface MatBarActionsProps {
   canSave?: boolean
   /** Lo propio de cada mesa, al final del menú (el automático en el celular: «Opciones del duelo»). */
   more?: OverflowItem[]
-  /** Para el primero (deshacer): la práctica empuja el grupo a la derecha (`ml-auto`). */
+  /** Para el ⋯: la práctica empuja el grupo a la derecha (`ml-auto`). */
   className?: string
   /** El ⋯ abierto de entrada (la muestra del catálogo). */
   menuOpen?: boolean
@@ -92,7 +86,7 @@ interface MatBarActionsProps {
 }
 
 /**
- * La barra de arriba de la práctica (`PracticeMat`): a la vista sólo deshacer (lo que se toca en cada jugada) y el ⋯ (`MatMoreMenu`),
+ * La barra de arriba de la práctica (`PracticeMat`): a la vista sólo el ⋯ (`MatMoreMenu`; deshacer va abajo, a la derecha de tu mano: Gastón, 2026-11-19),
  * que lleva lo demás en dos grupos: «La mesa» (la vista 3D, los sonidos y la ventana grande, con su interruptor) y «El duelo» (las handtraps del rival, «Nueva mano», «Guardar combo» y lo de cada mesa).
  * La flecha de salir va antes, en la barra de cada una (Gastón, 2026-10-26: «muchos íconos juntos»; antes eran siete a la vista).
  *
@@ -104,7 +98,7 @@ interface MatBarActionsProps {
  * - Usos: la barra de la práctica (`PracticeMat`) y la muestra del catálogo; la del duelo por enlace manual (`DuelBar`) arma su ⋯ con el mismo grupo «La mesa» (`MatMoreMenu`). Los duelos
  *   automáticos no llevan ⋯: «La mesa» va en su ⚙ (`OptionsGear`, con `useMatTableItems`).
  */
-export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, onSave, canSave = false, more = [], className, menuOpen = false, view = true }: MatBarActionsProps) {
+export function MatBarActions({ onNewHand, onHandtraps, onSave, canSave = false, more = [], className, menuOpen = false, view = true }: MatBarActionsProps) {
   const fromMat = useContext(MatSaveContext)
   const rules = useContext(MatRulesContext)
   const save = onSave ? { onSave, canSave } : fromMat
@@ -114,19 +108,18 @@ export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, onSave,
     <>
       {/* La píldora toma el lugar libre (`flex-1`): ya empuja los íconos a la derecha. */}
       {rules}
-      <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={!canUndo} className={cx('disabled:opacity-35', !rules && className)} onClick={onUndo}>
-        <Icon name="undo" />
-      </IconButton>
-      <MatMoreMenu
-        defaultOpen={menuOpen}
-        view={view}
-        items={[
-          { group: t('practice.mat.groupDuel'), label: t('handtraps.title'), icon: 'hand', meta: t(handtraps.config.enabled ? 'handtraps.mat.on' : 'handtraps.mat.off'), opens: true, onSelect: handtraps.open },
-          { label: t('practice.mat.newHand'), icon: 'refresh', onSelect: onNewHand },
-          ...(save ? [{ label: t('practice.mat.saveCombo'), icon: 'save', disabled: !save.canSave, ...(save.canSave ? {} : { meta: t('practice.mat.saveNone') }), onSelect: save.onSave } satisfies OverflowItem] : []),
-          ...more,
-        ]}
-      />
+      <span className={cx('flex', !rules && className)}>
+        <MatMoreMenu
+          defaultOpen={menuOpen}
+          view={view}
+          items={[
+            { group: t('practice.mat.groupDuel'), label: t('handtraps.title'), icon: 'hand', meta: t(handtraps.config.enabled ? 'handtraps.mat.on' : 'handtraps.mat.off'), opens: true, onSelect: handtraps.open },
+            { label: t('practice.mat.newHand'), icon: 'refresh', onSelect: onNewHand },
+            ...(save ? [{ label: t('practice.mat.saveCombo'), icon: 'save', disabled: !save.canSave, ...(save.canSave ? {} : { meta: t('practice.mat.saveNone') }), onSelect: save.onSave } satisfies OverflowItem] : []),
+            ...more,
+          ]}
+        />
+      </span>
       {handtraps.sheet}
     </>
   )

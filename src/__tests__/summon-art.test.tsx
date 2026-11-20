@@ -35,6 +35,26 @@ describe('el interruptor de la irrupción al invocar', () => {
     expect(localStorage.getItem(SUMMON_ART_KEY)).toBeNull()
   })
 
+  it('la franja va con bordes rectos (decisión del Jefe, 2026-11-19: sin barrido diagonal): las bandas son rectángulos, el arte no se recorta en diagonal y los cortes son verticales', () => {
+    Element.prototype.animate = () => ({ addEventListener: () => {}, cancel: () => {} }) as unknown as Animation
+    try {
+      document.body.innerHTML = ''
+      playSummonArt('arte.jpg')
+      const root = document.querySelector<HTMLElement>('[data-fx="summon-art"]')!
+      const polygons = [...root.querySelectorAll('polygon')].map((polygon) => polygon.getAttribute('points')!.split(' ').map((point) => Number(point.split(',')[0])))
+      expect(polygons).toHaveLength(3)
+      // Un rectángulo: sólo dos x distintas (los dos lados, derechos).
+      for (const xs of polygons) expect(new Set(xs).size).toBe(2)
+      const lines = [...root.querySelectorAll('line')]
+      expect(lines).toHaveLength(3)
+      for (const line of lines) expect(line.getAttribute('x1')).toBe(line.getAttribute('x2'))
+      expect(root.innerHTML).not.toMatch(/clip-path/)
+    } finally {
+      delete (Element.prototype as Partial<Element>).animate
+      document.body.innerHTML = ''
+    }
+  })
+
   it('la franja se centra en el campo (sin los paneles laterales); con el campo centrado en la ventana (el celular) queda donde estaba', () => {
     const width = window.innerWidth
     Element.prototype.animate = () => ({ addEventListener: () => {}, cancel: () => {} }) as unknown as Animation
