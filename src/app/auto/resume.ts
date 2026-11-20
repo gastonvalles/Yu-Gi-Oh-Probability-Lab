@@ -142,6 +142,17 @@ export function filterSetup(setup: Setup, viewer: Seat): Setup {
 }
 
 /**
+ * El código de cada carta de la mesa del otro (`state`) como lo ve quien mira (lo mismo que `filterSetup`, sobre la mesa): lo boca abajo (su deck, su mano, lo colocado, lo
+ * desterrado o en el Extra boca abajo) da 0. Quien corre el núcleo tiene todos los códigos (el `create` los necesita); su mesa no los muestra.
+ */
+export function seenCodeOf(state: MatState, codeOf: (id: string) => number): (id: string) => number {
+  const set = [...state.mz, ...state.emz, ...state.st, state.field].flatMap((placed) => (placed?.pos === 'set' ? [placed.id] : []))
+  const hidden = new Set([...state.deck, ...state.hand, ...state.facedown, ...state.extra.filter((id) => !state.extraUp.includes(id)), ...set])
+
+  return (id) => (hidden.has(id) ? 0 : codeOf(id))
+}
+
+/**
  * Si la mesa que manda el invitado (sus cartas, con códigos) es la que el anfitrión ve de él en el espejo del duelo manual (`theirs.state`, con ids opacos; `known`: los que ya
  * mostró): mismos lugares, secuencias, posiciones y materiales, todo con código, y el código de cada carta que el anfitrión ya conoce. Si no, el pase no es seguro.
  */

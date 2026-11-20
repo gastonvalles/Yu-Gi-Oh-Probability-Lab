@@ -379,6 +379,25 @@ describe('pasar de manual a automático: el duelo que sigue desde la mesa rearma
     game.guestLink.destroy()
   })
 
+  it('ninguno ve lo oculto del otro en la mesa rearmada (la mano, el deck, lo colocado, lo desterrado y el Extra boca abajo): el anfitrión corre el núcleo con todo, pero su mesa no lo muestra', async () => {
+    const game = await resumed()
+
+    for (const session of [game.hostLink.getSnapshot().session!, game.guestLink.getSnapshot().session!]) {
+      const { theirs } = session.getSnapshot().initial
+      const set = [...theirs.mz, ...theirs.emz, ...theirs.st, theirs.field].flatMap((slot) => (slot?.pos === 'set' ? [slot.id] : []))
+      const hidden = [...theirs.deck, ...theirs.hand, ...theirs.facedown, ...theirs.extra.filter((id) => !theirs.extraUp.includes(id)), ...set]
+      const shown = [...theirs.gy, ...[...theirs.mz, ...theirs.emz, ...theirs.st, theirs.field].flatMap((slot) => (slot && slot.pos !== 'set' ? [slot.id, ...slot.materials] : []))]
+
+      expect(theirs.hand.length).toBeGreaterThan(0)
+      expect(set.length + theirs.facedown.length).toBeGreaterThan(0)
+      expect(hidden.map((id) => session.adapter!.codeOf({ side: 'theirs', id }))).toEqual(hidden.map(() => 0))
+      expect(theirs.hand.map((id) => session.adapter!.publicInHand({ side: 'theirs', id }))).toEqual(theirs.hand.map(() => 0))
+      expect(shown.every((id) => session.adapter!.codeOf({ side: 'theirs', id }) > 0)).toBe(true)
+    }
+    game.hostLink.destroy()
+    game.guestLink.destroy()
+  })
+
   it('lo guardado lleva el setup: el anfitrión que recarga rearma el mismo duelo y el invitado que vuelve recibe la misma mesa', async () => {
     const storage = new Map<string, string>()
     const store = autoSaveStore('ROOM0001', { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => void storage.set(key, value), removeItem: (key) => void storage.delete(key) })

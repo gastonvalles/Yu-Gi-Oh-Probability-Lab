@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { copyIds } from '../app/auto/adapter'
 import { createAutoSession, MR5 } from '../app/auto/auto-session'
+import type { Bot, BotView } from '../app/auto/bot/bot'
 import { resumeScript } from '../app/auto/core-host'
 import { LOCATION as L, parseAutoCommand, parsePlacedCards, parseSetup, POSITION as P, type AutoCommand, type PlacedCard } from '../app/auto/protocol'
-import { filterSetup, placedCards, RESUME_FLAGS, setupOf, statesOf, tableMatches, whyNotResume } from '../app/auto/resume'
+import { filterSetup, placedCards, RESUME_FLAGS, seenCodeOf, setupOf, statesOf, tableMatches, whyNotResume } from '../app/auto/resume'
 import { mapMatIds } from '../app/mat-public'
 import { createMatState, matReducer, replayMat, type MatState } from '../app/practice-mat'
-import { fakeHost, loader } from './support/auto-core-fake'
+import { fakeHost, IDLE, loader } from './support/auto-core-fake'
 
 // Pasar de manual a automático sin el núcleo: la mesa como cartas del núcleo (`resume.ts`), el script que las pone (`resumeScript`), el `create` con `setup` (protocolo) y la sesión
 // que arranca desde la mesa (adaptador sembrado: la proyección es la mesa dada, sin jugadas). Con el núcleo real: `auto-resume*.slow.test.ts`.
@@ -143,6 +144,12 @@ describe('resume: la mesa como cartas del núcleo', () => {
     expect(seen.cards.find((card) => card.code === 90)?.materials).toEqual([1, 2])
     expect(statesOf(seen, 1).theirs).toEqual(seat1.theirs)
     expect(statesOf(seen, 1).codeOf('theirs', 'c1')).toBe(0)
+    // Lo mismo sobre la mesa (`seenCodeOf`): quien corre el núcleo con el setup entero ve lo que vería con el filtrado.
+    const ids = statesOf(seen, 1).theirs
+    const all = [...ids.deck, ...ids.hand, ...ids.gy, ...ids.banished, ...ids.extra, ...[...ids.mz, ...ids.emz, ...ids.st, ids.field].flatMap((slot) => (slot ? [slot.id, ...slot.materials] : []))]
+    const sees = seenCodeOf(seat1.theirs, (id) => seat1.codeOf('theirs', id))
+
+    expect(all.map(sees)).toEqual(all.map((id) => statesOf(seen, 1).codeOf('theirs', id)))
   })
 
   it('la mesa que manda el invitado tiene que ser la que el anfitrión ve de él: mismos lugares, posiciones y materiales, todo con código, y el código de lo que ya mostró', () => {
@@ -188,6 +195,31 @@ describe('resume: la mesa como cartas del núcleo', () => {
     // El anfitrión de mentira roba una al empezar: la mesa sigue desde la dada.
     expect(snap.mine).toEqual(replayMat(state, snap.mineActions))
     expect(snap.theirs.deck).toHaveLength(create.setup!.cards.filter((card) => card.controller === 1).length)
+    session.destroy()
+  })
+
+  it('jugar solo desde la mesa: el bot no ve tu mano, tu deck ni lo tuyo boca abajo, y tu mesa no ve el deck del rival', async () => {
+    const state = table()
+    const seen: BotView[] = []
+    const bot: Bot = (_ask, view) => {
+      seen.push(view)
+      return { answer: { type: 'select_idlecmd', action: 7, index: null } }
+    }
+    // Una pregunta que la mesa rearmada no se salta (la Main Phase del rival): la contesta el bot con lo que ve.
+    const host = fakeHost((k) => (k === 0 ? 1 : 0), undefined, 1, (_k, seat) => ({ ...IDLE, player: seat }))
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 2], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1]], extra: [[90, 1], [91, 1]] }, transport: host.factory, seed: 7, bot, resume: { mine: state, codeOf: (_side, id) => codeOf(id), lp: [6400, 7200] } })
+
+    for (let i = 0; i < 40 && seen.length === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 5))
+    const view = seen[0]!
+
+    // (El núcleo de mentira te hace robar una al empezar.)
+    expect(view.them.hand.length).toBeGreaterThan(0)
+    expect(view.them.hand.every((card) => card.code === 0)).toBe(true)
+    expect(view.them.spells[1]?.code).toBe(0)
+    expect(view.them.banished.map((card) => card.code)).toEqual([0])
+    expect(view.them.grave.map((card) => card.code)).toEqual([4])
+    expect(view.them.monsters[4]?.code).toBe(90)
+    expect(session.getSnapshot().theirs.deck.map((id) => session.adapter!.codeOf({ side: 'theirs', id })).every((code) => code === 0)).toBe(true)
     session.destroy()
   })
 })

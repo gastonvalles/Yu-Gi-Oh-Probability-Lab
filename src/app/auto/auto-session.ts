@@ -14,7 +14,7 @@ import { botDeckOf } from './bot/decks'
 import { turnBot, type CardFacts } from './bot/turn'
 import { mulberry32, randomLegalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
-import { RESUME_FLAGS, setupOf } from './resume'
+import { RESUME_FLAGS, seenCodeOf, setupOf } from './resume'
 
 /**
  * «Jugar solo automático»: la sesión de un duelo contra el rival, sin React (F2b la lee con `useSyncExternalStore`). Junta el
@@ -415,6 +415,9 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   /** La mesa desde cero (una tanda nueva): adaptadores nuevos y ninguna jugada. Sin avisar: si es una re-simulación, se avisa al final. */
   function project() {
     const command = create!
+    // Cada asiento ve la mesa del otro sin lo boca abajo (el núcleo recibe todo en el `create`; las mesas, no).
+    const seenTheirs = resume ? seenCodeOf(theirsState, theirsCode) : theirsCode
+    const seenMine = resume ? seenCodeOf(resume.mine, (id) => resume.codeOf('mine', id)) : theirsCode
 
     adapters = ([0, 1] as const).map((seat) =>
       createAdapter({
@@ -422,7 +425,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         mine: { deck: seat === bagged ? bagOrder(command.decks[seat]!.main) : teamOrder(command, seat), extra: command.decks[seat]!.extra },
         theirs: { deck: command.decks[1 - seat]!.main.length, extra: command.decks[1 - seat]!.extra.length },
         lp: resume ? (seat === me ? [...resume.lp] : [resume.lp[1], resume.lp[0]]) : [PLAYER.lp, PLAYER.lp],
-        ...(resume ? { setup: seat === me ? { mine: resume.mine, theirs: theirsState, codeOf: (side, id) => (side === 'mine' ? resume.codeOf('mine', id) : theirsCode(id)) } : (resume.rival ?? { mine: theirsState, theirs: resume.mine, codeOf: (side, id) => (side === 'mine' ? theirsCode(id) : resume.codeOf('mine', id)) }) } : {}),
+        ...(resume ? { setup: seat === me ? { mine: resume.mine, theirs: theirsState, codeOf: (side, id) => (side === 'mine' ? resume.codeOf('mine', id) : seenTheirs(id)) } : (resume.rival ?? { mine: theirsState, theirs: resume.mine, codeOf: (side, id) => (side === 'mine' ? theirsCode(id) : seenMine(id)) }) } : {}),
         typeOf,
         bag: seat === bagged,
       }),
