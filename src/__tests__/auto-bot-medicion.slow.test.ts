@@ -28,6 +28,8 @@ const HANDS = Number(process.env.BOT_HANDS ?? 30)
 const LOG = process.env.BOT_LOG ?? ''
 /** `BOT_DECK=<mazo>`: mide sólo ése. */
 const ONLY = process.env.BOT_DECK ?? ''
+/** `BOT_FROM=<semilla>`: la primera semilla (1 si no se dice), para mirar otra tanda de manos. */
+const FROM = Number(process.env.BOT_FROM ?? 1)
 const LAST_TURN = 9
 const IDLE_OFFERS = ['summons', 'special_summons', 'activates'] as const
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
@@ -211,8 +213,8 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
     const hands: Awaited<ReturnType<typeof duel>>[] = []
     const versus: Awaited<ReturnType<typeof duel>>[] = []
 
-    for (let seed = 1; seed <= HANDS; seed += 1) hands.push(await duel(deckId, seed))
-    for (let seed = 1; seed <= HANDS; seed += 1) versus.push(await duel(deckId, seed, RIVAL_OF[deckId]))
+    for (let seed = FROM; seed < FROM + HANDS; seed += 1) hands.push(await duel(deckId, seed))
+    for (let seed = FROM; seed < FROM + HANDS; seed += 1) versus.push(await duel(deckId, seed, RIVAL_OF[deckId]))
     const lpBy = hands.reduce<Record<string, number>>((out, item) => {
       for (const [card, lp] of Object.entries(item.selfLp)) out[card] = (out[card] ?? 0) + lp
       return out
