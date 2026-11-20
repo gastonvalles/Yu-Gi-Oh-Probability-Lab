@@ -65,7 +65,7 @@ afterEach(() => {
 })
 
 const lobby = (props: Partial<ComponentProps<typeof PlayHome>> = {}) =>
-  render(<PlayHome view={null} name="" onName={() => {}} deckName="Mi deck" onOpenBuilder={() => {}} deckReady deckSize={40} minDeck={40} onOpenDuel={() => {}} onJoin={() => {}} paused={null} onResume={() => {}} onDropPaused={() => {}} {...props} />)
+  render(<PlayHome view={null} name="" onName={() => {}} deckName="Mi deck" onOpenBuilder={() => {}} deckReady deckSize={40} onOpenDuel={() => {}} onJoin={() => {}} paused={null} onResume={() => {}} onDropPaused={() => {}} {...props} />)
 
 /** La hoja de «Reglas del duelo» abierta desde el atajo de la portada. */
 const openRules = () => {
@@ -124,6 +124,21 @@ describe('«Modo del duelo», en las reglas de Jugar', () => {
     expect(screen.getByRole('button', { name: /^Retar a un amigo/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Tengo un código/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Reglas del duelo/ })).toBeInTheDocument()
+  })
+
+  it('con un Main que alcanza para la mano pero no para la sala (20 o 39 cartas) el lobby no deja pasar y dice cuántas faltan', () => {
+    withWorker()
+    const onOpenDuel = vi.fn()
+    const view = lobby({ deckReady: true, deckSize: 20, onOpenDuel })
+
+    expect(screen.getByText(/Un duelo se juega con 40 cartas en el Main como mínimo y tu deck tiene 20: te faltan 20\./)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retar a un amigo' })).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Elegí tu deck para jugar' }))
+    expect(onOpenDuel).not.toHaveBeenCalled()
+
+    view.unmount()
+    lobby({ deckReady: true, deckSize: 39 })
+    expect(screen.getByText(/tu deck tiene 39: te falta una\./)).toBeInTheDocument()
   })
 
   it('un navegador que no puede correr el núcleo lo ve en «Manual», sin poder tocarlo, y con el porqué (aunque lo hubiera dejado en automático)', () => {

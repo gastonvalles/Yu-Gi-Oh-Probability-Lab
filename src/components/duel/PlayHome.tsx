@@ -7,6 +7,7 @@ import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } fro
 import { DUEL_FORMATS, DUEL_LIMIT_CHOICES, GENESYS_CAP_RANGE, MAX_NAME_LENGTH, TURN_BONUS_RANGE, TURN_MIN_RANGE } from '../../app/duel-protocol'
 import type { RoomsApi } from '../../app/duel-rooms'
 import type { PausedDuel } from '../../app/duel-save'
+import { MAIN_MINIMUM, mainMissing } from '../../app/duel-siding'
 import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
 import { Button } from '../ui/Button'
@@ -39,7 +40,6 @@ interface PlayHomeProps {
   onOpenBuilder: () => void
   deckReady: boolean
   deckSize: number
-  minDeck: number
   /** Las salas y los duelos públicos del relay, si lo tiene. Sin esto «Jugar ahora» abre una sala privada y no hay arena que mostrar. */
   rooms?: RoomsApi
   /** Abrir una sala (el anfitrión): con las reglas y si aparece en la lista mientras espera. */
@@ -59,7 +59,10 @@ const rulesLine = (prefs: DuelPrefs, auto: boolean) => [formatName(prefs.format,
  * a un toque) y por último las otras formas de entrar. No es un formulario: nada es obligatorio antes del botón, y las reglas y el deck están a un toque. Jugar solo es otra
  * entrada del menú (Solo, `SoloScreen`).
  */
-export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckReady, deckSize, minDeck, rooms, onOpenDuel, onJoin, paused, onResume, onDropPaused }: PlayHomeProps) {
+export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckReady: handReady, deckSize, rooms, onOpenDuel, onJoin, paused, onResume, onDropPaused }: PlayHomeProps) {
+  // La misma regla que la sala (`mainMissing`): con menos del Main de un duelo se entraría para quedar bloqueado adentro. Vale para toda entrada que pide deck.
+  const missing = mainMissing(deckSize)
+  const deckReady = handReady && missing === 0
   const [prefs, setPrefs] = useState<DuelPrefs>(() => readPrefs())
   const [search, setSearch] = useState<Search>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
@@ -185,7 +188,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
             </div>
           ) : null}
 
-          {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckSize, min: minDeck })}</Callout>}
+          {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.mainShort', { count: missing, have: deckSize, min: MAIN_MINIMUM })}</Callout>}
 
           {/* La portada (movimiento 4 de G): arriba el deck con que entrás (lleva al builder: ahí se tocan las cartas), el titular y lo que va a pasar; en la última fila, las reglas con que
               entrás a la izquierda y la acción principal a la derecha, al pulgar (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}

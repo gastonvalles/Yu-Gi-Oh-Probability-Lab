@@ -28,6 +28,9 @@ export interface SideCard {
 export const SIDE_LIMITS = { main: 60, extra: 15, side: 15 } as const
 export const MAIN_MINIMUM = 40
 
+/** Cuántas cartas le faltan al Main para jugar un duelo en cualquier formato (0 si alcanza): la cuenta de la sala y del lobby de Online. */
+export const mainMissing = (count: number) => Math.max(0, MAIN_MINIMUM - count)
+
 /** Cómo distingue la pantalla cada copia de una zona al arrastrarla o tocarla: por su lugar (dos copias de una carta pueden compartir id). */
 export const sideInstanceId = (zone: SideZone, index: number) => `${zone}:${index}`
 

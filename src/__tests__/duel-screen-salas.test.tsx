@@ -58,7 +58,7 @@ describe('la pantalla del duelo', () => {
   it('sin cartas suficientes en el Main avisa, lleva a elegir deck y no deja retar, entrar ni abrir un duelo', () => {
     const view = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 3) })} />)
 
-    expect(within(view.container).getByText(/hacen falta 5 cartas en el Main/)).toBeInTheDocument()
+    expect(within(view.container).getByText(/tu deck tiene 3: te faltan 37\./)).toBeInTheDocument()
     expect(within(view.container).getByRole('button', { name: 'Retar a un amigo' })).toHaveAttribute('aria-disabled', 'true')
 
     click(view, 'Tengo un código')

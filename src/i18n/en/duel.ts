@@ -170,6 +170,10 @@ export const duel: Translated<typeof es> = {
   'duel.lobby.joinPlaceholder': 'Link or code',
   'duel.lobby.joinAction': 'Join',
   'duel.lobby.joinInvalid': "That doesn't look like a duel code: it's 8 letters and numbers.",
+  'duel.lobby.mainShort': {
+    one: 'A duel is played with {min} cards in the Main at least and your deck has {have}: you are one short. Build it in the builder (you can also import a ydke:// link or a .ydk file there).',
+    other: 'A duel is played with {min} cards in the Main at least and your deck has {have}: you are {count} short. Build it in the builder (you can also import a ydke:// link or a .ydk file there).',
+  },
   'duel.lobby.needDeck': 'You need {min} cards in the Main to deal a hand and your deck has {count}: build it in the builder (you can also import a ydke:// link or a .ydk file there).',
 
   'duel.rules.title': 'Rules',
