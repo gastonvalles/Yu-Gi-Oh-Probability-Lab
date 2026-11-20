@@ -1,5 +1,6 @@
 // El duelo automático por enlace (el núcleo de reglas en el navegador del anfitrión) de punta a punta: dos navegadores contra el relay y la app locales
-// que levanta `playwright.config.ts`. Ana abre una sala privada automática (el modo de entrada) y Beto entra con `#duel?room=CÓDIGO`. docs/duelo-automatico-enlace.md
+// que levanta `playwright.config.ts`. Ana abre una sala privada automática (el modo de entrada) y Beto entra con `#duel?room=CÓDIGO`; o los dos tocan «Jugar ahora»
+// (Ana abre la pública, Beto entra). docs/duelo-automatico-enlace.md
 import { writeFileSync } from 'node:fs'
 
 import { expect, test, type Browser, type Page } from '@playwright/test'
@@ -47,6 +48,12 @@ async function startAutoDuel(browser: Browser) {
     await expect(ana.getByRole('region', { name: '¿Quién empieza?' }).getByText('Beto')).toBeVisible({ timeout: 3_000 })
   }).toPass({ timeout: 20_000 })
 
+  await dealAuto(ana, beto)
+  return { ana, beto, code }
+}
+
+/** Los dos listos, piedra-papel-tijera y Ana va primero; espera a que el núcleo reparta. */
+async function dealAuto(ana: Page, beto: Page) {
   // «Estoy listo» se prende cuando el anfitrión revisó los dos decks contra el núcleo (`autoCheck`).
   await ana.getByRole('button', { name: 'Estoy listo', exact: true }).click(CORE)
   await beto.getByRole('button', { name: 'Estoy listo', exact: true }).click(CORE)
@@ -59,7 +66,41 @@ async function startAutoDuel(browser: Browser) {
   await expect(hand(beto)).toHaveCount(5, CORE)
   await expect(rivalHand(ana)).toHaveAccessibleName('Mano del rival: 5')
   await expect(rivalHand(beto)).toHaveAccessibleName('Mano del rival: 5')
-  return { ana, beto, code }
+}
+
+/** Un jugador en Online con su nombre puesto (Enter lo guarda). */
+async function online(browser: Browser, name: string) {
+  const page = await player(browser, name)
+  open.push({ name: name.toLowerCase(), page })
+  await page.goto('/#duel')
+  await page.getByRole('textbox', { name: 'Tu nombre' }).fill(name)
+  await page.getByRole('textbox', { name: 'Tu nombre' }).press('Enter')
+  return page
+}
+
+const playNow = (page: Page) => page.getByRole('button', { name: 'Jugar ahora', exact: true })
+
+/**
+ * «Jugar ahora» de los dos: Ana no encuentra salas y abre la pública (en el modo de sus reglas); Beto, ya con la sala de Ana en la arena, toca «Jugar ahora» y entra.
+ * Devuelve cuándo tocó Beto. Cada uno ve el modo de la sala antes de estar listo.
+ */
+async function playNowPair(browser: Browser, ana: Page, auto: boolean) {
+  await playNow(ana).click()
+  await expect(ana).toHaveURL(/#duel\?room=[A-Za-z0-9]{8}$/)
+  const anaRules = ana.getByRole('region', { name: 'Reglas' })
+  await expect(anaRules.getByText('Pública', { exact: true })).toBeVisible()
+  // Una sala automática no se ofrece para mirar; una manual, sí.
+  await expect(anaRules.getByText('Automáticas', { exact: true })).toHaveCount(auto ? 1 : 0)
+  await expect(ana.getByRole('button', { name: 'Copiar enlace para mirar' })).toHaveCount(auto ? 0 : 1)
+
+  const beto = await online(browser, 'Beto')
+  await expect(beto.getByRole('button', { name: 'Entrar a la sala de Ana' })).toBeVisible()
+  const tapped = Date.now()
+  await playNow(beto).click()
+  await expect(ana.getByRole('region', { name: '¿Quién empieza?' }).getByText('Beto')).toBeVisible()
+  await expect(beto.getByText('Ana te invitó a un duelo')).toBeVisible()
+  await expect(beto.getByRole('region', { name: 'Reglas' }).getByText('Automáticas', { exact: true })).toHaveCount(auto ? 1 : 0)
+  return { beto, tapped }
 }
 
 /** Espera a que sea el turno de `page` en su Main Phase 1 (el núcleo pasa solo la Draw y la Standby sin nada que responder). */
@@ -158,6 +199,35 @@ test('sala privada automática: de la sala a la primera vuelta, con las dos pant
   })
 })
 
+/**
+ * Lo que se ve al volver de una recarga, cuadro por cuadro (se instala antes de recargar): cuántas cartas tiene la mano, si sale un «±N» de vidas, si hay una hoja de cartas
+ * reveladas y si estalla algo en el campo (`data-fx`). Volver tiene que entrar quieto: la mano entera de una, sin avisos ni hojas de lo que ya pasó (TI-367).
+ */
+function traceReturn() {
+  const seen: string[] = []
+  const t0 = performance.now()
+  const tick = () => {
+    const hand = document.querySelectorAll('[role="list"][aria-label="Mano"] [role="listitem"]').length
+    const delta = document.querySelectorAll('[data-life-delta]').length
+    const revealed = [...document.querySelectorAll('[role="dialog"]')].some((dialog) => /reveladas/i.test(dialog.textContent ?? ''))
+    const fx = document.querySelectorAll('[data-fx]').length
+    const now = `mano ${hand} · vidas ${delta} · reveladas ${revealed} · fx ${fx}`
+    if (seen.at(-1) !== now) seen.push(now)
+    ;(window as unknown as { __return: string[] }).__return = seen
+    if (performance.now() - t0 < 30_000) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+}
+
+/** Lo que pasó al volver (`traceReturn`): la mano no se repartió de a una y no salió ningún aviso de vidas ni hoja de reveladas. */
+async function quietReturn(page: Page, cards: number) {
+  const frames = await page.evaluate(() => (window as unknown as { __return?: string[] }).__return ?? [])
+  test.info().annotations.push({ type: 'volver', description: frames.join(' | ') })
+  const hands = new Set(frames.map((frame) => Number(/mano (\d+)/.exec(frame)?.[1])))
+  expect([...hands].filter((count) => count !== 0 && count !== cards), `la mano al volver, cuadro por cuadro: ${frames.join(' | ')}`).toEqual([])
+  expect(frames.filter((frame) => !frame.includes('vidas 0') || frame.includes('reveladas true')), 'avisos de vidas u hojas de reveladas al volver').toEqual([])
+}
+
 /** Lo que una recarga no tiene que cambiar, visto desde `page`: la mesa, las cartas de la mano y la fase. */
 async function reloadable(page: Page, me: string, rival: string) {
   return {
@@ -175,9 +245,11 @@ test('reconexión: el invitado y después el anfitrión recargan en pleno duelo,
     await normalSummon(ana)
     await sameTable(ana, beto)
     const before = await reloadable(beto, 'Beto', 'Ana')
+    await beto.addInitScript(traceReturn)
     await beto.reload()
     await expect(hand(beto)).toHaveCount(before.handNames.length, CORE)
     await expect.poll(() => reloadable(beto, 'Beto', 'Ana'), CORE).toEqual(before)
+    await quietReturn(beto, before.handNames.length)
     await shot(beto, 'auto-04-beto-tras-recargar')
   })
 
@@ -190,9 +262,11 @@ test('reconexión: el invitado y después el anfitrión recargan en pleno duelo,
 
   await test.step('Ana (anfitriona, corre el núcleo) recarga en el turno de Beto', async () => {
     const before = await reloadable(ana, 'Ana', 'Beto')
+    await ana.addInitScript(traceReturn)
     await ana.reload()
     await expect(hand(ana)).toHaveCount(before.handNames.length, CORE)
     await expect.poll(() => reloadable(ana, 'Ana', 'Beto'), CORE).toEqual(before)
+    await quietReturn(ana, before.handNames.length)
     await shot(ana, 'auto-05-ana-tras-recargar')
   })
 
@@ -265,6 +339,50 @@ test('de manual a automático: Ana (su turno, Main Phase 1) lo pide, Beto acepta
     await normalSummon(beto)
     await sameTable(ana, beto)
   })
+})
+
+test('«Jugar ahora» de los dos: en menos de un minuto están en un duelo automático y Ana puede jugar', async ({ browser }) => {
+  const ana = await online(browser, 'Ana')
+  const { beto, tapped } = await playNowPair(browser, ana, true)
+  await dealAuto(ana, beto)
+  await toMain1(ana)
+  const elapsed = Date.now() - tapped
+  console.log(`«Jugar ahora» de Beto → primera jugada de Ana: ${elapsed} ms`)
+  test.info().annotations.push({ type: 'jugar-ahora-ms', description: String(elapsed) })
+  expect(elapsed, 'del toque de Beto a la primera jugada posible').toBeLessThan(60_000)
+  await shot(ana, 'auto-10-ana-jugar-ahora')
+
+  await normalSummon(ana)
+  await expect(field(beto, 'rival')).toHaveCount(1, CORE)
+
+  // Un tercero no ve la sala para mirarla: salió de las que esperan al entrar Beto y nunca pasa a los duelos en vivo.
+  const caro = await online(browser, 'Caro')
+  await expect(caro.getByRole('region', { name: 'En la arena ahora' })).toHaveAttribute('aria-busy', 'false')
+  await expect(caro.getByRole('button', { name: 'Mirar el duelo de Ana' })).toHaveCount(0)
+  await expect(caro.getByRole('button', { name: 'Entrar a la sala de Ana' })).toHaveCount(0)
+})
+
+test('«Jugar ahora» con la sala pasada a manual en las reglas: el duelo arranca manual', async ({ browser }) => {
+  const ana = await online(browser, 'Ana')
+  await ana.getByRole('button', { name: /^Reglas del duelo/ }).click()
+  const rules = ana.getByRole('dialog', { name: 'Reglas del duelo' })
+  await rules.getByRole('radio', { name: 'Manual' }).click()
+  await rules.getByRole('button', { name: 'Guardar reglas' }).click()
+  await expect(rules).toBeHidden()
+  const { beto } = await playNowPair(browser, ana, false)
+
+  await ana.getByRole('button', { name: 'Estoy listo', exact: true }).click()
+  await beto.getByRole('button', { name: 'Estoy listo', exact: true }).click()
+  await ana.getByRole('button', { name: 'Piedra, papel o tijera', exact: true }).click()
+  await ana.getByRole('button', { name: 'Piedra', exact: true }).click()
+  await beto.getByRole('button', { name: 'Tijera', exact: true }).click()
+  await ana.getByRole('button', { name: 'Ir primero', exact: true }).click()
+  await expect(ana.getByRole('heading', { name: 'Vas primero' })).toBeVisible()
+  await expect(hand(ana)).toHaveCount(5)
+  await expect(hand(beto)).toHaveCount(5)
+  // La mesa manual tiene ⋯ (el automático, sólo el ⚙ de Opciones).
+  await expect(ana.getByRole('button', { name: 'Más opciones', exact: true })).toBeVisible()
+  await expect(beto.getByRole('button', { name: 'Más opciones', exact: true })).toBeVisible()
 })
 
 test('revancha: Beto se rinde, los dos la aceptan y arranca otro duelo automático', async ({ browser }) => {

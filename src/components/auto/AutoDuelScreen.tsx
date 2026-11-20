@@ -182,9 +182,25 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
   const codeName = useCodeName(deck.cardsById, online?.cards)
   const tellPhase = useCallback((view: PhaseView) => link?.phase?.(view), [link])
 
+  // Lo que ya pasó no es noticia (como al volver a «Jugar solo», TI-366): la sesión que empieza un duelo (la sala estaba sin ordenar: el primero o una revancha) reparte a la vista;
+  // la que retoma uno empezado (recargar la página, volver a esta pantalla, el invitado al que el anfitrión le repone el duelo) llega con todo lo jugado, y la mesa se monta recién
+  // cuando terminó de ponerse al día, en su estado final: sin reparto, entradas, hojas ni avisos de lo de antes. Hasta entonces, la portada de carga.
+  const session = online?.session ?? null
+  const subscribe = useCallback((listener: () => void) => (session ? session.subscribe(listener) : NOTHING), [session])
+  const sessionSnap = useSyncExternalStore(subscribe, () => session?.getSnapshot() ?? null)
+  // Al montarse: un duelo ya ordenado, o el anfitrión con uno guardado (lo retoma), es uno empezado; si no, el que viene empieza. Después, sólo una vuelta a la sala (la revancha) hace nuevo al que sigue.
+  const [entry, setEntry] = useState<{ session: AutoSession | null; fresh: boolean; rejoin: boolean; caught: boolean }>(() => ({ session: null, fresh: !snapshot.opening.ordered && !(role === 'host' && save?.read()), rejoin: false, caught: false }))
+  const busy = sessionSnap !== null && (sessionSnap.status === 'loading' || sessionSnap.replaying)
+
+  if (!snapshot.opening.ordered && !entry.fresh && entry.session !== null) setEntry({ ...entry, fresh: true })
+  else if (session && session !== entry.session) setEntry({ session, fresh: false, rejoin: !entry.fresh, caught: false })
+  else if (entry.rejoin && !entry.caught && session === entry.session && !busy) setEntry({ ...entry, caught: true })
+  const catching = session !== entry.session || (entry.rejoin && !entry.caught)
+
   if (siding) return <>{siding}</>
   // La sala hasta que hay duelo: también entre un duelo y su revancha (la mesa vuelve a cero y elige el que perdió).
   if (!online?.session || online.seat === null || !snapshot.opening.ordered) return <>{room(roomAutoState(online, rivalName, codeName))}</>
+  if (catching) return <LoadingCover progress={sessionSnap?.progress ?? { done: 0, total: 0 }} note={null} />
 
   return (
     <AutoDuelTable
