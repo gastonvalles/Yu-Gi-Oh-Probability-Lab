@@ -3170,11 +3170,9 @@ function PracticeMatBody({
   const replayLink = splitReplay
     ? { step: session.cursor === 0 ? t('practice.mat.startingHand') : t('practice.replay.stepShort', { step: session.cursor, total: session.actions.length, text: steps[session.cursor - 1] ?? '' }) }
     : null
-  // Una carta tuya sin jugadas en automático: por qué (lo que se sabe) y el atajo a la mesa manual, en lugar de «No hay nada para hacer desde acá».
+  // Una carta tuya sin jugadas en automático: por qué (lo que se sabe), en lugar de «No hay nada para hacer desde acá». «Seguir en modo manual» no va acá: vive en Opciones (decisión del Jefe, 2026-11-19).
   const whyNot = duel?.auto?.whyNot && menu?.kind === 'card' && !menu.drop ? duel.auto.whyNot(menu.id) : null
-  const manual = duel?.auto?.manual
-  const toManual = whyNot && manual ? { onManual: () => { setMenu(null); manual() } } : {}
-  const noPlays = whyNot ? <NoPlays reasons={whyNot} {...toManual} /> : undefined
+  const noPlays = whyNot ? <NoPlays reasons={whyNot} /> : undefined
 
   // La fase de ahora y de quién es el turno: el botón de las fases (`p3`, en el medio del campo) es el mismo en un duelo y en la práctica; al tocarlo muestra las seis y elegir una pasa a ella (la Draw Phase
   // después de la End Phase pasa el turno: ahí sube la cuenta de turnos). En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`). En un duelo la fase es la compartida, la de quien
@@ -3267,9 +3265,7 @@ function PracticeMatBody({
         back={menuCard === null}
         apiCard={menuCard?.apiCard ?? null}
         items={menuItems}
-        // La ficha lleva «Seguir en modo manual» en su pie (siempre a la vista), no en el porqué.
-        empty={whyNot ? <NoPlays reasons={whyNot} /> : undefined}
-        {...toManual}
+        empty={noPlays}
         // «Ver carta», salvo con el detalle fijo (tocar la carta ya la muestra ahí).
         onInspect={menu.kind === 'card' && !menu.drop && !isToken(menu.id) && (!isDesktop || menuInspect) ? () => setInspected({ id: menu.id, rect: menu.rect }) : undefined}
         onClose={() => setMenu(null)}

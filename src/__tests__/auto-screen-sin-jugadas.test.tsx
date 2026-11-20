@@ -11,7 +11,8 @@ import { core, dispatches, handCard, renderAuto } from './support/auto-screen-ha
 import { tap } from './support/practice-mat-harness'
 
 // Una carta tuya sin jugadas en «Jugar solo automático»: el menú dice por qué (sólo lo que se sabe: la Invocación Normal hecha, el turno del rival; si no, que el automático no la ofrece)
-// y, aparte, las restricciones del núcleo con el texto de su carta (rigen, pero pueden no ser la causa); ofrece seguir en manual y nunca despacha; las restricciones, además, en un chip.
+// y, aparte, las restricciones del núcleo con el texto de su carta (rigen, pero pueden no ser la causa); nunca despacha; las restricciones, además, en un chip. «Seguir en modo manual» no va en la
+// ficha (decisión del Jefe, 2026-11-19: no es una salida de emergencia): vive en Opciones.
 
 /** Tus jugadas del turno: sólo Ash se Invoca; Called by the Grave y Zeus (del Extra) no tienen nada. */
 const IDLE: CoreAsk = { type: 'select_idlecmd', player: 0, summons: [loc(100, L.HAND, 0)], special_summons: [], pos_changes: [], monster_sets: [], spell_sets: [], activates: [], to_bp: true, to_ep: true, shuffle: false }
@@ -23,7 +24,7 @@ const withOverlay = (fake: FakeSession, patch: Partial<AutoOverlay>) => fake.set
 vi.mock(import('../app/use-toast-message'), async (importOriginal) => ({ ...(await importOriginal()), showToastMessage: vi.fn() }))
 
 describe('auto-screen · una carta sin jugadas dice por qué', () => {
-  it('celular: la hoja dice que el automático no la ofrece y, aparte, la restricción del núcleo con su texto y el atajo abre el modo manual; el chip muestra la restricción', () => {
+  it('celular: la hoja dice que el automático no la ofrece y, aparte, la restricción del núcleo con su texto, sin el atajo al modo manual; el chip muestra la restricción', () => {
     const onManual = vi.fn()
     const fake = renderAuto(fakeSession(), () => {}, onManual)
 
@@ -41,12 +42,13 @@ describe('auto-screen · una carta sin jugadas dice por qué', () => {
     const sheet = screen.getByRole('region', { name: 'Called by the Grave' })
 
     expect(within(sheet).getByTestId('no-plays')).toHaveTextContent(/^Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora\.También rige \(puede no ser la causa\):Destroy a monster$/)
-    // «Seguir en modo manual», en el pie de la ficha: a la vista aunque el porqué no entre (360×740). Ya no hay «Ver carta» visible: la miniatura de la cabeza es el botón.
-    expect(within(sheet).getAllByRole('button').slice(-1).map((button) => button.textContent)).toEqual(['Seguir en modo manual'])
+    // Sin «Seguir en modo manual» (ni en el pie ni en el porqué): la ficha no lleva botones de jugada. Ya no hay «Ver carta» visible: la miniatura de la cabeza es el botón.
+    expect(within(sheet).queryByRole('button', { name: 'Seguir en modo manual' })).toBeNull()
+    expect(within(sheet).queryByText('¿No coincide con lo que esperabas?')).toBeNull()
     expect(within(sheet).getByRole('button', { name: 'Ver carta' })).toHaveTextContent('')
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Seguir en modo manual' }))
-    // Sin jugadas todavía no hay nada que volver atrás: pasa derecho a la mesa manual.
-    expect(onManual).toHaveBeenCalledWith(null)
+    // Sigue en Opciones (el ⚙).
+    expect(screen.getByRole('button', { name: 'Opciones' })).toBeInTheDocument()
+    expect(onManual).not.toHaveBeenCalled()
     expect(fake.answers).toEqual([])
     expect(dispatches).toBe(0)
   })
@@ -110,7 +112,7 @@ describe('auto-screen · una carta sin jugadas dice por qué', () => {
 
     expect(within(menu).getByTestId('no-plays')).toHaveTextContent('Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora.También rige (puede no ser la causa):Destroy a monster')
     expect(within(menu).queryByRole('menuitem', { name: 'Ver carta' })).toBeNull()
-    expect(within(menu.closest<HTMLElement>('[data-prompt="card"]')!).getByRole('button', { name: 'Seguir en modo manual' })).toBeInTheDocument()
+    expect(within(menu.closest<HTMLElement>('[data-prompt="card"]')!).queryByRole('button', { name: 'Seguir en modo manual' })).toBeNull()
     expect(dispatches).toBe(0)
   })
 })

@@ -508,10 +508,8 @@ export interface AutoCardSheetProps {
   apiCard?: ApiCardReference | null
   /** Las jugadas que ofrece el núcleo para esta carta (`duel.auto.itemsFor`), en su orden. */
   items: readonly MenuItem[]
-  /** Sin jugadas: por qué (`NoPlays`). */
+  /** Sin jugadas: por qué (`NoPlays`). «Seguir en modo manual» no va en la ficha: vive en Opciones (decisión del Jefe, 2026-11-19). */
   empty?: ReactNode
-  /** Sin jugadas: «Seguir en modo manual», en el pie junto a «Ver carta» (siempre a la vista, aunque lo de arriba no entre). */
-  onManual?: () => void
   /** «Ver carta»: el texto entero. */
   onInspect?: () => void
   onClose: () => void
@@ -527,7 +525,7 @@ export interface AutoCardSheetProps {
  * no entra), la principal (la primera del núcleo que se puede) al final, abajo a la derecha y rellena. Sin «Más», sin «⋯» y sin submenús (`flatPlays`). Se cierra con la X, Escape o tocando
  * afuera; el foco vuelve a la carta. Reemplaza a `CardSheet`/`CardMenu` sólo con `duel.auto` (la mesa manual no cambia).
  */
-export function AutoCardSheet({ name, art, back = false, apiCard = null, items, empty, onManual, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
+export function AutoCardSheet({ name, art, back = false, apiCard = null, items, empty, onInspect, onClose, crumb, variant }: AutoCardSheetProps) {
   const nameId = useId()
   const [armed, setArmed] = useState(false)
   // Con el panel de detalle a la vista (desde 1440 px, `data-card-dock`) la ficha no repite lo que él muestra (la miniatura, el tipo, los números, el texto): queda el nombre en la barra y las jugadas.
@@ -543,13 +541,8 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
   // Sin imagen, la carta sobre el color de su tipo (lámina T), como el chip.
   const frame = apiCard ? frameKindOf(apiCard.frameType, apiCard.cardType) : null
   const stats = apiCard?.atk != null ? [`${t('duel.dock.atk')} ${apiCard.atk}`, ...(apiCard.def != null ? [`${t('duel.dock.def')} ${apiCard.def}`] : [])].join(' / ') : null
-  // Sin jugadas (a 360×740, desde el Cementerio, la cabeza se comía la hoja): «Seguir en modo manual» va al pie, siempre a la vista; el porqué queda solo en el cuerpo.
+  // Sin jugadas, el porqué queda solo en el cuerpo y la ficha no lleva fila de botones.
   const bare = plays.length === 0
-  const foot = bare && onManual ? (
-    <Button variant="secondary" className={cx(PANEL_MAIN, 'ml-auto')} onClick={onManual}>
-      {t('auto.bar.manual')}
-    </Button>
-  ) : undefined
 
   // Las jugadas son los botones de la ficha: la fila de abajo, que no se desplaza. Filas de a dos (con una suelta, la primera ocupa su fila: la principal queda con pareja, abajo a la derecha); en la ventana, a su ancho y a la derecha.
   const menu = (
@@ -638,7 +631,7 @@ export function AutoCardSheet({ name, art, back = false, apiCard = null, items, 
       {...(crumb ? { crumb } : {})}
       variant={variant}
       className={armed ? undefined : 'pointer-events-none'}
-      actions={bare ? foot : menu}
+      actions={bare ? undefined : menu}
       {...(docked ? {} : { labelledBy: nameId, head })}
     >
       {bare ? <div role="menu" aria-label={name}>{empty ?? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p>}</div> : null}
