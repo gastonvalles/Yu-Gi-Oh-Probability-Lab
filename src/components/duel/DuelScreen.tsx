@@ -1783,6 +1783,8 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
     () => ({ state: theirs!.state, artOf: (id) => artOfDrawId(rivalDrawId(id)), handCount: theirs!.state.hand.length, flash: rivalFlash, marks: snapshot.marks.theirs, point: pointed.theirs, onMark: openMark, stats: rivalStats }),
     [theirs, rivalDrawId, rivalFlash, snapshot.marks.theirs, pointed.theirs, openMark, rivalStats],
   )
+  const rivalLast = theirs?.acts?.at(-1)
+  const rivalMarked = rivalLast?.type === 'move' && (rivalLast.destroyed || rivalLast.tribute) ? rivalLast : undefined
   const turn = whoseTurn(snapshot.me, mine, theirs!.state, snapshot.starter)
   useGameToasts(snapshot, myName)
   // El cartel del comienzo: cuando se reparte la mesa de un duelo nuevo (no al volver a una con jugadas hechas), los dos ven si van primero o segundo.
@@ -1926,7 +1928,8 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       pointed: pointed.mine,
       point: (id: string) => duel.ping({ card: id }, 'mine'),
       rivalShuffle,
-      rivalFlights: { state: opponent.state, artOf: opponent.artOf },
+      // Su última jugada sólo si es un `move` con su motivo (destruida, sacrificada): la mesa saca de ahí la onda o el destello, igual que con lo tuyo; lo demás sigue leyendo su campo.
+      rivalFlights: { state: opponent.state, artOf: opponent.artOf, ...(rivalMarked ? { action: rivalMarked } : {}) },
       notice,
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
       onActivity: lookAt,
@@ -1963,7 +1966,7 @@ function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deck
       header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} extraSettings={replaySetting || resume ? (close: () => void) => <>{replaySetting?.(close)}{resume ? <ResumeAutoSetting resume={resume} rivalName={rivalName} /> : null}</> : undefined} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, phone, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, onWatchReplay, replaySetting],
+    [opponent, rivalMarked, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, phone, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, onWatchReplay, replaySetting],
   )
 
   const markTarget = markMenu?.target

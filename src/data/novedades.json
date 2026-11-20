@@ -1,6 +1,49 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-2-destruir-enviar-sacrificar",
+      "date": "2026-11-20",
+      "tags": [
+        "nuevo"
+      ],
+      "es": {
+        "title": "En el duelo manual: Destruir, Sacrificar o Enviar",
+        "novedades": [
+          "Al mandar una carta del campo al Cementerio, ahora elegís por qué se va: Enviar, Destruir o Sacrificar.",
+          "Si la destruís, sale la onda de su casilla; si la sacrificás, el destello violeta. Tu rival lo ve igual en el duelo por enlace.",
+          "El paso lo dice: «fue destruida», «Sacrificás…» o «va al cementerio»."
+        ],
+        "comoSeUsa": [
+          "Tocá una carta del campo y elegí «Al cementerio».",
+          "Elegí Enviar, Destruir o Sacrificar. Sacrificar aparece sólo en las zonas de monstruo.",
+          "Arrastrar la carta al Cementerio sigue siendo «enviar», de un solo gesto."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "Desde la mano no cambia: «Descartar» sigue siendo de un toque.",
+          "Una ficha se quita directo, sin preguntar."
+        ]
+      },
+      "en": {
+        "title": "In the manual duel: Destroy, Tribute or Send",
+        "novedades": [
+          "When you send a card from the field to the Graveyard, you now choose why it leaves: Send, Destroy or Tribute.",
+          "If you destroy it, the wave comes out of its zone; if you Tribute it, the violet flash. Your opponent sees the same in the duel by link.",
+          "The step says it: «is destroyed», «You Tribute…» or «goes to the Graveyard»."
+        ],
+        "comoSeUsa": [
+          "Tap a card on the field and choose «To Graveyard».",
+          "Choose Send, Destroy or Tribute. Tribute shows only in the monster zones.",
+          "Dragging the card to the Graveyard is still «send», in a single gesture."
+        ],
+        "arreglos": [],
+        "ojo": [
+          "From the hand nothing changes: «Discard» is still one tap.",
+          "A token is removed directly, without asking."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-1-combos-con-el-rival",
       "date": "2026-11-20",
       "tags": [

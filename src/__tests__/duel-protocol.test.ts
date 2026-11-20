@@ -269,6 +269,18 @@ describe('contra un rival malicioso', () => {
     }
   })
 
+  it('mandar una carta al cementerio puede decir por qué (destruida o sacrificada): sólo `true`; un valor raro tira la jugada', () => {
+    expect(message(wire({ type: 'move', id: 'c1', to: 'gy', destroyed: true }))).toMatchObject({ t: 'act', wire: { action: { type: 'move', id: 'c1', to: 'gy', destroyed: true } } })
+    expect(message(wire({ type: 'move', id: 'c1', to: 'extra', faceUp: true, tribute: true }))).toMatchObject({ t: 'act', wire: { action: { tribute: true } } })
+    expect(message(wire({ type: 'batch', actions: [{ type: 'move', id: 'c1', to: 'gy', destroyed: true }] }))).not.toBeNull()
+
+    for (const value of [false, 1, 'true', null, {}, []]) {
+      expect(message(wire({ type: 'move', id: 'c1', to: 'gy', destroyed: value })), `destroyed ${String(value)}`).toBeNull()
+      expect(message(wire({ type: 'move', id: 'c1', to: 'gy', tribute: value })), `tribute ${String(value)}`).toBeNull()
+      expect(message(wire({ type: 'batch', actions: [{ type: 'move', id: 'c1', to: 'gy', destroyed: value }] })), `lote ${String(value)}`).toBeNull()
+    }
+  })
+
   it('un lote (varias cartas en una jugada): de 1 a 200 partes de las que entran en uno, cada una revisada como si fuera suelta', () => {
     const part = { type: 'move', id: 'c1', to: 'gy' }
     const batch = (actions: unknown, reveal: unknown = {}) => message(wire({ type: 'batch', actions }, reveal))

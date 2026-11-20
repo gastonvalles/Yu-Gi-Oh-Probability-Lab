@@ -2,6 +2,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { leaveAt, sacrificeAt } from '../app/field-impact'
 import { createMatState, replayMat } from '../app/practice-mat'
 import { SHUFFLE_ID } from '../app/shuffle-fx'
 import { HOLD_MS } from '../app/use-mat-drag'
@@ -15,6 +16,7 @@ vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 const { playSfx } = vi.hoisted(() => ({ playSfx: vi.fn() }))
 
 vi.mock('../app/sfx', async () => ({ ...(await vi.importActual<typeof import('../app/sfx')>('../app/sfx')), playSfx }))
+vi.mock('../app/field-impact', async (original) => ({ ...(await original<typeof import('../app/field-impact')>()), leaveAt: vi.fn(), sacrificeAt: vi.fn() }))
 
 beforeEach(() => {
   localStorage.clear()
@@ -398,6 +400,34 @@ describe('la mesa de práctica', () => {
     expect(opening!.querySelector('[data-arrows]')).toBeNull()
   })
 
+  it('«Al cementerio ›» de un monstruo del campo: destruida sale con su onda, sacrificada con su destello, enviada sin nada; cada una lo dice y vuelve con deshacer', () => {
+    render(<Harness initial={replayMat(INITIAL, [{ type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'atk' }])} />)
+    vi.mocked(leaveAt).mockClear()
+    vi.mocked(sacrificeAt).mockClear()
+    const send = (choice: string) => {
+      tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: choice }))
+    }
+
+    send('Destruir')
+    expect(within(status()).getByText('Ash Blossom fue destruida')).toBeInTheDocument()
+    expect(leaveAt).toHaveBeenCalledTimes(1)
+    expect(sacrificeAt).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+
+    send('Sacrificar')
+    expect(within(status()).getByText('Sacrificás Ash Blossom')).toBeInTheDocument()
+    expect(sacrificeAt).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+
+    send('Enviar')
+    expect(within(status()).getByText('Ash Blossom va al cementerio')).toBeInTheDocument()
+    expect(leaveAt).toHaveBeenCalledTimes(1)
+    expect(sacrificeAt).toHaveBeenCalledTimes(1)
+  })
+
   it('el turno va arriba a la izquierda y los botones de la mesa, a la derecha', () => {
     render(<Harness />)
 
@@ -732,6 +762,7 @@ describe('la mesa de práctica', () => {
       // Droll al cementerio libera la zona 3 (y deja una jugada para deshacer); ahí se suelta Blue-Eyes por Sacrificio.
       tap(within(mz3).getByRole('button', { name: 'Droll' }))
       fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Enviar' }))
       dropBlueEyesForTributes(mz3)
 
       // Deshacer devuelve a Droll a la zona 3: ya no hay nada esperando ahí, la selección se cerró y Blue-Eyes está en la mano.
