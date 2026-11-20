@@ -948,3 +948,52 @@ describe('la mesa de práctica', () => {
     )
   })
 })
+
+describe('por qué se va una carta del campo: enviada, destruida o sacrificada', () => {
+  const PENDULUM: Record<string, MatCardKind> = { ...KINDS, p1: { ...MONSTER, pendulum: true } }
+  const field = run([
+    { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' },
+    { type: 'place', id: 'b1', zone: 'st', index: 1, pos: 'atk' },
+  ])
+  const toGy = (state: MatState, id: string, kinds: (id: string) => MatCardKind = kindOf) => listCardActions(state, id, kinds, nameOf).find((item) => item.choices?.[0]?.label === 'Enviar')
+
+  it('«Al cementerio» de un monstruo pregunta: Enviar (lo neutro), Destruir y Sacrificar, con la marca en la misma jugada', () => {
+    const item = toGy(field, 'a1')
+
+    expect(item?.label).toBe('Al cementerio')
+    expect(item?.choices?.map((choice) => [choice.label, choice.action])).toEqual([
+      ['Enviar', { type: 'move', id: 'a1', to: 'gy' }],
+      ['Destruir', { type: 'move', id: 'a1', to: 'gy', destroyed: true }],
+      ['Sacrificar', { type: 'move', id: 'a1', to: 'gy', tribute: true }],
+    ])
+  })
+
+  it('una Mágica o Trampa se destruye pero no se sacrifica; un Péndulo va al Extra Deck boca arriba con la marca', () => {
+    expect(toGy(field, 'b1')?.choices?.map((choice) => choice.label)).toEqual(['Enviar', 'Destruir'])
+
+    const kinds = (id: string) => PENDULUM[id] ?? TOKEN_KIND
+    const pendulum = run([{ type: 'place', id: 'p1', zone: 'mz', index: 2, pos: 'atk' }], createMatState(['p1', ...DECK], EXTRA, 5))
+    const item = toGy(pendulum, 'p1', kinds)
+
+    expect(item?.label).toBe('Al cementerio (al Extra Deck)')
+    expect(item?.choices?.map((choice) => choice.action)).toEqual([
+      { type: 'move', id: 'p1', to: 'extra', faceUp: true },
+      { type: 'move', id: 'p1', to: 'extra', faceUp: true, destroyed: true },
+      { type: 'move', id: 'p1', to: 'extra', faceUp: true, tribute: true },
+    ])
+  })
+
+  it('el paso lo dice, y destruida o sacrificada vuelve con deshacer como cualquier otra', () => {
+    const describe = (action: MatAction) => describeMatAction(field, action, nameOf)
+
+    expect(describe({ type: 'move', id: 'a1', to: 'gy' })).toBe('A1 va al cementerio')
+    expect(describe({ type: 'move', id: 'a1', to: 'gy', destroyed: true })).toBe('A1 fue destruida')
+    expect(describe({ type: 'move', id: 'a1', to: 'gy', tribute: true })).toBe('Sacrificás A1')
+    // Al destierro lo dice su destino.
+    expect(describe({ type: 'move', id: 'a1', to: 'banished', destroyed: true })).toBe('Desterrás A1')
+
+    const actions: MatAction[] = [{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'move', id: 'a1', to: 'gy', destroyed: true }]
+    expect(replayMat(start(), actions).gy).toEqual(['a1'])
+    expect(replayMat(start(), actions, 1).mz[0]?.id).toBe('a1')
+  })
+})

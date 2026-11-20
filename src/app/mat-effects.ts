@@ -32,7 +32,7 @@ export interface MatEffects {
   /** Las casillas de los monstruos que se sacrifican (la jugada `tribute`, también al Colocar, o un `move` con `tribute`): de ahí sale su efecto mientras vuelan al Cementerio (`sacrificeAt`). */
   sacrifice?: Array<{ spot: MatSpot; index: number }>
   /**
-   * Las casillas de las cartas destruidas (un `move` con `destroyed`, la marca del núcleo: sólo el automático): de ahí sale su onda al despegar (`leaveAt`). La que se destierra no va acá:
+   * Las casillas de las cartas destruidas (un `move` con `destroyed`: la marca del núcleo o la de «Al cementerio › Destruir» de la mesa manual): de ahí sale su onda al despegar (`leaveAt`). La que se destierra no va acá:
    * su onda la da el vuelo (`use-card-flights`), que lo sabe por el destino.
    */
   destroyed?: Array<{ spot: MatSpot; index: number }>
@@ -144,7 +144,7 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
 
     case 'move': {
       if (!changed) return {}
-      // Un Sacrificio que marcó el núcleo (`tribute`, el automático): su efecto sale de la casilla que deja, como en la jugada `tribute`.
+      // Un Sacrificio marcado (`tribute`: el núcleo, o «Al cementerio › Sacrificar» en la mesa manual): su efecto sale de la casilla que deja, como en la jugada `tribute`.
       const where = action.tribute || action.destroyed ? locateCard(before, action.id) : null
       const spot = where?.kind === 'spot' ? [{ spot: where.spot, index: where.index }] : null
       // Destruida (la otra marca del núcleo), salvo rumbo al destierro: esa onda la da el vuelo.

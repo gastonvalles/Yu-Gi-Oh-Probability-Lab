@@ -720,6 +720,12 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
       const from = locateCard(before, action.id)
       const fromPile = from?.kind === 'pile' ? from.pile : null
 
+      // Por qué se fue (la marca de quien juega o del núcleo): destruida o sacrificada, rumbo al cementerio (o al Extra Deck, un Péndulo). Al destierro lo dice su destino.
+      if (action.to === 'gy' || action.to === 'extra') {
+        if (action.destroyed) return t('practice.step.destroyed', { card, count })
+        if (action.tribute) return t('practice.step.tributed', { card })
+      }
+
       switch (action.to) {
         case 'hand':
           if (fromPile === 'deck') return t('practice.step.search', { card })
@@ -1083,7 +1089,7 @@ export function pileAction(state: MatState, id: string, to: MatPile, kindOf: (id
 }
 
 /** Mandar una carta al Extra Deck: un Monstruo de Péndulo propio, boca arriba (siempre: es de donde sale la Invocación de Péndulo); lo demás (y una carta del rival), boca abajo. */
-export function extraToward(id: string, kindOf: (id: string) => MatCardKind): MatAction {
+export function extraToward(id: string, kindOf: (id: string) => MatCardKind): Extract<MatAction, { type: 'move' }> {
   return kindOf(id).pendulum && !isToken(id) && !isForeignId(id) ? { type: 'move', id, to: 'extra', faceUp: true } : { type: 'move', id, to: 'extra' }
 }
 
@@ -1314,8 +1320,16 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     // En el campo.
     toHand()
     // Un Monstruo de Péndulo que sale del campo al cementerio va, por regla, al Extra Deck boca arriba: la jugada ya lo hace sola.
-    if (leavesToExtra) add(t('practice.menu.toGyPendulum'), pileAction(state, id, 'gy', kindOf))
-    else add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
+    // Una sola opción que pregunta por qué se va: enviada (lo neutro, como arrastrarla), destruida o sacrificada (sólo un monstruo); la marca va en la jugada y la mesa la muestra (`mat-effects`).
+    const gy = leavesToExtra ? extraToward(id, kindOf) : ({ type: 'move', id, to: 'gy' } as const)
+    const monster = where.kind === 'spot' && (where.spot === 'mz' || where.spot === 'emz')
+    items.push(
+      askItem(t(leavesToExtra ? 'practice.menu.toGyPendulum' : 'practice.menu.toGy'), [
+        { label: t('practice.menu.send'), action: gy },
+        { label: t('practice.menu.destroy'), action: { ...gy, destroyed: true } },
+        ...(monster ? [{ label: t('practice.menu.tribute'), action: { ...gy, tribute: true as const } }] : []),
+      ]),
+    )
     banish()
   }
 

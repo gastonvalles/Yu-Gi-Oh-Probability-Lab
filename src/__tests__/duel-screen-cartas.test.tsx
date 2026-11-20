@@ -215,6 +215,7 @@ describe('la pantalla del duelo', () => {
     // Mandar la carta al cementerio es la única jugada que no se muestra grande: su carta viaja (lo anima la mesa), no sale cartel ni carta en el centro, y la línea queda en el registro.
     myMonster()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Enviar' }))
     flush()
     expect(stage()).toBeNull()
     expect(guest.container.querySelector('[data-activation]')).toBeNull()
@@ -525,6 +526,7 @@ describe('la pantalla del duelo', () => {
     flush()
     tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Enviar' }))
     flush()
 
     const itemsOf = (name: string) => {
@@ -565,6 +567,7 @@ describe('la pantalla del duelo', () => {
     flush()
     tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Enviar' }))
     flush()
 
     // Cementerio: se abre el visor, se toca la carta (se pide cuál es por su número) y se la toma.

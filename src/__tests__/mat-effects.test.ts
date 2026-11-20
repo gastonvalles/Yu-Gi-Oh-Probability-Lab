@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { matEffects } from '../app/mat-effects'
-import { createMatState, replayMat, type MatAction } from '../app/practice-mat'
+import { createMatState, listCardActions, replayMat, type MatAction, type MatCardKind } from '../app/practice-mat'
+import { t } from '../i18n'
 
 // Mano: a1, a2, b1 (una Magia), c1, d1. Deck: e1 y f1. Extra: x1 y x2.
 const start = () => createMatState(['a1', 'a2', 'b1', 'c1', 'd1', 'e1', 'f1'], ['x1', 'x2'], 5)
@@ -99,6 +100,18 @@ describe('los efectos de una jugada', () => {
     expect(matEffects(field, { type: 'move', id: 'a1', to: 'gy' }).destroyed).toBeUndefined()
     expect(matEffects(field, { type: 'move', id: 'a1', to: 'banished', destroyed: true }).destroyed).toBeUndefined()
     expect(matEffects(field, { type: 'batch', actions: [{ type: 'move', id: 'a1', to: 'gy', destroyed: true }] }).destroyed).toEqual([{ spot: 'mz', index: 0 }])
+  })
+
+  it('en la mesa manual, «Al cementerio ›» dispara lo suyo: Enviar nada, Destruir la onda, Sacrificar el destello', () => {
+    const field = after([place('a1', 0)])
+    const monster: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: 4 }
+    const choices = listCardActions(field, 'a1', () => monster, (id) => id).find((item) => item.label === t('practice.menu.toGy'))?.choices ?? []
+    const [send, destroy, tribute] = choices.map((choice) => matEffects(field, choice.action))
+
+    expect(choices.map((choice) => choice.label)).toEqual([t('practice.menu.send'), t('practice.menu.destroy'), t('practice.menu.tribute')])
+    expect(send).toEqual({ quiet: { ids: ['a1'], kind: 'gy' } })
+    expect(destroy).toEqual({ quiet: { ids: ['a1'], kind: 'gy' }, destroyed: [{ spot: 'mz', index: 0 }] })
+    expect(tribute).toEqual({ quiet: { ids: ['a1'], kind: 'gy' }, sacrifice: [{ spot: 'mz', index: 0 }] })
   })
 
   it('la ficha aparece de la nada y el monstruo que pasa boca arriba a ataque es una Invocación por Volteo', () => {
