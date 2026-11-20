@@ -1,6 +1,35 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-8-enlace-automatico-mano-oculta",
+      "date": "2026-11-20",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Duelo por enlace automático: tu mano es sólo tuya",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Si en un duelo por enlace automático pasaban a manual y volvían a automático, quien abrió la sala veía la mano del rival boca arriba. Ya no: ninguno ve la mano, el Deck ni lo boca abajo del otro, tampoco después de recargar la página.",
+          "Después de volver a automático, a quien le tocaba segundo se le salteaba su Main Phase 1. Ya no.",
+          "En Jugar solo, al seguir en automático desde la mesa manual, el bot ya no ve tu mano ni lo que tenés boca abajo."
+        ],
+        "ojo": []
+      },
+      "en": {
+        "title": "Automatic duel by link: your hand is yours alone",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "If in an automatic duel by link you switched to manual and back to automatic, whoever opened the room could see the opponent's hand face-up. Not anymore: neither player sees the other's hand, Deck or face-down cards, not even after reloading the page.",
+          "After switching back to automatic, whoever went second had their Main Phase 1 skipped. Not anymore.",
+          "In Solo play, when continuing in automatic from the manual table, the bot no longer sees your hand or your face-down cards."
+        ],
+        "ojo": []
+      }
+    },
+    {
       "id": "2026-11-20-7-registro-del-bot",
       "date": "2026-11-20",
       "tags": [
