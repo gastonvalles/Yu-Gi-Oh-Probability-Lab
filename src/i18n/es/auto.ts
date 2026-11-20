@@ -99,6 +99,7 @@ export const auto = {
   'auto.bot.reason.play.called': 'Usé {card} contra {to}: lo destierro de tu cementerio y su efecto queda negado.',
   'auto.bot.reason.play.starter': 'Activé {card} para arrancar mi jugada.',
   'auto.bot.reason.play.draw': 'Activé {card} para robar: más opciones para mi jugada.',
+  'auto.bot.reason.play.spare': 'Activé {card}: roba o busca, y no me cuesta más de lo que me da.',
   'auto.bot.reason.play.search': 'Busqué {to} con {card}: es lo que más me sirve ahora.',
   'auto.bot.reason.play.normal': 'Invoqué de modo Normal a {card}: con ella paso a mis monstruos de Enlace.',
   'auto.bot.reason.play.extra': 'Tributé {card} para Invocar un Sky Striker Ace a la Zona de Monstruos Extra: así quedan libres mis Zonas Principales para mis Mágicas.',

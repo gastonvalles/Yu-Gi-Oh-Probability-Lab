@@ -6,11 +6,13 @@ import { MAX_IDLE, pendulumAnswer, pendulumIndex, type CardFacts } from '../turn
 /**
  * El marco de un ejecutor por mazo (etapa 2 del bot, «un ejecutor por mazo»): el mazo da sus reglas como datos (`DeckExecutor`) y el marco las corre como un `Bot` puro.
  * - **Main Phase** (`select_idlecmd` en su turno): gana la primera `Play` cuya carta está en la lista que ofrece el núcleo (que ya filtra lo legal) y cuyo `when` da verdadero. Si
- *   ninguna gana: la Invocación por Péndulo si suma monstruos (`pendulumIndex`, una vez por turno); la Battle Phase si hay un ataque que conviene (`attackPlan`); si no, terminar el
- *   turno. Antes de la Battle Phase, las posiciones de sus monstruos (`executor.position.*`).
+ *   ninguna gana: la regla general con lo que el mazo no tiene en su lista (`spare`: robar o buscar, después Invocar); la Invocación por Péndulo si suma monstruos
+ *   (`pendulumIndex`, una vez por turno); la Battle Phase si hay un ataque que conviene (`attackPlan`); si no, terminar el turno. Antes de la Battle Phase, las posiciones de sus
+ *   monstruos (`executor.position.*`).
  * - **Lo que sigue** (costos, objetivos, búsquedas, materiales, sí/no, opciones, casillas): `choose` del mazo con `Scene.current`, el efecto que se está jugando (el eslabón suyo que
  *   se resuelve o, al activarlo, la jugada que acaba de elegir). Las casillas de lo que sale del Extra Deck van a la Zona de Monstruos Extra.
- * - **Cadenas** (`select_chain`): `chain` del mazo; lo que no decide, el de reserva (`fallback`: las handtraps y Called by the Grave de `turnBot`).
+ * - **Cadenas** (`select_chain`): `chain` del mazo; en tu End Phase, la regla general con lo que colocó (`spareChain`); lo que no decide, el de reserva (`fallback`: las handtraps
+ *   y Called by the Grave de `turnBot`).
  * - **Battle Phase**: los ataques de `attackPlan` (directo, seguro, a ciegas contra lo boca abajo, el empate que conviene); después, a la Main Phase 2 (ahí coloca sus Mágicas Rápidas).
  * Invariantes: un tope de `MAX_IDLE` jugadas por turno; una jugada que se repite con la mesa igual queda afuera ese turno (sin bucles); toda respuesta pasa por `legal` y, si no
  * pasa, contesta el de reserva (el núcleo rechaza lo ilegal con `RETRY`). Decide sólo con su vista y lo impreso de las cartas (`facts`, del `.cdb`, público).
@@ -26,8 +28,15 @@ export const ATTACK_TIMING = 0x1000
 const MAX_ASKS = 60
 /** La Invocación por Péndulo (`pendulumIndex`): su id en `done` y como efecto en juego. */
 const PENDULUM = 'pendulum'
-/** Lo que no Invoca por Péndulo desde la mano: lo que usa con una regla (sus handtraps). */
+/** Lo que no Invoca por Péndulo desde la mano ni usa la regla general: lo que usa con una regla (sus handtraps). */
 const keeps = (code: number) => ruleOf(code) !== undefined || turnRuleOf(code) !== undefined
+/** Las categorías de búsqueda del `.cdb` (`CardRow.category`) de lo que roba (Draw) o busca en el Deck (Search). */
+const DRAWS = 0x100 | 0x200
+/** La categoría de lo que Invoca de modo Especial. */
+const SUMMONS = 0x100000
+/** Las de lo que se lleva cartas (destruir, mandar al cementerio, desterrar, devolver, daño, control): pueden llevarse lo suyo, y la regla general no lo activa. */
+const TAKES = 0xff | 0x40000 | 0x40000000
+const nOf = (description: string) => Number(BigInt(description) & 0xfffffn)
 
 type IdleAsk = AskOf<'select_idlecmd'>
 type IdleList = 'summons' | 'special_summons' | 'pos_changes' | 'monster_sets' | 'spell_sets' | 'activates'
@@ -39,6 +48,11 @@ const LIST: Record<Play['kind'], { list: IdleList; action: number }> = {
   set: { list: 'spell_sets', action: 4 },
   activate: { list: 'activates', action: 5 },
 }
+
+const LIST_ACTION = Object.fromEntries(Object.values(LIST).map(({ list, action }) => [list, action])) as Record<IdleList, number>
+/** La jugada del mazo habla de esa entrada de la lista (la carta, desde ese lugar y con ese efecto), sin mirar su `when`. */
+const covers = (play: Play, list: IdleList, card: CardLoc) =>
+  LIST[play.kind].list === list && card.code === play.code && (play.from === undefined || (card.location & play.from) !== 0) && (play.effect === undefined || !('description' in card) || nOf((card as { description: string }).description) === play.effect)
 
 /** El efecto en juego: qué carta y qué regla. */
 export interface Intent {
@@ -287,27 +301,33 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     if (idleCount > MAX_IDLE) return end({ key: 'auto.bot.reason.end.done' }, 'executor.cap')
     const key = boardKey(s.view)
 
+    /** La primera vez con esta mesa (la misma jugada con la mesa igual: la anterior no hizo nada, la cancelaron o no se pudo; no se repite este turno). */
+    const fresh = (id: string) => {
+      if (blocked.has(id)) return false
+      if (seen.get(id) === key) {
+        blocked.add(id)
+        return false
+      }
+      seen.set(id, key)
+      done.add(id)
+      return true
+    }
+
     for (const play of deck.plays) {
       if (blocked.has(play.id)) continue
       const { list, action } = LIST[play.kind]
-      const index = ask[list].findIndex(
-        (card) => card.code === play.code && (play.from === undefined || (card.location & play.from) !== 0) && (play.effect === undefined || !('description' in card) || Number(BigInt((card as { description: string }).description) & 0xfffffn) === play.effect) && (play.when?.(s, card) ?? true),
-      )
+      const index = ask[list].findIndex((card) => covers(play, list, card) && (play.when?.(s, card) ?? true))
 
-      if (index < 0) continue
-      // La misma jugada con la mesa igual: la anterior no hizo nada (la cancelaron o no se pudo); no se repite este turno.
-      if (seen.get(play.id) === key) {
-        blocked.add(play.id)
-        continue
-      }
-      seen.set(play.id, key)
-      done.add(play.id)
+      if (index < 0 || !fresh(play.id)) continue
       intent = { id: play.id, code: play.code }
       const card = ask[list][index]!
       const reason = play.reason?.(s, card)
 
       return { answer: { type: ask.type, action, index }, ...(reason ? { reason } : {}), rule: play.id }
     }
+    const extra = spare(ask, fresh)
+
+    if (extra) return extra
     // Sin otra jugada del mazo: la Invocación por Péndulo, una vez por turno, antes de la Battle Phase (después de las jugadas, para no cortarle una línea al mazo).
     const pendulum = done.has(PENDULUM) ? -1 : pendulumIndex(ask, s.view, facts, keeps)
 
@@ -341,6 +361,54 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     if (down >= 0) return { answer: { type: ask.type, action: 2, index: down }, reason: { key: 'auto.bot.reason.position.defense', cards: [atPlace(s.view, ask.pos_changes[down]!)?.code ?? 0] }, rule: 'executor.position.defense' }
 
     return end(endReason(s), 'executor.end')
+  }
+
+  /**
+   * La regla general, para lo que el mazo no tiene en su lista (`covers`: ni la carta con ese efecto desde ese lugar): una jugada que el núcleo ofrece y no le cuesta más de lo
+   * que le da, en este orden: 1. lo que roba o busca en el Deck (`DRAWS`), activado en su Main Phase (no una Mágica Rápida ni una Trampa, que tienen su momento en tu turno, ni lo
+   * que guarda para una regla); 2. Invocar de modo Normal o Especial, de la mano o el cementerio, un monstruo con ATK que no guarda para una regla (uno más con qué atacar o
+   * frenarte; de Nivel 4 o menos: sin Tributar lo suyo). Nunca del Extra Deck: eso gasta materiales, y qué materiales lo decide su mazo.
+   */
+  function spare(ask: IdleAsk, fresh: (id: string) => boolean): DeckDecision | null {
+    const uncovered = (list: IdleList, card: CardLoc) => !keeps(card.code) && !deck.plays.some((play) => covers(play, list, card))
+    const draws = (card: CardLoc) => ((facts(card.code)?.category ?? 0) & DRAWS) !== 0 && !isType({ facts }, card.code, TYPE.QUICKPLAY | TYPE.TRAP)
+    const body = (card: CardLoc) => {
+      const printed = facts(card.code)
+
+      return !!printed && (printed.type & TYPE.MONSTER) !== 0 && printed.attack > 0 && printed.level <= 4 && (card.location & (LOC.HAND | LOC.GRAVE)) !== 0
+    }
+    const tiers: { list: IdleList; test: (card: CardLoc) => boolean; rule: string; key: BotReason['key'] }[] = [
+      { list: 'activates', test: draws, rule: 'executor.spare.draw', key: 'auto.bot.reason.play.spare' },
+      { list: 'special_summons', test: body, rule: 'executor.spare.summon', key: 'auto.bot.reason.play.beater' },
+      { list: 'summons', test: body, rule: 'executor.spare.summon', key: 'auto.bot.reason.play.beater' },
+    ]
+
+    for (const { list, test, rule, key } of tiers) {
+      for (const [index, card] of ask[list].entries()) {
+        const id = `spare.${list}.${card.code}`
+
+        if (!uncovered(list, card) || !test(card) || !fresh(id)) continue
+        intent = { id, code: card.code }
+        return { answer: { type: ask.type, action: LIST_ACTION[list], index }, reason: { key, cards: [card.code] }, rule }
+      }
+    }
+    return null
+  }
+
+  /**
+   * La regla general en tu End Phase (la última ventana antes de su turno), si el mazo no activó nada: lo que tiene colocado y roba, busca o Invoca (`DRAWS`, `SUMMONS`) sin llevarse
+   * cartas (`TAKES`), una vez por carta. Lo que no usó en tu turno ya no frenó nada; en el suyo, lo que trae juega.
+   */
+  function spareChain(ask: AskOf<'select_chain'>, s: Scene): DeckDecision | null {
+    if (ask.forced || s.view.turnPlayer !== 'them' || s.view.chain.length > 0 || (s.view.phase & PHASE.END) === 0) return null
+    for (const [index, card] of ask.selects.entries()) {
+      const category = facts(card.code)?.category ?? 0
+      const id = `spare.end.${card.code}`
+
+      if (card.location !== LOC.SZONE || !isMine(s.view, card) || keeps(card.code) || (category & (DRAWS | SUMMONS)) === 0 || (category & TAKES) !== 0 || done.has(id)) continue
+      return { answer: { type: ask.type, index }, reason: { key: 'auto.bot.reason.play.endPhase', cards: [card.code] }, rule: 'executor.spare.end', intent: { id, code: card.code } }
+    }
+    return null
   }
 
   function endReason(s: Scene): BotReason {
@@ -415,7 +483,7 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
     if (mine && ask.type === 'select_idlecmd') decision = idle(ask, s)
     else if (mine && ask.type === 'select_battlecmd') decision = battle(ask, s)
-    else if (ask.type === 'select_chain') decision = deck.chain(ask, s)
+    else if (ask.type === 'select_chain') decision = deck.chain(ask, s) ?? spareChain(ask, s)
     else if (mine && intent?.id === PENDULUM && (ask.type === 'select_unselect_card' || ask.type === 'select_position')) decision = { answer: pendulumAnswer(ask, facts, keeps), rule: 'executor.pendulum.pick' }
     else if (asks <= MAX_ASKS) {
       decision = (mine && ask.type === 'select_card' ? attackTargetOf(ask, s) : null) ?? deck.choose(ask, s)

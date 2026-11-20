@@ -94,6 +94,7 @@ export const auto: Translated<typeof es> = {
   'auto.bot.reason.play.called': 'I used {card} on {to}: I banish it from your Graveyard and its effect is negated.',
   'auto.bot.reason.play.starter': 'I activated {card} to start my play.',
   'auto.bot.reason.play.draw': 'I activated {card} to draw: more options for my play.',
+  'auto.bot.reason.play.spare': 'I activated {card}: it draws or searches, and it costs me less than it gives.',
   'auto.bot.reason.play.search': 'I searched {to} with {card}: it helps me most right now.',
   'auto.bot.reason.play.normal': 'I Normal Summoned {card}: with it I move into my Link Monsters.',
   'auto.bot.reason.play.extra': 'I Tributed {card} to Summon a Sky Striker Ace to the Extra Monster Zone: that leaves my Main Monster Zones free for my Spells.',
