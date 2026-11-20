@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 
 import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
 import { DUST, DUST_MS, LANDING_AT, LIFT_FADE_MS, LIFT_LIMIT, LIFT_MIN_CARDS, LIFT_PX, dustFrames, liftAt, liftGlossFrames, liftPathFrames, liftShadowFrames, liftTiltFrames, type Spot } from './card-lift'
 import { cardImageSrc } from './card-image-source'
-import { banishedFromField, leaveAt, settleShake } from './field-impact'
+import { PILE_POP, banishedFromField, leaveAt, settleShake } from './field-impact'
 import { BURST, burstsOf, flipbookAt } from './flipbooks'
 import { EASE_IN_OUT, EASE_OUT, UI_ANIMATION_MS, cancelWhenDone, easeInOut, prefersReducedMotion } from './motion'
 import { allMatIds, locateCard, type MatState } from './practice-mat'
@@ -300,9 +300,9 @@ function bump(element: HTMLElement, at: number) {
 
 /**
  * La pila que suelta una carta rebota: 1 → 1,1 → 1 en 80 ms (en Master Duel rebota la carta que sale, a 1,23 en 50 ms: acá la pila, a la mitad, porque la carta del celular es chica).
- * En `scale`, como `bump`; corre con el vuelo que ya existe, sin alargar nada.
+ * En `scale`, como `bump`; corre con el vuelo que ya existe, sin alargar nada. Los números (`PILE_POP`) viven en `field-impact.ts`, que también lee el video.
  */
-export const PILE_POP = { ms: 80, scale: 1.1 } as const
+export { PILE_POP }
 
 export function popPile(element: HTMLElement): void {
   cancelWhenDone(element.animate([{ scale: '1' }, { scale: `${PILE_POP.scale}`, offset: 0.5 }, { scale: '1' }], { duration: PILE_POP.ms, easing: EASE_OUT }))

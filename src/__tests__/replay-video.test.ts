@@ -246,7 +246,8 @@ describe('las transiciones', () => {
   it('el ataque cruza del atacante a su objetivo; el rival que roba no se muestra grande (en un duelo sólo activar, mostrar y declarar); las vidas cuentan', () => {
     const fx = (index: number) => overlaysOf(scenes[index - 1]!, scenes[index]!, [], fakeAssets, 1, 0, 'duel').map((overlay) => overlay.kind)
     expect(fx(replay.steps.length)).toEqual(['attack', 'impact', 'shake'])
-    expect(fx(6)).toEqual([])
+    // Robar no se muestra grande; sólo el deck rebota, como el de la mesa.
+    expect(fx(6)).toEqual(['pop'])
     expect(fx(4)).toEqual(['stage'])
     // 8000 → 7000 de mi lado: cuenta como en la mesa (`lifeMs`), con «−1000» abajo.
     const hit = { ...last, sides: [{ ...last.sides[0], lp: 7000 }, last.sides[1]] as Scene['sides'] }

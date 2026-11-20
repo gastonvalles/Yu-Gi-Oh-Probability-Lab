@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HITSTOP_MS } from '../app/card-weight'
-import { ARRIVAL, ARRIVAL_CLASS, HIT_MS, SACRIFICE, SECOND_AT, SECOND_MS, SHAKES } from '../app/field-impact'
+import { ACTIVATE_GLOW, ARRIVAL, ARRIVAL_CLASS, HIT_MS, LEAVE, PILE_POP, SACRIFICE, SECOND_AT, SECOND_MS, SHAKES, activateAt, leaveAt } from '../app/field-impact'
+import { EASE_OUT, bezierEase } from '../app/motion'
+import { FX_RGB } from '../components/probability/practice-styles'
 import { DELTA_MS, lifeCountMs } from '../app/life-effects'
 import { DEAL_LAND_AT, DEAL_MS, FIRST_DEAL_MS, NEXT_DEAL_MS } from '../app/deal-flight'
 import { buildDuelReplay } from '../app/duel-replay'
@@ -13,11 +15,11 @@ import { ENTRANCE, ENTRANCE_COMMON, PENDULUM, pendulumAt, pendulumHit, playPendu
 import { pendulumFrame } from '../components/replays/video/video-entrance'
 import { replayScenes } from '../components/replays/video/video-scene'
 import { DECK_SHUFFLE_MS, HAND_SHUFFLE_MS } from '../app/shuffle-fx'
-import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, flightMs as mesaFlightMs } from '../app/use-card-flights'
+import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, flightMs as mesaFlightMs, popPile } from '../app/use-card-flights'
 import { PHASE_BAND_MS, TURN_BAND_MS } from '../components/duel/PhaseBand'
 import { IMPACT_MS } from '../components/probability/AttackFx'
 import { SPOTLIGHT_TRAVEL_MS, STAGE_TONE as MESA_STAGE_TONE } from '../components/probability/MatFx'
-import { dealOverlays, dealtKeys, flightMs, IMPACT, impactOverlays, lifeMs, MESA, RIFFLE, sacrificeOverlay, STAGE_TONE } from '../components/replays/video/video-fx'
+import { dealOverlays, dealtKeys, flightMs, glowOverlay, IMPACT, impactOverlays, leaveOverlay, lifeMs, MESA, popOverlay, RIFFLE, sacrificeOverlay, STAGE_TONE } from '../components/replays/video/video-fx'
 import { fakeAssets } from './support/video-fakes'
 
 // El video copia los tiempos y los colores de la mesa (para no cargarla con React): que sigan siendo los mismos.
@@ -160,5 +162,128 @@ describe('el video anima con los tiempos y los colores de la mesa', () => {
     expect(paths).toHaveLength(3)
     // El velo, el de toda entrada.
     expect([frame(0).veil, frame(ENTRANCE_COMMON.veilIn).veil, frame(ENTRANCE.end).veil]).toEqual([0, ENTRANCE_COMMON.veil, 0])
+  })
+})
+
+// El resplandor al activar, la onda al destruir o desterrar y el rebote de la pila: el video los dibuja leyendo lo que la mesa anima de verdad (`activateAt`, `leaveAt`, `popPile`), cuadro a cuadro.
+describe('el video dibuja las piezas nuevas de la mesa con sus tiempos y sus colores', () => {
+  const calls: Array<{ el: HTMLElement; frames: Keyframe[]; options: KeyframeAnimationOptions }> = []
+
+  beforeEach(() => {
+    calls.length = 0
+    Element.prototype.animate = function (this: Element, frames: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions) {
+      calls.push({ el: this as HTMLElement, frames: frames as Keyframe[], options: options as KeyframeAnimationOptions })
+      return { addEventListener: vi.fn(), cancel: vi.fn() } as unknown as Animation
+    }
+  })
+  afterEach(() => {
+    document.body.innerHTML = ''
+    delete (Element.prototype as Partial<Element>).animate
+  })
+
+  /** El valor de `key` a `p` (0 a 1) en los cuadros de la mesa: lineal entre los cuadros que lo traen (los del medio llevan su `offset`). */
+  const valueAt = (frames: Keyframe[], key: string, p: number) => {
+    const known = frames.flatMap((frame, index) => (frame[key] === undefined ? [] : [{ at: frame.offset ?? index / (frames.length - 1), value: Number(frame[key]) }]))
+    const after = known.findIndex((frame) => frame.at >= p)
+    if (after <= 0) return known[Math.max(0, after)]!.value
+    const [a, b] = [known[after - 1]!, known[after]!]
+    return a.value + ((b.value - a.value) * (p - a.at)) / (b.at - a.at)
+  }
+
+  /** Un lienzo que anota lo que se le pide: el alfa de cada relleno o trazo, los colores, los radios de los arcos y las copias de sí mismo. */
+  const probe = () => {
+    const log = { alpha: [] as number[], stops: [] as string[], strokes: [] as string[], radii: [] as number[], copies: [] as number[][] }
+    const state: Record<string, unknown> = {
+      canvas: { width: 720, height: 1280 },
+      globalAlpha: 1,
+      createRadialGradient: () => ({ addColorStop: (_: number, color: string) => log.stops.push(color) }),
+      fill: () => log.alpha.push(Number(state.globalAlpha)),
+      stroke: () => {
+        log.alpha.push(Number(state.globalAlpha))
+        log.strokes.push(String(state.strokeStyle))
+      },
+      arc: (_x: number, _y: number, radius: number) => log.radii.push(radius),
+      drawImage: (...args: unknown[]) => log.copies.push(args.slice(1) as number[]),
+    }
+    const ctx = new Proxy(state, { get: (target, key) => (key in target ? target[key as string] : () => {}), set: (target, key, value) => ((target[key as string] = value), true) })
+    return { ctx: ctx as never, log }
+  }
+
+  it('activar: el resplandor sube, queda pleno, baja y se apaga como el `opacity` de la mesa, a su tamaño y en el cian de la energía, en los 950 ms de la activación', () => {
+    const cell = document.body.appendChild(document.createElement('div'))
+    cell.getBoundingClientRect = () => ({ left: 10, top: 20, width: 50, height: 70 }) as DOMRect
+    activateAt(cell, 0, null)
+    const glow = calls.find((call) => call.el.className.includes('from-fx-energia'))!
+    const overlay = glowOverlay({ x: 10, y: 20, w: 50, h: 70 }, fakeAssets.theme, 700, 1.25)
+    expect(overlay).toMatchObject({ kind: 'glow', start: 700 })
+    expect(overlay.duration).toBeCloseTo(ACTIVATE_GLOW.ms / 1.25)
+    expect(glow.options.duration).toBe(ACTIVATE_GLOW.ms)
+    // Termina con la carta grande de la activación (`MESA.stage`): no pasa de ahí.
+    expect(ACTIVATE_GLOW.ms).toBeLessThanOrEqual(MESA.stage)
+    expect(readFileSync(join(process.cwd(), 'src/app/field-impact.ts'), 'utf8')).toContain(`from-fx-energia/${ACTIVATE_GLOW.alpha * 100} to-transparent to-70%`)
+    for (const ms of [0, 70, 140, 300, 630, 700, 770, 860, 949]) {
+      const { ctx, log } = probe()
+      overlay.draw(ctx, ms / ACTIVATE_GLOW.ms)
+      const opacity = valueAt(glow.frames, 'opacity', ms / ACTIVATE_GLOW.ms)
+      if (opacity === 0) expect(log.alpha).toEqual([])
+      else expect(log.alpha[0]).toBeCloseTo(ACTIVATE_GLOW.alpha * opacity, 2)
+      if (opacity > 0) {
+        // Su tamaño (el ancho de la capa de la mesa) y su color.
+        expect(log.radii[0]).toBeCloseTo(parseFloat(glow.el.style.width) / 2)
+        expect(log.stops[0]).toBe(fakeAssets.theme.fx.energia)
+      }
+    }
+  })
+
+  it('destruir o desterrar: la onda crece lineal como la `scale` de la mesa, con su alfa, del color que la mesa le pone (cian lo destruido, ámbar el destierro) y en 500 ms', () => {
+    for (const rgb of [FX_RGB.cyan, FX_RGB.amber]) {
+      calls.length = 0
+      leaveAt(100, 100, 48, rgb)
+      const wave = calls.find((call) => call.el.className.includes('--fx-rgb'))!
+      expect((wave.el.parentElement as HTMLElement).style.getPropertyValue('--fx-rgb')).toBe(rgb)
+      const overlay = leaveOverlay(100, 100, 48, rgb, 900, 1.25)
+      expect(overlay).toMatchObject({ kind: 'leave', start: 900 })
+      expect(overlay.duration).toBeCloseTo(LEAVE.ms / 1.25)
+      expect(wave.options.duration).toBe(LEAVE.ms)
+      for (const ms of [0, 15, LEAVE.peak * LEAVE.ms, 100, 250, 400, 499]) {
+        const { ctx, log } = probe()
+        overlay.draw(ctx, ms / LEAVE.ms)
+        // Los arcos de `twinRing`: la gemela oscura y, después, el aro de color (el de la mesa mide su `width` de ancho).
+        expect(log.radii.at(-1)).toBeCloseTo((parseFloat(wave.el.style.width) / 2) * valueAt(wave.frames, 'scale', ms / LEAVE.ms), 1)
+        expect(log.alpha[0]).toBeCloseTo(valueAt(wave.frames, 'opacity', ms / LEAVE.ms), 2)
+        expect(log.strokes).toContain(`rgb(${rgb} / 1)`)
+      }
+    }
+    // En una pantalla chica no pasa de su diagonal, como la mesa.
+    const { ctx, log } = probe()
+    leaveOverlay(0, 0, 400, FX_RGB.cyan, 0, 1).draw(ctx, 1)
+    expect(log.radii.at(-1)).toBeCloseTo(Math.hypot(720, 1280) / 2)
+  })
+
+  it('la pila que suelta una carta: se vuelve a pintar de 1 a 1,1 y de vuelta en 80 ms, con la curva y los cuadros de la mesa; antes y después, nada', () => {
+    const pile = document.body.appendChild(document.createElement('div'))
+    popPile(pile)
+    const [pop] = calls
+    expect(pop!.options).toMatchObject({ duration: PILE_POP.ms, easing: EASE_OUT })
+    expect(pop!.frames.map((frame) => frame.scale)).toEqual(['1', `${PILE_POP.scale}`, '1'])
+    const rect = { x: 40, y: 600, w: 80, h: 116 }
+    const overlay = popOverlay(rect, 1500, 2)
+    expect(overlay).toMatchObject({ kind: 'pop', start: 1500 })
+    expect(overlay.duration).toBeCloseTo(PILE_POP.ms / 2)
+    const ease = bezierEase(EASE_OUT)
+    for (const ms of [0, 8, 16, 24, 40, 56, 72, 80]) {
+      const { ctx, log } = probe()
+      overlay.draw(ctx, ms / PILE_POP.ms)
+      const scale = valueAt(pop!.frames, 'scale', ease(ms / PILE_POP.ms))
+      if (scale <= 1.0001) expect(log.copies).toEqual([])
+      else {
+        // Copia la casilla entera, agrandada desde su centro.
+        const [sx, sy, sw, sh, dx, dy, dw, dh] = log.copies[0]!
+        expect([sx, sy, sw, sh]).toEqual([rect.x, rect.y, rect.w, rect.h])
+        expect(dw! / rect.w).toBeCloseTo(scale, 3)
+        expect(dh! / rect.h).toBeCloseTo(scale, 3)
+        expect([dx! + dw! / 2, dy! + dh! / 2]).toEqual([rect.x + rect.w / 2, rect.y + rect.h / 2])
+      }
+    }
   })
 })

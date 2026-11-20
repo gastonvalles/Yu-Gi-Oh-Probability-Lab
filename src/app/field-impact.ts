@@ -151,7 +151,8 @@ export function overFrameAt(x: number, y: number, w: number, h: number, delay: n
  * (en Master Duel, 5,8: en el celular tapaba media mesa, como el brillo de la llegada). Una Mágica o una Trampa suma el brillo del marco (`overFrameAt`, 600 ms) del color de su marco.
  * No alarga nada: corre sobre la activación que ya se ve. Con «Livianos», sólo el marco; con movimiento reducido, nada.
  */
-export const ACTIVATE_GLOW = { ms: 950, size: 3, in: 140, hold: 630, tail: 770, tailAlpha: 0.18, frameMs: 600 } as const
+export const ACTIVATE_GLOW = { ms: 950, size: 3, in: 140, hold: 630, tail: 770, tailAlpha: 0.18, frameMs: 600, alpha: 0.6 } as const
+// `from-fx-energia/60` = `ACTIVATE_GLOW.alpha` (el video lo lee de ahí; un test los junta).
 const ACTIVATE_GLOW_CLASS = 'pointer-events-none absolute rounded-full bg-radial from-fx-energia/60 to-transparent to-70% opacity-0 mix-blend-plus-lighter'
 
 /** Si la carta es una Mágica o una Trampa (por su marco): lleva el brillo del marco al activarse. */
@@ -476,6 +477,9 @@ export function leaveAt(x: number, y: number, unit: number, rgb: string, delay =
   const frames = [{ scale: `${LEAVE.from}`, opacity: LEAVE.alpha }, { opacity: 1, offset: r3(LEAVE.peak) }, { scale: '1', opacity: 0 }]
   removeAfter(layer, [[cancelWhenDone(wave.animate(frames, { duration: LEAVE.ms, delay })), delay + LEAVE.ms]])
 }
+
+/** El rebote de la pila que suelta una carta (`popPile` de `use-card-flights.ts`): 1 → `scale` → 1 en `ms`, con `EASE_OUT` a lo largo de todo el rebote. */
+export const PILE_POP = { ms: 80, scale: 1.1 } as const
 
 /** Las cartas que dejaron una casilla del campo rumbo al destierro entre dos mesas (lo desterrado se sabe por el destino; lo destruido, sólo por la marca del núcleo). */
 export function banishedFromField(before: MatState, after: MatState): string[] {
