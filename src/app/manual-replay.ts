@@ -30,7 +30,7 @@ export function replayFromManual(snap: Source, options: { view: ReplayView; play
   if (!record?.theirs || !initial) return null
   const result = record.cut ? undefined : resultOf(snap)
 
-  return buildDuelReplay({
+  const replay = buildDuelReplay({
     mode: 'link',
     ...options,
     starter: snap.starter === snap.me ? 0 : 1,
@@ -40,4 +40,7 @@ export function replayFromManual(snap: Source, options: { view: ReplayView; play
     life: record.life,
     ...(result ? { result } : {}),
   })
+
+  // Lo que se jugó a mano es seguro (lo eligió quien juega; su Péndulo ya se cree por el modo): `sure` sólo para que el enlace lleve un Sacrificio o una destruida marcados en un `move`.
+  return replay.steps.some(([, action]) => action.type === 'move' && (action.tribute === true || action.destroyed === true)) ? { ...replay, sure: true } : replay
 }

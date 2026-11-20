@@ -66,7 +66,7 @@ export const replayEnvelope = (replay: DuelReplay) => ({ app: SHARE_APP, kind: '
  * lo revelado (id opaco → id real), en pares planos de lugares, y el de cada jugada, aparte (`[jugada, ...pares]`: pocas muestran algo); los nombres, en el orden de los
  * passcodes de la tabla (`null`, uno sin nombre). **Este orden es el formato: sólo se agrega al final.** Leer v2 es armar la forma de v1 y pasarla por el mismo `readReplay`.
  * El enlace va sin nombres (`names: false`, la lista vacía) y quien lo abre los pide por passcode (`resolveReplayNames`, como el combo); lo guardado acá los lleva.
- * `m`, al lado de `d` y sólo con `sure`: las marcas del núcleo, como en el combo (`marksOf`, índices de `steps`); una versión que no la conoce la ignora y abre sin ellas.
+ * `m` y `x`, al lado de `d` y sólo con `sure`: las marcas, como en el combo (`marksOf` y su regla, índices de `steps`); una versión que no conoce una clave la ignora y abre sin ella.
  */
 export function compactReplayEnvelope(replay: DuelReplay, { names: withNames = true } = {}) {
   const pairs = (map: Record<string, string> | undefined) => Object.entries(map ?? {})
@@ -98,7 +98,7 @@ export function compactReplayEnvelope(replay: DuelReplay, { names: withNames = t
       ...(replay.chain ? [replay.chain.map((item) => chainTuple(item, pack.ref))] : []),
     ],
   }
-  return replay.sure ? { ...envelope, m: marksOf(replay.steps.map(([, action]) => action)) } : envelope
+  return replay.sure ? { ...envelope, ...marksOf(replay.steps.map(([, action]) => action)) } : envelope
 }
 
 /** De dónde salen los ids de la tabla: las mesas, las jugadas, lo revelado y lo propio oculto (los ids reales están sólo ahí). */
@@ -164,7 +164,7 @@ export function parseReplayText(text: string): ReplayRead {
   if (!value || value.kind !== 'duel' || typeof value.v !== 'number') return { ok: false, error: 'notReplay' }
   if (value.v > DUEL_REPLAY_VERSION) return { ok: false, error: 'newer' }
   if (value.v !== 1 && value.v !== 2 && value.v !== DUEL_REPLAY_VERSION) return { ok: false, error: 'broken' }
-  const replay = value.v === 1 ? readReplay(value.replay) : readCompactReplay(value.d, value.m)
+  const replay = value.v === 1 ? readReplay(value.replay) : readCompactReplay(value.d, value.m, value.x)
   return replay ? { ok: true, replay } : { ok: false, error: 'broken' }
 }
 
@@ -268,7 +268,7 @@ function readReplay(value: unknown): DuelReplay | null {
 }
 
 /** La forma v1 de un replay v2 (lanza si no se puede armar); `readReplay` la valida entera. */
-function expandCompactReplay(value: unknown, marks: unknown): unknown {
+function expandCompactReplay(value: unknown, marks: unknown, extra: unknown): unknown {
   const raw = (item: unknown) => item
   const [savedAt, mode, view, players, starter, rawTable, mats, shown, rawSteps, rawReveals, life, names, rawResult, hidden, rawChain, ...rest] = list(value, 15, raw)
   if (rest.length > 0) invalid()
@@ -288,7 +288,7 @@ function expandCompactReplay(value: unknown, marks: unknown): unknown {
     const [at, ...flat] = list(item, MAX_REVEAL * 2 + 1, raw)
     steps[readInt(at, 0, steps.length - 1)]!.push(pairs(flat, MAX_REVEAL))
   }
-  if (marks !== undefined) applyMarks(marks, steps.map((item) => item[1]))
+  if (marks !== undefined || extra !== undefined) applyMarks(marks, extra, steps.map((item) => item[1]))
   const cardNames = list(names, MAX_CARDS, raw)
   const [winner, reason] = rawResult === null ? [] : list(rawResult, 2, raw)
 
@@ -312,9 +312,9 @@ function expandCompactReplay(value: unknown, marks: unknown): unknown {
   }
 }
 
-function readCompactReplay(value: unknown, marks: unknown): DuelReplay | null {
+function readCompactReplay(value: unknown, marks: unknown, extra: unknown): DuelReplay | null {
   try {
-    return readReplay(expandCompactReplay(value, marks))
+    return readReplay(expandCompactReplay(value, marks, extra))
   } catch {
     return null
   }

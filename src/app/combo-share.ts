@@ -155,7 +155,7 @@ export function parseComboText(text: string): ShareResult {
   if (!isRecord(value) || value.app !== APP || value.kind !== 'combo' || typeof value.v !== 'number') return { ok: false, error: 'notCombo' }
   if (value.v > DUEL_VERSION) return { ok: false, error: 'newer' }
   if (value.v !== COMBO_SHARE_VERSION && value.v !== COMPACT_VERSION && value.v !== NOTES_VERSION && value.v !== DUEL_VERSION) return { ok: false, error: 'broken' }
-  const combo = value.v === COMBO_SHARE_VERSION ? readCombo(value.combo) : readCompact(value.c, value.v, value.m)
+  const combo = value.v === COMBO_SHARE_VERSION ? readCombo(value.combo) : readCompact(value.c, value.v, value.m, value.x)
   return combo ? { ok: true, combo } : { ok: false, error: 'broken' }
 }
 
@@ -419,8 +419,8 @@ function readCombo(value: unknown): SharedCombo | null {
  *
  * v4 suma lo de «Jugar solo automático»: `c: [..., auto | null, notas | null, rival | null, cadena | null]`. Se escribe **sólo si hay rival o cadena** (`expandCompact`).
  *
- * `m`, al lado de `c` (no adentro: no cambia la versión), dice que las marcas de las jugadas son seguras (`sure`) y las lleva (`marksOf`). Una versión de la app que no la conoce
- * ignora la clave y abre el combo como antes, sin las marcas (sin escena de Péndulo: nunca una falsa).
+ * `m` y `x`, al lado de `c` (no adentro: no cambia la versión), dicen que las marcas de las jugadas son seguras (`sure`) y las llevan (`marksOf`, con su regla). Una versión de la
+ * app que no conoce una clave la ignora y abre el combo como antes, sin esas marcas (sin escena de Péndulo: nunca una falsa).
  */
 const COMPACT_VERSION = 2
 const NOTES_VERSION = 3
@@ -516,7 +516,7 @@ export const readCompactTime = (value: unknown): unknown => (typeof value === 'n
 /** El sobre v2 (v3 con notas; v4 con el rival o la cadena), listo para JSON. */
 export function compactEnvelope(combo: SavedCombo | SharedCombo) {
   const envelope = compactCombo(combo)
-  return combo.sure ? { ...envelope, m: marksOf(combo.actions) } : envelope
+  return combo.sure ? { ...envelope, ...marksOf(combo.actions, combo.theirs?.steps.map(([, action]) => action)) } : envelope
 }
 
 function compactCombo({ name, deckName, savedAt, initial, actions, auto, notes, theirs, chain }: SavedCombo | SharedCombo) {
@@ -608,7 +608,7 @@ export function compactReader(rawTable: unknown) {
  * La forma v1 de un combo v2, v3 o v4 (lanza si no se puede armar); `readCombo` la valida entera. v3 trae las notas (y `auto`, `true` o `null`); v2, a lo sumo `auto`; v4, además,
  * el rival (`[mesa, reveladas, jugadas como [at, ...la del combo], reveladas por jugada]`, como el replay de un duelo) y la cadena (`chainTuple`), cada uno o `null`.
  */
-function expandCompact(value: unknown, v: number, marks: unknown): unknown {
+function expandCompact(value: unknown, v: number, marks: unknown, extra: unknown): unknown {
   const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto, notes, rawTheirs, rawChain, ...rest] = list(value, v === DUEL_VERSION ? 10 : v === NOTES_VERSION ? 8 : 7)
   if ((v >= NOTES_VERSION && notes === undefined) || (v === DUEL_VERSION && rawChain === undefined) || rest.length > 0) fail()
   const read = compactReader(rawTable)
@@ -617,6 +617,7 @@ function expandCompact(value: unknown, v: number, marks: unknown): unknown {
     return items.length % 2 === 0 ? Object.fromEntries(items.flatMap((item, n) => (n % 2 === 0 ? [[item, items[n + 1]!]] : []))) : fail()
   }
   let theirs: unknown
+  let theirActions: unknown[] = []
   if (rawTheirs !== null && rawTheirs !== undefined) {
     const [mat, shown, plays, reveals, ...more] = list(rawTheirs, 4)
     if (more.length > 0) fail()
@@ -629,9 +630,10 @@ function expandCompact(value: unknown, v: number, marks: unknown): unknown {
       steps[int(n, 0, steps.length - 1)]!.push(pairs(flat, 60))
     }
     theirs = { initial: read.mat(mat), reveal: pairs(shown, MAX_REVEAL), steps }
+    theirActions = steps.map((step) => step[1])
   }
   const actions = list(rawActions, MAX_ACTIONS).map(read.action)
-  if (marks !== undefined) applyMarks(marks, actions)
+  if (marks !== undefined || extra !== undefined) applyMarks(marks, extra, actions, theirActions)
   return {
     name,
     deckName,
@@ -647,43 +649,55 @@ function expandCompact(value: unknown, v: number, marks: unknown): unknown {
   }
 }
 
-function readCompact(value: unknown, v: number, marks: unknown): SharedCombo | null {
+function readCompact(value: unknown, v: number, marks: unknown, extra: unknown): SharedCombo | null {
   try {
-    return readCombo(expandCompact(value, v, marks))
+    return readCombo(expandCompact(value, v, marks, extra))
   } catch {
     return null
   }
 }
 
 /**
- * Las marcas del núcleo de lo grabado, para `m` (combo y replay): `[sacrificios, más, destruidas]`, los índices en orden de las jugadas con `tribute` (`move` o `place`), con `more`
- * (`place` por Péndulo) y con `destroyed` (`move`); las listas vacías del final no van (`[]`: seguras, sin marcas). Sólo las de primer nivel: el núcleo no las pone dentro de un lote.
+ * Las marcas de lo grabado (combo y replay), en dos claves al lado de los datos, cada una con los índices en orden de las jugadas que la llevan (sólo las de primer nivel: el núcleo no
+ * las pone dentro de un lote):
+ * - `m: [sacrificios, más]`: `tribute` (`move` o `place`) y `more` (`place` por Péndulo); las listas vacías del final no van (`[]`: seguras, sin marcas).
+ * - `x: { d?, rt?, rm?, rd? }`: `destroyed` (`move`) y, en un combo, las del rival (`theirs.steps`): `tribute`, `more` y `destroyed`. Sólo las claves con algo; sin ninguna, no va.
+ * **Regla:** una marca nueva nunca se suma a una lista que un lector publicado valida con tope (el de TI-315 rechaza `m` con más de 2 listas; uno de TI-324 escribió una tercera, las
+ * destruidas, que todavía se lee); va en una clave propia de `x`, que un lector ignora si no la conoce (de `x` se leen sólo las claves conocidas, y cada una se valida entera).
  */
-export function marksOf(actions: readonly MatAction[]): number[][] {
-  const marks = [
-    actions.flatMap((item, n) => ((item.type === 'move' || item.type === 'place') && item.tribute ? [n] : [])),
-    actions.flatMap((item, n) => (item.type === 'place' && item.more ? [n] : [])),
-    actions.flatMap((item, n) => (item.type === 'move' && item.destroyed ? [n] : [])),
-  ]
-  while (marks.length > 0 && marks.at(-1)!.length === 0) marks.pop()
-  return marks
+export function marksOf(actions: readonly MatAction[], theirs: readonly MatAction[] = []): { m: number[][]; x?: Record<string, number[]> } {
+  const where = (items: readonly MatAction[], test: (item: MatAction) => boolean) => items.flatMap((item, n) => (test(item) ? [n] : []))
+  const tribute = (item: MatAction) => (item.type === 'move' || item.type === 'place') && item.tribute === true
+  const more = (item: MatAction) => item.type === 'place' && item.more === true
+  const destroyed = (item: MatAction) => item.type === 'move' && item.destroyed === true
+  const m = [where(actions, tribute), where(actions, more)]
+  while (m.length > 0 && m.at(-1)!.length === 0) m.pop()
+  const x = Object.fromEntries(Object.entries({ d: where(actions, destroyed), rt: where(theirs, tribute), rm: where(theirs, more), rd: where(theirs, destroyed) }).filter(([, list]) => list.length > 0))
+  return Object.keys(x).length > 0 ? { m, x } : { m }
 }
 
-/** Lo inverso de `marksOf`: las pone en las jugadas de la forma larga, que después se validan enteras. Lanza si un índice no es de una jugada que exista, en orden, y que acepte la marca. */
-export function applyMarks(value: unknown, actions: readonly unknown[]): void {
+/**
+ * Lo inverso de `marksOf`: pone las marcas en las jugadas de la forma larga, que después se validan enteras. `x` sin `m` no vale; `m` con tres listas (los enlaces de TI-324: la
+ * tercera, las destruidas) se sigue leyendo, pero no junto con `x.d`. Lanza si un índice no es de una jugada que exista, en orden, y que acepte la marca.
+ */
+export function applyMarks(value: unknown, extra: unknown, actions: readonly unknown[], theirs: readonly unknown[] = []): void {
   const [tributes, more, destroyed] = list(value, 3)
-  const mark = (indices: unknown, key: 'tribute' | 'more' | 'destroyed', types: readonly string[]) => {
+  const x = extra === undefined ? {} : rec(extra)
+  if (destroyed !== undefined && x.d !== undefined) fail()
+  const mark = (items: readonly unknown[], indices: unknown, key: 'tribute' | 'more' | 'destroyed', types: readonly string[]) => {
     let last = -1
-    for (const raw of indices === undefined ? [] : list(indices, actions.length)) {
-      last = int(raw, last + 1, actions.length - 1)
-      const action = rec(actions[last])
+    for (const raw of indices === undefined ? [] : list(indices, items.length)) {
+      last = int(raw, last + 1, items.length - 1)
+      const action = rec(items[last])
       if (!types.includes(action.type as string)) fail()
       action[key] = true
     }
   }
-  mark(tributes, 'tribute', ['move', 'place'])
-  mark(more, 'more', ['place'])
-  mark(destroyed, 'destroyed', ['move'])
+  for (const [items, t, p, d] of [[actions, tributes, more, destroyed ?? x.d], [theirs, x.rt, x.rm, x.rd]] as const) {
+    mark(items, t, 'tribute', ['move', 'place'])
+    mark(items, p, 'more', ['place'])
+    mark(items, d, 'destroyed', ['move'])
+  }
 }
 
 /** Lo mismo para otro sobre (el replay de un duelo): una mesa y una jugada se validan igual. Cada lector lanza (`TypeError`) y quien llama lo ataja. */

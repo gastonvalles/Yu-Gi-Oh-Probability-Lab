@@ -470,4 +470,40 @@ describe('las marcas del núcleo (`sure` y `m`)', () => {
     const at = (n: number, change: object) => ({ ...plain, steps: plain.steps.map((step, i) => (i === n ? [step[0], { ...step[1], ...change }] : step)) })
     for (const hostile of [{ ...plain, sure: 'yes' }, { ...plain, sure: false }, at(2, { tribute: 1 }), at(3, { tribute: false }), at(4, { more: 'true' }), at(3, { more: true })]) expect(parseReplayText(text(hostile))).toEqual({ ok: false, error: 'broken' })
   })
+
+  describe('la destruida va en `x` (los lectores de TI-315 no aceptan una tercera lista en `m`)', () => {
+    // Una destruida de cada lado (la del rival, en sus pasos: el replay no tiene lista aparte).
+    const destroyed = {
+      ...buildDuelReplay({
+        ...input,
+        mine: { initial: mine, actions: [{ type: 'phase', phase: 'main1' }, { type: 'place', id: p0, zone: 'mz', index: 0, pos: 'atk', how: 'normal' }, { type: 'move', id: p0, to: 'gy', tribute: true, destroyed: true }] },
+        theirs: { initial: theirs, acts: [{ action: { type: 'place', id: 'c6', zone: 'mz', index: 0, pos: 'atk', how: 'normal' }, reveal: {} }, { action: { type: 'move', id: 'c6', to: 'gy', destroyed: true }, reveal: {} }] },
+        order: ['mine', 'mine', 'mine', 'theirs', 'theirs'],
+        life: [{ at: 0, lp: [8000, 8000] }],
+      }),
+      sure: true as const,
+    }
+    const envelope = compactReplayEnvelope(destroyed) as Record<string, unknown>
+    /** El lector de TI-315 (`git show 18508d9ce`), reconstruido en lo que cambia: del sobre, `app`, `kind`, `v`, `d` y `m`, con `m` de hasta 2 listas (más: `broken`). */
+    const ti315 = (value: Record<string, unknown>): ReturnType<typeof parseReplayText> =>
+      value.m !== undefined && !(Array.isArray(value.m) && value.m.length <= 2) ? { ok: false, error: 'broken' } : parseReplayText(JSON.stringify({ app: value.app, kind: value.kind, v: value.v, d: value.d, m: value.m }))
+    const count = (read: ReturnType<typeof parseReplayText>) => (read.ok ? JSON.stringify(read.replay.steps).match(/destroyed|tribute/g)?.length ?? 0 : -1)
+
+    it('`m` lleva el Sacrificio y `x.d` las destruidas de los dos lados; vuelve igual; TI-315 lo abre sin ellas; uno de TI-324 (tres listas) abre hoy', async () => {
+      expect(envelope).toMatchObject({ m: [[2]], x: { d: [2, 4] } })
+      expect(await decodeReplayPayload(await encodeReplayLinkPayload(destroyed))).toEqual({ ok: true, replay: { ...destroyed, cards: {} } })
+      expect(count(parseReplayText(JSON.stringify(envelope)))).toBe(3)
+      expect(count(ti315(envelope))).toBe(1)
+
+      const { x: _, ...rest } = envelope
+      const ofTi324 = { ...rest, m: [[2], [], [2, 4]] }
+      expect(ti315(ofTi324)).toEqual({ ok: false, error: 'broken' })
+      expect(count(parseReplayText(JSON.stringify(ofTi324)))).toBe(3)
+    })
+
+    it('`x` mal formado se rechaza entero; las listas del rival de un combo no valen en un replay', () => {
+      for (const x of ['x', [], { d: [1] }, { d: [4, 2] }, { d: [9] }, { rt: [0] }, { rd: [] , d: 'x' }]) expect(parseReplayText(JSON.stringify({ ...envelope, x })), JSON.stringify(x)).toEqual({ ok: false, error: 'broken' })
+      expect(parseReplayText(JSON.stringify({ ...envelope, m: [[2], [], [2]] }))).toEqual({ ok: false, error: 'broken' })
+    })
+  })
 })
