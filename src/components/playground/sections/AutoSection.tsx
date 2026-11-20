@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import type { AskWhyView } from '../../../app/auto/ask-why'
 import { ELFNOTE, ELFNOTE_DECK, SKY_STRIKER_DECK } from '../../../app/bot-deck-lists'
 import { DuelRailsContext } from '../../../app/duel-rails'
+import { buildLoanerDecks, loanerPasscodes, pickLoaner, type LoanerDeck } from '../../../app/loaner-deck'
 import { BOT_DECK_MENU, DEFAULT_HANDTRAP_CONFIG, rivalKindOf, withRival, type BotDeckInfo } from '../../../app/handtraps'
 import { PHASES } from '../../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
@@ -25,6 +26,8 @@ import { TheirHand } from '../../duel/DuelTable'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { BotDeckEditor } from '../../duel/BotDeckEditor'
 import { BotDeckSheet } from '../../duel/BotDeckSheet'
+import { LoanerSheet, PlayDeckRow } from '../../duel/LoanerSheet'
+import type { Loaners } from '../../duel/use-loaners'
 import { SoloScreen } from '../../duel/SoloScreen'
 import { LifeBadge } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
@@ -181,6 +184,7 @@ export function AutoSection() {
       <RivalSample />
       <BotDeckSample />
       <BotDeckEditorSample />
+      <LoanerSample />
       <Specimen title="Solo · la lista de rivales, la ficha y la barra" layout="column" note={<>La pantalla Solo de verdad (lo que se toca se guarda como en la app): arriba «Probá tu combo» (Handtraps, con sus cartas como arte y, en el celular y elegido, sus cartas y «Elegir…» debajo, y Pasivo) y los bots debajo; en escritorio, la lista (430 px) y la ficha lado a lado con «Jugar contra X»; en el celular (achicá la ventana), la lista y la barra pegada sobre la de navegación, con lo elegido a la izquierda (abre la ficha en una hoja) y «Jugar». Cada ajuste va en su fila: un solo segmentado (Quién empieza) y el resto interruptores. Archivo: <Tag>duel/SoloScreen.tsx</Tag></>}>
         <div className="overflow-hidden rounded-card border border-border-subtle">
           <SoloScreen deckName="Mi deck" deckSize={40} minDeck={5} onOpenBuilder={() => {}} onPlay={() => {}} />
@@ -264,6 +268,49 @@ function BotDeckSample() {
           }
         />
       ))}
+    </Specimen>
+  )
+}
+
+/** Los prestados sin red: las cartas de mentira de «Ver mazo» con sus passcodes (así valen en TCG por las banlists del sitio). */
+const SAMPLE_LOANERS = buildLoanerDecks(loanerPasscodes().map(sampleDeckCard))
+type LoanerCase = 'ready' | 'partial' | 'loading' | 'error' | 'rival'
+
+function LoanerSample() {
+  const [open, setOpen] = useState<LoanerCase | null>(null)
+  const [chosen, setChosen] = useState('')
+  const loaners: Loaners = { status: open === 'loading' ? 'loading' : open === 'error' ? 'error' : 'ready', decks: open === 'loading' || open === 'error' ? [] : SAMPLE_LOANERS, retry: () => {} }
+  const blocked = open === 'rival' ? (deck: LoanerDeck) => (deck.list.id === 'sky-striker' ? t('duel.loaner.rival') : null) : undefined
+  const loan = pickLoaner(loaners.decks, chosen, (deck) => !blocked?.(deck))
+  const cases: [LoanerCase, string][] = [['ready', 'Sin deck'], ['partial', 'Deck a medias'], ['rival', 'Solo contra Sky Striker'], ['loading', 'Cargando'], ['error', 'Sin red']]
+
+  return (
+    <Specimen title="¿Con qué mazo jugás? · el mazo prestado" layout="column" note={<>Sin un deck propio completo, Online y Solo juegan con un mazo de los bots: la fila «Tu deck» (<Tag>PlayDeckRow</Tag>) lleva su carta, el chip «Prestado» y «Sky Striker · 40», y «Cambiar» abre esta hoja. Arriba, «Listos para jugar» (un <Tag>radiogroup</Tag> de <Tag>ListRow</Tag> <Tag>choice</Tag>, apagado y con el porqué el que no se puede: no vale en el formato, es el del rival); abajo, «El tuyo», que va al builder y, con un deck a medias, dice cuántas le faltan (una pista, no un error). Elegir se recuerda; jugar es el botón de abajo. Archivo: <Tag>duel/LoanerSheet.tsx</Tag></>}>
+      <div className="grid gap-3 rounded-panel border border-nav-raised bg-nav p-4">
+        <PlayDeckRow name={loan ? `${loan.list.name} · ${loan.mainIds.length}` : t('duel.play.deckNone')} loan={loan} popup onChange={() => setOpen('ready')} />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {cases.map(([key, label]) => (
+          <Button key={key} variant="secondary" size="sm" aria-haspopup="dialog" onClick={() => setOpen(key)}>
+            {label}
+          </Button>
+        ))}
+      </div>
+      <LoanerSheet
+        isOpen={open !== null}
+        onClose={() => setOpen(null)}
+        loaners={loaners}
+        current={loan?.list.id ?? null}
+        {...(blocked ? { blocked } : {})}
+        onPick={setChosen}
+        own={open === 'partial' ? 20 : 0}
+        onOpenBuilder={() => setOpen(null)}
+        footer={
+          <Button variant="primary" color="success" icon="play" fullWidth disabled={!loan} onClick={() => setOpen(null)}>
+            {loan ? t('duel.loaner.play', { name: loan.list.name }) : t('duel.play.now')}
+          </Button>
+        }
+      />
     </Specimen>
   )
 }
