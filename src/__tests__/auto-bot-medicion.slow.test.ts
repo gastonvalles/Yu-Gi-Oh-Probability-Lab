@@ -11,7 +11,8 @@ import { copyIds } from '../app/auto/adapter'
 import { ANGELECHY as A } from '../app/bot-deck-lists'
 import { autoRival, DOMINUS_LOCKS } from '../app/handtraps'
 import { createMatState, matReducer, mulberry32 } from '../app/practice-mat'
-import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { turnBot } from '../app/auto/bot/turn'
+import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
 /**
  * La vara de los tres bots (lento, a mano: `npm run test:auto -- src/__tests__/auto-bot-medicion.slow.test.ts`; `BOT_HANDS` manos por bot, 30 si no se dice). Cada bot empieza, con
@@ -23,7 +24,10 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStor
  * - **Contra otro bot** (`RIVAL_OF`: el otro mazo juega el asiento de la persona con su ejecutor y la vista de ese asiento, sin historial): **gana** o **pierde**, los **candados**
  *   que se puso él mismo (una Dominus activada desde la mano: le prohíbe Atributos el resto del duelo) y los **regalos** (monstruos de su Extra Deck en tu campo: Opposition).
  * No falla por los números (es la tabla de antes y después de un cambio en los bots): sólo por una respuesta que el núcleo rechaza. Escribe `bot-medicion.json` en CORE_DATA_DIR.
+ * El cuarto, `generico`, es el rival de «El rival juega su turno» (`turnBot`, sin ejecutor) con una lista fija de `slow-decklists.json`: Phantom Knights (`GENERIC_LIST`), con 13
+ * monstruos de Nivel 3 o 4 que Invoca de modo Normal y un Extra Deck de Xyz y Enlaces que salen de ellos (el de cualquier mazo que no tiene ejecutor).
  */
+const GENERIC_LIST = '735410'
 
 const HANDS = Number(process.env.BOT_HANDS ?? 30)
 /** `BOT_LOG=<mazo>:<semilla>` (o `<mazo>:<semilla>:vs`, contra otro bot): escribe cada pregunta del bot en ese duelo, con lo que ofrece el núcleo y lo que contestó. */
@@ -36,7 +40,7 @@ const LAST_TURN = 9
 const IDLE_OFFERS = ['summons', 'special_summons', 'activates'] as const
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
 /** El rival de cada bot en la mesa contra otro bot (nunca el mismo mazo: los regalos se cuentan por código). */
-const RIVAL_OF: Record<string, string> = { 'sky-striker': 'elfnote', angelechy: 'elfnote', elfnote: 'sky-striker' }
+const RIVAL_OF: Record<string, string> = { 'sky-striker': 'elfnote', angelechy: 'elfnote', elfnote: 'sky-striker', generico: 'elfnote' }
 
 const settled = (session: AutoSession) =>
   new Promise<AutoSnapshot>((resolve) => {
@@ -65,7 +69,15 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
   const facts = (code: number) => cards.get(code)
   const aliasOf = (code: number) => cards.get(code)?.alias ?? 0
   const attributeOf = (code: number) => cards.get(code)?.attribute ?? 0
-  const deckOf = (id: string) => BOT_DECKS.find((deck) => deck.id === id)!
+  const listed = hasCoreData ? slowDecklists()[GENERIC_LIST] : undefined
+  const generic = { main: [...(listed?.main ?? [])], extra: [...(listed?.extra ?? [])] }
+  const DECKS = [
+    ...BOT_DECKS.map(({ id, list, bot }) => ({ id, list: { main: list.main, extra: list.extra }, bot })),
+    { id: 'generico', list: generic, bot: (f: typeof facts, a: typeof aliasOf, at: typeof attributeOf) => turnBot(generic.main.map(([code]) => code), [], a, at, f) },
+  ]
+  const deckOf = (id: string) => DECKS.find((deck) => deck.id === id)!
+  /** El rival de la sesión: el bot con su lista, o el genérico con la suya y su turno. */
+  const rivalOf = (id: string) => (id === 'generico' ? { main: [...generic.main], extra: [...generic.extra], hand: () => [], ownTurn: true } : autoRival({ enabled: false, picks: [], hand: 3, botDeck: id }))
   /** Lo que se ofrecía en una pregunta, por nombre (para el registro). */
   const offeredOf = (ask: CoreAsk) =>
     ask.type === 'select_card' || ask.type === 'select_chain'
@@ -135,7 +147,7 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
       botSeed: seed,
       seat: 1,
       transport: localTransport({ wasmBinary: wasm }, (made) => void (host = made)),
-      rival: autoRival({ enabled: false, picks: [], hand: 3, botDeck: deckId }),
+      rival: rivalOf(deckId),
       bot,
       onEvent: (event) => {
         if (event.t === 'fault') faults.push(`${event.kind}: ${event.message.slice(0, 160)}`)
@@ -211,7 +223,7 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
   }
   const count = (list: string[]) => Object.fromEntries(Object.entries(list.reduce<Record<string, number>>((out, item) => ({ ...out, [item]: (out[item] ?? 0) + 1 }), {})).sort((x, y) => y[1] - x[1]))
 
-  it.each(BOT_DECKS.filter((deck) => !ONLY || deck.id === ONLY).map((deck) => [deck.id] as const))(`%s: ${HANDS} manos contra el pasivo y ${HANDS} contra otro bot`, { timeout: 60 * 60 * 1000 }, async (deckId) => {
+  it.each(DECKS.filter((deck) => !ONLY || deck.id === ONLY).map((deck) => [deck.id] as const))(`%s: ${HANDS} manos contra el pasivo y ${HANDS} contra otro bot`, { timeout: 60 * 60 * 1000 }, async (deckId) => {
     const hands: Awaited<ReturnType<typeof duel>>[] = []
     const versus: Awaited<ReturnType<typeof duel>>[] = []
 
