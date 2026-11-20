@@ -70,8 +70,10 @@ test('Online: dos visitantes sin deck, de «Jugar ahora» a la primera jugada en
 
   await expect(hand(ana)).toHaveCount(5, CORE)
   await expect(rivalHand(beto)).toHaveAccessibleName('Mano del rival: 5', CORE)
+  // La primera jugada posible: el turno es de Ana y el núcleo espera lo que haga. Con un mazo de verdad puede ser ya en la Draw Phase (le ofrece una Mágica Rápida de la mano),
+  // no recién en la Main Phase 1 como con el deck de normales de los otros E2E.
   await expect(phaseChip(ana)).toBeEnabled(CORE)
-  await expect(phaseChip(ana)).toHaveAccessibleName('Fases: Main Phase 1', CORE)
+  await expect(phaseChip(ana)).toHaveAccessibleName(/^Fases: (Draw|Standby|Main) Phase/, CORE)
   const seconds = (Date.now() - start) / 1000
   console.log(`visitante-nuevo online: ${seconds.toFixed(1)} s y ${taps} toques entre los dos (Ana: 6, Beto: 4)`)
   await shot(ana, 'visitante-online-mesa')
