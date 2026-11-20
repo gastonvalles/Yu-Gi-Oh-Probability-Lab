@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-1-combos-con-el-rival",
+      "date": "2026-11-20",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Los combos compartidos muestran lo del rival, y los enlaces abren en todas las versiones",
+        "novedades": [
+          "Al repasar un combo que incluye al rival, sus jugadas ahora salen con sus vuelos y sus escenas: el Sacrificio, la carta destruida y, si el combo es de los nuevos, el Péndulo.",
+          "Eso también viaja en el enlace cuando compartís el combo."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Un replay o un combo nuevo con cartas destruidas no abría en un navegador que tuviera guardada la versión anterior de la página. Ahora abre en todas."
+        ],
+        "ojo": [
+          "Las escenas del rival salen al avanzar de a un paso o al reproducir; si saltás, no.",
+          "Un enlace nuevo crece unos caracteres si lleva esas marcas; los que no las llevan quedan igual."
+        ]
+      },
+      "en": {
+        "title": "Shared combos show the opponent's side, and links open on every version",
+        "novedades": [
+          "When you review a combo that includes the opponent, their plays now come with their flights and scenes: the Tribute, the destroyed card and, if the combo is a new one, the Pendulum.",
+          "That also travels in the link when you share the combo."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "A new replay or combo with destroyed cards did not open in a browser that had the previous version of the page stored. Now it opens on all of them."
+        ],
+        "ojo": [
+          "The opponent's scenes show when stepping one play at a time or playing; if you jump, they do not.",
+          "A new link grows by a few characters if it carries those marks; the ones that do not stay the same."
+        ]
+      }
+    },
+    {
       "id": "2026-11-19-15-video-piezas-nuevas",
       "date": "2026-11-19",
       "tags": [

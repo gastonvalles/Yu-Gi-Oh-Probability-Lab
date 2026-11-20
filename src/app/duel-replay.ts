@@ -43,7 +43,7 @@ export interface DuelReplay {
   result?: ReplayResult
   /** Sólo el duelo automático: la cadena del núcleo, mensaje por mensaje (un replay de antes, o del duelo manual, no la trae). */
   chain?: ReplayChainStep[]
-  /** Sólo el duelo automático grabado desde que el núcleo marca el Péndulo y el Sacrificio: sus marcas son seguras (`SavedCombo.sure`, `sureMarks`). */
+  /** Sus marcas son seguras (`SavedCombo.sure`, `sureMarks`): el automático grabado desde que el núcleo las pone, o el manual con un Sacrificio o una destruida marcados (`manual-replay.ts`). */
   sure?: true
 }
 

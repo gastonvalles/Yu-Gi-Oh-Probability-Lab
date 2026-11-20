@@ -106,6 +106,20 @@ describe('el replay del duelo manual por enlace', () => {
     expect(duelReplayAt(fromHost, fromHost.steps.length).states).toEqual([...duelReplayAt(fromGuest, fromGuest.steps.length).states].reverse())
   })
 
+  it('una jugada manual con marca (un `move` destruido o sacrificado) viaja en el enlace: el replay dice `sure` sólo entonces', async () => {
+    const game = setup()
+
+    game.host.play({ type: 'phase', phase: 'main1' })
+    game.room.flush()
+    expect(replayOf(game.host, ['Ana', 'Beto'])!.sure).toBeUndefined()
+    game.host.play({ type: 'move', id: hostTable.hand[0]!, to: 'gy', tribute: true, destroyed: true })
+    game.room.flush()
+    const replay = replayOf(game.host, ['Ana', 'Beto'])!
+    expect(replay.sure).toBe(true)
+    expect(replay.steps.at(-1)![1]).toMatchObject({ type: 'move', tribute: true, destroyed: true })
+    expect(await decodeReplayPayload(await encodeReplayPayload(replay))).toEqual({ ok: true, replay })
+  })
+
   it('una jugada del rival que no llegó (estaba desconectado) corta el registro: el replay llega hasta ahí y sin resultado', () => {
     const game = setup()
 

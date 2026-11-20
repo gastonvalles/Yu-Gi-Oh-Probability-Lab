@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { comboEnvelope, compactEnvelope, decodeComboPayload, encodeComboPayload, packPayload, parseComboText, readComboLink, unpackPayload } from '../app/combo-share'
 import { createMatState, replayMat, type MatAction, type MatState } from '../app/practice-mat'
-import { createSavedCombo, migrateSavedCombo, type SavedCombo } from '../app/saved-combos'
+import { createSavedCombo, migrateSavedCombo, type ComboTheirs, type SavedCombo } from '../app/saved-combos'
 import { deckCombo, referenceCombo, withoutId } from './support/combo-fixtures'
 
 /** Un enlace v1 de verdad: el combo de referencia (45 jugadas), escrito con el código de antes de v2. Tiene que abrir siempre igual, con sus nombres. */
@@ -244,11 +244,13 @@ describe('las marcas del núcleo en un combo (`sure` y `m`)', () => {
     expect(migrateSavedCombo(marked).sure).toBe(true)
   })
 
-  it('la destruida (`destroyed`, la tercera lista de `m`) viaja y vuelve igual, y sola ya dice `sure`', async () => {
+  it('la destruida (`destroyed`) va en `x.d` (`m` sigue con dos listas), viaja y vuelve igual, y sola ya dice `sure`; un enlace de antes con la tercera lista en `m` se sigue leyendo', async () => {
     const destroyed = createSavedCombo({ name: 'x', deckName: 'Deck', initial: table, actions: [plays[0]!, plays[1]!, { type: 'move', id: a, to: 'gy', destroyed: true }], nameOf: () => 'x', auto: true }, [])
     expect(destroyed.sure).toBe(true)
-    expect(compactEnvelope(destroyed)).toMatchObject({ m: [[], [], [2]] })
+    expect(compactEnvelope(destroyed)).toMatchObject({ m: [], x: { d: [2] } })
     expect(await decodeComboPayload(await encodeComboPayload(destroyed))).toEqual({ ok: true, combo: { ...withoutId(destroyed), names: {} } })
+    const { x: _, ...before } = compactEnvelope(destroyed) as Record<string, unknown>
+    expect(parseComboText(JSON.stringify({ ...before, m: [[], [], [2]] }))).toEqual({ ok: true, combo: { ...withoutId(destroyed), names: {} } })
   })
 
   it('`m` mal formado, o `sure`, `tribute` y `more` que no son lo que dicen, se rechazan', () => {
@@ -259,5 +261,94 @@ describe('las marcas del núcleo en un combo (`sure` y `m`)', () => {
     const v1 = comboEnvelope(marked)
     const at = (n: number, change: object) => ({ ...v1, combo: { ...v1.combo, actions: v1.combo.actions.map((item, i) => (i === n ? { ...item, ...change } : item)) } })
     for (const hostile of [{ ...v1, combo: { ...v1.combo, sure: 1 } }, at(2, { tribute: 'true' }), at(4, { more: false }), at(3, { more: true })]) expect(parseComboText(JSON.stringify(hostile))).toEqual({ ok: false, error: 'broken' })
+  })
+})
+
+describe('las marcas del rival y las tres generaciones de lectores (`x`)', () => {
+  const table = createMatState(Array.from({ length: 20 }, (_, n) => `card-${1000 + n}-1`), [], 5)
+  const [a, b] = table.hand as [string, string]
+  const mine: MatAction[] = [
+    { type: 'phase', phase: 'main1' },
+    { type: 'place', id: a, zone: 'mz', index: 0, pos: 'atk', how: 'normal' },
+    { type: 'move', id: a, to: 'gy', tribute: true, destroyed: true },
+    { type: 'place', id: b, zone: 'mz', index: 0, pos: 'atk', how: 'pendulum' },
+  ]
+  // El rival (sus ids opacos): una que se sacrifica, una destruida y un Péndulo de dos, como las marca el núcleo.
+  const theirs: ComboTheirs = {
+    initial: createMatState(Array.from({ length: 10 }, (_, n) => `c${n + 1}`), [], 5),
+    reveal: {},
+    steps: [
+      [1, { type: 'place', id: 'c10', zone: 'mz', index: 0, pos: 'atk', how: 'normal' }],
+      [1, { type: 'move', id: 'c10', to: 'gy', tribute: true }],
+      [2, { type: 'place', id: 'c9', zone: 'mz', index: 1, pos: 'atk', how: 'normal', tribute: true }],
+      [2, { type: 'move', id: 'c9', to: 'gy', destroyed: true }],
+      [3, { type: 'place', id: 'c8', zone: 'mz', index: 2, pos: 'atk', how: 'pendulum', more: true }],
+      [3, { type: 'place', id: 'c7', zone: 'mz', index: 3, pos: 'atk', how: 'pendulum' }],
+    ],
+  }
+  const combo = createSavedCombo({ name: 'Con rival', deckName: 'Deck', initial: table, actions: mine, nameOf: () => 'x', auto: true, extras: { theirs } }, [])
+  const envelope = compactEnvelope(combo)
+  const json = JSON.stringify(envelope)
+  const pick = (text: string, keys: readonly string[]) => {
+    const value = JSON.parse(text) as Record<string, unknown>
+    return Object.fromEntries(keys.filter((key) => key in value).map((key) => [key, value[key]]))
+  }
+  /** (a) antes de TI-315: del sobre lee `app`, `kind`, `v` y `c`. */
+  const before315 = (text: string) => parseComboText(JSON.stringify(pick(text, ['app', 'kind', 'v', 'c'])))
+  /**
+   * (b) TI-315 (`git show 18508d9ce:src/app/combo-share.ts`), reconstruido en lo que cambia: lee también `m`, y su `applyMarks` lo tomaba con `list(value, 2)` (tres listas: el
+   * enlace entero es `broken`). El resto de su lectura es la de hoy.
+   */
+  const ti315 = (text: string): ReturnType<typeof parseComboText> => {
+    const read = pick(text, ['app', 'kind', 'v', 'c', 'm'])
+    return read.m !== undefined && !(Array.isArray(read.m) && read.m.length <= 2) ? { ok: false, error: 'broken' } : parseComboText(JSON.stringify(read))
+  }
+  /** (c) TI-324: `m` con hasta tres listas; no conoce `x`. */
+  const ti324 = (text: string) => parseComboText(JSON.stringify(pick(text, ['app', 'kind', 'v', 'c', 'm'])))
+  const marksIn = (result: ReturnType<typeof parseComboText>) => (result.ok ? JSON.stringify([result.combo.actions, result.combo.theirs?.steps]).match(/tribute|more|destroyed/g)?.length ?? 0 : -1)
+
+  it('el combo lleva las marcas del rival en `x` (`rt`, `rm`, `rd`) y vuelve igual', async () => {
+    expect(combo.sure).toBe(true)
+    expect(envelope).toMatchObject({ v: 4, m: [[2]], x: { d: [2], rt: [1, 2], rm: [4], rd: [3] } })
+    expect(await decodeComboPayload(await encodeComboPayload(combo))).toEqual({ ok: true, combo: { ...withoutId(combo), names: {} } })
+    // Sólo el rival con marcas también dice `sure`.
+    expect(createSavedCombo({ name: 'x', deckName: 'Deck', initial: table, actions: mine.slice(0, 2), nameOf: () => 'x', auto: true, extras: { theirs } }, []).sure).toBe(true)
+  })
+
+  it('un enlace nuevo abre en las tres generaciones: cada una con lo que conoce; uno de TI-324 (tres listas en `m`) abre en la de hoy', () => {
+    // Hoy, todas; TI-324 y TI-315, las de `m` (tu Sacrificio); antes de TI-315, ninguna. Las cuatro abren el combo entero.
+    expect(marksIn(parseComboText(json))).toBe(6)
+    expect(marksIn(ti324(json))).toBe(1)
+    expect(marksIn(ti315(json))).toBe(1)
+    expect(marksIn(before315(json))).toBe(0)
+    for (const read of [ti324(json), ti315(json), before315(json)]) expect(read.ok && read.combo.actions.length).toBe(mine.length)
+
+    const { x: _, ...rest } = envelope as Record<string, unknown>
+    const ofTi324 = JSON.stringify({ ...rest, m: [[2], [], [2]] })
+    expect(ti315(ofTi324)).toEqual({ ok: false, error: 'broken' })
+    expect(marksIn(parseComboText(ofTi324))).toBe(2)
+  })
+
+  it('`x` mal formado se rechaza entero; una clave que no conoce se ignora (lo que venga después)', () => {
+    const bad: unknown[] = ['x', [], null, { d: 'x' }, { d: [99] }, { d: [1] }, { d: [2, 2] }, { d: [-1] }, { rd: [9] }, { rd: [0] }, { rm: [0] }, { rt: [6] }, { rt: ['1'] }]
+    for (const x of bad) expect(parseComboText(JSON.stringify({ ...envelope, x })), JSON.stringify(x)).toEqual({ ok: false, error: 'broken' })
+    const { m: _, ...noM } = envelope as Record<string, unknown>
+    expect(parseComboText(JSON.stringify(noM))).toEqual({ ok: false, error: 'broken' })
+    expect(parseComboText(JSON.stringify({ ...envelope, m: [[2], [], [2]] }))).toEqual({ ok: false, error: 'broken' })
+    const known = (envelope as unknown as { x: object }).x
+    expect(marksIn(parseComboText(JSON.stringify({ ...envelope, x: { ...known, zz: [1] } }).replace('"zz"', '"__proto__"')))).toBe(6)
+    expect(({} as Record<string, unknown>)[0]).toBeUndefined()
+  })
+
+  it('una jugada manual con marca (un `move` destruido o sacrificado) viaja igual; lo que no usa marcas no crece', async () => {
+    const manual = createSavedCombo({ name: 'Manual', deckName: 'Deck', initial: table, actions: [mine[0]!, mine[1]!, { type: 'move', id: a, to: 'gy', tribute: true, destroyed: true }], nameOf: () => 'x' }, [])
+    expect(compactEnvelope(manual)).toMatchObject({ m: [[2]], x: { d: [2] } })
+    expect(await decodeComboPayload(await encodeComboPayload(manual))).toEqual({ ok: true, combo: { ...withoutId(manual), names: {} } })
+
+    const { sure: _, ...unsure } = combo
+    const [withMarks, without] = [await encodeComboPayload(combo), await encodeComboPayload(unsure)]
+    console.info(`combo con rival (${mine.length} + ${theirs.steps.length} jugadas): ${without.length} → ${withMarks.length} caracteres; JSON ${JSON.stringify(compactEnvelope(unsure)).length} → ${json.length}`)
+    // 6 marcas (una en `m`, cinco en `x`): unos 40 caracteres.
+    expect(withMarks.length - without.length).toBeLessThan(60)
   })
 })

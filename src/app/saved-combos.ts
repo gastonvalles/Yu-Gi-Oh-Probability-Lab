@@ -36,8 +36,8 @@ export interface SavedCombo {
 }
 
 /**
- * Si lo grabado tiene algo que dependa de las marcas (una Invocación por Péndulo, también en un lote, o un Sacrificio marcado): sólo entonces se dice `sure` (y el enlace lleva
- * `m`, `combo-share.ts`); sin nada de eso, da igual, y el enlace no crece.
+ * Si lo grabado tiene algo que dependa de las marcas (una Invocación por Péndulo, también en un lote, o un Sacrificio o una destruida marcados, del núcleo o de la mesa manual): sólo
+ * entonces se dice `sure` (y el enlace lleva `m` y `x`, `combo-share.ts`); sin nada de eso, da igual, y el enlace no crece.
  */
 export const sureMarks = (actions: readonly MatAction[]): boolean =>
   actions.some((item) => (item.type === 'batch' ? sureMarks(item.actions) : item.type === 'place' ? item.how === 'pendulum' || item.tribute === true : item.type === 'move' && (item.tribute === true || item.destroyed === true)))
@@ -321,6 +321,7 @@ export function createSavedCombo({ name, deckName, initial, actions, nameOf, aut
     ...(auto ? { auto: true as const } : {}),
     ...(theirs ? { theirs: structuredClone(theirs) } : {}),
     ...(chain?.length ? { chain: structuredClone(chain) } : {}),
-    ...(sureMarks(actions) ? { sure: true as const } : {}),
+    // También por las marcas del rival (`theirs`): sin `sure` el enlace no las lleva.
+    ...(sureMarks([...actions, ...(theirs?.steps.map(([, action]) => action) ?? [])]) ? { sure: true as const } : {}),
   }
 }

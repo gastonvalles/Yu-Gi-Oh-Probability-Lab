@@ -9,13 +9,16 @@ import type { ChainStep } from '../app/auto/chain-feed'
 import { decodeComboPayload, encodeComboPayload, type SharedCombo } from '../app/combo-share'
 import type { WireAct } from '../app/mat-public'
 import { createMatState, type MatAction } from '../app/practice-mat'
-import { createSavedCombo } from '../app/saved-combos'
+import { impactOn } from '../app/field-impact'
+import { createSavedCombo, type ComboTheirs } from '../app/saved-combos'
 import { useMatSession } from '../app/use-mat-session'
 import { PracticeMat } from '../components/probability/PracticeMat'
 import { render } from './support/practice-mat-harness'
 
 // Un combo de «Jugar solo automático» contra el bot pasivo (el de `combo-rival-chain.test.ts`): invoco h0, le doy h1 (el rival lo toma en su zona 3) y activo h2, una cadena de un eslabón.
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
+// El anillo de una llegada dibuja con la Web Animations API (jsdom no la tiene): se mira con qué casilla y qué tipo se llama.
+vi.mock('../app/field-impact', async (original) => ({ ...(await original<typeof import('../app/field-impact')>()), impactOn: vi.fn() }))
 
 const deck = Array.from({ length: 20 }, (_, i) => `card-${[14558127, 23434538, 55144522, 83764718, 73642296][i % 5]}-${Math.floor(i / 5) + 1}`)
 const opening = createMatState(deck, [], 0)
@@ -71,6 +74,7 @@ const field = () => screen.getByLabelText('Campo')
 
 beforeEach(() => {
   localStorage.clear()
+  vi.mocked(impactOn).mockClear()
   window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
 afterEach(() => vi.useRealTimers())
@@ -96,6 +100,32 @@ describe('un combo compartido con el campo del rival y la cadena, en la mesa man
     expect(document.querySelector('[data-chain-card]')).not.toBeNull()
     for (let i = 0; i < 10 && !document.querySelector('[data-chain-medal]'); i += 1) act(() => vi.advanceTimersByTime(500))
     expect(document.querySelector('[data-chain-medal]')).not.toBeNull()
+  })
+
+  it('las jugadas del rival que trae el enlace, con sus marcas, salen con su escena al avanzar un paso (un Sacrificio: su anillo rojo en su casilla); saltar no la trae', async () => {
+    // El rival invoca por Sacrificio después de tu primera jugada y otra vez después de la tercera (las marcas viajan en `x.rt`).
+    const theirs: ComboTheirs = {
+      initial: createMatState(Array.from({ length: 10 }, (_, i) => `c${i + 1}`), [], 5),
+      reveal: {},
+      steps: [
+        [1, { type: 'place', id: 'c10', zone: 'mz', index: 0, pos: 'atk', how: 'normal', tribute: true }],
+        [3, { type: 'place', id: 'c9', zone: 'mz', index: 1, pos: 'atk', how: 'normal', tribute: true }],
+      ],
+    }
+    const saved = createSavedCombo({ name: 'Sacrificio del rival', deckName: 'Prueba', initial: { ...opening, hand: [...hand] }, actions: mineActions.slice(1, 6), nameOf: (id) => `Carta ${id}`, auto: true, extras: { theirs } }, [])
+    const read = await decodeComboPayload(await encodeComboPayload(saved))
+    if (!read.ok) throw new Error(read.error)
+    expect(read.combo.theirs?.steps[0]![1]).toMatchObject({ tribute: true })
+    render(<Opened combo={read.combo} />)
+    const onRival = (id: string) => vi.mocked(impactOn).mock.calls.filter(([cell]) => cell?.querySelector(`[data-rival-card-id="${id}"]`))
+
+    act(() => seekTo(1))
+    expect(onRival('c10')).toHaveLength(1)
+    expect(onRival('c10')[0]![4]).toBe('tribute')
+    // Saltar dos pasos (llega con la línea de tiempo): nada.
+    act(() => seekTo(3))
+    expect(document.querySelector('[data-rival-card-id="c9"]')).not.toBeNull()
+    expect(onRival('c9')).toHaveLength(0)
   })
 
   it('uno sin rival ni cadena se ve como siempre: la mitad propia y la mascota', async () => {
