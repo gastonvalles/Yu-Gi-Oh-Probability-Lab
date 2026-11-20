@@ -4,7 +4,7 @@
 ["LOB-EN002","Common","Unlimited",0.2,486042,76184692,"Hitotsu-Me Giant"],
 ["LOB-EN003","Super Rare","Unlimited",9.1,486043,45231177,"Flame Swordsman"],
 ["LOB-EN004","Common","Unlimited",0.51,486044,32274490,"Skull Servant"],
-["LOB-EN005","Ultra Rare","Unlimited",26.92,486055,46986414,"Dark Magician"],
+["LOB-EN005","Ultra Rare","Unlimited",27.19,486055,46986414,"Dark Magician"],
 ["LOB-EN006","Ultra Rare","Unlimited",13.87,486045,6368038,"Gaia The Fierce Knight"],
 ["LOB-EN007","Super Rare","Unlimited",4.29,486046,91152256,"Celtic Guardian"],
 ["LOB-EN008","Common","Unlimited",0.16,486047,89091579,"Basic Insect"],
@@ -65,7 +65,7 @@
 ["LOB-EN063","Common","Unlimited",0.21,486133,72842870,"Tyhone"],
 ["LOB-EN064","Common","Unlimited",0.12,486136,32452818,"Beaver Warrior"],
 ["LOB-EN065","Rare","Unlimited",0.22,486137,82542267,"Gravedigger Ghoul"],
-["LOB-EN066","Super Rare","Unlimited",3.1,486139,28279543,"Curse of Dragon"],
+["LOB-EN066","Super Rare","Unlimited",3.07,486139,28279543,"Curse of Dragon"],
 ["LOB-EN067","Rare","Unlimited",0.48,486140,54541900,"Karbonala Warrior"],
 ["LOB-EN068","Rare","Unlimited",0.37,486141,13039848,"Giant Soldier of Stone"],
 ["LOB-EN069","Common","Unlimited",0.2,486143,1784619,"Uraby"],
@@ -124,5 +124,5 @@
 ["LOB-EN122","Ultra Rare","Unlimited",22.17,486200,70903634,"Right Arm of the Forbidden One"],
 ["LOB-EN123","Ultra Rare","Unlimited",19.38,486201,7902349,"Left Arm of the Forbidden One"],
 ["LOB-EN124","Ultra Rare","Unlimited",17.55,486202,33396948,"Exodia the Forbidden One"],
-["LOB-EN125","Secret Rare","Unlimited",3.62,486203,66889139,"Gaia the Dragon Champion"]
+["LOB-EN125","Secret Rare","Unlimited",3.56,486203,66889139,"Gaia the Dragon Champion"]
 ]

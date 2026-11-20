@@ -39,7 +39,7 @@
 ["SP14-EN019","Starfoil Rare","1st Edition",0.63,79865,57036718,"Zubaba Buster"],
 ["SP14-EN020","Common","1st Edition",0.31,79868,29455728,"Twin Photon Lizard"],
 ["SP14-EN020","Starfoil Rare","1st Edition",0.47,79869,29455728,"Twin Photon Lizard"],
-["SP14-EN021","Common","1st Edition",2.29,79874,698785,"Thunder End Dragon"],
+["SP14-EN021","Common","1st Edition",2.25,79874,698785,"Thunder End Dragon"],
 ["SP14-EN021","Starfoil Rare","1st Edition",1.48,79875,698785,"Thunder End Dragon"],
 ["SP14-EN022","Common","1st Edition",0.48,79878,56840427,"Number C39: Utopia Ray"],
 ["SP14-EN022","Starfoil Rare","1st Edition",0.88,79879,56840427,"Number C39: Utopia Ray"],
@@ -51,7 +51,7 @@
 ["SP14-EN025","Starfoil Rare","1st Edition",4.14,79890,28150174,"Photon Papilloperative"],
 ["SP14-EN026","Common","1st Edition",2.17,79893,64554883,"Number 25: Force Focus"],
 ["SP14-EN026","Starfoil Rare","1st Edition",5.87,79894,64554883,"Number 25: Force Focus"],
-["SP14-EN027","Common","1st Edition",7.45,79897,82308875,"Number 7: Lucky Straight"],
+["SP14-EN027","Common","1st Edition",7.57,79897,82308875,"Number 7: Lucky Straight"],
 ["SP14-EN027","Starfoil Rare","1st Edition",6.31,79898,82308875,"Number 7: Lucky Straight"],
 ["SP14-EN028","Common","1st Edition",0.34,79899,26563200,"Muzurhythm the String Djinn"],
 ["SP14-EN028","Starfoil Rare","1st Edition",0.46,79900,26563200,"Muzurhythm the String Djinn"],
@@ -97,5 +97,6 @@
 ["SP14-EN048","Starfoil Rare","1st Edition",1.5,79837,30604579,"Thor, Lord of the Aesir"],
 ["SP14-EN049","Common","1st Edition",0.23,79834,67098114,"Loki, Lord of the Aesir"],
 ["SP14-EN049","Starfoil Rare","1st Edition",0.71,79835,67098114,"Loki, Lord of the Aesir"],
-["SP14-EN050","Common","1st Edition",0.61,79826,93483212,"Odin, Father of the Aesir"]
+["SP14-EN050","Common","1st Edition",0.61,79826,93483212,"Odin, Father of the Aesir"],
+["SP14-EN050","Starfoil Rare","1st Edition",5.74,79827,93483212,"Odin, Father of the Aesir"]
 ]

@@ -29,7 +29,7 @@
 ["LODT-EN024","Ultimate Rare","Unlimited",52.43,562204,94381039,"Celestia, Lightsworn Angel"],
 ["LODT-EN024","Ultra Rare","Unlimited",1.96,562203,94381039,"Celestia, Lightsworn Angel"],
 ["LODT-EN025","Common","Unlimited",0.31,562205,21785144,"Gragonith, Lightsworn Dragon"],
-["LODT-EN026","Secret Rare","Unlimited",52.31,562206,57774843,"Judgment Dragon"],
+["LODT-EN026","Secret Rare","Unlimited",53.39,562206,57774843,"Judgment Dragon"],
 ["LODT-EN027","Rare","Unlimited",0.36,562207,83269557,"Dark Valkyria"],
 ["LODT-EN028","Rare","Unlimited",4.64,562208,20663556,"Substitoad"],
 ["LODT-EN029","Common","Unlimited",0.68,562209,56052205,"Unifrog"],
@@ -54,7 +54,7 @@
 ["LODT-EN045","Common","Unlimited",0.21,562228,75141056,"Hero Mask"],
 ["LODT-EN046","Common","Unlimited",0.1,562229,1539051,"Space Gift"],
 ["LODT-EN047","Common","Unlimited",0.44,562230,48934760,"Demise of the Land"],
-["LODT-EN048","Common","Unlimited",0.19,562231,74329404,"D - Formation"],
+["LODT-EN048","Common","Unlimited",0.21,562231,74329404,"D - Formation"],
 ["LODT-EN049","Common","Unlimited",0.09,562232,313513,"Spell Gear"],
 ["LODT-EN050","Common","Unlimited",0.31,562233,37812118,"Cup of Ace"],
 ["LODT-EN051","Rare","Unlimited",1.55,562234,73206827,"Light Barrier"],
@@ -64,7 +64,7 @@
 ["LODT-EN054","Common","Unlimited",0.2,562238,2084239,"Wetlands"],
 ["LODT-EN055","Common","Unlimited",0.07,562239,49479374,"Quick Charger"],
 ["LODT-EN056","Common","Unlimited",0.13,562240,75967082,"Short Circuit"],
-["LODT-EN057","Super Rare","Unlimited",0.15,562241,2362787,"Light of Redemption"],
+["LODT-EN057","Super Rare","Unlimited",0.24,562241,2362787,"Light of Redemption"],
 ["LODT-EN058","Common","Unlimited",0.1,562242,48356796,"Mystical Cards of Light"],
 ["LODT-EN059","Common","Unlimited",0.06,562243,74741494,"Level Tuning"],
 ["LODT-EN060","Rare","Unlimited",0.76,562244,1149109,"Deck Lockdown"],
@@ -73,7 +73,7 @@
 ["LODT-EN063","Common","Unlimited",0.28,562247,27551,"Limit Reverse"],
 ["LODT-EN064","Rare","Unlimited",0.37,562248,37412656,"Hero Blast"],
 ["LODT-EN065","Common","Unlimited",0.08,562249,63806265,"Rainbow Gravity"],
-["LODT-EN066","Common","Unlimited",0.07,562250,9201964,"D - Fortune"],
+["LODT-EN066","Common","Unlimited",0.1,562250,9201964,"D - Fortune"],
 ["LODT-EN067","Common","Unlimited",0.06,562251,36690018,"Reversal of Fate"],
 ["LODT-EN068","Common","Unlimited",0.18,562252,62784717,"Tour of Doom"],
 ["LODT-EN069","Common","Unlimited",0.12,562253,99189322,"Arcana Call"],
@@ -109,5 +109,5 @@
 ["LODT-EN097","Ultimate Rare","Unlimited",1.17,562284,30707994,"Maximum Six"],
 ["LODT-EN097","Ultra Rare","Unlimited",0.73,562283,30707994,"Maximum Six"],
 ["LODT-EN098","Secret Rare","Unlimited",3.86,562285,6614221,"Fog King"],
-["LODT-EN099","Secret Rare","Unlimited",16.77,562286,42009836,"Fossil Dyna Pachycephalo"]
+["LODT-EN099","Secret Rare","Unlimited",16.88,562286,42009836,"Fossil Dyna Pachycephalo"]
 ]
