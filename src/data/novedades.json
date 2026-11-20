@@ -1,6 +1,35 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-4-bot-sky-striker-en-tu-end-phase",
+      "date": "2026-11-20",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El bot de Sky Striker aprovecha tu End Phase",
+        "novedades": [
+          "En tu End Phase, un bot ahora activa las cartas que tiene colocadas cuando le dan algo (robar, buscar o invocar) sin costarle cartas. El de Sky Striker lo usa para cambiar de monstruo y recuperar una carta."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Es una mejora chica: los bots siguen siendo más fáciles de lo que queremos. Todavía no usan todas las Invocaciones del Extra Deck que tienen disponibles."
+        ]
+      },
+      "en": {
+        "title": "The Sky Striker bot makes use of your End Phase",
+        "novedades": [
+          "In your End Phase, a bot now activates the cards it has Set when they give it something (drawing, searching or Summoning) without costing it cards. The Sky Striker bot uses it to swap monsters and get a card back."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "It is a small improvement: the bots are still easier than we want. They do not yet use every Extra Deck Summon available to them."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-3-deshacer-abajo-en-manual",
       "date": "2026-11-20",
       "tags": [
