@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { writeFileSync } from 'node:fs'
-import { act, fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -20,29 +20,33 @@ const RAIGEKI = 'c1'
 const INPACHI = 'c2'
 const KURIBOH = 'card-40640057-1'
 const TICK = 50
+// Los casos del bot avanzan 14 s de película (280 pasos de la pantalla real): ~2 s solos pero 7 a 12 s en tanda con la PC cargada, y el `testTimeout` de 15 s no deja margen.
+const SLOW_FILM = 40_000
 
 /**
  * Lo que se ve en un momento: el cartel del rival (sus fases y «Tu turno») o, si no hay, el de tu mesa (el último que salió: el elemento queda, transparente, al terminar), las cartas
  * del campo del rival, tu Kuriboh, tus vidas, el marcador, el aviso del ataque, su mano boca arriba, la banda que cruza el campo (`PhaseBand`) y cuántas cartas tenés en la mano.
+ * Se lee con `querySelector` y no con `getByRole` / `queryByText` de Testing Library: se llama cada 50 ms de película y esas consultas tardaban 4 de cada 5 ms del cuadro
+ * (el caso del bot, de ~10 s con la PC cargada a ~2 s, que es lo que se pasaba del `testTimeout`).
  */
 function frame() {
   // Sin cartel: lo que el lector de pantalla oye de la fase (un `role="status"` oculto junto al botón, que es el que pulsa); se apaga solo cuando termina el aviso.
   const banners = [...document.querySelectorAll('[aria-haspopup="menu"][aria-label^="Fases:"]')].map((button) => button.parentElement?.querySelector('[role="status"]')?.textContent ?? '').filter(Boolean)
-  const rivalHand = screen.queryByLabelText(/^Mano del rival/)
+  const rivalHand = document.querySelector<HTMLElement>('[aria-label^="Mano del rival"]')
   const rival = [...document.querySelectorAll<HTMLElement>('[data-rival-card-id]')].filter((element) => !rivalHand?.contains(element)).map((element) => element.dataset.rivalCardId!)
   const strip = document.querySelector<HTMLElement>('[data-fx="banner"]')
 
   return {
     band: strip ? `${strip.hasAttribute('data-turn') ? 'Cambio de turno' : strip.textContent}/${strip.dataset.side}` : '',
-    mine: within(hand()).queryAllByRole('listitem').length,
+    mine: document.querySelector('[role="list"][aria-label="Mano"]')!.querySelectorAll('[role="listitem"]').length,
     banner: banners.at(-1) ?? '',
     rival: [...new Set(rival)].sort().join(','),
     kuriboh: document.querySelector(`[data-card-id="${KURIBOH}"]`) ? 'campo' : '',
-    life: screen.getAllByRole('group', { name: /^Puntos de vida de Vos/ })[0]!.getAttribute('aria-label')!.replace(/\D+/g, ''),
+    life: document.querySelector('[role="group"][aria-label^="Puntos de vida de Vos"]')!.getAttribute('aria-label')!.replace(/\D+/g, ''),
     // De quién es el turno: el borde grueso de la chapa (no hay texto del turno hasta 1100 px).
     turn: document.querySelector('[data-lp][data-active="true"]')?.getAttribute('data-lp') ?? '',
-    attack: screen.queryByText(/te ataca directo/) ? 'ataque' : '',
-    hand: rivalHand ? within(rivalHand).queryAllByRole('button').map((button) => button.getAttribute('aria-label') ?? '').join(',') : '',
+    attack: document.body.textContent?.includes('te ataca directo') ? 'ataque' : '',
+    hand: rivalHand ? [...rivalHand.querySelectorAll('button')].map((button) => button.getAttribute('aria-label') ?? '').join(',') : '',
   }
 }
 type Frame = ReturnType<typeof frame>
@@ -131,7 +135,7 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     expect(line.at(-1)!.hand).not.toMatch(/#12580477|#5464695/)
     // Un turno del bot de pocas jugadas no se hace largo.
     expect(back - rivalTurn).toBeLessThanOrEqual(9_000)
-  })
+  }, SLOW_FILM)
 
   it('con movimiento, tus vidas esperan al golpe de su espada', () => {
     botConfig()
@@ -146,7 +150,7 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
 
     expect(hit - attack).toBeGreaterThanOrEqual(250)
     expect(hit).toBeLessThan(when(line, (now) => now.banner === 'Rival · End Phase'))
-  })
+  }, SLOW_FILM)
 
   it('el rival pasivo: «Turno de Rival», Standby, Main Phase 1, End Phase y «Tu turno», con el marcador del rival hasta su cartel; tu robo, después', () => {
     const line = play(PASSIVE, 'pasivo', 8_000)
