@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-3-deshacer-abajo-en-manual",
+      "date": "2026-11-20",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "Deshacer, abajo también en el modo manual",
+        "novedades": [
+          "En la práctica manual, el botón de deshacer la jugada ahora está abajo, a la derecha de tu mano, al alcance del pulgar. Antes estaba en la barra de arriba.",
+          "En el duelo por enlace en escritorio, va en la esquina de abajo a la derecha, junto a tus vidas."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "«Seguir en modo manual» ya no aparece en la ficha de una carta sin jugadas: está en Opciones (⚙).",
+          "La imagen de la carta al invocar (beta) ahora entra en una franja de bordes rectos, sin cortes inclinados."
+        ],
+        "ojo": [
+          "En escritorio, con más de seis cartas en la mano, las cartas se juntan un poco para dejarle lugar al botón."
+        ]
+      },
+      "en": {
+        "title": "Undo, at the bottom in manual mode too",
+        "novedades": [
+          "In manual practice, the undo button is now at the bottom, to the right of your hand, within thumb reach. It used to be in the top bar.",
+          "In the duel by link on desktop, it sits in the bottom right corner, next to your Life Points."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "«Continue in manual mode» no longer shows on the sheet of a card with no plays: it is in Options (⚙).",
+          "The card art on summon (beta) now comes in on a straight-edged band, with no slanted cuts."
+        ],
+        "ojo": [
+          "On desktop, with more than six cards in hand, the cards close up a little to leave room for the button."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-2-destruir-enviar-sacrificar",
       "date": "2026-11-20",
       "tags": [
