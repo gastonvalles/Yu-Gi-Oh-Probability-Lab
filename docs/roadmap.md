@@ -11,8 +11,8 @@ motivo de cada decisión, la hoja «Qué hizo el bot y por qué», la prueba de 
 turno»: invoca, barre, ataca seguro, Lava Golem, Sphere Mode, Gallant Bandit, Evenly Matched, Lightning Storm, Book of Moon,
 Called by the Grave), tres ejecutores, Sky Striker, Angelechy (puro, en lugar de Despia Branded) y Elfnote (`botDeck`; sus listas en `app/bot-deck-lists.ts`), y la
 pantalla Solo para elegirlos (un bot por mazo, con «Ver mazo»; `BOT_DECK_MENU` sale de ese archivo). Sigue: más ejecutores (Ryzeal),
-cada uno con su goldfish y su fuzz; el registro del bot dibuja un cuadro vacío en «Terminé el turno» (no nombra carta). Sin regla: Contact «C» (con ella en juego y un mazo de Sincronía el núcleo tarda ~23 s por jugada),
-Shiina, Token Collector y Gnomaterial; Sphere Mode no juega con 3 monstruos propios; la hoja no conoce los `alias`.
+cada uno con su goldfish y su fuzz. Sin regla: Contact «C» (con ella en juego y un mazo de Sincronía el núcleo tarda ~23 s por jugada),
+Shiina, Token Collector y Gnomaterial; Sphere Mode no juega con 3 monstruos propios.
 
 ## Próximo
 
@@ -33,7 +33,7 @@ En orden de valor sobre costo.
    antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo); en Jugar solo, salir de
    la mesa a otro paso y volver con Atrás cambia la mano y la fase (medido con «Inicio» y con «Tier lists»): la práctica no se conserva.
 7. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
-8. **Arranque de «Inicio»** (M): la visita nueva en `/` baja ~342 KB gz de JS (la app entera). Los textos en español viajan todos
+8. **Arranque de «Inicio»** (M): la visita nueva en `/` baja ~349 KB gz de JS (la app entera; lo mide y le pone tope `scripts/check-weight.mjs`). Los textos en español viajan todos
    en el archivo principal (56 KB gz de sus 143): separarlos por área toca `i18n/index.ts`. Además `MainApp` pide reglas de
    cartas y tablas de Edison/Genesys también en `#inicio`: que esperen a que el paso no sea `inicio`.
 9. **La sección «Duelo por enlace» de `/playground` tarda ~14 s de layout a 390 px** (sin freno; en escritorio, 1 s): falta hallar la muestra (S).

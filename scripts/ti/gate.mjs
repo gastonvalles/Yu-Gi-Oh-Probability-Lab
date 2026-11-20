@@ -152,7 +152,7 @@ function steps({ tests, lintArgs, related, e2e }) {
     lintArgs.length ? { name: 'eslint', run: node('eslint/bin/eslint.js', ['--no-warn-ignored', ...lintArgs]), detail: `${lintArgs.length === 1 && lintArgs[0] === '.' ? 'todo' : `${lintArgs.length} archivos`}` } : { name: 'eslint', skip: 'ningún archivo que ESLint lea' },
     { name: 'vitest', run: node('vitest/vitest.mjs', ['related', ...related, ...tests, '--run', '--passWithNoTests']), detail: `${new Set([...related, ...tests]).size} archivos de entrada, ${tests.length} guardas` },
     { name: 'build', run: { cmd: BUILD, args: [], shell: true }, detail: 'sin el tsc que typecheck ya cubre' },
-    { name: 'peso', run: { cmd: NODE, args: [join(ROOT, 'scripts', 'check-weight.mjs')], shell: false }, detail: 'JS con gzip de inicio y duelo contra su tope' },
+    { name: 'peso', run: { cmd: NODE, args: [join(ROOT, 'scripts', 'check-weight.mjs')], shell: false }, detail: 'peso con gzip de inicio y duelo contra su tope' },
   ]
 }
 
