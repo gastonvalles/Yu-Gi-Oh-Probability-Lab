@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-5-bot-no-se-quema",
+      "date": "2026-11-20",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El bot ya no se quema contra tus cartas",
+        "novedades": [
+          "Si tenés una carta que le saca vidas al rival por lo que hace (por ejemplo, 700 cada vez que activa el efecto de un monstruo), el bot ahora lo nota y deja de repetir esa jugada sin pensar.",
+          "Nunca se mata pagando ese castigo ni se deja al alcance de tus ataques, y usa primero lo que puede sacarte cartas del campo.",
+          "En el registro del bot ves por qué frenó: «No activé X: me costaba 700 vidas por una carta tuya»."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "La primera vez paga el castigo: recién ahí se entera, como cualquier jugador que no conoce la carta.",
+          "Al cuidarse, el bot corta su jugada antes y deja menos monstruos en el campo.",
+          "Vale para los castigos que sacan vidas; todavía no para los que hacen descartar o desterrar."
+        ]
+      },
+      "en": {
+        "title": "The bot no longer burns itself against your cards",
+        "novedades": [
+          "If you have a card that takes Life Points from the opponent for what they do (for example, 700 each time they activate a monster effect), the bot now notices and stops repeating that play blindly.",
+          "It never kills itself paying that penalty nor leaves itself within reach of your attacks, and it first uses what can remove cards from your field.",
+          "In the bot's log you can see why it stopped: «I did not activate X: it cost me 700 LP because of a card of yours»."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "The first time, it pays the penalty: that is when it finds out, like any player who does not know the card.",
+          "By being careful, the bot ends its play sooner and leaves fewer monsters on the field.",
+          "It applies to penalties that take Life Points; not yet to those that make you discard or banish."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-4-bot-sky-striker-en-tu-end-phase",
       "date": "2026-11-20",
       "tags": [
