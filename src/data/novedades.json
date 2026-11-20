@@ -46,12 +46,12 @@
         "title": "Tu práctica te espera",
         "novedades": [
           "En Jugar solo, si salís de la mesa a mirar otra pantalla y volvés (con Atrás o por el menú), encontrás la misma partida: tu mano, el campo, las vidas, la fase y Deshacer.",
-          "Vale también contra un bot: su turno ya jugado y su registro siguen ahí."
+          "Vale también contra un bot: su turno ya jugado y su registro siguen ahí.",
+          "La mesa aparece tal como la dejaste: sin repartir de nuevo ni repetir sonidos ni avisos."
         ],
         "comoSeUsa": [],
         "arreglos": [],
         "ojo": [
-          "Al volver, la mano se reparte de nuevo con su animación y puede reabrirse la hoja de cartas reveladas. La partida es la misma: lo estamos puliendo.",
           "Recargar la página, o cambiar de deck, de rival o de tamaño de mano, empieza una partida nueva."
         ]
       },
@@ -59,12 +59,12 @@
         "title": "Your practice waits for you",
         "novedades": [
           "In Solo play, if you leave the table to look at another screen and come back (with Back or through the menu), you find the same game: your hand, the field, Life Points, the phase and Undo.",
-          "It also works against a bot: its turn already played and its log are still there."
+          "It also works against a bot: its turn already played and its log are still there.",
+          "The table appears just as you left it: no dealing again, no repeated sounds or notices."
         ],
         "comoSeUsa": [],
         "arreglos": [],
         "ojo": [
-          "When you come back, the hand is dealt again with its animation and the revealed-cards sheet may reopen. The game is the same: we are polishing it.",
           "Reloading the page, or changing the deck, the opponent or the hand size, starts a new game."
         ]
       }
