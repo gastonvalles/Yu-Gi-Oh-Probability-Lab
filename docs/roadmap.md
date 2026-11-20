@@ -10,8 +10,10 @@ motivo de cada decisión, la hoja «Qué hizo el bot y por qué», la prueba de 
 (Skull Meister, Kuriboh!, Bystial, Shifter, Fleurdelis, Godos, Herald) y un turno propio mínimo (interruptor «El rival juega su
 turno»: invoca, barre, ataca seguro, Lava Golem, Sphere Mode, Gallant Bandit, Evenly Matched, Lightning Storm, Book of Moon,
 Called by the Grave), tres ejecutores, Sky Striker, Angelechy (puro, en lugar de Despia Branded) y Elfnote (`botDeck`; sus listas en `app/bot-deck-lists.ts`), y la
-pantalla Solo para elegirlos (un bot por mazo, con «Ver mazo»; `BOT_DECK_MENU` sale de ese archivo). Sigue: más ejecutores (Ryzeal),
-cada uno con su goldfish y su fuzz. Sin regla: Contact «C» (con ella en juego y un mazo de Sincronía el núcleo tarda ~23 s por jugada),
+pantalla Solo para elegirlos (un bot por mazo, con «Ver mazo»; `BOT_DECK_MENU` sale de ese archivo). El marco de los ejecutores
+da a los cuatro (también al rival genérico) el letal, los precios aprendidos y el Extra Deck; en la vara movieron poco: pesa más
+la línea de cada mazo. Sigue: castigos que no son de vidas, niveles de dificultad y más ejecutores (Ryzeal), cada uno con su
+goldfish y su fuzz. Sin regla: Contact «C» (con ella en juego y un mazo de Sincronía el núcleo tarda ~23 s por jugada),
 Shiina, Token Collector y Gnomaterial; Sphere Mode no juega con 3 monstruos propios.
 
 ## Próximo
@@ -20,9 +22,11 @@ En orden de valor sobre costo.
 
 1. **Campo del celular en vertical** (L, idea abierta): acercar, desplazar o girar el campo para cartas más grandes; el techo hoy
    es `compact-field.ts` (a 320×568 las pilas miden unos 28 px de ancho y a 360×640, unos 41). Se propone antes de construir.
-2. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
-   hojas de 28 px, chips «Salidas» de 32 px, las barras de arriba y abajo comen
-   120 de 360 px con el celular acostado, y `ReplayBar` y las muestras del duelo de `/playground` a 320 px.
+2. **Detalles de responsive** (S cada uno): las barras de arriba y abajo comen 120 de 360 px con el celular acostado; `ReplayBar`
+   y las muestras del duelo de `/playground` a 320 px; bajo 44 px con el dedo quedan los botones de sección de `/playground` (28),
+   «Ver todos» y «Actualizar» de Listas (zona de 38) y «Cerrar» y «Minimizar» del duelo automático (40).
+   **La práctica no sobrevive a recargar** (M): se conserva al salir de la mesa y volver, pero recargar empieza otra (en un celular
+   el navegador recarga la pestaña al volver de otra app); pide guardarla con versión y migración.
 3. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
 4. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
    sólo pasados 3 minutos, si en el celular pesa.
@@ -30,7 +34,9 @@ En orden de valor sobre costo.
    la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
 6. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists;
    en la sala, mientras gira, el dado de un jugador tapa su chip «Listo» (`DieSeat` en `toss-views.tsx`); en un celular bajo,
-   antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo).
+   antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo); el nombre del invitado a
+   veces se borra al entrar a la sala (sin reproducir: `NameInput` en `DuelOpening.tsx`); lo prohibido o limitado del formato se
+   avisa recién en la sala, no en Online.
 7. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
 8. **Arranque de «Inicio»** (M): la visita nueva en `/` baja ~349 KB gz de JS (la app entera; lo mide y le pone tope `scripts/check-weight.mjs`). Los textos en español viajan todos
    en el archivo principal (56 KB gz de sus 143): separarlos por área toca `i18n/index.ts`. Además `MainApp` pide reglas de
@@ -51,6 +57,8 @@ En orden de valor sobre costo.
   teclado sobre la botonera, la barra blanca de Android tras reinstalar la PWA y la mascota flotante, que a 390 px tapaba el ⏮
   del reproductor.
 - **Con dos navegadores y el relay:** el aviso de cadena del manual.
+- **Publicar el relay:** hoy no dice el modo de cada sala, así que con «Jugar ahora» quien eligió manual puede caer en una sala
+  automática ajena (y al revés); filtrarlo pide cambiar el relay y publicarlo antes que la app.
 - **En producción:** que el Strategy Score de Angelechy excluya sus copias (cartas ascendidas del núcleo).
 - **Decisiones:** la dependencia `motion` (hoy no está instalada); las filas del creador de tier lists entre 390 y 413 px (tres
   cartas por renglón: ¿achicar la carta o ir de borde a borde?); qué secciones faltan en Descubrir y en qué orden; qué más suma
