@@ -400,7 +400,7 @@ describe('Handtraps en Solo (la fila y su ficha)', () => {
 })
 
 describe('«Handtraps del rival» del ⋯ de la barra de la mesa manual', () => {
-  const HandtrapsMatButton = ({ onApply }: { onApply: () => void }) => <MatBarActions onUndo={() => {}} canUndo={false} onNewHand={() => {}} onHandtraps={onApply} />
+  const HandtrapsMatButton = ({ onApply }: { onApply: () => void }) => <MatBarActions onNewHand={() => {}} onHandtraps={onApply} />
   // El estado se lee en el ⋯, en la fila («prendidas» o «apagadas»); tocarla abre la hoja.
   const row = () => {
     if (!screen.queryByRole('menu')) fireEvent.click(screen.getByRole('button', { name: 'Más opciones' }))

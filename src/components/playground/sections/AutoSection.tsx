@@ -987,7 +987,7 @@ function BarActionsSample() {
   const tap = () => setTaps((count) => count + 1)
 
   return (
-    <Specimen title="MatBarActions · tres a la vista y el ⋯" layout="column" className="col-span-full" note={<>A la vista sólo salir, deshacer y el ⋯ (blancos de 44 px; ámbar al apuntar, al enfocar o con el menú abierto: nada queda en ámbar por estar prendido). En el ⋯, <Tag>MatMoreMenu</Tag>: «La mesa» (la vista 3D, los sonidos y la ventana grande, sólo en escritorio, cada uno con su interruptor) y «El duelo» (las handtraps del rival, «Nueva mano», «Guardar combo», apagado «sin jugadas», y lo de cada mesa). El duelo por enlace manual arma su ⋯ con el mismo grupo «La mesa»; los automáticos no tienen ⋯ (todo en ⚙). Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Cambiá el idioma para verlo en inglés. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
+    <Specimen title="MatBarActions · salir y el ⋯" layout="column" className="col-span-full" note={<>A la vista sólo salir y el ⋯ (deshacer va abajo, a la derecha de tu mano, en todas las mesas; blancos de 44 px; ámbar al apuntar, al enfocar o con el menú abierto: nada queda en ámbar por estar prendido). En el ⋯, <Tag>MatMoreMenu</Tag>: «La mesa» (la vista 3D, los sonidos y la ventana grande, sólo en escritorio, cada uno con su interruptor) y «El duelo» (las handtraps del rival, «Nueva mano», «Guardar combo», apagado «sin jugadas», y lo de cada mesa). El duelo por enlace manual arma su ⋯ con el mismo grupo «La mesa»; los automáticos no tienen ⋯ (todo en ⚙). Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Cambiá el idioma para verlo en inglés. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Segmented label="Jugadas" variant="track" value={played ? 'some' : 'none'} onChange={(value) => setPlayed(value === 'some')} options={[{ value: 'none', label: 'Sin jugadas' }, { value: 'some', label: 'Con jugadas' }]} />
         <Tag>{`Toques: ${taps}`}</Tag>
@@ -997,13 +997,13 @@ function BarActionsSample() {
         <span className="text-micro text-soft">La práctica</span>
         <div role="toolbar" aria-label="Muestra de la práctica" className={MAT_BAR_ROW}>
           <MatExitButton onExit={tap} />
-          <MatBarActions className="ml-auto" onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={played} />
+          <MatBarActions className="ml-auto" onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={played} />
         </div>
         <span className="text-micro text-soft">La práctica, con el ⋯ abierto (los duelos automáticos no lo llevan: todo va en su ⚙)</span>
         {/* El menú abierto cae debajo de la barra: se le deja su alto para que no tape la muestra siguiente. */}
         <div role="toolbar" aria-label="Muestra del ⋯ abierto" className={cx('mb-96', MAT_BAR_ROW)}>
           <MatExitButton onExit={tap} />
-          <MatBarActions className="ml-auto" menuOpen onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={played} />
+          <MatBarActions className="ml-auto" menuOpen onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={played} />
         </div>
       </div>
     </Specimen>
@@ -1042,7 +1042,7 @@ function RulesPillSample() {
                   </RulesPill>
                 }
               >
-                <MatBarActions onUndo={tap} canUndo={false} onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={false} />
+                <MatBarActions onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={false} />
               </MatRulesContext.Provider>
             </div>
           </div>

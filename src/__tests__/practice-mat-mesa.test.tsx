@@ -428,14 +428,21 @@ describe('la mesa de práctica', () => {
     expect(sacrificeAt).toHaveBeenCalledTimes(1)
   })
 
-  it('el turno va arriba a la izquierda y los botones de la mesa, a la derecha', () => {
+  it('el turno va arriba a la izquierda y los botones de la mesa, a la derecha; deshacer, abajo, a la derecha de tu mano (Gastón, 2026-11-19: «en el modo manual el boton para volver la jugada tambien debe estar abajo»)', () => {
     render(<Harness />)
 
     const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
 
     expect(toolbar.firstElementChild).toBe(screen.getByLabelText('Turno 1'))
-    // Los botones de la barra van a la derecha: el primero es deshacer (el resto, en el ⋯).
-    expect(screen.getByRole('button', { name: 'Deshacer' })).toHaveClass('ml-auto')
+    // Los botones de la barra van a la derecha: el ⋯ (lo demás va adentro).
+    expect(within(toolbar).getByRole('button', { name: 'Más opciones' }).closest('.ml-auto')).not.toBeNull()
+    // Deshacer no va en la barra: va con tu mano, en su caja de 44 px, apagado sin jugadas.
+    const undo = screen.getByRole('button', { name: 'Deshacer' })
+    expect(screen.getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
+    expect(toolbar).not.toContainElement(undo)
+    expect(undo.closest('[data-mat-undo]')!.parentElement).toContainElement(screen.getByRole('list', { name: 'Mano' }))
+    expect(undo).toHaveClass('size-11')
+    expect(undo).toBeDisabled()
   })
 
   it('las jugadas de la práctica suenan como las del duelo (Gastón: «en la práctica no suenan los efectos»): una fase nueva, y deshacer', () => {
