@@ -11,6 +11,7 @@ import { createDuel } from '../app/duel-session'
 import type { SocketStatus } from '../app/duel-socket'
 import type { ManualGame } from '../app/auto/manual-handover'
 import { createMatState, PHASES, replayMat, type MatAction, type MatPhase } from '../app/practice-mat'
+import { playSfx } from '../app/sfx'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { showToastMessage } from '../app/use-toast-message'
 import { AutoDuelScreen } from '../components/auto/AutoDuelScreen'
@@ -25,6 +26,12 @@ import { render, tap } from './support/practice-mat-harness'
 import { openOptions } from './support/mat-menu'
 
 vi.mock(import('../app/use-toast-message'), async (importOriginal) => ({ ...(await importOriginal()), showToastMessage: vi.fn() }))
+// Lo que suena, para ver que volver a un duelo empezado no baraja ni reparte (suena como siempre).
+vi.mock(import('../app/sfx'), async (importOriginal) => {
+  const original = await importOriginal()
+
+  return { ...original, playSfx: vi.fn(original.playSfx) }
+})
 
 // El duelo automático por enlace, de la sala a la mesa: «Estoy listo» espera al enlace, la mesa es la de solo con la barra del duelo, las vidas del núcleo son las de la sala,
 // el fin dice la razón del núcleo, la pausa tapa la mesa sin moverla y la revancha arma otra mesa. Con la sala de verdad (`createDuel` en memoria) y el enlace y la sesión de mentira.
@@ -182,6 +189,30 @@ describe('auto-screen-online · la sala', () => {
     act(() => ends.host.reconnect())
     flush()
     expect(link.resyncs).toBe(1)
+  })
+
+  it('el duelo que le reponen al invitado (el anfitrión recargó) no se vuelve a contar: la mesa aparece cuando la sesión se puso al día, sin barajar ni repartir ni aviso de vidas', () => {
+    const { link, start } = setup('guest')
+    const table = () => screen.queryByRole('region', { name: 'Mesa de práctica' })
+
+    // El duelo nuevo sí se ve desde el arranque (y reparte).
+    start()
+    expect(table()).toBeInTheDocument()
+    vi.mocked(playSfx).mockClear()
+
+    const again = fakeSession()
+
+    again.set({ status: 'loading' })
+    core(() => link.set({ session: again }))
+    expect(table()).toBeNull()
+    core(() => again.set({ replaying: true }))
+    expect(table()).toBeNull()
+    const { overlay } = again.getSnapshot()
+
+    core(() => again.set({ status: 'waiting', replaying: false, mineActions: [{ type: 'phase', phase: 'main1' }], overlay: { ...overlay, lp: [7900, 8000] } }))
+    expect(table()).toBeInTheDocument()
+    expect(document.querySelector('[data-life-delta]')).toBeNull()
+    expect(vi.mocked(playSfx).mock.calls.map(([kind]) => kind)).toEqual([])
   })
 
   it('el anfitrión cuya conexión se cae y vuelve le repone el duelo al invitado (aunque el relay no le haya avisado que se fue); el invitado no, por su conexión', () => {
