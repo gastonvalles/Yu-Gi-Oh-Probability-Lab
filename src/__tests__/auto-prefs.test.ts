@@ -9,7 +9,7 @@ const memory = () => {
 describe('las preferencias del duelo automático', () => {
   it('sin nada guardado: el interruptor prendido (se juega en automático donde se puede), se pregunta la cadena y la casilla, la mano del rival a la vista', () => {
     expect(readAutoPrefs(memory)).toEqual(DEFAULT_AUTO_PREFS)
-    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: true, chain: 'ask', place: 'ask', blind: false, botHand: false, first: 'me' })
+    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: true, chain: 'ask', place: 'ask', blind: false, botHand: false, first: 'me', loaner: '' })
   })
 
   it('ya no hay bandera: la clave vieja no prende nada', () => {
@@ -29,7 +29,9 @@ describe('las preferencias del duelo automático', () => {
     storage.setItem(AUTO_KEYS.blind, 'on')
     storage.setItem(AUTO_KEYS.botHand, 'on')
     storage.setItem(AUTO_KEYS.first, 'rival')
-    expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto', blind: true, botHand: true, first: 'rival' })
+    storage.setItem(AUTO_KEYS.loaner, 'angelechy')
+    expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto', blind: true, botHand: true, first: 'rival', loaner: 'angelechy' })
+    storage.setItem(AUTO_KEYS.loaner, '')
     // El «Siempre» de antes (`always`) es el de ahora: se lee como `ask`.
     storage.setItem(AUTO_KEYS.chain, 'always')
     storage.setItem(AUTO_KEYS.first, 'random')
