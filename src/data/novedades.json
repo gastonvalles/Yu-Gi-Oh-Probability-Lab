@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-10-bot-usa-el-extra",
+      "date": "2026-11-20",
+      "tags": [
+        "mejora",
+        "arreglo"
+      ],
+      "es": {
+        "title": "El bot usa el Extra Deck que le queda",
+        "novedades": [
+          "Al terminar su jugada, si todavía puede invocar algo del Extra Deck que le deja el campo más fuerte, el bot lo hace. Hoy se nota en Sky Striker, que encadena sus Enlaces.",
+          "En su registro ves por qué: «Invoqué X del Extra Deck: mi campo queda más fuerte»."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Al seguir en automático desde la mesa manual con vidas distintas, el bot calculaba con las vidas cruzadas. En el duelo por enlace, a quien le tocaba segundo podían mostrársele cruzadas. Ya quedan donde van."
+        ],
+        "ojo": [
+          "Es una mejora chica: el bot no gasta como material las cartas que su mazo necesita para su jugada, así que en Elfnote y Angelechy no cambia nada."
+        ]
+      },
+      "en": {
+        "title": "The bot uses what is left in its Extra Deck",
+        "novedades": [
+          "When it finishes its play, if it can still Summon something from the Extra Deck that leaves its field stronger, the bot does it. Today it shows in Sky Striker, which chains its Link Monsters.",
+          "In its log you can see why: «I Summoned X from the Extra Deck: it leaves my field stronger»."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [
+          "When continuing in automatic from the manual table with different Life Points, the bot calculated with the LP swapped. In the duel by link, whoever went second could see them swapped. They now stay where they belong."
+        ],
+        "ojo": [
+          "It is a small improvement: the bot does not spend as material the cards its deck needs for its play, so nothing changes for Elfnote and Angelechy."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-9-la-practica-te-espera",
       "date": "2026-11-20",
       "tags": [
