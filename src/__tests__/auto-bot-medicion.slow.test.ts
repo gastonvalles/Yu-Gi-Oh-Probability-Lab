@@ -24,6 +24,10 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStor
  */
 
 const HANDS = Number(process.env.BOT_HANDS ?? 30)
+/** `BOT_LOG=<mazo>:<semilla>` (o `<mazo>:<semilla>:vs`, contra otro bot): escribe cada pregunta del bot en ese duelo, con lo que ofrece el núcleo y lo que contestó. */
+const LOG = process.env.BOT_LOG ?? ''
+/** `BOT_DECK=<mazo>`: mide sólo ése. */
+const ONLY = process.env.BOT_DECK ?? ''
 const LAST_TURN = 9
 const IDLE_OFFERS = ['summons', 'special_summons', 'activates'] as const
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
@@ -58,6 +62,17 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
   const aliasOf = (code: number) => cards.get(code)?.alias ?? 0
   const attributeOf = (code: number) => cards.get(code)?.attribute ?? 0
   const deckOf = (id: string) => BOT_DECKS.find((deck) => deck.id === id)!
+  /** Lo que se ofrecía en una pregunta, por nombre (para el registro). */
+  const offeredOf = (ask: CoreAsk) =>
+    ask.type === 'select_card' || ask.type === 'select_chain'
+      ? ask.selects.map((card) => `${name(card.code)}@${card.location}`)
+      : ask.type === 'select_unselect_card'
+        ? ask.select_cards.map((card) => `${name(card.code)}@${card.location}`)
+        : ask.type === 'select_idlecmd'
+          ? IDLE_LISTS.flatMap((key) => ask[key].map((card) => `${key}:${name(card.code)}`))
+          : ask.type === 'select_effectyn'
+            ? [name(ask.code)]
+            : []
 
   afterAll(() => {
     if (hasCoreData) writeFileSync(path.join(CORE_DATA_DIR, 'bot-medicion.json'), JSON.stringify(report, null, 1))
@@ -77,6 +92,8 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
     const selfLp: Record<string, number> = {}
     const botMs: Record<number, number> = {}
     const gifted = new Set<string>()
+    const logging = LOG === `${deckId}:${seed}${rivalId ? ':vs' : ''}`
+    const log: string[] = []
     let lastPlay = 0
     let lastLp = 8000
     let lastIdle: { turn: number; ask: Extract<CoreAsk, { type: 'select_idlecmd' }>; action: number } | null = null
@@ -104,6 +121,7 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
         if (list && index !== null && (action <= 1 || action === 5)) lastPlay = ask[list][index]!.code
       }
       if (ask.type === 'select_chain' && decision.answer.type === 'select_chain' && decision.answer.index !== null) lastPlay = ask.selects[decision.answer.index]!.code
+      if (logging && !(ask.type === 'select_chain' && ask.selects.length === 0)) log.push(`t${view.turn} lp${view.lp.me}/${view.lp.them} ${ask.type} [${offeredOf(ask).join(', ')}] -> ${JSON.stringify(decision.answer)} ${decision.rule ?? ''}`)
       return decision
     }
     const session = createAutoSession({
@@ -157,6 +175,7 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
     closeIdle()
     if (!rival) lost(snapshot.overlay.lp[0])
     session.destroy()
+    if (logging) writeFileSync(path.join(CORE_DATA_DIR, `bot-medicion-${LOG.replaceAll(':', '-')}.txt`), log.join('\n'))
     const end = snapshot.overlay.end
     // Seco: un turno suyo desde el 3 en que tus vidas no bajaron (las del arranque de tu turno siguiente contra las de tu turno anterior).
     const dry = Object.keys(yourLp)
@@ -188,7 +207,7 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
   }
   const count = (list: string[]) => Object.fromEntries(Object.entries(list.reduce<Record<string, number>>((out, item) => ({ ...out, [item]: (out[item] ?? 0) + 1 }), {})).sort((x, y) => y[1] - x[1]))
 
-  it.each(BOT_DECKS.map((deck) => [deck.id] as const))(`%s: ${HANDS} manos contra el pasivo y ${HANDS} contra otro bot`, { timeout: 60 * 60 * 1000 }, async (deckId) => {
+  it.each(BOT_DECKS.filter((deck) => !ONLY || deck.id === ONLY).map((deck) => [deck.id] as const))(`%s: ${HANDS} manos contra el pasivo y ${HANDS} contra otro bot`, { timeout: 60 * 60 * 1000 }, async (deckId) => {
     const hands: Awaited<ReturnType<typeof duel>>[] = []
     const versus: Awaited<ReturnType<typeof duel>>[] = []
 
