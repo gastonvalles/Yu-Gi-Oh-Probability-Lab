@@ -129,6 +129,8 @@ export interface AutoSnapshot {
   replaying: boolean
   /** Los nombres del `.cdb` de las cartas del duelo (y de las fichas). */
   names: Readonly<Record<number, string>>
+  /** El `alias` del `.cdb` de las cartas del duelo que lo tienen (un arte alternativo apunta a su original: `originalOf`). */
+  aliases: Readonly<Record<number, number>>
   /** Tus cartas sin reglas automáticas (sin script, o sin datos en ningún lado y fuera del deck): se juegan sin efectos; la pantalla lo avisa al empezar y en «sin jugadas». */
   vanilla: readonly number[]
   /** Los rótulos de los efectos (`str1`…`str16` del `.cdb`), por código: el `desc` de una pregunta nombra la carta y cuál (`splitDesc`). */
@@ -341,6 +343,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     progress: { done: 0, total: 0 },
     replaying: false,
     names: {},
+    aliases: {},
     vanilla: [],
     texts: {},
     unmapped: [],
@@ -676,7 +679,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     // vacío es la tanda del `create`, y el invitado que entra a un duelo empezado ya pidió la suya (`expectReplay`).
     answers = [...(options.restore?.answers ?? [])]
     if (answers.length > 0) streams = [answers.length]
-    set({ names: data.names, vanilla, texts: data.texts ?? {}, ...(answers.length > 0 ? { answers, replaying: true } : {}) })
+    set({ names: data.names, aliases: Object.fromEntries(aliases), vanilla, texts: data.texts ?? {}, ...(answers.length > 0 ? { answers, replaying: true } : {}) })
     transport.send(answers.length > 0 ? { ...create, answers: answers.map((item) => item.answer) } : create)
     // Después del `create` (que el enlace le cuenta al invitado) y antes del primer evento, que llega después.
     if (answers.length > 0) replayed(answers.length)

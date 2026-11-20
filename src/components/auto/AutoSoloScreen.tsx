@@ -281,7 +281,13 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     },
     [seek, skipped],
   )
-  const codeName = useCallback((code: number) => nameOf(null, code), [nameOf])
+  // `null` si el código no tiene nombre (un arte alternativo): el registro prueba con el de su original (`snap.aliases`).
+  const codeName = useCallback((code: number) => {
+    const name = nameOf(null, code)
+
+    return name === t('practice.card.unknown') ? null : name
+  }, [nameOf])
+  const aliasOf = useCallback((code: number) => snap.aliases[code] ?? 0, [snap.aliases])
   const codeArt = useCallback((code: number) => artOf(null, code), [artOf])
   // El tipo (el color de su marco) de las cartas de tu deck, por su código: el registro del bot lo marca junto al arte (de las del rival, el núcleo no da el tipo).
   const frames = useMemo(() => {
@@ -519,7 +525,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       {asks.lethal && !reviewing ? <LethalBlow key={asks.lethal.key} damage={asks.lethal.damage} mine={asks.lethal.side === seat} /> : null}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
       <ReplayLayer replay={watching} onClose={() => setWatching(null)} />
-      <BotLogSheet isOpen={logOpen} onClose={() => setLogOpen(false)} turns={botLog} deciding={rivalOn} loading={snap.replaying} nameOf={codeName} artOf={codeArt} frameOf={frameOf} onPick={pickNote} />
+      <BotLogSheet isOpen={logOpen} onClose={() => setLogOpen(false)} turns={botLog} deciding={rivalOn} loading={snap.replaying} nameOf={codeName} artOf={codeArt} aliasOf={aliasOf} frameOf={frameOf} onPick={pickNote} />
       <ManualDialog
         key={opened}
         isOpen={switching}

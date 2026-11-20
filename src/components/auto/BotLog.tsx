@@ -1,4 +1,5 @@
 import type { BotNote, SessionAnswer } from '../../app/auto/auto-session'
+import { originalOf } from '../../app/auto/deck-map'
 import { type FrameKind } from '../../app/card-frame'
 import { t, type MessageKey } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -53,8 +54,11 @@ interface BotLogProps {
   deciding: boolean
   /** Rearmando el duelo (deshacer, reiniciar): la lista vuelve cuando termina. */
   loading?: boolean
-  nameOf: (code: number) => string
+  /** El nombre de la carta, o `null` si no se conoce con ese código (entonces se prueba con el de su original: `aliasOf`). */
+  nameOf: (code: number) => string | null
   artOf: (code: number) => string | null
+  /** El `alias` del `.cdb` de un código (0 si no tiene): un arte alternativo sin nombre o sin imagen propios usa los de su original (`originalOf`). */
+  aliasOf?: (code: number) => number
   /** El tipo de la carta (su color de marco), si se sabe: una marca junto a su arte. Del bot sólo se sabe lo que está en tu deck. */
   frameOf?: (code: number) => FrameKind | null
   /** Tocar un renglón: tu mesa en ese momento (el repaso de tus jugadas). Sin esto, los renglones no se tocan. */
@@ -66,7 +70,9 @@ interface BotLogProps {
  * y abajo el texto fijo de sus límites. Con el rival pasivo, y sin decisiones todavía, lo dice (`EmptyState`); rearmando, el esqueleto (`aria-busy`). Tocar un renglón (con `onPick`) lleva
  * tu mesa a ese momento: lo que sigue es del repaso («Volver al duelo»).
  */
-export function BotLog({ turns, deciding, loading = false, nameOf, artOf, frameOf, onPick }: BotLogProps) {
+export function BotLog({ turns, deciding, loading = false, nameOf, artOf, aliasOf, frameOf, onPick }: BotLogProps) {
+  const original = (code: number) => originalOf(code, aliasOf?.(code) ?? 0)
+  const called = (code: number) => nameOf(code) ?? nameOf(original(code)) ?? t('practice.card.unknown')
   const body = !deciding ? (
     <EmptyState icon="chat" title={t('auto.bot.log.passiveTitle')}>
       {t('auto.bot.log.passive')}
@@ -88,21 +94,25 @@ export function BotLog({ turns, deciding, loading = false, nameOf, artOf, frameO
             <ListGroup label={label}>
               {turn.notes.map((note, i) => {
                 const code = note.cards?.[0] ?? 0
-                const art = artOf(code)
-                const frame = frameOf?.(code) ?? null
+                const art = artOf(code) ?? artOf(original(code))
+                const frame = frameOf?.(code) ?? frameOf?.(original(code)) ?? null
 
                 return (
                   <ListRow
                     key={i}
                     wrap
-                    title={botSentence(note, nameOf)}
-                    // Una carta: recta, como en las listas de decks. Su nombre ya va en la frase.
-                    media={
-                      <span aria-hidden="true" className="relative block h-12 w-9 shrink-0 overflow-hidden bg-input">
-                        {art ? <CardArt remoteUrl={art} name={nameOf(code)} className="block size-full object-cover" /> : null}
-                        {frame ? <TypeMark kind={frame} className="absolute left-0 top-0" /> : null}
-                      </span>
-                    }
+                    title={botSentence(note, called)}
+                    // Una carta: recta, como en las listas de decks. Su nombre ya va en la frase. Una decisión que no nombra carta («Terminé el turno») no lleva cuadro: es un renglón de texto.
+                    {...(code
+                      ? {
+                          media: (
+                            <span aria-hidden="true" className="relative block h-12 w-9 shrink-0 overflow-hidden bg-input">
+                              {art ? <CardArt remoteUrl={art} fallbackUrl={artOf(original(code))} name={called(code)} className="block size-full object-cover" /> : null}
+                              {frame ? <TypeMark kind={frame} className="absolute left-0 top-0" /> : null}
+                            </span>
+                          ),
+                        }
+                      : {})}
                     {...(onPick ? { onClick: () => onPick(note) } : {})}
                   />
                 )
