@@ -1,6 +1,31 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-14-recargar-sin-repetir",
+      "date": "2026-11-20",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Recargar un duelo con un amigo ya no repite lo jugado",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Si recargás la página en un duelo automático por enlace, la mesa vuelve tal como estaba: ya no se reparte la mano de nuevo ni se repiten las escenas de lo que ya pasó. Vale para quien abrió la sala y para quien entró."
+        ],
+        "ojo": []
+      },
+      "en": {
+        "title": "Reloading a duel with a friend no longer replays what happened",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "If you reload the page in an automatic duel by link, the table comes back just as it was: the hand is no longer dealt again and the scenes of what already happened are not repeated. It works for whoever opened the room and for whoever joined."
+        ],
+        "ojo": []
+      }
+    },
+    {
       "id": "2026-11-20-13-online-avisa-el-deck",
       "date": "2026-11-20",
       "tags": [
