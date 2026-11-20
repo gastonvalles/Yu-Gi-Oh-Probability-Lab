@@ -67,12 +67,14 @@ describe('los mazos prestados (loaner-deck)', () => {
     expect(LOAN_BELOW).toBe(MAIN_MINIMUM)
   })
 
-  it('en Solo: con tu deck completo, ninguno; si no, nunca el del bot rival', () => {
-    expect(soloLoaner(decks, '', 40, null)).toBeNull()
-    expect(soloLoaner(decks, '', 0, null)?.list.id).toBe('sky-striker')
-    expect(soloLoaner(decks, '', 39, 'sky-striker')?.list.id).toBe('angelechy')
-    expect(soloLoaner(decks, 'sky-striker', 0, 'sky-striker')?.list.id).toBe('angelechy')
-    expect(soloLoaner(decks, 'elfnote', 0, 'sky-striker')?.list.id).toBe('elfnote')
+  it('en Solo: con un deck que reparte la mano, ninguno (también uno a medias); si no, nunca el del bot rival', () => {
+    expect(soloLoaner(decks, '', 40, 5, null)).toBeNull()
+    expect(soloLoaner(decks, '', 20, 5, null)).toBeNull()
+    expect(soloLoaner(decks, '', 5, 5, null)).toBeNull()
+    expect(soloLoaner(decks, '', 0, 5, null)?.list.id).toBe('sky-striker')
+    expect(soloLoaner(decks, '', 4, 5, 'sky-striker')?.list.id).toBe('angelechy')
+    expect(soloLoaner(decks, 'sky-striker', 0, 5, 'sky-striker')?.list.id).toBe('angelechy')
+    expect(soloLoaner(decks, 'elfnote', 0, 5, 'sky-striker')?.list.id).toBe('elfnote')
   })
 })
 
@@ -113,7 +115,7 @@ describe('Online: «Tu deck» con un mazo prestado', () => {
     expect(amber()).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Cambiar el mazo prestado' }))
     const sheet = await screen.findByRole('dialog', { name: '¿Con qué mazo jugás?' })
-    const hint = within(sheet).getByText('Tiene 20: le faltan 20 para un duelo')
+    const hint = within(sheet).getByText('Tiene 20: le faltan 20 para jugar')
 
     expect(hint.closest('[role=alert]')).toBeNull()
     expect(within(sheet).getByRole('radio', { name: /Sky Striker/ })).toHaveAttribute('aria-checked', 'true')
@@ -187,11 +189,23 @@ describe('Solo: el mazo prestado', () => {
     expect(onOpenBuilder).toHaveBeenCalled()
   })
 
-  it('con un deck a medias juega el prestado y la hoja dice cuántas le faltan al tuyo', () => {
-    solo({ deckSize: 12 })
+  it('con un deck a medias que reparte la mano (20 cartas) practicás con el tuyo, como siempre: sin chip y «Cambiar» al builder', () => {
+    const { onPlay, onOpenBuilder } = solo({ deckSize: 20 })
+
+    expect(screen.getByText('Mi deck · 20')).toBeInTheDocument()
+    expect(screen.queryByText('Prestado')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar deck' }))
+    expect(onOpenBuilder).toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getAllByRole('button', { name: /^Jugar/ })[0]!)
+    expect(onPlay).toHaveBeenCalled()
+  })
+
+  it('con menos de la mano juega el prestado y la hoja dice cuántas le faltan al tuyo para jugar en Solo', () => {
+    solo({ deckSize: 3 })
 
     expect(screen.getByText('Sky Striker · 40')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Cambiar el mazo prestado' }))
-    expect(within(screen.getByRole('dialog')).getByText('Tiene 12: le faltan 28 para un duelo')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByText('Tiene 3: le faltan 2 para jugar')).toBeInTheDocument()
   })
 })

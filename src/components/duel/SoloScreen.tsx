@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom'
 import { canRunAuto, setAutoPref, useAutoPrefs, type AutoPrefs } from '../../app/auto-prefs'
 import { botDeckList } from '../../app/bot-deck-lists'
 import { cardSmallImageUrl } from '../../app/card-prices'
-import { mainMissing } from '../../app/duel-siding'
 import { soloLoaner } from '../../app/loaner-deck'
 import { BOT_DECK_MENU, botDeckMain, hasHandtrapConfig, isBotModified, poolCount, readHandtrapConfig, rivalKindOf, withBotFlex, withRival, writeHandtrapConfig, type BotDeckInfo, type HandtrapConfig, type HandtrapPick, type RivalKind } from '../../app/handtraps'
 import { STARTING_LP } from '../../app/life-calculator'
@@ -153,9 +152,10 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
   const choose = (next: RivalKind, deck?: string) => save(withRival(config, next, deck))
   // Sin bot, el modo de siempre; los bots, siempre automáticos.
   const auto = canAuto && (kind === 'bot' || prefs.duel)
-  // Sin deck propio completo, uno prestado (el mismo cálculo que la mesa, `soloLoaner`); mientras llegan, se espera; si no llegan, tu deck como siempre.
-  const ownShort = Boolean(loaners) && mainMissing(deckSize) > 0
-  const loan = loaners ? soloLoaner(loaners.decks, prefs.loaner, deckSize, pick.deck?.id ?? null) : null
+  // Sin un deck propio que reparta la mano (`minDeck`, lo que Solo pidió siempre), uno prestado (el mismo cálculo que la mesa, `soloLoaner`); mientras llegan, se espera.
+  // Un deck a medio armar que reparte es con el que practicás, como siempre.
+  const ownShort = Boolean(loaners) && deckSize < minDeck
+  const loan = loaners ? soloLoaner(loaners.decks, prefs.loaner, deckSize, minDeck, pick.deck?.id ?? null) : null
   const loading = ownShort && (loaners?.status === 'loading' || loaners?.status === 'idle')
   const [loanerOpen, setLoanerOpen] = useState(false)
   const deckReady = loan !== null || (!loading && deckSize >= minDeck)
@@ -435,6 +435,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
           blocked={(deck) => (deck.list.id === pick.deck?.id ? t('duel.loaner.rival') : null)}
           onPick={(id) => setAutoPref('loaner', id)}
           own={deckSize}
+          need={minDeck}
           onOpenBuilder={onOpenBuilder}
           footer={
             <Button variant="primary" color="success" icon="play" fullWidth disabled={!loan} onClick={play}>

@@ -19,8 +19,8 @@ export interface LoanerDeck {
 }
 
 /**
- * Con menos de esto en el Main se presta: el mínimo de un duelo (`MAIN_MINIMUM` de `duel-siding.ts`, lo vigila su prueba). Copiado y no importado: el menú (`DeckModeScreen`) lee
- * este módulo y `duel-siding` es del duelo, que baja aparte.
+ * En Online se presta con menos de esto en el Main: el mínimo de un duelo (`MAIN_MINIMUM` de `duel-siding.ts`, lo vigila su prueba). Copiado y no importado: el menú
+ * (`DeckModeScreen`) lee este módulo y `duel-siding` es del duelo, que baja aparte.
  */
 export const LOAN_BELOW = 40
 export const needsLoan = (ownMain: number) => ownMain < LOAN_BELOW
@@ -60,8 +60,8 @@ export function pickLoaner(decks: readonly LoanerDeck[], chosen: string, usable:
 }
 
 /**
- * El prestado de Solo (lo muestra la pantalla y con él reparte la mesa): con tu deck completo, ninguno; si no, el elegido que no sea el del bot rival (nunca un espejo). `null` también
- * si todavía no llegaron: entonces vale tu deck, como siempre.
+ * El prestado de Solo (lo muestra la pantalla y con él reparte la mesa). Se presta sólo si tu deck no alcanza para lo que vas a hacer: en Solo, repartir la mano (`handSize`, lo
+ * que Solo pedía siempre); un deck a medio armar que reparte es con el que practicás. Nunca el del bot rival (un espejo). `null` también si todavía no llegaron: vale tu deck.
  */
-export const soloLoaner = (decks: readonly LoanerDeck[], chosen: string, ownMain: number, rivalBot: string | null): LoanerDeck | null =>
-  !needsLoan(ownMain) ? null : pickLoaner(decks, chosen, (deck) => deck.list.id !== rivalBot)
+export const soloLoaner = (decks: readonly LoanerDeck[], chosen: string, ownMain: number, handSize: number, rivalBot: string | null): LoanerDeck | null =>
+  ownMain >= handSize ? null : pickLoaner(decks, chosen, (deck) => deck.list.id !== rivalBot)

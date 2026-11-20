@@ -150,15 +150,17 @@ export function DeckModeScreen() {
   const [duelTable, setDuelTable] = useState(false)
   // La práctica y el duelo juegan con las mismas copias del deck armado.
   const ownDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra, controller.exportDeck.deckBuilder.side)
-  // Sin deck propio completo, Online y Solo juegan con un mazo prestado (`loaner-deck.ts`): se pide al llegar a Jugar. La mesa de Solo reparte con el mismo que muestra su pantalla.
-  const atPlay = atPlayHome || activeStep === 'practice'
-  const loaners = useLoaners(atPlay && needsLoan(ownDeck.mainIds.length))
+  // Se presta un mazo (`loaner-deck.ts`) sólo si tu deck no alcanza para lo que vas a hacer: Online, el Main de un duelo; Solo, repartir la mano. Sólo entonces se piden sus cartas.
+  // La mesa de Solo reparte con el mismo que muestra su pantalla.
+  const ownMain = ownDeck.mainIds.length
+  const handSize = controller.probability.handSize
+  const loaners = useLoaners((isDuelStep && needsLoan(ownMain)) || ((activeStep === 'solo' || activeStep === 'practice') && ownMain < handSize))
   const autoPrefs = useAutoPrefs()
   const soloLoan = useMemo(() => {
     if (activeStep !== 'practice' || loaners.status !== 'ready') return null
     const config = readHandtrapConfig()
-    return soloLoaner(loaners.decks, autoPrefs.loaner, ownDeck.mainIds.length, canRunAuto() && rivalKindOf(config) === 'bot' ? (config.botDeck ?? null) : null)
-  }, [activeStep, loaners.status, loaners.decks, autoPrefs.loaner, ownDeck.mainIds.length])
+    return soloLoaner(loaners.decks, autoPrefs.loaner, ownMain, handSize, canRunAuto() && rivalKindOf(config) === 'bot' ? (config.botDeck ?? null) : null)
+  }, [activeStep, loaners.status, loaners.decks, autoPrefs.loaner, ownMain, handSize])
   const matDeck = useMemo(() => (soloLoan ? { mainIds: soloLoan.mainIds, extraIds: soloLoan.extraIds, sideIds: [], cardsById: soloLoan.cardsById } : ownDeck), [soloLoan, ownDeck])
   const matDeckName = soloLoan ? soloLoan.list.name : controller.exportDeck.deckName
   // El duelo por enlace se ofrece sólo si la app sabe a qué relay conectarse (`VITE_DUEL_RELAY_URL`).

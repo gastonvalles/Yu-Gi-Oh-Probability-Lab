@@ -127,7 +127,7 @@ export const duel = {
   'duel.loaner.build': 'Armar o importar el mío',
   'duel.loaner.buildHint': 'De cero, uno de torneo, ydke:// o .ydk',
   'duel.loaner.keep': 'Seguir armando el mío',
-  'duel.loaner.missing': { one: 'Tiene {have}: le falta una para un duelo', other: 'Tiene {have}: le faltan {count} para un duelo' },
+  'duel.loaner.missing': { one: 'Tiene {have}: le falta una para jugar', other: 'Tiene {have}: le faltan {count} para jugar' },
   'duel.loaner.play': 'Jugar con {name}',
   'duel.loaner.notIn': 'No vale en {format}',
   'duel.loaner.noneIn': 'Los mazos prestados no valen en {format}',

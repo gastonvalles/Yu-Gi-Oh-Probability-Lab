@@ -118,7 +118,7 @@ export const duel: Translated<typeof es> = {
   'duel.loaner.build': 'Build or import mine',
   'duel.loaner.buildHint': 'From scratch, a tournament one, ydke:// or .ydk',
   'duel.loaner.keep': 'Keep building mine',
-  'duel.loaner.missing': { one: 'It has {have}: one short for a duel', other: 'It has {have}: {count} short for a duel' },
+  'duel.loaner.missing': { one: 'It has {have}: one short to play', other: 'It has {have}: {count} short to play' },
   'duel.loaner.play': 'Play with {name}',
   'duel.loaner.notIn': 'Not legal in {format}',
   'duel.loaner.noneIn': 'The loaned decks are not legal in {format}',

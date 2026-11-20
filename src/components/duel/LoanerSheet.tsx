@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 import { botDeckList } from '../../app/bot-deck-lists'
 import { cardSmallImageUrl } from '../../app/card-prices'
-import { mainMissing } from '../../app/duel-siding'
+import { MAIN_MINIMUM } from '../../app/duel-siding'
 import type { LoanerDeck } from '../../app/loaner-deck'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -67,6 +67,8 @@ interface LoanerSheetProps {
   onPick: (id: string) => void
   /** Las cartas del Main de tu deck: con alguna, «El tuyo» dice cuántas le faltan (una pista, no un error: todavía no intentaste jugar con él). */
   own: number
+  /** Cuántas hacen falta para lo que vas a hacer: el Main de un duelo en Online (de entrada), la mano en Solo. La pista sale sólo si no alcanza. */
+  need?: number
   onOpenBuilder: () => void
   /** La acción principal, abajo («Jugar con Sky Striker»). */
   footer: ReactNode
@@ -78,8 +80,8 @@ interface LoanerSheetProps {
  * Elegir no juega: lo hace el botón de abajo. Estados: cargando (esqueleto de la lista), error con «Reintentar», elegido. Teclado: la lista es un `radiogroup` de `ListRow`.
  * Usos: la portada de Online (`PlayHome`), la fila «Tu deck» de Solo y su muestra en `/playground`.
  */
-export function LoanerSheet({ isOpen, onClose, loaners, current, blocked = () => null, onPick, own, onOpenBuilder, footer }: LoanerSheetProps) {
-  const missing = mainMissing(own)
+export function LoanerSheet({ isOpen, onClose, loaners, current, blocked = () => null, onPick, own, need = MAIN_MINIMUM, onOpenBuilder, footer }: LoanerSheetProps) {
+  const missing = Math.max(0, need - own)
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="keypad" title={t('duel.loaner.title')} footer={footer}>
