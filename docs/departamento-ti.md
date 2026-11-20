@@ -59,7 +59,7 @@ de revertir, revisión de seguridad) se le propone a Gastón con la razón en un
   e2e/tsconfig.json` sólo si cambió `e2e/` o un `playwright*.config.ts`), `eslint` (sólo
   lo cambiado), `vitest related` más las guardas baratas (docs, tailwind-only, licencia, site-meta, vercel-headers e i18n;
   `playground`, `src/index.css` y el relay sólo si cambió su zona), el `build` sin el `tsc` que el typecheck ya cubre y `peso`
-  (`scripts/check-weight.mjs`: el JS con gzip de «Inicio» y del duelo contra su tope; el tope sólo baja). Meta: ≤ 2 min.
+  (`scripts/check-weight.mjs`: el peso con gzip de «Inicio» y del duelo (con el wasm) contra su tope; el tope sólo baja). Meta: ≤ 2 min.
   Uno solo a la vez en toda la PC (`.claude/ti/gate.lock`, con cola de hasta 15 min). `--dry` muestra el plan; `GATE_BASE` cambia
   la base del diff.
 - **Node:** vitest pide ≥ 22.22 (con 22.14 cae `i18n.test.tsx`). Si el de la PC es más viejo, el gate usa el de

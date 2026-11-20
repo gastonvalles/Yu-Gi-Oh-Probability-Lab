@@ -1,7 +1,7 @@
-// Presupuesto de peso: lee `dist/` (después de `npm run build`), suma el JS comprimido con gzip de dos conjuntos y sale con 1 si alguno pasa su tope.
+// Presupuesto de peso: lee `dist/` (después de `npm run build`), suma lo comprimido con gzip (JS y el wasm del núcleo) de dos conjuntos y sale con 1 si alguno pasa su tope.
 //   inicio: lo que baja una visita nueva a `/` antes de tocar nada: el módulo de entrada de `dist/index.html`, sus `modulepreload` y lo que pide al montar (`MainApp`, `InicioScreen`).
 //   duelo:  inicio + lo necesario para jugar un duelo automático: el cierre de importaciones estáticas de `AutoSoloScreen` (el trozo perezoso de «Jugar solo»),
-//           el worker del núcleo (`core-host.worker`) con el cierre del `ocgcore.*` que baja (el de JSPI o el sync, el que más pese).
+//           el worker del núcleo (`core-host.worker`), el `.wasm` que localiza y el pegamento sync que importa (el wasm es binario: también se comprime con gzip).
 // El grafo se lee del propio código del build (los `import ... from "./x.js"` estáticos y los `import("./x.js")` del worker): sin `build.manifest`, que publicaría un archivo más.
 // ponytail: regex sobre JS minificado; si el formato de salida de Vite cambia y no encuentra un trozo, falla fuerte (no pasa en silencio).
 import { readdirSync, readFileSync } from 'node:fs'
@@ -9,9 +9,9 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
-// Topes en KB (1 KB = 1024 bytes): lo medido el 2026-11-20 (inicio 349,0; duelo 1158,3) más un 2 %, redondeado al KB.
+// Topes en KB (1 KB = 1024 bytes): lo medido el 2026-11-20 (inicio 349,4; duelo 1041,6 contando el wasm y no las copias en base64) más un 2 %, redondeado al KB.
 // El número sólo baja (la Fase 4 lo recorta); subirlo es una decisión que se le cuenta a Gastón, no un ajuste para que pase el CI.
-const BUDGET_KB = { inicio: 356, duelo: 1182 }
+const BUDGET_KB = { inicio: 356, duelo: 1062 }
 
 const DIST = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
 const ASSETS = join(DIST, 'assets')
@@ -52,12 +52,15 @@ const inicio = closure([entry, ...matches(/<link[^>]*rel="modulepreload"[^>]*hre
 
 const weight = (set) => [...set].reduce((sum, name) => sum + gzSize(name), 0)
 const worker = find(/^core-host\.worker-.*\.js$/)
-// Del `ocgcore.*` el worker baja uno (JSPI si el navegador lo tiene, si no sync), cada uno con su archivo de datos: se cuenta el que más pese.
-const cores = Object.values(Object.groupBy(dynamicImports(worker).filter((name) => name.startsWith('ocgcore.')), (name) => name.split('-')[0]))
-  .map((group) => closure(group))
-  .sort((a, b) => weight(b) - weight(a))
-if (!cores.length) throw new Error(`check-weight: ${worker} no importa ningún ocgcore.*`)
-const duelo = new Set([...inicio, ...closure([find(/^AutoSoloScreen-.*\.js$/), worker]), ...cores[0]])
+const workerCode = read(worker)
+// Del núcleo el worker baja el `.wasm` que localiza (`locateFile`, core-host.worker.ts:27) y el pegamento de la variante sync (`createCore({ sync: true })`, core-host.ts:588).
+// Las copias `ocgcore.*-*.js` con el wasm en base64 (`.default.buffer`) quedan afuera: el paquete sólo las importa sin `locateFile` y el worker lo exige (core-host.ts:324).
+const wasm = [...new Set(matches(/\/assets\/(ocgcore\.sync-[\w-]+\.wasm)/g, workerCode))]
+if (wasm.length !== 1) throw new Error(`check-weight: se esperaba un solo ocgcore.sync-*.wasm en ${worker} y hay ${wasm.length}`)
+const base64Copies = new Set(matches(/import\(\s*["'`]\.\/([^"'`]+\.js)["'`]\s*\)\)\.default\.buffer/g, workerCode))
+const glue = dynamicImports(worker).filter((name) => name.startsWith('ocgcore.sync-') && !base64Copies.has(name))
+if (glue.length !== 1) throw new Error(`check-weight: se esperaba un solo pegamento ocgcore.sync-*.js en ${worker} y hay ${glue.length}`)
+const duelo = new Set([...inicio, ...closure([find(/^AutoSoloScreen-.*\.js$/), worker, ...glue]), ...wasm])
 
 let failed = false
 for (const [label, set] of [['inicio', inicio], ['duelo', duelo]]) {
@@ -68,7 +71,7 @@ for (const [label, set] of [['inicio', inicio], ['duelo', duelo]]) {
     continue
   }
   failed = true
-  console.error(`check-weight: ${label} pesa ${kb.toFixed(1)} KB (JS con gzip) y el tope es ${budget} KB. Los 5 archivos más pesados del conjunto:`)
+  console.error(`check-weight: ${label} pesa ${kb.toFixed(1)} KB (con gzip) y el tope es ${budget} KB. Los 5 archivos más pesados del conjunto:`)
   for (const name of [...set].sort((a, b) => gzSize(b) - gzSize(a)).slice(0, 5)) console.error(`  ${(gzSize(name) / KB).toFixed(1)} KB  ${name}`)
 }
 process.exit(failed ? 1 : 0)
