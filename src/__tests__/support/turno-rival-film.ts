@@ -79,6 +79,7 @@ export function filmSession(film: RivalTurnFilm): AutoSession & { answers: CoreA
       replaying: false,
       // Sin los nombres del `.cdb`: cada carta se llama por su código («#12580477»).
       names: Object.fromEntries(film.places.map(([, , code]) => [code, `#${code}`])),
+      aliases: {},
       vanilla: [],
       texts: {},
       unmapped: [],

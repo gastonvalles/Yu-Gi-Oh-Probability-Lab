@@ -44,11 +44,12 @@ const TYPE_PENDULUM = 0x1000000
  */
 const ARTWORK_OFFSET = 20
 
+/** El original de un arte alternativo (su `alias` cercano); un código sin alias, o con un «se trata como» lejano, es el suyo. */
+export const originalOf = (code: number, alias: number): number => (alias !== 0 && Math.abs(alias - code) < ARTWORK_OFFSET ? alias : code)
+
 /** El script que el núcleo pide para esa carta. */
 export function scriptName(card: CoreCardInfo): string {
-  const original = card.alias !== 0 && Math.abs(card.alias - card.code) < ARTWORK_OFFSET ? card.alias : card.code
-
-  return `c${original}.lua`
+  return `c${originalOf(card.code, card.alias)}.lua`
 }
 
 /** Los Monstruos Normales (salvo los de Péndulo) y las fichas no necesitan script. */

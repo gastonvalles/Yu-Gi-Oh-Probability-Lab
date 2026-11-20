@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
+import { configureStore } from '@reduxjs/toolkit'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { Provider } from 'react-redux'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { BotNote, SessionAnswer } from '../app/auto/auto-session'
@@ -51,6 +53,35 @@ describe('Qué hizo el bot y por qué', () => {
     // Sin `onPick` los renglones no se tocan; los límites, siempre.
     expect(screen.queryAllByRole('button')).toEqual([])
     expect(screen.getByText(/^Sparring de práctica/)).toBeInTheDocument()
+  })
+
+  it('una decisión que no nombra carta («Terminé el turno») es un renglón de texto, sin cuadro de miniatura; las que nombran una, lo llevan', () => {
+    render(<BotLog turns={botTurns(ANSWERS)} deciding nameOf={nameOf} artOf={artOf} />)
+    const [withCard, withoutCard] = within(screen.getByRole('list', { name: 'Turno 2 · bot' })).getAllByRole('listitem')
+
+    expect(withCard!.querySelector('[aria-hidden="true"]')).not.toBeNull()
+    expect(withoutCard).toHaveTextContent('Terminé el turno')
+    expect(withoutCard!.querySelector('[aria-hidden="true"]')).toBeNull()
+  })
+
+  it('una carta que el núcleo nombra por un arte alternativo sale con el nombre y la imagen de su original (`alias`)', () => {
+    const ALT = 5000
+    const ORIGINAL = 5001
+    const turns = botTurns([rival(note('cost.extra', [ALT], 2, false, 5))])
+    const known = (code: number) => (code === ORIGINAL ? 'Original Dragon' : null)
+    const art = (code: number) => (code === ORIGINAL ? `https://art.test/${code}.jpg` : null)
+    // La imagen lleva la insignia de límite (lee el formato del deck del store).
+    const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
+    const { container, rerender } = render(<BotLog turns={turns} deciding nameOf={known} artOf={art} aliasOf={(code) => (code === ALT ? ORIGINAL : 0)} />, {
+      wrapper: ({ children }) => <Provider store={store}>{children}</Provider>,
+    })
+
+    expect(screen.getByRole('listitem')).toHaveTextContent('Elegí Original Dragon de mi Extra Deck')
+    expect(container.querySelector('img')?.getAttribute('src')).toContain(String(ORIGINAL))
+    // Sin el `alias`, la carta no se conoce: sin nombre y sin imagen.
+    rerender(<BotLog turns={turns} deciding nameOf={known} artOf={art} />)
+    expect(screen.getByRole('listitem')).not.toHaveTextContent('Original Dragon')
+    expect(container.querySelector('img')).toBeNull()
   })
 
   it('tocar un renglón dice cuál (para llevar la mesa a ese momento)', () => {
