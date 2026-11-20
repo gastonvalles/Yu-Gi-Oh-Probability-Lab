@@ -23,9 +23,9 @@ export interface NovedadesEntry {
   en: NovedadesCopy
 }
 
-/** Lo más nuevo primero; el mismo día, por id (estable entre recargas). */
+/** Lo más nuevo primero; el mismo día, por id (estable entre recargas), con su número de orden leído como número: la 10 va después de la 9. */
 export function sortEntries(entries: readonly NovedadesEntry[]): NovedadesEntry[] {
-  return [...entries].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+  return [...entries].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id, undefined, { numeric: true }))
 }
 
 /** `'all'` las deja todas. */

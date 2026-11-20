@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-13-online-avisa-el-deck",
+      "date": "2026-11-20",
+      "tags": [
+        "arreglo"
+      ],
+      "es": {
+        "title": "Online te avisa si a tu deck le faltan cartas",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Antes, con un deck de menos de 40 cartas en el Main podías entrar a una sala desde Online y recién adentro no te dejaba estar listo. Ahora Online te lo dice antes de entrar, con cuántas cartas te faltan.",
+          "Hasta completarlo no podés abrir ni entrar a un duelo desde Online, y el botón principal te lleva a armarlo.",
+          "Las novedades del mismo día ahora salen en orden: las últimas de hoy aparecían debajo de las anteriores."
+        ],
+        "ojo": [
+          "Con un enlace de invitación entrás a la sala igual, y el aviso aparece adentro.",
+          "Las cartas prohibidas o limitadas del formato todavía se revisan recién en la sala."
+        ]
+      },
+      "en": {
+        "title": "Online tells you if your deck is missing cards",
+        "novedades": [],
+        "comoSeUsa": [],
+        "arreglos": [
+          "Before, with fewer than 40 cards in the Main you could enter a room from Online and only inside it would not let you be ready. Now Online tells you before entering, with how many cards you are missing.",
+          "Until you complete it you cannot open or join a duel from Online, and the main button takes you to build it.",
+          "Same-day news now show in order: today's latest ones appeared below the earlier ones."
+        ],
+        "ojo": [
+          "With an invitation link you still enter the room, and the notice shows inside.",
+          "Forbidden or limited cards of the format are still checked only in the room."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-12-el-rival-juega-mejor-su-turno",
       "date": "2026-11-20",
       "tags": [
