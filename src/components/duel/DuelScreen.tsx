@@ -276,15 +276,15 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const sidingOpen = siding.open
   const setSided = (next: SideDeck | null) => updateSiding({ deck: next })
   // Sin deck propio completo, el prestado que vale en el formato de las reglas del lobby (el mismo que muestra `PlayHome`): sólo con qué se juega, el builder no cambia.
-  // Se vuelve a mirar al entrar a una sala (`intent`): el lobby guarda sus reglas antes de abrirla.
+  // Las reglas se leen de lo guardado en cada vuelta: el lobby las guarda antes de abrir o buscar una sala.
   const chosenLoaner = useAutoPrefs().loaner
   const loanerDecks = loaners?.decks
   const ownShort = mainMissing(mainIds.length) > 0
-  const loan = useMemo(() => {
-    if (!loanerDecks || !ownShort) return null
-    const rules = readPrefs()
-    return pickLoaner(loanerDecks, chosenLoaner, (one) => loanerFits(one, rules.format, rules.genesysCap))
-  }, [loanerDecks, ownShort, chosenLoaner, intent])
+  const { format: lobbyFormat, genesysCap: lobbyCap } = readPrefs()
+  const loan = useMemo(
+    () => (loanerDecks && ownShort ? pickLoaner(loanerDecks, chosenLoaner, (one) => loanerFits(one, lobbyFormat, lobbyCap)) : null),
+    [loanerDecks, ownShort, chosenLoaner, lobbyFormat, lobbyCap],
+  )
   const deck = useMemo<DuelDeck>(() => {
     const base = loan ? { name: loan.list.name, mainIds: loan.mainIds, extraIds: loan.extraIds, sideIds: [], cardsById: loan.cardsById } : { name: deckName, mainIds, extraIds, sideIds, cardsById }
 

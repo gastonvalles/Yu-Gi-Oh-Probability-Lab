@@ -73,7 +73,7 @@ test('Online: dos visitantes sin deck, de «Jugar ahora» a la primera jugada en
   await expect(phaseChip(ana)).toBeEnabled(CORE)
   await expect(phaseChip(ana)).toHaveAccessibleName('Fases: Main Phase 1', CORE)
   const seconds = (Date.now() - start) / 1000
-  console.log(`visitante-nuevo online: ${seconds.toFixed(1)} s y ${taps} toques entre los dos (Ana: 5)`)
+  console.log(`visitante-nuevo online: ${seconds.toFixed(1)} s y ${taps} toques entre los dos (Ana: 6, Beto: 4)`)
   await shot(ana, 'visitante-online-mesa')
   expect(seconds).toBeLessThan(60)
 })
