@@ -69,6 +69,8 @@ export const auto: Translated<typeof es> = {
   'auto.bot.reason.end.price': 'I ended my turn without using {card}: it cost me {lp} LP because of a card of yours.',
   'auto.bot.reason.play.removePunisher': 'I activated {card} first: it can get rid of the card that makes me lose LP.',
   'auto.bot.reason.battle.lethal': 'I went to battle: what I can attack with is enough to take your LP to 0.',
+  'auto.bot.reason.play.fromExtra': 'I Summoned {card} from the Extra Deck: it leaves my field stronger.',
+  'auto.bot.reason.play.fromExtraLethal': 'I Summoned {card} from the Extra Deck: with it I can take your LP to 0 this turn.',
   'auto.bot.reason.play.lethalPrice': 'I used {card} even though it cost me {lp} LP: with it I can take your LP to 0 this turn.',
   'auto.bot.reason.play.ra': 'I Tributed {card} to Summon {to} with 4000 ATK and DEF.',
   'auto.bot.reason.play.sweep': { one: 'I activated {card}: it takes out your card.', other: 'I activated {card}: it takes out {count} of your cards.' },

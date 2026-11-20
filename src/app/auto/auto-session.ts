@@ -430,7 +430,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         seat,
         mine: { deck: seat === bagged ? bagOrder(command.decks[seat]!.main) : teamOrder(command, seat), extra: command.decks[seat]!.extra },
         theirs: { deck: command.decks[1 - seat]!.main.length, extra: command.decks[1 - seat]!.extra.length },
-        lp: resume ? (seat === me ? [...resume.lp] : [resume.lp[1], resume.lp[0]]) : [PLAYER.lp, PLAYER.lp],
+        // Por asiento del núcleo, en los dos adaptadores (`resume.lp` es tuyas y del rival).
+        lp: resume ? (me === 0 ? [...resume.lp] : [resume.lp[1], resume.lp[0]]) : [PLAYER.lp, PLAYER.lp],
         ...(resume ? { setup: seat === me ? { mine: resume.mine, theirs: theirsState, codeOf: (side, id) => (side === 'mine' ? resume.codeOf('mine', id) : seenTheirs(id)) } : (resume.rival ?? { mine: theirsState, theirs: resume.mine, codeOf: (side, id) => (side === 'mine' ? theirsCode(id) : seenMine(id)) }) } : {}),
         typeOf,
         bag: seat === bagged,
