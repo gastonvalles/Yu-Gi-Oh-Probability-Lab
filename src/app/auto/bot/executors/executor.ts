@@ -222,43 +222,47 @@ export function lethalPlan(s: Pick<Scene, 'view'>, attackers: readonly Attacker[
   const yours = s.view.them.monsters.flatMap((card, sequence) =>
     card ? [{ sequence, hidden: card.code === 0 || card.pos === 'set' || !card.stats, atk: card.pos === 'atk', guard: (card.pos === 'atk' ? card.stats?.attack : card.stats?.defense) ?? 0 }] : [],
   )
-  const open = yours.every((card) => !card.hidden)
-  // Por atacante: la casilla que limpia, `null` directo, `undefined` no ataca.
-  const picks: (number | null | undefined)[] = []
-  let best: { damage: number; picks: (number | null | undefined)[] } = { damage: 0, picks: [] }
-  const walk = (i: number, used: number) => {
-    if (i === attackers.length) {
-      const cleared = open && yours.every((card) => (used & (1 << card.sequence)) !== 0)
+  const seen = yours.filter((card) => !card.hidden)
+  const open = seen.length === yours.length
+  // Por monstruo tuyo boca arriba, el atacante que lo limpia (o -1): pocos monstruos, así que se prueban todos los repartos (con 5 y 5, 1546).
+  const by: number[] = []
+  let best = { damage: 0, by: [] as number[] }
+  const walk = (k: number, used: number) => {
+    if (k === seen.length) {
+      const cleared = open && by.every((i) => i >= 0)
       let damage = 0
 
-      for (const [k, pick] of picks.entries()) {
-        const card = yours.find((item) => item.sequence === pick)
-
-        if (pick === null && !cleared && !attackers[k]!.direct) return
-        damage += pick === null ? attackers[k]!.atk : card?.atk ? attackers[k]!.atk - card.guard : 0
-      }
-      if (damage > best.damage) best = { damage, picks: [...picks] }
+      by.forEach((i, t) => (damage += i >= 0 && seen[t]!.atk ? attackers[i]!.atk - seen[t]!.guard : 0))
+      attackers.forEach((attacker, i) => (damage += (used & (1 << i)) === 0 && (cleared || attacker.direct) ? attacker.atk : 0))
+      if (damage > best.damage) best = { damage, by: [...by] }
       return
     }
-    const atk = attackers[i]!.atk
+    const card = seen[k]!
 
-    for (const pick of [undefined, null, ...yours.map((card) => card.sequence)]) {
-      const card = yours.find((item) => item.sequence === pick)
-
-      if (card && (card.hidden || (used & (1 << card.sequence)) !== 0 || atk < card.guard || (atk === card.guard && (!card.atk || atk === 0)))) continue
-      picks[i] = pick
-      walk(i + 1, card ? used | (1 << card.sequence) : used)
-    }
+    by[k] = -1
+    walk(k + 1, used)
+    attackers.forEach((attacker, i) => {
+      if ((used & (1 << i)) !== 0 || attacker.atk < card.guard || (attacker.atk === card.guard && (!card.atk || attacker.atk === 0))) return
+      by[k] = i
+      walk(k + 1, used | (1 << i))
+    })
+    by.length = k
   }
 
   walk(0, 0)
   if (best.damage < s.view.lp.them) return null
-  const i = best.picks.findIndex((pick) => pick !== null && pick !== undefined)
-  const next = i >= 0 ? i : best.picks.indexOf(null)
-  const target = best.picks[next]!
-  const card = yours.find((item) => item.sequence === target)
+  const t = best.by.findIndex((i) => i >= 0)
 
-  return { i: next, target, kind: !card ? 'direct' : card.atk && card.guard === attackers[next]!.atk ? 'trade' : 'safe' }
+  if (t >= 0) {
+    const card = seen[t]!
+    const i = best.by[t]!
+
+    return { i, target: card.sequence, kind: card.atk && card.guard === attackers[i]!.atk ? 'trade' : 'safe' }
+  }
+  // Sin nada que limpiar: directo, el más fuerte de los que pueden.
+  const direct = ranked(attackers, (attacker) => attacker.atk).find((i) => open && seen.length === 0 ? true : attackers[i]!.direct)!
+
+  return { i: direct, target: null, kind: 'direct' }
 }
 
 /** Que la respuesta sea una que el núcleo acepta (índices en rango, cantidades entre `min` y `max`): si no, contesta el de reserva. */
