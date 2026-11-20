@@ -233,7 +233,9 @@ describe('la mesa dibujada en inglés', () => {
     // El + está al medio del campo, no en la barra de arriba.
     expect(within(toolbar).queryByRole('button', { name: 'Token' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Token' })).toHaveAttribute('title', 'Create a Token')
-    expect(within(toolbar).getByRole('button', { name: 'Undo' })).toBeDisabled()
+    // Deshacer, abajo (con tu mano), no en la barra.
+    expect(within(toolbar).queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled()
     expect(screen.getByLabelText('Turn 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Phases:/ })).toHaveAccessibleName('Phases: Draw Phase')
     expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
@@ -271,7 +273,7 @@ describe('la mesa dibujada en inglés', () => {
     expect(status()).toHaveTextContent(/You banish Imperm$/)
     expect(screen.getByRole('button', { name: 'Banish: 1' }).querySelector('[data-card-art]')).not.toBeNull()
 
-    fireEvent.click(within(toolbar).getByRole('button', { name: 'Undo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 1' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('menuitem', { name: 'Banish the top card' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Face-down' }))
