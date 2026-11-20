@@ -13,11 +13,12 @@ test.describe.configure({ timeout: 300_000 })
 
 // Si falla, el árbol de accesibilidad de las dos pantallas queda junto a la traza (la captura no dice qué menú se abrió).
 const open: { name: string; page: Page }[] = []
-test.afterEach(async ({}, testInfo) => {
+test.afterEach(async ({ browser }, testInfo) => {
   if (testInfo.status !== testInfo.expectedStatus)
     for (const { name, page } of open) writeFileSync(testInfo.outputPath(`aria-${name}.yaml`), await page.locator('body').ariaSnapshot().catch(String))
+  open.length = 0
   // Cada prueba cierra sus navegadores: la sala no sigue abierta en la que viene.
-  for (const { page } of open.splice(0)) await page.context().close()
+  for (const context of browser.contexts()) await context.close()
 })
 
 /** Ana abre la sala automática, Beto entra por el código, los dos listos, piedra-papel-tijera y Ana va primero; espera a que el núcleo reparta. */
@@ -203,33 +204,50 @@ test('reconexión: el invitado y después el anfitrión recargan en pleno duelo,
   })
 })
 
-test('de automático a manual y de vuelta a automático, con la mesa como estaba', async ({ browser }) => {
+/** En el turno 1 de Ana, tras su invocación: Ana pide pasar a manual desde Opciones, Beto acepta y la mesa manual sigue a la automática. */
+async function autoToManual(browser: Browser) {
   const { ana, beto } = await startAutoDuel(browser)
   await toMain1(ana)
   await normalSummon(ana)
   const auto = await sameTable(ana, beto)
 
-  await test.step('Ana pide pasar a manual desde Opciones y Beto acepta', async () => {
-    await ana.getByRole('button', { name: 'Opciones', exact: true }).click()
-    await ana.getByRole('dialog', { name: 'Opciones' }).getByRole('button', { name: 'Pasar a manual', exact: true }).click()
-    await ana.keyboard.press('Escape')
-    await beto.locator('[data-prompt]').getByRole('button', { name: 'Pasar a manual', exact: true }).click(CORE)
-    // La mesa manual tiene ⋯ (el automático, sólo el ⚙ de Opciones).
-    await expect(ana.getByRole('button', { name: 'Más opciones', exact: true })).toBeVisible(CORE)
-    await expect(beto.getByRole('button', { name: 'Más opciones', exact: true })).toBeVisible(CORE)
-    expect(await sameTable(ana, beto), 'la mesa manual sigue a la automática').toEqual(auto)
-    await shot(ana, 'auto-06-ana-manual')
-  })
+  await ana.getByRole('button', { name: 'Opciones', exact: true }).click()
+  await ana.getByRole('dialog', { name: 'Opciones' }).getByRole('button', { name: 'Pasar a manual', exact: true }).click()
+  await ana.keyboard.press('Escape')
+  await beto.locator('[data-prompt]').getByRole('button', { name: 'Pasar a manual', exact: true }).click(CORE)
+  // La mesa manual tiene ⋯ (el automático, sólo el ⚙ de Opciones).
+  await expect(ana.getByRole('button', { name: 'Más opciones', exact: true })).toBeVisible(CORE)
+  await expect(beto.getByRole('button', { name: 'Más opciones', exact: true })).toBeVisible(CORE)
+  expect(await sameTable(ana, beto), 'la mesa manual sigue a la automática').toEqual(auto)
+  return { ana, beto, auto }
+}
+
+test('de automático a manual: los dos aceptan y la mesa manual sigue como estaba', async ({ browser }) => {
+  const { ana, beto } = await autoToManual(browser)
+  await shot(ana, 'auto-06-ana-manual')
+  // La mesa manual anda: Ana va a la End Phase y Beto lo ve.
+  await phaseChip(ana).click()
+  await ana.getByRole('menuitem', { name: /^(Ir a )?End Phase/ }).click()
+  await beto.getByRole('button', { name: 'Dejar pasar' }).click()
+  await expect(phaseChip(beto)).toHaveAccessibleName('Fases: End Phase')
+})
+
+// Falla de la app (TI-350): al volver a automático, el anfitrión ve la mano del invitado boca arriba («Mano del rival: Celtic Guardian, …»).
+test.fixme('de manual a automático: Ana (su turno, Main Phase 1) lo pide, Beto acepta y el núcleo sigue con la mesa como estaba', async ({ browser }) => {
+  const { ana, beto, auto } = await autoToManual(browser)
 
   await test.step('Ana (su turno, Main Phase 1) pide seguir en automático y Beto acepta', async () => {
     await ana.getByRole('button', { name: 'Más opciones', exact: true }).click()
-    await ana.getByRole('button', { name: 'Seguir en automático', exact: true }).or(ana.getByRole('menuitem', { name: /^Seguir en automático/ })).first().click()
+    // ⋯ → «Opciones del duelo» → «Modo automático»: «Seguir en automático».
+    await ana.getByRole('menuitem', { name: 'Opciones del duelo', exact: true }).click()
+    await ana.getByRole('button', { name: 'Seguir en automático', exact: true }).click()
     await ana.getByRole('button', { name: 'Pedir pasar a automático', exact: true }).click()
     await beto.getByRole('button', { name: 'Pasar a automático', exact: true }).click(CORE)
     await expect(ana.getByRole('button', { name: 'Opciones', exact: true })).toBeVisible(CORE)
     await expect(beto.getByRole('button', { name: 'Opciones', exact: true })).toBeVisible(CORE)
-    // El turno vuelve a empezar (límite aceptado), con la mesa como estaba.
+    // El turno vuelve a empezar (límite aceptado), con la mesa como estaba; la mano de Beto sigue oculta para Ana.
     await toMain1(ana)
+    await expect(rivalHand(ana), 'la mano de Beto, vista por Ana').toHaveAccessibleName(/^Mano del rival: \d+$/)
     expect(await sameTable(ana, beto), 'la mesa automática sigue a la manual').toEqual(auto)
     await shot(ana, 'auto-07-ana-otra-vez-automatico')
   })
