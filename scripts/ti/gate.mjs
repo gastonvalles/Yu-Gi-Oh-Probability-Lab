@@ -1,5 +1,5 @@
 // npm run gate: la capa única de pruebas antes de mergear. Corre una vez, con cola (uno a la vez en toda la PC) y corta en el primer rojo.
-// Pasos: typecheck, eslint (sólo lo cambiado), vitest (lo relacionado + guardas baratas) y build. `--dry` imprime el plan sin correr ni encolar.
+// Pasos: typecheck, eslint (sólo lo cambiado), vitest (lo relacionado + guardas baratas), build y peso (`scripts/check-weight.mjs`). `--dry` imprime el plan sin correr ni encolar.
 // Eventos `gate` en `<principal>/.claude/ti/events.jsonl` (contrato: `.claude/ti/contrato-eventos.md`); `TI_DIR` mueve esa carpeta (pruebas).
 import { spawnSync, execFileSync } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
@@ -152,6 +152,7 @@ function steps({ tests, lintArgs, related, e2e }) {
     lintArgs.length ? { name: 'eslint', run: node('eslint/bin/eslint.js', ['--no-warn-ignored', ...lintArgs]), detail: `${lintArgs.length === 1 && lintArgs[0] === '.' ? 'todo' : `${lintArgs.length} archivos`}` } : { name: 'eslint', skip: 'ningún archivo que ESLint lea' },
     { name: 'vitest', run: node('vitest/vitest.mjs', ['related', ...related, ...tests, '--run', '--passWithNoTests']), detail: `${new Set([...related, ...tests]).size} archivos de entrada, ${tests.length} guardas` },
     { name: 'build', run: { cmd: BUILD, args: [], shell: true }, detail: 'sin el tsc que typecheck ya cubre' },
+    { name: 'peso', run: { cmd: NODE, args: [join(ROOT, 'scripts', 'check-weight.mjs')], shell: false }, detail: 'JS con gzip de inicio y duelo contra su tope' },
   ]
 }
 

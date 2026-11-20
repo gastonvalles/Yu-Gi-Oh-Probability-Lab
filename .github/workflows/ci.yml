@@ -53,3 +53,5 @@ jobs:
           FUZZ_DUELS: 1
           FUZZ_HANDTRAP_DUELS: 1
       - run: npm run build
+      # El JS con gzip de «Inicio» y del duelo contra su tope (`scripts/check-weight.mjs`): falla si un trozo nuevo lo pasa.
+      - run: node scripts/check-weight.mjs
