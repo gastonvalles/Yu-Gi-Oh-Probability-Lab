@@ -896,6 +896,16 @@ function PracticeMatBody({
   const autoBlocked = onAuto ? whyNotResume(state, null) : null
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
+  // El combo guardado que se repasa: el que tiene las jugadas de la mesa. ponytail: por referencia (cargarlo pasa su `initial` y sus `actions` tal cual, renombrarlo o anotarlo
+  // los conserva y una jugada nueva arma otra lista: ya no es ese combo); si un día la mesa los copia, la sesión tiene que llevar el id. Vale igual en el repaso de «Jugar solo
+  // automático» (`use-auto-asks`, `review.load`, pasa las mismas listas); un duelo en vivo nunca es un combo guardado.
+  const reviewed = useMemo(() => (session.replay ? (combos.find((combo) => combo.initial === session.initial && combo.actions === session.actions) ?? null) : null), [session.replay, session.initial, session.actions, combos])
+  // Un combo grabado en «Jugar solo automático» con el campo del rival o la cadena (`theirs`, `chain`), se abra por donde se abra (el enlace, Replays, «Tus combos»): la mesa manual los dibuja
+  // con las piezas del repaso del automático (`useComboScene`). `scene` es lo que se ve del rival y de la cadena: el del duelo o, sin duelo, el del combo; sin ellos, la práctica de siempre.
+  const comboScene = useComboScene(duel ? null : (reviewed ?? (shared?.combo.actions === session.actions ? shared.combo : null)), session.cursor, nameOf, artById)
+  const scene = duel ?? comboScene
+  // Los vuelos y las escenas del rival: los del duelo o, repasando un combo que lo trae, los suyos (`useComboScene`).
+  const rivalFlights = duel ? duel.rivalFlights : comboScene?.rivalFlights
   const [picking, setPicking] = useState<Picking | null>(null)
   // Invocar varias por Péndulo: la hoja abierta (con la carta desde la que se abrió ya elegida) y, al confirmar, las que faltan colocar, de a una con el flujo de siempre (posición y zona):
   // `total` es para el «1 de 3» y `open`, que la de adelante ya tiene su menú abierto (si se cierra sin colocarla, se cancela el resto).
@@ -1200,7 +1210,7 @@ function PracticeMatBody({
       const box = cell.getBoundingClientRect()
       const card = hide.find((element): element is HTMLElement => element instanceof HTMLElement && sectionRef.current?.contains(element) === true && element.offsetWidth > 0)
       const [w, h] = card ? [Math.min(box.width, card.offsetWidth), Math.min(box.height, card.offsetHeight)] : [box.width, box.height]
-      return { cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h), art: mine ? artById(id) : (duel?.rivalFlights?.artOf(id) ?? null), hide }
+      return { cell: new DOMRect(box.left + (box.width - w) / 2, box.top + (box.height - h) / 2, w, h), art: mine ? artById(id) : (rivalFlights?.artOf(id) ?? null), hide }
     })
     const played = playPendulum({
       cards,
@@ -1266,11 +1276,13 @@ function PracticeMatBody({
   }, [cut, fxStep])
 
   // Las del rival: la mesa no recibe sus jugadas, sólo ve su campo cambiar (`rivalFlights`): un monstruo que llega boca arriba a una zona, de a uno (un `sync` que trae varios no es un golpe).
-  const rivalState = duel?.rivalFlights?.state ?? null
+  const rivalState = rivalFlights?.state ?? null
   const rivalBefore = useRef(rivalState)
+  // Repasando un combo, sus escenas sólo al avanzar un paso: saltar no las trae, como lo tuyo.
+  const stepped = Boolean(duel) || (fxStep.step !== null && 'action' in fxStep.step)
   // Lo que el rival activa en el campo (su jugada, el automático): el mismo resplandor que lo tuyo. Va antes del efecto de abajo, que pasa `rivalBefore` a la mesa nueva; activar sin costo no cambia
   // su mesa, así que se sigue por su jugada. En el duelo por enlace (sin jugada), por la carta que muestra al activar (`rivalEffect`).
-  const rivalAction = duel?.rivalFlights?.action
+  const rivalAction = stepped ? rivalFlights?.action : undefined
   const rivalShown = duel?.rivalEffect?.kind === 'activate' && !duel.rivalFlights?.action ? duel.rivalEffect : null
   useEffect(() => {
     const before = rivalBefore.current
@@ -1287,9 +1299,9 @@ function PracticeMatBody({
   useEffect(() => {
     const before = rivalBefore.current
     rivalBefore.current = rivalState
-    if (!before || !rivalState || before === rivalState || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
-    // Su jugada, si la trae (el automático: con las marcas del núcleo): un Sacrificio destella donde estaba la carta, sobre el comienzo de su vuelo (la carta ya no está en la casilla).
-    const action = duel?.rivalFlights?.action
+    if (!before || !rivalState || before === rivalState || !stepped || typeof CSS === 'undefined' || typeof CSS.escape !== 'function') return
+    // Su jugada, si la trae (el automático y el combo grabado ahí: con las marcas del núcleo): un Sacrificio destella donde estaba la carta, sobre el comienzo de su vuelo (la carta ya no está en la casilla).
+    const action = rivalAction
     const moved = action?.type === 'move' && locateCard(rivalState, action.id)?.kind !== 'spot' ? action : null
     const left = moved ? matEffects(before, moved) : null
     if (moved && (left?.sacrifice || left?.destroyed)) {
@@ -1302,15 +1314,17 @@ function PracticeMatBody({
     if (!arrived || more.length > 0) return
     const card = sectionRef.current?.querySelector(`[data-rival-card-id="${CSS.escape(arrived.id)}"]`)
     // La llegada de su jugada (el automático: `place` con las marcas del núcleo, `summon` con su mecánica): por Péndulo, la escena; por Sacrificio, el anillo rojo; del Extra Deck, su entrada.
-    const landing = (action?.type === 'place' || action?.type === 'summon') && action.id === arrived.id ? matEffects(before, action).landing : undefined
+    // En el repaso de un combo grabado antes de la marca del núcleo (sin `sure`), su Péndulo no se cree (`surePendulum`), como lo tuyo.
+    const told = (action?.type === 'place' || action?.type === 'summon') && action.id === arrived.id ? matEffects(before, action).landing : undefined
+    const landing = told && surePendulum(told, !duel && !session.sure)
     // La casilla: la Zona Extra es una de las tuyas (`data-drop`); sus Zonas Principales (`DuelTable`) no llevan marca, así que es la que tiene la carta.
     const cell = card?.closest('[data-rival-drop], [data-drop]') ?? card?.parentElement ?? null
     if (landing?.pendulum && cell && pendulumLanding(arrived.id, cell, false, Boolean(landing.more))) return
     const tone = landing ? landingToneOf(landing, summonCardOf(arrived.id)) : arrivalToneOf(arrived, summonCardOf(arrived.id))
     const placed = rivalState[arrived.spot][arrived.index]
-    if (cell && enter(tone, arrived.id, cell, false, placed?.materials.length ?? 0, duel?.rivalFlights?.artOf(arrived.id) ?? null)) return
+    if (cell && enter(tone, arrived.id, cell, false, placed?.materials.length ?? 0, rivalFlights?.artOf(arrived.id) ?? null)) return
     // La beta reemplaza la carta grande que el duelo por enlace muestra al invocar (`rivalEffect`, que llega un dibujo después): no se suman las dos.
-    if (burst(tone, arrived.id, duel?.rivalFlights?.artOf(arrived.id) ?? null)) setRivalBurst({ id: arrived.id, at: Date.now() })
+    if (burst(tone, arrived.id, rivalFlights?.artOf(arrived.id) ?? null)) setRivalBurst({ id: arrived.id, at: Date.now() })
     impactOn(cell, fieldRef.current, shakeOf({ arrival: arrived.from }), Math.round(FLIGHT_MS * LANDING_AT), tone)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `summonCardOf` y `enter` sólo leen la carta y la mesa
   }, [rivalState])
@@ -1544,7 +1558,7 @@ function PracticeMatBody({
     if (rivalHandShuffle !== 0 && !shuffling(cards)) shuffleHand(cards)
   }, [rivalHandShuffle])
   // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
-  useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
+  useCardFlights(sectionRef, rivalFlights?.state ?? null, rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
 
   // El aviso de «Deshacer» de lo que acabás de activar: en la práctica, la jugada `at` (se ve mientras es la última y no se deshizo); en el automático lo arma la pantalla (`duel.undoPlay`).
   const practice = !duel
@@ -2569,18 +2583,10 @@ function PracticeMatBody({
     [combos],
   )
 
-  // El combo guardado que se repasa: el que tiene las jugadas de la mesa. ponytail: por referencia (cargarlo pasa su `initial` y sus `actions` tal cual, renombrarlo o anotarlo
-  // los conserva y una jugada nueva arma otra lista: ya no es ese combo); si un día la mesa los copia, la sesión tiene que llevar el id. Vale igual en el repaso de «Jugar solo
-  // automático» (`use-auto-asks`, `review.load`, pasa las mismas listas); un duelo en vivo nunca es un combo guardado.
-  const reviewed = useMemo(() => (session.replay ? (combos.find((combo) => combo.initial === session.initial && combo.actions === session.actions) ?? null) : null), [session.replay, session.initial, session.actions, combos])
   // Las ramas del que se repasa (una variante con handtrap y su base): sólo en la práctica, donde se arman (el repaso del automático es de sólo mirar).
   const stepBranches = useMemo(() => (reviewed && practice ? stepBranchesOf(comboBranches(combos), reviewed) : undefined), [reviewed, practice, combos])
   // Las notas que se ven: las del guardado o, en uno que llegó por enlace (que no se edita hasta guardarlo), las suyas.
   const stepNotes = reviewed ? reviewed.notes : shared?.combo.actions === session.actions ? shared.combo.notes : undefined
-  // Un combo grabado en «Jugar solo automático» con el campo del rival o la cadena (`theirs`, `chain`), se abra por donde se abra (el enlace, Replays, «Tus combos»): la mesa manual los dibuja
-  // con las piezas del repaso del automático (`useComboScene`). `scene` es lo que se ve del rival y de la cadena: el del duelo o, sin duelo, el del combo; sin ellos, la práctica de siempre.
-  const comboScene = useComboScene(duel ? null : (reviewed ?? (shared?.combo.actions === session.actions ? shared.combo : null)), session.cursor, nameOf, artById)
-  const scene = duel ?? comboScene
   const noteStep = useCallback(
     (index: number, note: string) => {
       if (!reviewed) return

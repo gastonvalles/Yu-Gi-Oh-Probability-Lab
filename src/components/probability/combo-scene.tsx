@@ -9,7 +9,7 @@ import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } f
 import type { DuelMatLink } from './PracticeMat'
 
 /** Lo que la mesa manual dibuja de un combo grabado en «Jugar solo automático»: las mismas piezas que el repaso del automático le pasa a la mesa (`reviewRival` y la cadena de `use-auto-asks`). */
-export type ComboScene = Pick<DuelMatLink, 'areas' | 'opponent' | 'sharedZone' | 'rivalHand' | 'act' | 'links' | 'medals' | 'chain'>
+export type ComboScene = Pick<DuelMatLink, 'areas' | 'opponent' | 'sharedZone' | 'rivalHand' | 'act' | 'links' | 'medals' | 'chain' | 'rivalFlights'>
 
 const NO_RIVAL = createMatState([], [], 0)
 const NO_STEPS: ChainStep[] = []
@@ -31,10 +31,11 @@ export function useComboScene(combo: Pick<SavedCombo, 'theirs' | 'chain'> | null
   const links = useMemo(() => linksOf(live), [live])
   const medals = useMemo(() => medalsOf(live), [live])
   const theirs = combo?.theirs
+  // Por paso, no por dibujo: la mesa del rival cambia sólo con el paso (la cadena que avanza no la vuelve a medir).
+  const at = useMemo(() => comboTheirsAt(theirs, cursor), [theirs, cursor])
 
   return useMemo(() => {
     if (!theirs && !steps) return null
-    const at = comboTheirsAt(theirs, cursor)
     const state = at?.state ?? NO_RIVAL
     // Las cartas del rival que se vieron (y las tuyas que le diste), con su arte; lo demás, de dorso.
     const artOfRival = (id: string) => {
@@ -42,6 +43,9 @@ export function useComboScene(combo: Pick<SavedCombo, 'theirs' | 'chain'> | null
       return real ? (artOf(real) ?? artOfDrawId(real)) : null
     }
     const side: DuelSideView = { state, artOf: artOfRival, handCount: state.hand.length, act: acting.theirs, links: links.theirs, medals: medals.theirs }
+    // Sus vuelos y sus escenas, como en el duelo: la jugada que hizo en este paso, si fue una sola (con sus marcas: el Péndulo, el Sacrificio, la destruida).
+    const played = theirs?.steps.filter(([when]) => when === cursor) ?? []
+    const action = played.length === 1 ? played[0]![1] : undefined
     const rows = (live?.rows ?? []).map((row) => ({
       number: row.number,
       mine: row.mine,
@@ -61,6 +65,7 @@ export function useComboScene(combo: Pick<SavedCombo, 'theirs' | 'chain'> | null
       links: links.mine,
       medals: medals.mine,
       chain: live ? <ChainStage key={live.key} rows={rows} current={live.current} done={live.done} /> : null,
+      ...(at ? { rivalFlights: { state, artOf: artOfRival, ...(action ? { action } : {}) } } : {}),
     }
-  }, [theirs, steps, cursor, live, acting, links, medals, nameOf, artOf])
+  }, [theirs, steps, cursor, at, live, acting, links, medals, nameOf, artOf])
 }
