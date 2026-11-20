@@ -1,7 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 
 import type { ManualGame } from '../../app/auto/manual-handover'
-import type { KeptDuel } from '../auto/AutoSoloScreen'
 import { canRunAuto, useAutoPrefs } from '../../app/auto-prefs'
 import { comboPayloadOf, decodeComboPayload, type SharedCombo } from '../../app/combo-share'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -176,7 +175,7 @@ export function DeckModeScreen() {
   // Y al revés, «Seguir en automático» de la práctica: la mesa manual desde la que sigue el núcleo (no se guarda: recargar vuelve a empezar).
   const [resumeFrom, setResumeFrom] = useState<MatState | null>(null)
   // La partida automática, como la manual de arriba: vive acá y no en su pantalla, así salir de la mesa y volver (Atrás, el menú) la retoma.
-  const keptDuel = useRef<KeptDuel | null>(null)
+  const keptDuel = useRef<NonNullable<ComponentProps<typeof LazyAutoSolo>['keep']>['current']>(null)
 
   if (manualHere && atPlayHome) setManualHere(false)
   if (autoHere && atPlayHome) setAutoHere(false)
