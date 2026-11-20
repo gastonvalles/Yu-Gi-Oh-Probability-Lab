@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadCardEffectMap, loadCardEffects } from '../app/card-effect-data'
 import CARD_EFFECTS from '../data/card-effects.json'
+import { leaveAt, sacrificeAt } from '../app/field-impact'
 import { SHUFFLE_ID } from '../app/shuffle-fx'
 import type { DuelConnect } from '../app/use-duel'
 import { HOLD_MS } from '../app/use-mat-drag'
@@ -27,6 +28,8 @@ vi.mock('../ygoprodeck', () => ({
 }))
 
 const { railsOn } = vi.hoisted(() => ({ railsOn: { value: false } }))
+
+vi.mock('../app/field-impact', async (original) => ({ ...(await original<typeof import('../app/field-impact')>()), leaveAt: vi.fn(), sacrificeAt: vi.fn() }))
 
 vi.mock('../app/duel-rails', async (importOriginal) => ({ ...(await importOriginal<typeof import('../app/duel-rails')>()), railsFit: () => railsOn.value }))
 
@@ -511,6 +514,39 @@ describe('la pantalla del duelo', () => {
       expect(guest.container.querySelector('[data-activation]')).toHaveAttribute('data-kind', 'hand')
       expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana lleva 2 cartas a su mano')
       expect(animated.filter((element) => guest.container.contains(element) && element.hasAttribute('data-layer') && element.closest('[data-rival-drop="deck"]') !== null)).toHaveLength(8)
+    } finally {
+      vi.unstubAllGlobals()
+      Element.prototype.animate = animate
+      Element.prototype.getAnimations = getAnimations
+      window.matchMedia = matchMedia
+    }
+  })
+
+  it('lo que Ana destruye, Beto lo ve igual: la onda sale también en su mesa (la marca viaja con la jugada)', () => {
+    // Los vuelos miden desde el principio (sin `animate` no miden nada); con movimiento sólo para la jugada: la carta del rival vuela (su fantasma) y de ahí sale la onda.
+    const { animate, getAnimations, matchMedia } = { animate: Element.prototype.animate, getAnimations: Element.prototype.getAnimations, matchMedia: window.matchMedia }
+    Element.prototype.getAnimations = () => []
+    Element.prototype.animate = function () {
+      return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
+    }
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+    window.matchMedia = (() => ({ matches: false, media: '', addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
+    vi.stubGlobal('CSS', { escape: (value: string) => value })
+    vi.mocked(leaveAt).mockClear()
+    vi.mocked(sacrificeAt).mockClear()
+
+    try {
+      tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Destruir' }))
+      flush()
+
+      // Una en la mesa de Ana y otra en la de Beto.
+      expect(leaveAt).toHaveBeenCalledTimes(2)
+      expect(sacrificeAt).not.toHaveBeenCalled()
     } finally {
       vi.unstubAllGlobals()
       Element.prototype.animate = animate
