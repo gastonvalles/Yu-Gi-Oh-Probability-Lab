@@ -199,6 +199,35 @@ test('sala privada automática: de la sala a la primera vuelta, con las dos pant
   })
 })
 
+/**
+ * Lo que se ve al volver de una recarga, cuadro por cuadro (se instala antes de recargar): cuántas cartas tiene la mano, si sale un «±N» de vidas, si hay una hoja de cartas
+ * reveladas y si estalla algo en el campo (`data-fx`). Volver tiene que entrar quieto: la mano entera de una, sin avisos ni hojas de lo que ya pasó (TI-367).
+ */
+function traceReturn() {
+  const seen: string[] = []
+  const t0 = performance.now()
+  const tick = () => {
+    const hand = document.querySelectorAll('[role="list"][aria-label="Mano"] [role="listitem"]').length
+    const delta = document.querySelectorAll('[data-life-delta]').length
+    const revealed = [...document.querySelectorAll('[role="dialog"]')].some((dialog) => /reveladas/i.test(dialog.textContent ?? ''))
+    const fx = document.querySelectorAll('[data-fx]').length
+    const now = `mano ${hand} · vidas ${delta} · reveladas ${revealed} · fx ${fx}`
+    if (seen.at(-1) !== now) seen.push(now)
+    ;(window as unknown as { __return: string[] }).__return = seen
+    if (performance.now() - t0 < 30_000) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+}
+
+/** Lo que pasó al volver (`traceReturn`): la mano no se repartió de a una y no salió ningún aviso de vidas ni hoja de reveladas. */
+async function quietReturn(page: Page, cards: number) {
+  const frames = await page.evaluate(() => (window as unknown as { __return?: string[] }).__return ?? [])
+  test.info().annotations.push({ type: 'volver', description: frames.join(' | ') })
+  const hands = new Set(frames.map((frame) => Number(/mano (\d+)/.exec(frame)?.[1])))
+  expect([...hands].filter((count) => count !== 0 && count !== cards), `la mano al volver, cuadro por cuadro: ${frames.join(' | ')}`).toEqual([])
+  expect(frames.filter((frame) => !frame.includes('vidas 0') || frame.includes('reveladas true')), 'avisos de vidas u hojas de reveladas al volver').toEqual([])
+}
+
 /** Lo que una recarga no tiene que cambiar, visto desde `page`: la mesa, las cartas de la mano y la fase. */
 async function reloadable(page: Page, me: string, rival: string) {
   return {
@@ -216,9 +245,11 @@ test('reconexión: el invitado y después el anfitrión recargan en pleno duelo,
     await normalSummon(ana)
     await sameTable(ana, beto)
     const before = await reloadable(beto, 'Beto', 'Ana')
+    await beto.addInitScript(traceReturn)
     await beto.reload()
     await expect(hand(beto)).toHaveCount(before.handNames.length, CORE)
     await expect.poll(() => reloadable(beto, 'Beto', 'Ana'), CORE).toEqual(before)
+    await quietReturn(beto, before.handNames.length)
     await shot(beto, 'auto-04-beto-tras-recargar')
   })
 
@@ -231,9 +262,11 @@ test('reconexión: el invitado y después el anfitrión recargan en pleno duelo,
 
   await test.step('Ana (anfitriona, corre el núcleo) recarga en el turno de Beto', async () => {
     const before = await reloadable(ana, 'Ana', 'Beto')
+    await ana.addInitScript(traceReturn)
     await ana.reload()
     await expect(hand(ana)).toHaveCount(before.handNames.length, CORE)
     await expect.poll(() => reloadable(ana, 'Ana', 'Beto'), CORE).toEqual(before)
+    await quietReturn(ana, before.handNames.length)
     await shot(ana, 'auto-05-ana-tras-recargar')
   })
 
