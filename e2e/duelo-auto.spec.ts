@@ -96,6 +96,8 @@ async function view(page: Page, me: string, rival: string) {
   }
   return {
     lp,
+    // El botón de las fases sólo se toca en el turno propio.
+    turn: (await phaseChip(page).isEnabled()) ? me : rival,
     field: { [me]: await field(page, 'mine').count(), [rival]: await field(page, 'rival').count() },
     hand: { [me]: await hand(page).count(), [rival]: Number(/(\d+)/.exec((await rivalHand(page).getAttribute('aria-label')) ?? '')?.[1] ?? -1) },
   }
@@ -152,5 +154,120 @@ test('sala privada automática: de la sala a la primera vuelta, con las dos pant
     expect(table.lp.Ana! + table.lp.Beto! < 16_000 || table.field.Ana! + table.field.Beto! < 2, `la mesa tras el ataque: ${JSON.stringify(table)}`).toBe(true)
     await shot(ana, 'auto-03-ana-tras-ataque')
     await shot(beto, 'auto-03-beto-tras-ataque')
+  })
+})
+
+/** Lo que una recarga no tiene que cambiar, visto desde `page`: la mesa, las cartas de la mano y la fase. */
+async function reloadable(page: Page, me: string, rival: string) {
+  return {
+    ...(await view(page, me, rival)),
+    handNames: await hand(page).evaluateAll((items) => items.map((item) => item.getAttribute('aria-label'))),
+    phase: await phaseChip(page).getAttribute('aria-label'),
+  }
+}
+
+test('reconexión: el invitado y después el anfitrión recargan en pleno duelo, vuelven igual y el otro sigue jugando', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+
+  await test.step('Beto (invitado) recarga en el turno de Ana', async () => {
+    await toMain1(ana)
+    await normalSummon(ana)
+    await sameTable(ana, beto)
+    const before = await reloadable(beto, 'Beto', 'Ana')
+    await beto.reload()
+    await expect(hand(beto)).toHaveCount(before.handNames.length, CORE)
+    await expect.poll(() => reloadable(beto, 'Beto', 'Ana'), CORE).toEqual(before)
+    await shot(beto, 'auto-04-beto-tras-recargar')
+  })
+
+  await test.step('Ana sigue: termina su turno y Beto invoca', async () => {
+    await phase(ana, 'End Phase')
+    await toMain1(beto)
+    await normalSummon(beto)
+    await sameTable(ana, beto)
+  })
+
+  await test.step('Ana (anfitriona, corre el núcleo) recarga en el turno de Beto', async () => {
+    const before = await reloadable(ana, 'Ana', 'Beto')
+    await ana.reload()
+    await expect(hand(ana)).toHaveCount(before.handNames.length, CORE)
+    await expect.poll(() => reloadable(ana, 'Ana', 'Beto'), CORE).toEqual(before)
+    await shot(ana, 'auto-05-ana-tras-recargar')
+  })
+
+  await test.step('Beto sigue: termina su turno y Ana roba e invoca', async () => {
+    await phase(beto, 'End Phase')
+    await toMain1(ana)
+    await normalSummon(ana)
+    await sameTable(ana, beto)
+  })
+})
+
+test('de automático a manual y de vuelta a automático, con la mesa como estaba', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await normalSummon(ana)
+  const auto = await sameTable(ana, beto)
+
+  await test.step('Ana pide pasar a manual desde Opciones y Beto acepta', async () => {
+    await ana.getByRole('button', { name: 'Opciones', exact: true }).click()
+    await ana.getByRole('dialog', { name: 'Opciones' }).getByRole('button', { name: 'Pasar a manual', exact: true }).click()
+    await ana.keyboard.press('Escape')
+    await beto.locator('[data-prompt]').getByRole('button', { name: 'Pasar a manual', exact: true }).click(CORE)
+    // La mesa manual tiene ⋯ (el automático, sólo el ⚙ de Opciones).
+    await expect(ana.getByRole('button', { name: 'Más opciones', exact: true })).toBeVisible(CORE)
+    await expect(beto.getByRole('button', { name: 'Más opciones', exact: true })).toBeVisible(CORE)
+    expect(await sameTable(ana, beto), 'la mesa manual sigue a la automática').toEqual(auto)
+    await shot(ana, 'auto-06-ana-manual')
+  })
+
+  await test.step('Ana (su turno, Main Phase 1) pide seguir en automático y Beto acepta', async () => {
+    await ana.getByRole('button', { name: 'Más opciones', exact: true }).click()
+    await ana.getByRole('button', { name: 'Seguir en automático', exact: true }).or(ana.getByRole('menuitem', { name: /^Seguir en automático/ })).first().click()
+    await ana.getByRole('button', { name: 'Pedir pasar a automático', exact: true }).click()
+    await beto.getByRole('button', { name: 'Pasar a automático', exact: true }).click(CORE)
+    await expect(ana.getByRole('button', { name: 'Opciones', exact: true })).toBeVisible(CORE)
+    await expect(beto.getByRole('button', { name: 'Opciones', exact: true })).toBeVisible(CORE)
+    // El turno vuelve a empezar (límite aceptado), con la mesa como estaba.
+    await toMain1(ana)
+    expect(await sameTable(ana, beto), 'la mesa automática sigue a la manual').toEqual(auto)
+    await shot(ana, 'auto-07-ana-otra-vez-automatico')
+  })
+
+  await test.step('El núcleo sigue: Ana termina el turno y Beto invoca', async () => {
+    await phase(ana, 'End Phase')
+    await toMain1(beto)
+    await normalSummon(beto)
+    await sameTable(ana, beto)
+  })
+})
+
+test('revancha: Beto se rinde, los dos la aceptan y arranca otro duelo automático', async ({ browser }) => {
+  const { ana, beto } = await startAutoDuel(browser)
+  await toMain1(ana)
+  await normalSummon(ana)
+
+  await test.step('Beto se rinde desde Opciones', async () => {
+    await beto.getByRole('button', { name: 'Opciones', exact: true }).click()
+    await beto.getByRole('dialog', { name: 'Opciones' }).getByRole('button', { name: 'Rendirse', exact: true }).click()
+    await beto.getByRole('alertdialog').getByRole('button', { name: /^Rendir(me|se)$/ }).click()
+    await expect(ana.getByRole('heading', { name: '¡Ganaste!' })).toBeVisible(CORE)
+    await expect(beto.getByRole('heading', { name: 'Perdiste' })).toBeVisible(CORE)
+    await shot(beto, 'auto-08-beto-perdio')
+  })
+
+  await test.step('Los dos piden la revancha, elige Beto (perdió) y el núcleo reparte otra vez', async () => {
+    await ana.getByRole('button', { name: 'Revancha', exact: true }).click()
+    await expect(beto.getByText('Ana quiere la revancha.')).toBeVisible()
+    await beto.getByRole('button', { name: 'Revancha', exact: true }).click()
+    await beto.getByRole('button', { name: 'Ir primero', exact: true }).click(CORE)
+    await expect(hand(beto)).toHaveCount(5, CORE)
+    await expect(hand(ana)).toHaveCount(5, CORE)
+    await toMain1(beto)
+    const table = await sameTable(ana, beto)
+    expect(table).toEqual({ lp: { Ana: 8000, Beto: 8000 }, turn: 'Beto', field: { Ana: 0, Beto: 0 }, hand: { Ana: 5, Beto: 5 } })
+    await normalSummon(beto)
+    await sameTable(ana, beto)
+    await shot(beto, 'auto-09-beto-revancha')
   })
 })
