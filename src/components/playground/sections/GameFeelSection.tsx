@@ -997,7 +997,7 @@ function LayersSample() {
         <>
           <strong>Beta en el duelo</strong>, con su interruptor en Opciones («Imagen de la carta al invocar», apagado de fábrica): la primera vez que un monstruo se Invoca Normal, por Sacrificio o
           Especial sin entrada propia, con la imagen que la mesa ya usa (<Tag>app/summon-art.ts</Tag>).
-          Una ilustración en tres capas (fondo de bandas violetas, el arte recortado en un paralelogramo y los cortes cian adelante) que entra con <Tag>--ease-out-back</Tag>, cada capa con su
+          Una ilustración en tres capas (fondo de bandas violetas, el arte recortado en un rectángulo y los cortes cian adelante, todo con bordes rectos) que entra con <Tag>--ease-out-back</Tag>, cada capa con su
           retraso, y un destello aditivo (<Tag>mix-blend-plus-lighter</Tag> quieto; sólo cambia la opacidad, y con «livianos» no está). Mové el puntero encima: cada capa se corre según su
           profundidad (el parallax).
         </>
@@ -1009,19 +1009,19 @@ function LayersSample() {
       <div onPointerMove={follow} onPointerLeave={rest} className="relative mx-auto h-56 w-full max-w-md overflow-hidden bg-background">
         <div ref={(element) => void (layers.current[0] = element)} className="absolute -inset-8">
           <svg viewBox="0 0 100 60" preserveAspectRatio="none" className="block h-full w-full" aria-hidden>
-            <polygon points="0,0 38,0 22,60 0,60" opacity={0.35} className="fill-primary" />
-            <polygon points="46,0 70,0 54,60 30,60" opacity={0.22} className="fill-primary" />
-            <polygon points="78,0 100,0 100,60 62,60" opacity={0.35} className="fill-primary" />
+            <polygon points="0,0 30,0 30,60 0,60" opacity={0.35} className="fill-primary" />
+            <polygon points="38,0 62,0 62,60 38,60" opacity={0.22} className="fill-primary" />
+            <polygon points="70,0 100,0 100,60 70,60" opacity={0.35} className="fill-primary" />
           </svg>
         </div>
-        <div ref={(element) => void (layers.current[1] = element)} className="absolute inset-x-10 inset-y-4 overflow-hidden [clip-path:polygon(16%_0,100%_0,84%_100%,0_100%)]">
+        <div ref={(element) => void (layers.current[1] = element)} className="absolute inset-x-10 inset-y-4 overflow-hidden">
           <CardArt instant remoteUrl="https://images.ygoprodeck.com/images/cards_cropped/46986414.jpg" name="46986414" className="block h-full w-full object-cover" />
         </div>
         <div ref={(element) => void (layers.current[2] = element)} className="pointer-events-none absolute -inset-4">
           <svg viewBox="0 0 100 60" preserveAspectRatio="none" className="block h-full w-full" aria-hidden>
-            <line x1={4} y1={58} x2={30} y2={2} strokeWidth={1.4} className="stroke-fx-energia" vectorEffect="non-scaling-stroke" />
-            <line x1={70} y1={58} x2={96} y2={2} strokeWidth={1.4} className="stroke-fx-energia" vectorEffect="non-scaling-stroke" />
-            <line x1={10} y1={58} x2={36} y2={2} strokeWidth={0.6} className="stroke-white" vectorEffect="non-scaling-stroke" />
+            <line x1={17} y1={58} x2={17} y2={2} strokeWidth={1.4} className="stroke-fx-energia" vectorEffect="non-scaling-stroke" />
+            <line x1={83} y1={58} x2={83} y2={2} strokeWidth={1.4} className="stroke-fx-energia" vectorEffect="non-scaling-stroke" />
+            <line x1={23} y1={58} x2={23} y2={2} strokeWidth={0.6} className="stroke-white" vectorEffect="non-scaling-stroke" />
           </svg>
         </div>
         {feel.full ? <div ref={flash} aria-hidden className="pointer-events-none absolute inset-0 bg-radial from-white to-transparent to-75% opacity-0 mix-blend-plus-lighter" /> : null}
