@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildDuelReplay, duelReplayAt, type ReplayInput } from '../app/duel-replay'
-import { ARRIVAL } from '../app/field-impact'
+import { ACTIVATE_GLOW, ARRIVAL, LEAVE, PILE_POP } from '../app/field-impact'
+import { FX_RGB } from '../components/probability/practice-styles'
 import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../app/deal-flight'
 import { ENTRANCE, PENDULUM_HOLD_MS, pendulumHit } from '../app/summon-entrance'
 import type { WireAct } from '../app/mat-public'
@@ -14,7 +15,7 @@ import { PHONE_DUEL_BAR, PHONE_DUEL_BOTTOM, phoneDuelLayout } from '../component
 import { drawBanner } from '../components/replays/video/video-draw'
 import { artUrls, fieldRect, handRects, PHONE_WIDTH, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
-import { FPS, frameDurations, frameOf, INTRO_MS, openingDeals, OUTRO_MS, pendulumCues, STEP_MS, VIDEO_PACE, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
+import { FPS, frameDurations, frameOf, INTRO_MS, openingDeals, OUTRO_MS, pendulumCues, STEP_MS, stepMs, VIDEO_PACE, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
 import { fakeAssets, fakeCtx } from './support/video-fakes'
 
 // Un duelo chico (como el de `duel-replay.test.ts`): invoco, coloco, activo y paso; el rival roba, invoca y me ataca.
@@ -391,6 +392,89 @@ describe('el reparto de la segunda mano en el video del automático', () => {
     expect(Math.round(durations[2]! - STEP_MS / speed)).toBe(928)
     // Por enlace las manos ya vienen repartidas: nada cambia.
     expect(openingDeals(replay)).toEqual([])
+  })
+})
+
+describe('las piezas nuevas de la mesa en el video de un duelo', () => {
+  // Activo una Mágica, invoco y destierro, invoco y destruyo (con la marca del núcleo), mando una carta de la mano al Cementerio y saco otra del Cementerio.
+  const [, , , h3] = mine.hand as [string, string, string, string]
+  const pieceActions: MatAction[] = [
+    { type: 'place', id: h0, zone: 'st', index: 0, pos: 'atk' },
+    { type: 'place', id: h1, zone: 'mz', index: 0, pos: 'atk', how: 'normal' },
+    { type: 'move', id: h1, to: 'banished' },
+    { type: 'place', id: h2, zone: 'mz', index: 1, pos: 'atk', how: 'normal' },
+    { type: 'move', id: h2, to: 'gy', destroyed: true },
+    { type: 'move', id: h3, to: 'gy' },
+    { type: 'move', id: h2, to: 'hand' },
+  ]
+  const pieces = buildDuelReplay({ ...input, mine: { initial: mine, actions: pieceActions }, theirs: { initial: theirs, acts: [] }, order: pieceActions.map(() => 'mine' as const), result: undefined })
+  const shots = [...replayScenes(pieces, 720)]
+  const speed = VIDEO_PACE
+  const stepFx = (index: number) => {
+    const flights = flightsOf(transitionOf(shots[index - 1]!, shots[index]!), shots[index]!.layout.scale, speed, STEP_MS / speed)
+    return { flights, overlays: overlaysOf(shots[index - 1]!, shots[index]!, flights, fakeAssets, speed, 1000, 'duel') }
+  }
+  const only = (index: number, kind: Overlay['kind']) => stepFx(index).overlays.filter((overlay) => overlay.kind === kind)
+  /** Lo que pinta un efecto a mitad de su vida: los colores de sus trazos y el centro de sus arcos. */
+  const traced = (overlay: Overlay) => {
+    const seen = { strokes: [] as string[], centers: [] as number[][] }
+    const state: Record<string, unknown> = { canvas: { width: 720, height: 1280 }, createRadialGradient: () => ({ addColorStop: () => {} }), arc: (x: number, y: number) => seen.centers.push([x, y]) }
+    overlay.draw(new Proxy(state, { get: (target, key) => (key in target ? target[key as string] : () => {}), set: (target, key, value) => ((target[key as string] = value), key === 'strokeStyle' && seen.strokes.push(String(value)), true) }) as never, 0.5)
+    return seen
+  }
+  // El replay enmascara los ids: la carta se busca por su casilla (fila y columna de la mesa de abajo).
+  const slotAt = (scene: Scene, row: number, col: number) => {
+    const rect = scene.layout.cellAt(row, col)
+    return scene.sides[0].slots.find((slot) => slot.rect.x === rect.x && slot.rect.y === rect.y)!
+  }
+  const middle = (rect: Rect) => [rect.x + rect.w / 2, rect.y + rect.h / 2]
+
+  it('activar: el resplandor sale sobre la casilla de la carta, a los ms de la mesa (la que llega volando, al tocar su casilla); invocar y colocar no lo llevan', () => {
+    const [glow, ...more] = only(1, 'glow')
+    expect(more).toEqual([])
+    const spell = slotAt(shots[1]!, 4, 1)
+    const flight = stepFx(1).flights.find((each) => each.motion.key === `0:${spell.card!.id}`)!
+    expect(glow!.start).toBeCloseTo(1000 + flight.delay + flight.duration * MESA.landingAt)
+    expect(glow!.duration).toBeCloseTo(ACTIVATE_GLOW.ms / speed)
+    expect(traced(glow!).centers[0]).toEqual(middle(spell.rect))
+    expect(only(2, 'glow')).toEqual([])
+  })
+
+  it('destruir o desterrar: la onda sale de donde estaba la carta, ámbar si va al destierro y cian si el núcleo la marcó destruida; mandar al Cementerio sin marca no lleva', () => {
+    const [banished, ...extra] = only(3, 'leave')
+    expect(extra).toEqual([])
+    expect(banished!.duration).toBeCloseTo(LEAVE.ms / speed)
+    expect(traced(banished!).strokes).toContain(`rgb(${FX_RGB.amber} / 1)`)
+    // Sale de su casilla, donde estaba antes de volar.
+    expect(traced(banished!).centers.every((point) => point.join() === middle(slotAt(shots[2]!, 3, 1).rect).join())).toBe(true)
+    const [destroyed] = only(5, 'leave')
+    expect(traced(destroyed!).strokes).toContain(`rgb(${FX_RGB.cyan} / 1)`)
+    expect(traced(destroyed!).strokes).not.toContain(`rgb(${FX_RGB.amber} / 1)`)
+    // De la mano al Cementerio y el resto de las jugadas: nada.
+    for (const index of [1, 2, 4, 6, 7]) expect(only(index, 'leave')).toEqual([])
+  })
+
+  it('la pila que suelta una carta rebota, apenas empieza la jugada; la que la recibe, o la mano, no', () => {
+    const [pop, ...more] = only(7, 'pop')
+    expect(more).toEqual([])
+    expect(pop).toMatchObject({ start: 1000 })
+    expect(pop!.duration).toBeCloseTo(PILE_POP.ms / speed)
+    // Es la del Cementerio (cada una, de a una por lado): ninguna otra jugada de la mesa rebota una pila.
+    const gy = shots[7]!.sides[0].slots.find((slot) => slot.pile === 'gy')!
+    const copies: number[][] = []
+    pop!.draw({ canvas: {}, drawImage: (...args: number[]) => copies.push(args.slice(1)) } as never, 0.3)
+    expect(copies[0]!.slice(0, 4)).toEqual([gy.rect.x, gy.rect.y, gy.rect.w, gy.rect.h])
+    for (const index of [1, 2, 3, 4, 5, 6]) expect(only(index, 'pop')).toEqual([])
+  })
+
+  it('no suman tiempo: cada jugada dura lo que su `stepMs`, el video lo que sus jugadas, y las piezas no pasan de lo que la mesa las deja', () => {
+    const subject = { kind: 'duel', replay: pieces } as const
+    expect(frameDurations(subject, speed)).toEqual([INTRO_MS, ...pieceActions.map((action) => stepMs(action, speed)), OUTRO_MS])
+    expect(videoDurationMs(subject, speed)).toBe(INTRO_MS + OUTRO_MS + pieceActions.reduce((sum, action) => sum + stepMs(action, speed), 0))
+    // La onda y el rebote caben en la jugada (lo que dura su vuelo); el resplandor, en lo que dura la carta grande de la activación.
+    expect(LEAVE.ms / speed).toBeLessThanOrEqual(stepMs(pieceActions[2]!, speed))
+    expect(PILE_POP.ms / speed).toBeLessThanOrEqual(stepMs(pieceActions[6]!, speed))
+    expect(ACTIVATE_GLOW.ms).toBeLessThanOrEqual(MESA.stage)
   })
 })
 

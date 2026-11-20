@@ -205,6 +205,20 @@ describe('la escena de la cadena en el video', () => {
     expect(overlaysOf(scenes[0]!, scenes[1]!, [], fakeAssets, 1, 0, 'duel').map((overlay) => overlay.kind)).toContain('stage')
     expect(overlaysOf(scenes[0]!, scenes[1]!, [], fakeAssets, 1, 0, 'duel', true).map((overlay) => overlay.kind)).not.toContain('stage')
   })
+
+  it('lo que se activa en el campo, dentro de la cadena, lleva su resplandor (como en la mesa) aunque no salga grande, y no alarga la jugada; lo que se activa desde la mano, no', () => {
+    const input2 = input(TWO_LINKS)
+    const onField = buildDuelReplay({ ...input2, mine: { initial: mine, actions: [{ type: 'place', id: h0, zone: 'st', index: 0, pos: 'atk' }] } })
+    const scenes = [...replayScenes(onField, 720)]
+    const kinds = (chained: boolean) => overlaysOf(scenes[0]!, scenes[1]!, [], fakeAssets, 1, 0, 'duel', chained).map((overlay) => overlay.kind)
+    expect(kinds(true)).toContain('glow')
+    expect(kinds(true)).not.toContain('stage')
+    expect(kinds(false)).toEqual(expect.arrayContaining(['glow', 'stage']))
+    // El mismo largo que con la activación desde la mano: la jugada dura lo que su paso y su cadena.
+    expect(frameDurations({ kind: 'duel', replay: onField })).toEqual(frameDurations({ kind: 'duel', replay: withChain }))
+    const fromHand = [...replayScenes(withChain, 720)]
+    expect(overlaysOf(fromHand[0]!, fromHand[1]!, [], fakeAssets, 1, 0, 'duel', true).map((overlay) => overlay.kind)).not.toContain('glow')
+  })
 })
 
 describe('los medallones en el video', () => {
