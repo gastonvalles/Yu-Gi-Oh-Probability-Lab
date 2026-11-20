@@ -1,5 +1,5 @@
 import type { BotCard, BotSide, BotView } from '../app/auto/bot/bot'
-import { attackPlan, executorBot, type Attacker, type Scene } from '../app/auto/bot/executors/executor'
+import { attackPlan, executorBot, lethalPlan, type Attacker, type Scene } from '../app/auto/bot/executors/executor'
 import type { CardFacts } from '../app/auto/bot/turn'
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 
@@ -68,6 +68,29 @@ describe('cómo ataca el ejecutor (attackPlan)', () => {
 
   it('el que puede atacar directo lo hace aunque tengas monstruos', () => {
     expect(attackPlan(scene([card('theirs', 3, 'set')]), [atk(1), atk(5, true)])).toEqual({ i: 1, target: null, kind: 'direct' })
+  })
+})
+
+describe('letal (lethalPlan): si lo que ataca alcanza tus vidas, primero lo que limpia y después lo directo', () => {
+  it('elige el reparto que deja más daño: 1500 rompe tu DEF de 1200 y 2000 entra directo (al revés serían 1500)', () => {
+    expect(lethalPlan(scene([card('theirs', 2, 'def')], [], 2000), [atk(1), atk(2)])).toEqual({ i: 1, target: 0, kind: 'safe' })
+    expect(lethalPlan(scene([card('theirs', 2, 'def')], [], 2100), [atk(1), atk(2)])).toBeNull()
+  })
+
+  it('lo boca abajo no se cuenta como limpio; sólo suma lo que ataca directo igual', () => {
+    expect(lethalPlan(scene([card('theirs', 3, 'set')], [], 1000), [atk(1), atk(2)])).toBeNull()
+    expect(lethalPlan(scene([card('theirs', 3, 'set')], [], 800), [atk(1), atk(5, true)])).toEqual({ i: 1, target: null, kind: 'direct' })
+  })
+
+  it('nunca un ataque que pierde su monstruo sin llevarse el tuyo', () => {
+    expect(lethalPlan(scene([card('theirs', 1)], [], 100), [atk(2)])).toBeNull()
+  })
+
+  it('con letal en la mesa, el ejecutor va a la batalla antes que nada y dice por qué', () => {
+    const bot = executorBot({ plays: [], chain: () => null, choose: () => null }, facts, () => ({ answer: { type: 'select_chain', index: null } }))
+    const ask: CoreAsk = { type: 'select_idlecmd', player: 1, summons: [], special_summons: [], pos_changes: [], monster_sets: [], spell_sets: [], activates: [], to_bp: true, to_ep: true, shuffle: false }
+
+    expect(bot(ask, scene([], [card('mine', 1)], 2000).view, { random: () => 0.5, level: 'normal' })).toMatchObject({ answer: { action: 6 }, rule: 'executor.lethal', reason: { key: 'auto.bot.reason.battle.lethal' } })
   })
 })
 

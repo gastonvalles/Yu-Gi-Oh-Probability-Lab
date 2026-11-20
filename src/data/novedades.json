@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-20-6-bot-va-por-la-victoria",
+      "date": "2026-11-20",
+      "tags": [
+        "mejora"
+      ],
+      "es": {
+        "title": "El bot va por la victoria cuando la tiene",
+        "novedades": [
+          "Si lo que el bot tiene para atacar alcanza tus vidas, va a la batalla y cierra el duelo, aunque tengas una carta que lo castigue por jugar.",
+          "Ordena sus ataques: primero los que te sacan monstruos y después los directos.",
+          "En el registro del bot ves por qué: «Fui a la batalla: lo que tengo para atacar alcanza tus vidas»."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "Cuenta sólo lo que ve: un monstruo tuyo boca abajo lo frena y no adivina tus cartas colocadas.",
+          "Todavía no suma lo que podría invocar del Extra Deck para llegar."
+        ]
+      },
+      "en": {
+        "title": "The bot goes for the win when it has it",
+        "novedades": [
+          "If what the bot can attack with is enough to take your LP to 0, it goes to battle and ends the duel, even if you have a card that punishes its plays.",
+          "It orders its attacks: first the ones that clear your monsters, then the direct ones.",
+          "In the bot's log you can see why: «I went to battle: what I can attack with is enough to take your LP to 0»."
+        ],
+        "comoSeUsa": [],
+        "arreglos": [],
+        "ojo": [
+          "It only counts what it sees: a face-down monster of yours holds it back and it does not guess your Set cards.",
+          "It does not yet count what it could Summon from the Extra Deck to get there."
+        ]
+      }
+    },
+    {
       "id": "2026-11-20-5-bot-no-se-quema",
       "date": "2026-11-20",
       "tags": [

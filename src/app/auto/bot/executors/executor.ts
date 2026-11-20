@@ -15,6 +15,8 @@ import { MAX_IDLE, pendulumAnswer, pendulumIndex, type CardFacts } from '../turn
  * - **Cadenas** (`select_chain`): `chain` del mazo; en tu End Phase, la regla general con lo que colocó (`spareChain`); lo que no decide, el de reserva (`fallback`: las handtraps
  *   y Called by the Grave de `turnBot`).
  * - **Battle Phase**: los ataques de `attackPlan` (directo, seguro, a ciegas contra lo boca abajo, el empate que conviene); después, a la Main Phase 2 (ahí coloca sus Mágicas Rápidas).
+ * - **Letal** (`lethalPlan`): si lo que ataca alcanza tus vidas, va a la batalla y ordena los ataques (primero lo que limpia, después lo directo); con un precio aprendido, antes de
+ *   su línea y sin pagar, y paga por encima del tope la jugada que le da el letal (`closesLethal`) mientras no lo deje en 0.
  * Invariantes: un tope de `MAX_IDLE` jugadas por turno; una jugada que se repite con la mesa igual queda afuera ese turno (sin bucles); toda respuesta pasa por `legal` y, si no
  * pasa, contesta el de reserva (el núcleo rechaza lo ilegal con `RETRY`). Decide sólo con su vista y lo impreso de las cartas (`facts`, del `.cdb`, público).
  */
@@ -210,6 +212,59 @@ export function attackPlan(s: Scene, attackers: readonly Attacker[]): { i: numbe
   return null
 }
 
+/**
+ * Letal (la excepción de cualquier jugador): si lo que ataca este turno alcanza tus vidas con lo que se ve, el próximo ataque de esa línea; si no, `null`. Primero lo que limpia
+ * (cada atacante contra un monstruo tuyo boca arriba que destruye: en ATK con más o igual ATK, en DEF con más ATK que su DEF; el reparto que deja el mayor daño), después lo
+ * directo. Nunca un ataque que pierde su monstruo sin llevarse el tuyo, ni uno contra un DEF que no rompe. Lo boca abajo no se sabe: no se ataca ni se cuenta como limpio, así
+ * que con uno tuyo boca abajo sólo suma lo que destruye en ATK y lo que ataca directo igual (`direct`). Tus Mágicas y Trampas colocadas no se cuentan (no se ven).
+ */
+export function lethalPlan(s: Pick<Scene, 'view'>, attackers: readonly Attacker[]): { i: number; target: number | null; kind: AttackKind } | null {
+  const yours = s.view.them.monsters.flatMap((card, sequence) =>
+    card ? [{ sequence, hidden: card.code === 0 || card.pos === 'set' || !card.stats, atk: card.pos === 'atk', guard: (card.pos === 'atk' ? card.stats?.attack : card.stats?.defense) ?? 0 }] : [],
+  )
+  const seen = yours.filter((card) => !card.hidden)
+  const open = seen.length === yours.length
+  // Por monstruo tuyo boca arriba, el atacante que lo limpia (o -1): pocos monstruos, así que se prueban todos los repartos (con 5 y 5, 1546).
+  const by: number[] = []
+  let best = { damage: 0, by: [] as number[] }
+  const walk = (k: number, used: number) => {
+    if (k === seen.length) {
+      const cleared = open && by.every((i) => i >= 0)
+      let damage = 0
+
+      by.forEach((i, t) => (damage += i >= 0 && seen[t]!.atk ? attackers[i]!.atk - seen[t]!.guard : 0))
+      attackers.forEach((attacker, i) => (damage += (used & (1 << i)) === 0 && (cleared || attacker.direct) ? attacker.atk : 0))
+      if (damage > best.damage) best = { damage, by: [...by] }
+      return
+    }
+    const card = seen[k]!
+
+    by[k] = -1
+    walk(k + 1, used)
+    attackers.forEach((attacker, i) => {
+      if ((used & (1 << i)) !== 0 || attacker.atk < card.guard || (attacker.atk === card.guard && (!card.atk || attacker.atk === 0))) return
+      by[k] = i
+      walk(k + 1, used | (1 << i))
+    })
+    by.length = k
+  }
+
+  walk(0, 0)
+  if (best.damage < s.view.lp.them) return null
+  const t = best.by.findIndex((i) => i >= 0)
+
+  if (t >= 0) {
+    const card = seen[t]!
+    const i = best.by[t]!
+
+    return { i, target: card.sequence, kind: card.atk && card.guard === attackers[i]!.atk ? 'trade' : 'safe' }
+  }
+  // Sin nada que limpiar: directo, el más fuerte de los que pueden.
+  const direct = ranked(attackers, (attacker) => attacker.atk).find((i) => open && seen.length === 0 ? true : attackers[i]!.direct)!
+
+  return { i: direct, target: null, kind: 'direct' }
+}
+
 /** Que la respuesta sea una que el núcleo acepta (índices en rango, cantidades entre `min` y `max`): si no, contesta el de reserva. */
 export function legal(ask: CoreAsk, answer: CoreAnswer): boolean {
   if (answer.type !== ask.type) return false
@@ -292,11 +347,33 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
   const removes = (view: BotView, code: number) => ((facts(code)?.category ?? 0) & REMOVES) !== 0 && cardsOf(view.them).some((card) => card.pos !== 'set')
   /** La clase de una jugada de su Main Phase: activar, Invocar de modo Normal o Especial; las demás no tienen precio. */
   const idleClass = (action: number, code: number): ActionClass | null => (action === 5 ? activationClass(facts(code)?.type ?? 0) : action === 0 ? 'summon' : action === 1 ? 'special' : null)
-  /** Si puede pagar la jugada (`punish`); si no, la anota en `priced`. */
-  const affordable = (view: BotView, kind: ActionClass | null, code: number) => {
+  /** Lo que pagó por encima de lo que deja `punish` porque con eso llega a tu 0 este turno (el motivo de esa jugada). */
+  let lethalPaid: BotReason | null = null
+  /** Si puede pagar la jugada (`punish`); si no, la anota en `priced`. Con letal a una jugada (`closes`), la paga igual mientras no lo deje en 0, y lo anota en `lethalPaid`. */
+  const affordable = (view: BotView, kind: ActionClass | null, code: number, closes?: () => boolean) => {
+    lethalPaid = null
     if (!kind || punish.allows(view, kind, removes(view, code))) return true
+    if (view.lp.me - punish.price(kind) > 0 && closes?.()) {
+      lethalPaid = { key: 'auto.bot.reason.play.lethalPrice', cards: [code], params: { lp: punish.price(kind) } }
+      return true
+    }
     priced = { code, lp: punish.price(kind) }
     return false
+  }
+  /** Lo suyo boca arriba en ataque, como atacantes (`direct`: sin monstruos tuyos, o uno de los que el mazo dice que atacan directo igual). */
+  const attackerOf = (view: BotView, card: Pick<BotCard, 'code' | 'stats'>): Attacker => ({ code: card.code, atk: atkOf({ facts }, card), direct: monstersOf(view.them).length === 0 || (deck.direct?.includes(card.code) ?? false) })
+  const attackersOf = (view: BotView) => monstersOf(view.me).filter((card) => card.pos === 'atk').map((card) => attackerOf(view, card))
+  /**
+   * Si esta jugada lo deja con letal (`lethalPlan`) antes de la Battle Phase: Invocar un monstruo de la mano o el cementerio (de modo Normal, de Nivel 4 o menos, sin Tributar) o
+   * activar su efecto de Invocarse (`SUMMONS`) suma su ATK impreso a lo que ataca. ponytail: no cuenta lo que trae otra carta ni lo que sale del Extra Deck (gasta materiales).
+   */
+  const closesLethal = (ask: IdleAsk, view: BotView, action: number, card: CardLoc) => {
+    const printed = facts(card.code)
+
+    if (!ask.to_bp || !printed || (printed.type & TYPE.MONSTER) === 0 || (card.location & (LOC.HAND | LOC.GRAVE)) === 0) return false
+    const adds = action === 0 ? printed.level <= 4 : action === 1 || (action === 5 && ((printed.category ?? 0) & SUMMONS) !== 0)
+
+    return adds && lethalPlan({ view }, [...attackersOf(view), attackerOf(view, { code: card.code })]) !== null
   }
 
   const boardKey = (view: BotView) =>
@@ -331,6 +408,9 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
       return true
     }
 
+    // Letal con lo que ya tiene y un castigo tuyo a la vista: a la batalla antes que nada, sin pagar precios. Sin precios, su línea primero: un candado de ataque del campo (Elfnote
+    // June Pride en el centro) no se ve hasta la Battle Phase, y saltear la línea por un letal que no era le costaba el duelo (la vara, Elfnote semillas 13 y 24).
+    if (ask.to_bp && punish.any() && lethalPlan(s, attackersOf(s.view))) return { answer: { type: ask.type, action: 6, index: null }, reason: { key: 'auto.bot.reason.battle.lethal' }, rule: 'executor.lethal' }
     // Con un castigo tuyo a la vista (un precio aprendido): primero, lo que puede sacarte cartas y puede pagar.
     if (punish.any()) {
       for (const [index, card] of ask.activates.entries()) {
@@ -346,10 +426,10 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
       const { list, action } = LIST[play.kind]
       const index = ask[list].findIndex((card) => covers(play, list, card) && (play.when?.(s, card) ?? true))
 
-      if (index < 0 || !affordable(s.view, idleClass(action, play.code), play.code) || !fresh(play.id)) continue
+      if (index < 0 || !affordable(s.view, idleClass(action, play.code), play.code, () => closesLethal(ask, s.view, action, ask[list][index]!)) || !fresh(play.id)) continue
       intent = { id: play.id, code: play.code }
       const card = ask[list][index]!
-      const reason = play.reason?.(s, card)
+      const reason = lethalPaid ?? play.reason?.(s, card)
 
       return { answer: { type: ask.type, action, index }, ...(reason ? { reason } : {}), rule: play.id }
     }
@@ -367,8 +447,6 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
       return { answer: { type: ask.type, action: 1, index: pendulum }, reason: { key: 'auto.bot.reason.play.pendulum', cards: [scale] }, rule: 'executor.pendulum' }
     }
 
-    const empty = monstersOf(s.view.them).length === 0
-    const attackerOf = (card: BotCard): Attacker => ({ code: card.code, atk: atkOf(s, card), direct: empty || (deck.direct?.includes(card.code) ?? false) })
     // Las posiciones, sólo con lo que ofrece el núcleo (no lo Invocado este turno, ni lo que ya atacó o cambió): antes de la Battle Phase, a ataque lo que tiene en defensa y ahora
     // tiene un ataque que conviene; al terminar, a defensa lo que quedó en ataque y es más débil que un monstruo tuyo (no te deja daño de combate).
     const reposition = (test: (card: BotCard) => boolean) =>
@@ -378,10 +456,13 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
         return card !== null && card.code !== 0 && test(card)
       })
     // A ciegas no cuenta: ataca sólo el más fuerte y este quedaría en ataque sin atacar.
-    const up = ask.to_bp ? reposition((card) => card.pos === 'def' && !outclassed(s, atkOf(s, card)) && (attackPlan(s, [attackerOf(card)])?.kind ?? 'blind') !== 'blind') : -1
+    const up = ask.to_bp ? reposition((card) => card.pos === 'def' && !outclassed(s, atkOf(s, card)) && (attackPlan(s, [attackerOf(s.view, card)])?.kind ?? 'blind') !== 'blind') : -1
 
     if (up >= 0) return { answer: { type: ask.type, action: 2, index: up }, reason: { key: 'auto.bot.reason.position.attack', cards: [atPlace(s.view, ask.pos_changes[up]!)?.code ?? 0] }, rule: 'executor.position.attack' }
-    const plan = ask.to_bp ? attackPlan(s, monstersOf(s.view.me).filter((card) => card.pos === 'atk').map(attackerOf)) : null
+    const lethal = ask.to_bp ? lethalPlan(s, attackersOf(s.view)) : null
+
+    if (lethal) return { answer: { type: ask.type, action: 6, index: null }, reason: { key: 'auto.bot.reason.battle.lethal' }, rule: 'executor.lethal' }
+    const plan = ask.to_bp ? attackPlan(s, attackersOf(s.view)) : null
 
     if (plan) return { answer: { type: ask.type, action: 6, index: null }, rule: 'executor.battle' }
     const down = reposition((card) => card.pos === 'atk' && outclassed(s, atkOf(s, card)))
@@ -420,10 +501,14 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
         const kind = idleClass(LIST_ACTION[list], card.code)
 
-        // Lo de más no se paga: con precio, la regla general no lo hace.
-        if (!uncovered(list, card) || !test(card) || (kind && punish.price(kind) > 0 && s.view.turnPlayer === 'me') || !fresh(id)) continue
+        // Lo de más no se paga: con precio, la regla general no lo hace (salvo que le dé letal).
+        if (!uncovered(list, card) || !test(card)) continue
+        const price = kind && s.view.turnPlayer === 'me' ? punish.price(kind) : 0
+        const lethal = price > 0 && s.view.lp.me - price > 0 && closesLethal(ask, s.view, LIST_ACTION[list], card)
+
+        if ((price > 0 && !lethal) || !fresh(id)) continue
         intent = { id, code: card.code }
-        return { answer: { type: ask.type, action: LIST_ACTION[list], index }, reason: { key, cards: [card.code] }, rule }
+        return { answer: { type: ask.type, action: LIST_ACTION[list], index }, reason: lethal ? { key: 'auto.bot.reason.play.lethalPrice', cards: [card.code], params: { lp: price } } : { key, cards: [card.code] }, rule }
       }
     }
     return null
@@ -463,10 +548,9 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
   function battle(ask: AskOf<'select_battlecmd'>, s: Scene): DeckDecision {
     intent = null
-    const plan = attackPlan(
-      s,
-      ask.attacks.map((card) => ({ code: card.code, atk: atkOf(s, atPlace(s.view, card)), direct: card.can_direct })),
-    )
+    const attackers = ask.attacks.map((card) => ({ code: card.code, atk: atkOf(s, atPlace(s.view, card)), direct: card.can_direct }))
+    // Con letal, su orden (primero lo que limpia, después lo directo); si no, el mejor ataque de siempre.
+    const plan = lethalPlan(s, attackers) ?? attackPlan(s, attackers)
 
     if (plan) {
       const attacker = ask.attacks[plan.i]!
