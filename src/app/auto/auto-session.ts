@@ -297,7 +297,13 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const resume = options.resume ?? null
   /** Con la mesa rearmada, el núcleo todavía va por una fase anterior a la de la mesa (las pasa al empezar; las fases del núcleo crecen con la del turno). */
   // (El asiento 0 es el que tiene el turno: su mesa dice hasta qué fase; los dos adaptadores ven las mismas fases del núcleo.)
-  const catchingUp = () => adapters[0] !== undefined && adapters[0]!.overlay.phase < (CORE_PHASE[adapters[0]!.mine.phase] ?? 0)
+  // Se mide con mi adaptador (el invitado del duelo por enlace sólo recibe lo de su asiento: el del asiento 0 no se mueve) y sólo en el primer turno del núcleo (sin esto, el
+  // invitado en el asiento 1 se salteaba su Main Phase 1 en cada turno suyo: se le contestaba sola la ida a la Battle Phase).
+  const catchingUp = () => {
+    const own = adapters[me]
+
+    return own !== undefined && own.overlay.turn <= 1 && own.overlay.phase < (CORE_PHASE[(me === 0 ? own.initial.mine : own.initial.theirs).phase] ?? 0)
+  }
   /** El Extra Deck del rival (`[passcode, 1]` en orden de preferencia): el suyo, o el de siempre (también el del pasivo). */
   /** El rival «Bot» (`rival.botDeck`): su lista fija y su ejecutor; un id que no existe juega como siempre. */
   const deckBot = botDeckOf(rival?.botDeck)

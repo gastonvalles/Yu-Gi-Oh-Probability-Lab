@@ -3,7 +3,7 @@ import { copyIds } from '../app/auto/adapter'
 import { createAutoSession, MR5 } from '../app/auto/auto-session'
 import type { Bot, BotView } from '../app/auto/bot/bot'
 import { resumeScript } from '../app/auto/core-host'
-import { LOCATION as L, parseAutoCommand, parsePlacedCards, parseSetup, POSITION as P, type AutoCommand, type PlacedCard } from '../app/auto/protocol'
+import { LOCATION as L, parseAutoCommand, parsePlacedCards, parseSetup, POSITION as P, type AutoCommand, type AutoEvent, type PlacedCard } from '../app/auto/protocol'
 import { filterSetup, placedCards, RESUME_FLAGS, seenCodeOf, setupOf, statesOf, tableMatches, whyNotResume } from '../app/auto/resume'
 import { mapMatIds } from '../app/mat-public'
 import { createMatState, matReducer, replayMat, type MatState } from '../app/practice-mat'
@@ -195,6 +195,22 @@ describe('resume: la mesa como cartas del núcleo', () => {
     // El anfitrión de mentira roba una al empezar: la mesa sigue desde la dada.
     expect(snap.mine).toEqual(replayMat(state, snap.mineActions))
     expect(snap.theirs.deck).toHaveLength(create.setup!.cards.filter((card) => card.controller === 1).length)
+    session.destroy()
+  })
+
+  it('el turno que sigue a la mesa rearmada se juega entero: en el asiento 1, tu Main Phase 1 te la pregunta (aunque sólo llegue lo de tu asiento, como al invitado)', async () => {
+    // Sólo lo de tu asiento: Ana juega el turno 1 del núcleo y te toca el 2, hasta tu Main Phase 1 (la pregunta puede ir a la Battle Phase).
+    const react = (command: AutoCommand, emit: (event: AutoEvent) => void) => {
+      if (command.t !== 'create') return false
+      emit({ t: 'loading', done: 0, total: 1 })
+      emit({ t: 'events', seat: 1, n: 0, events: [{ type: 'new_turn', player: 0 }, { type: 'new_phase', phase: 4 }, { type: 'new_phase', phase: 0x200 }, { type: 'new_turn', player: 1 }, { type: 'new_phase', phase: 1 }, { type: 'new_phase', phase: 2 }, { type: 'new_phase', phase: 4 }] })
+      emit({ t: 'ask', seat: 1, askId: 1, ask: { ...IDLE, player: 1, to_bp: true } })
+      return true
+    }
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 2], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1]], extra: [[90, 1], [91, 1]] }, transport: fakeHost(() => 1, react).factory, seed: 7, seat: 1, resume: { mine: { ...table(), phase: 'draw' }, codeOf: (_side, id) => codeOf(id), lp: [8000, 8000] } })
+
+    for (let i = 0; i < 40 && session.getSnapshot().status !== 'ready'; i += 1) await new Promise((resolve) => setTimeout(resolve, 5))
+    expect(session.getSnapshot()).toMatchObject({ status: 'ready', ask: { seat: 1, ask: { type: 'select_idlecmd', to_bp: true } } })
     session.destroy()
   })
 
