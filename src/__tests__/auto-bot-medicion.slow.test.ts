@@ -7,8 +7,10 @@ import { BOT_DECKS } from '../app/auto/bot/decks'
 import { localTransport, type AutoHost } from '../app/auto/core-host'
 import { passivePolicy } from '../app/auto/policies'
 import type { CoreAsk } from '../app/auto/protocol'
+import { copyIds } from '../app/auto/adapter'
+import { ANGELECHY as A } from '../app/bot-deck-lists'
 import { autoRival, DOMINUS_LOCKS } from '../app/handtraps'
-import { mulberry32 } from '../app/practice-mat'
+import { createMatState, matReducer, mulberry32 } from '../app/practice-mat'
 import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
 /**
@@ -245,5 +247,114 @@ describe.skipIf(!hasCoreData)('la vara de los bots con el núcleo real (npm run 
     report[deckId] = { ...row, perHand: hands.map(({ seed, afterOne, unused, selfLp, won, lost, dry }) => ({ seed, afterOne, unused, selfLp, won, lost, dry })), versus: { ...row.versus, perHand: versus.map(({ seed, won, lost, locks, gifted }) => ({ seed, won, lost, locks, gifted })) } }
     console.log(deckId, JSON.stringify({ ...row, unused: undefined }))
     expect([...hands, ...versus].flatMap((item) => item.faults)).toEqual([])
+  })
+
+  /**
+   * Los castigos del rival (el duelo del video de Gastón): vos empezás con Black-Winged Assault Dragon en el campo (700 de daño cada vez que el rival activa un efecto de monstruo)
+   * y, con `destrier`, activás Angelechy Problem para poner a Angelechy Destrier como Continua (500 cada vez que el rival activa una carta o efecto, al resolverse); el bot (con una
+   * mano de 5 de su lista, barajada con la semilla) juega su turno 2. Cuenta el daño de efecto que recibe en su turno (fuera del paso de daño: no la batalla), lo que deja en el campo
+   * y si te sacó las cartas que castigan.
+   */
+  async function punished(deckId: string, seed: number, destrier: boolean) {
+    const deck = deckOf(deckId)
+    const inner = deck.bot(facts, aliasOf, attributeOf)
+    const { filler } = await source.manifest()
+    const main = [A.terraforming, A.problem, ...filler.slice(0, 38)]
+    const extra = [A.assaultDragon, A.enlisted, A.destrier, A.castellan, A.shatranga]
+    const ids = copyIds([...main, ...extra])
+    const codeOfId = (id: string) => Number(id.split('-')[1] ?? 0)
+    const idOf = (code: number) => ids.find((id) => codeOfId(id) === code)!
+    let state = createMatState(ids.slice(0, main.length), ids.slice(main.length), 1)
+
+    state = matReducer(state, { type: 'place', id: idOf(A.problem), zone: 'field', index: 0, pos: 'atk' })
+    state = matReducer(state, { type: 'place', id: idOf(A.assaultDragon), zone: 'mz', index: 2, pos: 'atk' })
+    state = { ...matReducer(state, { type: 'phase', phase: 'main1' }), turn: 1 }
+    const random = mulberry32(seed)
+    const pool = deck.list.main.flatMap(([code, copies]) => Array.from({ length: copies }, () => code))
+
+    for (let i = pool.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(random() * (i + 1))
+
+      ;[pool[i], pool[j]] = [pool[j]!, pool[i]!]
+    }
+    const reasons: string[] = []
+    const bot: Bot = (ask, view, context) => {
+      const decision = inner(ask, view, context)
+
+      if (decision.reason && view.turn === 2) reasons.push(decision.reason.key)
+      return decision
+    }
+    let botTurn = false
+    let battle = false
+    let damage = 0
+    const session = createAutoSession({
+      loader,
+      deck: { main: main.map((code) => [code, 1] as const), extra: extra.map((code) => [code, 1] as const) },
+      seed,
+      botSeed: seed,
+      seat: 0,
+      transport: localTransport({ wasmBinary: wasm }),
+      rival: autoRival({ enabled: false, picks: [], hand: 3, botDeck: deckId }),
+      resume: { mine: state, codeOf: (_side, id) => codeOfId(id), lp: [8000, 8000], rivalHand: pool.slice(0, 5) },
+      bot,
+      onEvent: (event) => {
+        if (event.t !== 'events' || event.seat !== 0) return
+        for (const wire of event.events as { type: string; player?: number; amount?: number }[]) {
+          if (wire.type === 'new_turn') botTurn = wire.player === 1
+          else if (wire.type === 'damage_step_start') battle = true
+          else if (wire.type === 'damage_step_end') battle = false
+          else if (wire.type === 'damage' && wire.player === 1 && botTurn && !battle) damage += wire.amount ?? 0
+        }
+      },
+    })
+    const passive = passivePolicy()
+    let snapshot = await settled(session)
+    let problem = destrier
+
+    for (let n = 0; n < 1500 && snapshot.status === 'ready' && snapshot.overlay.turn < 3; n += 1) {
+      const ask = snapshot.ask!.ask
+      const pick = ask.type === 'select_card' ? ask.selects.findIndex((card) => card.code === A.destrier) : -1
+      const activate = problem && ask.type === 'select_idlecmd' ? ask.activates.findIndex((card) => card.code === A.problem) : -1
+
+      if (activate >= 0) problem = false
+      session.answer(activate >= 0 ? { type: 'select_idlecmd', action: 5, index: activate } : pick >= 0 ? { type: 'select_card', indices: [pick] } : passive(ask))
+      snapshot = await settled(session)
+    }
+    const adapter = session.adapter!
+    const mineCodes = [...snapshot.mine.mz, ...snapshot.mine.emz, ...snapshot.mine.st].flatMap((slot) => (slot && slot.pos !== 'set' ? [adapter.codeOf({ side: 'mine', id: slot.id })] : []))
+    const theirs = [...snapshot.theirs.mz, ...snapshot.theirs.emz].filter((slot) => slot !== null)
+    const result = {
+      seed,
+      damage,
+      lp: snapshot.overlay.lp[1],
+      monsters: theirs.length,
+      dragon: mineCodes.includes(A.assaultDragon),
+      destrier: mineCodes.includes(A.destrier),
+      priced: reasons.filter((key) => key.includes('price')).length,
+      faults: snapshot.faults.filter((fault) => fault.kind === 'retry' || fault.kind === 'unhandled').map((fault) => fault.message),
+    }
+
+    session.destroy()
+    return result
+  }
+
+  it.each([['Black-Winged Assault Dragon', false], ['Assault Dragon y Destrier', true]] as const)(`castigos, Elfnote contra %s: ${HANDS} manos`, { timeout: 60 * 60 * 1000 }, async (label, destrier) => {
+    const runs: Awaited<ReturnType<typeof punished>>[] = []
+
+    for (let seed = FROM; seed < FROM + HANDS; seed += 1) runs.push(await punished('elfnote', seed, destrier))
+    const row = {
+      hands: runs.length,
+      damagePerHand: avg(runs.map((run) => run.damage)),
+      maxDamage: Math.max(...runs.map((run) => run.damage)),
+      dead: runs.filter((run) => run.lp <= 0).length,
+      monsters: avg(runs.map((run) => run.monsters)),
+      removedDragon: runs.filter((run) => !run.dragon).length,
+      removedDestrier: destrier ? runs.filter((run) => !run.destrier).length : null,
+      priced: runs.reduce((sum, run) => sum + run.priced, 0),
+    }
+
+    report[`castigos ${label}`] = { ...row, perHand: runs.map(({ faults: _, ...run }) => run) }
+    console.log(label, JSON.stringify(row))
+    expect(runs.flatMap((run) => run.faults)).toEqual([])
   })
 })

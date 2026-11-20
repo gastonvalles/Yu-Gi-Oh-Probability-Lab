@@ -1,6 +1,7 @@
 import { freePlaces, passiveAnswer, ruleOf, turnRuleOf } from '../../policies'
 import type { AskOf, CardLoc, CoreAnswer, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotDecision, BotReason, BotView } from '../bot'
+import { activationClass, createPunishments, type ActionClass } from '../punish'
 import { MAX_IDLE, pendulumAnswer, pendulumIndex, type CardFacts } from '../turn'
 
 /**
@@ -36,6 +37,9 @@ const DRAWS = 0x100 | 0x200
 const SUMMONS = 0x100000
 /** Las de lo que se lleva cartas (destruir, mandar al cementerio, desterrar, devolver, daño, control): pueden llevarse lo suyo, y la regla general no lo activa. */
 const TAKES = 0xff | 0x40000 | 0x40000000
+/** Las de lo que puede sacarte una carta: destruir, devolver a la mano o al Deck, desterrar, negar, tomar el control. */
+const REMOVES = 0x1 | 0x2 | 0x20 | 0x40 | 0x80 | 0x10000 | 0x20000 | 0x40000000
+const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
 const nOf = (description: string) => Number(BigInt(description) & 0xfffffn)
 
 type IdleAsk = AskOf<'select_idlecmd'>
@@ -281,6 +285,19 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
   let seen = new Map<string, string>()
   let blocked = new Set<string>()
   let attackTarget: { attacker: number; target: number; kind: AttackKind } | null = null
+  const punish = createPunishments()
+  /** Lo último que dejó de hacer en su Main Phase por un precio (el motivo de terminar el turno). */
+  let priced: { code: number; lp: number } | null = null
+  /** Lo que puede sacarte cartas (destruir, devolver, desterrar, negar, tomar el control): con tus cartas boca arriba, quizá la que lo castiga. */
+  const removes = (view: BotView, code: number) => ((facts(code)?.category ?? 0) & REMOVES) !== 0 && cardsOf(view.them).some((card) => card.pos !== 'set')
+  /** La clase de una jugada de su Main Phase: activar, Invocar de modo Normal o Especial; las demás no tienen precio. */
+  const idleClass = (action: number, code: number): ActionClass | null => (action === 5 ? activationClass(facts(code)?.type ?? 0) : action === 0 ? 'summon' : action === 1 ? 'special' : null)
+  /** Si puede pagar la jugada (`punish`); si no, la anota en `priced`. */
+  const affordable = (view: BotView, kind: ActionClass | null, code: number) => {
+    if (!kind || punish.allows(view, kind, removes(view, code))) return true
+    priced = { code, lp: punish.price(kind) }
+    return false
+  }
 
   const boardKey = (view: BotView) =>
     JSON.stringify([view.me.hand.map((card) => card.code), cardsOf(view.me).map((card) => [card.code, card.pos]), view.me.grave.length, view.me.banished.length, cardsOf(view.them).length, view.lp, view.chain.length])
@@ -300,6 +317,7 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
     if (idleCount > MAX_IDLE) return end({ key: 'auto.bot.reason.end.done' }, 'executor.cap')
     const key = boardKey(s.view)
+    priced = null
 
     /** La primera vez con esta mesa (la misma jugada con la mesa igual: la anterior no hizo nada, la cancelaron o no se pudo; no se repite este turno). */
     const fresh = (id: string) => {
@@ -313,23 +331,33 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
       return true
     }
 
+    // Con un castigo tuyo a la vista (un precio aprendido): primero, lo que puede sacarte cartas y puede pagar.
+    if (punish.any()) {
+      for (const [index, card] of ask.activates.entries()) {
+        const id = `price.remove.${card.code}`
+
+        if (!removes(s.view, card.code) || !affordable(s.view, idleClass(5, card.code), card.code) || !fresh(id)) continue
+        intent = { id, code: card.code }
+        return { answer: { type: ask.type, action: 5, index }, reason: { key: 'auto.bot.reason.play.removePunisher', cards: [card.code] }, rule: 'executor.price.remove' }
+      }
+    }
     for (const play of deck.plays) {
       if (blocked.has(play.id)) continue
       const { list, action } = LIST[play.kind]
       const index = ask[list].findIndex((card) => covers(play, list, card) && (play.when?.(s, card) ?? true))
 
-      if (index < 0 || !fresh(play.id)) continue
+      if (index < 0 || !affordable(s.view, idleClass(action, play.code), play.code) || !fresh(play.id)) continue
       intent = { id: play.id, code: play.code }
       const card = ask[list][index]!
       const reason = play.reason?.(s, card)
 
       return { answer: { type: ask.type, action, index }, ...(reason ? { reason } : {}), rule: play.id }
     }
-    const extra = spare(ask, fresh)
+    const extra = spare(ask, s, fresh)
 
     if (extra) return extra
     // Sin otra jugada del mazo: la Invocación por Péndulo, una vez por turno, antes de la Battle Phase (después de las jugadas, para no cortarle una línea al mazo).
-    const pendulum = done.has(PENDULUM) ? -1 : pendulumIndex(ask, s.view, facts, keeps)
+    const pendulum = done.has(PENDULUM) || !affordable(s.view, 'special', 0) ? -1 : pendulumIndex(ask, s.view, facts, keeps)
 
     if (pendulum >= 0) {
       const scale = ask.special_summons[pendulum]!.code
@@ -360,7 +388,10 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
     if (down >= 0) return { answer: { type: ask.type, action: 2, index: down }, reason: { key: 'auto.bot.reason.position.defense', cards: [atPlace(s.view, ask.pos_changes[down]!)?.code ?? 0] }, rule: 'executor.position.defense' }
 
-    return end(endReason(s), 'executor.end')
+    // `affordable` lo anota desde una función: TypeScript no lo ve.
+    const skipped = priced as { code: number; lp: number } | null
+
+    return skipped ? end({ key: 'auto.bot.reason.end.price', cards: [skipped.code], params: { lp: skipped.lp } }, 'executor.end.price') : end(endReason(s), 'executor.end')
   }
 
   /**
@@ -369,7 +400,7 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
    * que guarda para una regla); 2. Invocar de modo Normal o Especial, de la mano o el cementerio, un monstruo con ATK que no guarda para una regla (uno más con qué atacar o
    * frenarte; de Nivel 4 o menos: sin Tributar lo suyo). Nunca del Extra Deck: eso gasta materiales, y qué materiales lo decide su mazo.
    */
-  function spare(ask: IdleAsk, fresh: (id: string) => boolean): DeckDecision | null {
+  function spare(ask: IdleAsk, s: Scene, fresh: (id: string) => boolean): DeckDecision | null {
     const uncovered = (list: IdleList, card: CardLoc) => !keeps(card.code) && !deck.plays.some((play) => covers(play, list, card))
     const draws = (card: CardLoc) => ((facts(card.code)?.category ?? 0) & DRAWS) !== 0 && !isType({ facts }, card.code, TYPE.QUICKPLAY | TYPE.TRAP)
     const body = (card: CardLoc) => {
@@ -387,7 +418,10 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
       for (const [index, card] of ask[list].entries()) {
         const id = `spare.${list}.${card.code}`
 
-        if (!uncovered(list, card) || !test(card) || !fresh(id)) continue
+        const kind = idleClass(LIST_ACTION[list], card.code)
+
+        // Lo de más no se paga: con precio, la regla general no lo hace.
+        if (!uncovered(list, card) || !test(card) || (kind && punish.price(kind) > 0 && s.view.turnPlayer === 'me') || !fresh(id)) continue
         intent = { id, code: card.code }
         return { answer: { type: ask.type, action: LIST_ACTION[list], index }, reason: { key, cards: [card.code] }, rule }
       }
@@ -474,6 +508,7 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
       attackTarget = null
     }
     history = view.history.length
+    punish.observe(view)
     const s = sceneOf(view)
     const mine = view.turnPlayer === 'me'
     let decision: DeckDecision | null = null
@@ -492,15 +527,50 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
     if (decision && legal(ask, decision.answer)) {
       const { intent: next, ...rest } = decision
+      const held = priceHold(ask, view, rest)
 
+      if (held) return held
       if (next) {
         intent = next
         done.add(next.id)
       }
-      return rest
+      return paid(ask, view, rest)
     }
     // Lo que el mazo no decide (o no le salió legal): en su Main y Battle Phase, terminar; lo demás, el de reserva.
     if (mine && (ask.type === 'select_idlecmd' || ask.type === 'select_battlecmd')) return { answer: passiveAnswer(ask, context.random), rule: 'executor.fallback' }
-    return fallback(ask, view, context)
+    const reserve = fallback(ask, view, context)
+
+    return priceHold(ask, view, reserve) ?? paid(ask, view, reserve)
+  }
+
+  /** La clase de lo que activa con esta respuesta (en una cadena o un «¿activar el efecto?»), o `null` si no activa nada. */
+  function activated(ask: CoreAsk, answer: CoreAnswer): { kind: ActionClass; code: number } | null {
+    if (ask.type === 'select_chain' && answer.type === 'select_chain' && answer.index !== null && !ask.forced) {
+      const code = ask.selects[answer.index]!.code
+
+      return { kind: activationClass(facts(code)?.type ?? 0), code }
+    }
+    if (ask.type === 'select_effectyn' && answer.type === 'select_effectyn' && answer.yes) return { kind: activationClass(facts(ask.code)?.type ?? 0), code: ask.code }
+    return null
+  }
+
+  /** Una activación con precio que no puede pagar (`punish.allows`): no la hace, y dice por qué. */
+  function priceHold(ask: CoreAsk, view: BotView, decision: BotDecision): BotDecision | null {
+    const act = activated(ask, decision.answer)
+
+    if (!act || punish.allows(view, act.kind, removes(view, act.code))) return null
+    const reason: BotReason = { key: 'auto.bot.reason.hold.price', cards: [act.code], params: { lp: punish.price(act.kind) } }
+
+    return ask.type === 'select_chain' ? { answer: { type: ask.type, index: null }, reason, rule: 'executor.price.hold' } : { answer: { type: 'select_effectyn', yes: false }, reason, rule: 'executor.price.hold' }
+  }
+
+  /** Anota lo que hizo (activar, Invocar) para ver si le cuesta vidas. */
+  function paid(ask: CoreAsk, view: BotView, decision: BotDecision): BotDecision {
+    const act = activated(ask, decision.answer)
+    const idleKind = ask.type === 'select_idlecmd' && decision.answer.type === 'select_idlecmd' && decision.answer.index !== null ? idleClass(decision.answer.action, ask[IDLE_LISTS[decision.answer.action]!]?.[decision.answer.index]?.code ?? 0) : null
+    const kind = act?.kind ?? idleKind
+
+    if (kind) punish.acted(view, kind)
+    return decision
   }
 }
