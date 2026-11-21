@@ -12,7 +12,7 @@
 ["SR10-EN011","Common","1st Edition",0.1,212651,23782705,"Machina Sniper"],
 ["SR10-EN012","Common","1st Edition",0.11,212652,96384007,"Machina Defender"],
 ["SR10-EN013","Common","1st Edition",0.09,212653,22666164,"Commander Covington"],
-["SR10-EN014","Common","1st Edition",0.38,212654,63941210,"Jizukiru, the Star Destroying Kaiju"],
+["SR10-EN014","Common","1st Edition",0.35,212654,63941210,"Jizukiru, the Star Destroying Kaiju"],
 ["SR10-EN015","Common","1st Edition",0.14,212655,24731453,"Snow Plow Hustle Rustle"],
 ["SR10-EN016","Common","1st Edition",0.13,212656,64034255,"Genex Ally Birdman"],
 ["SR10-EN017","Common","1st Edition",0.51,212657,4334811,"Scrap Recycler"],
@@ -27,10 +27,10 @@
 ["SR10-EN026","Common","1st Edition",0.35,212666,64662453,"Iron Call"],
 ["SR10-EN027","Common","1st Edition",0.24,212667,34559295,"Iron Draw"],
 ["SR10-EN028","Common","1st Edition",0.34,212668,80352158,"Magnet Reverse"],
-["SR10-EN029","Common","1st Edition",0.19,212669,23171610,"Limiter Removal"],
+["SR10-EN029","Common","1st Edition",0.2,212669,23171610,"Limiter Removal"],
 ["SR10-EN030","Common","1st Edition",0.38,212670,40450317,"Ties of the Brethren"],
-["SR10-EN031","Common","1st Edition",0.94,212671,67169062,"Pot of Avarice"],
-["SR10-EN032","Common","1st Edition",0.26,212672,8267140,"Cosmic Cyclone"],
+["SR10-EN031","Common","1st Edition",0.96,212671,67169062,"Pot of Avarice"],
+["SR10-EN032","Common","1st Edition",0.27,212672,8267140,"Cosmic Cyclone"],
 ["SR10-EN033","Common","1st Edition",0.14,212673,17626381,"Supply Squad"],
 ["SR10-EN034","Common","1st Edition",0.74,212674,59741415,"Machina Overdrive"],
 ["SR10-EN035","Common","1st Edition",0.27,212675,63477921,"Cyber Summon Blaster"],
@@ -39,5 +39,5 @@
 ["SR10-EN038","Common","1st Edition",0.11,212678,20374520,"Begone, Knave!"],
 ["SR10-EN039","Common","1st Edition",0.54,212679,40605147,"Solemn Strike"],
 ["SR10-EN040","Ultra Rare","1st Edition",0.22,212680,85136114,"Machina Possesstorage"],
-["SR10-EN041","Super Rare","1st Edition",0.74,212681,12524259,"Unauthorized Reactivation"]
+["SR10-EN041","Super Rare","1st Edition",0.72,212681,12524259,"Unauthorized Reactivation"]
 ]

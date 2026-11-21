@@ -1,4 +1,4 @@
-{"updated":"2026-11-20","shards":256,"groups":[
+{"updated":"2026-11-21","shards":256,"groups":[
 [126,"2003 Collectors Tin","2003-09-01",6,"BPT"],
 [127,"2004 Collectors Tin","2004-09-01",6,"CT1"],
 [128,"2005 Collectors Tin","2005-09-01",6,"CT2"],
@@ -93,7 +93,7 @@
 [245,"Legendary Collection 2","2017-12-01",545,"LCGX"],
 [246,"Light and Darkness Power Pack","",1,"LDPP"],
 [247,"Light of Destruction","2008-02-23",224,"LODT"],
-[248,"The Lost Millennium","2005-06-01",172,"TLM"],
+[248,"The Lost Millennium","2005-06-01",171,"TLM"],
 [249,"Magic Ruler","2002-09-16",253,"MRL"],
 [250,"Magician's Force","2003-10-10",217,"MFC"],
 [251,"Master Collection Volume 1","2005-03-17",6,"MC1"],
@@ -202,7 +202,7 @@
 [577,"Cosmo Blazer SE","2013-01-25",2,"CBLZ"],
 [578,"Galactic Overlord","2012-05-08",223,"GAOV"],
 [580,"Gold Series: Haunted Mine","2012-06-12",55,"GLD5"],
-[581,"Hidden Arsenal 6: Omega Xyz","2012-07-24",115,"HA06"],
+[581,"Hidden Arsenal 6: Omega Xyz","2012-07-24",114,"HA06"],
 [582,"Hobby League 6","2008-01-21",6,"HL06"],
 [583,"Hobby League 7","2008-07-01",6,"HL07"],
 [584,"Legendary Collection 3: Yugi's World","2012-10-02",616,"LCYW"],
@@ -598,7 +598,7 @@
 [24707,"Magnificent Monsters","2026-09-04",220,"MAMO"],
 [24789,"Winner's Pack 2026-2027","2026-07-15",98,"WI26"],
 [24806,"Ultimate Tournament Pack 2","2026-11-04",49,"UP02"],
-[24808,"Magnificent Maestros","2026-11-13",261,"MAMS"],
-[24815,"Beyond the Brave","2026-10-09",129,"BETB"],
+[24808,"Magnificent Maestros","2026-11-13",260,"MAMS"],
+[24815,"Beyond the Brave","2026-10-09",130,"BETB"],
 [24918,"Thank You Pack","2026-07-22",3,"TYP1"]
 ]}
