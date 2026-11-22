@@ -1,7 +1,7 @@
 [
 ["SS05-ENA01","Common","1st Edition",0.19,213943,31829185,"Dark Necrofear"],
 ["SS05-ENA02","Common","1st Edition",0.51,213944,70084224,"Neck Hunter"],
-["SS05-ENA03","Common","1st Edition",0.24,213945,66989694,"The Earl of Demise"],
+["SS05-ENA03","Common","1st Edition",0.23,213945,66989694,"The Earl of Demise"],
 ["SS05-ENA04","Common","1st Edition",0.34,213946,52367652,"That Which Feeds on Life"],
 ["SS05-ENA05","Common","1st Edition",0.15,213947,91996584,"Whiptail Crow"],
 ["SS05-ENA06","Common","1st Edition",0.2,213949,68049471,"The Gross Ghost of Fled Dreams"],
@@ -43,11 +43,11 @@
 ["SS05-ENB12","Common","1st Edition",0.79,214022,17597059,"Byser Shock"],
 ["SS05-ENB13","Common","1st Edition",0.37,214024,76052811,"Helpoemer"],
 ["SS05-ENB14","Common","1st Edition",0.42,214025,46820049,"Mefist the Infernal General"],
-["SS05-ENB15","Common","1st Edition",0.23,214027,90147755,"Lady Assailant of Flames"],
+["SS05-ENB15","Common","1st Edition",0.36,214027,90147755,"Lady Assailant of Flames"],
 ["SS05-ENB16","Common","1st Edition",0.15,214029,56043447,"Viser Des"],
 ["SS05-ENB17","Common","1st Edition",0.29,214030,4335645,"Newdoria"],
 ["SS05-ENB18","Common","1st Edition",0.14,214033,90980792,"Dark Jeroid"],
-["SS05-ENB19","Common","1st Edition",0.33,214034,99050989,"Drillago"],
+["SS05-ENB19","Common","1st Edition",0.34,214034,99050989,"Drillago"],
 ["SS05-ENB20","Common","1st Edition",0.22,214035,52090844,"Bowganian"],
 ["SS05-ENB21","Common","1st Edition",1.98,214037,79759861,"Tribute to the Doomed"],
 ["SS05-ENB22","Common","1st Edition",1.24,214038,25290459,"Level Up!"],
@@ -58,11 +58,11 @@
 ["SS05-ENB27","Common","1st Edition",0.82,214046,54704216,"Nightmare Wheel"],
 ["SS05-ENB28","Common","1st Edition",0.74,214048,65830223,"Coffin Seller"],
 ["SS05-ENB29","Common","1st Edition",0.22,214050,26905245,"Metal Reflect Slime"],
-["SS05-ENB30","Common","1st Edition",0.15,214051,66518841,"Prideful Roar"],
+["SS05-ENB30","Common","1st Edition",0.17,214051,66518841,"Prideful Roar"],
 ["SS05-ENS01","Common","1st Edition",0.23,214219,300205001,"Inner Conflict"],
 ["SS05-ENS02","Common","1st Edition",0.21,214220,300205002,"Into the Darkness Below"],
 ["SS05-ENS03","Common","1st Edition",0.27,214221,300205003,"Shadow Reborn"],
 ["SS05-ENS04","Common","1st Edition",0.44,214222,300205004,"Twisted Personality"],
 ["SS05-ENV01","Ultra Rare","1st Edition",11.84,214054,46565218,"Santa Claws"],
-["SS05-ENV02","Ultra Rare","1st Edition",10.02,214056,98494543,"Magical Stone Excavation"]
+["SS05-ENV02","Ultra Rare","1st Edition",10,214056,98494543,"Magical Stone Excavation"]
 ]

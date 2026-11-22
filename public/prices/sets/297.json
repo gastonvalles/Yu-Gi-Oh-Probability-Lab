@@ -1,7 +1,7 @@
 [
 ["YSDS-EN000","Ultra Rare","1st Edition",0.68,26370,984114,"Expressroid"],
 ["YSDS-EN000","Ultra Rare","Unlimited",1,26370,984114,"Expressroid"],
-["YSDS-EN001","Common","1st Edition",0.85,26371,48766543,"Cyber-Tech Alligator"],
+["YSDS-EN001","Common","1st Edition",0.84,26371,48766543,"Cyber-Tech Alligator"],
 ["YSDS-EN002","Common","1st Edition",0.69,26372,44203504,"Robotic Knight"],
 ["YSDS-EN002","Common","Unlimited",0.56,26372,44203504,"Robotic Knight"],
 ["YSDS-EN003","Common","1st Edition",0.12,26373,11321183,"Dark Blade"],
@@ -58,7 +58,7 @@
 ["YSDS-EN031","Common","1st Edition",1.6,26401,87910978,"Brain Control"],
 ["YSDS-EN031","Common","Unlimited",0.7,26401,87910978,"Brain Control"],
 ["YSDS-EN032","Common","1st Edition",0.2,26402,4206964,"Trap Hole"],
-["YSDS-EN032","Common","Unlimited",0.2,26402,4206964,"Trap Hole"],
+["YSDS-EN032","Common","Unlimited",null,26402,4206964,"Trap Hole"],
 ["YSDS-EN033","Common","1st Edition",1.33,26403,77414722,"Magic Jammer"],
 ["YSDS-EN033","Common","Unlimited",null,26403,77414722,"Magic Jammer"],
 ["YSDS-EN034","Common","1st Edition",0.4,26405,3819470,"Seven Tools of the Bandit"],

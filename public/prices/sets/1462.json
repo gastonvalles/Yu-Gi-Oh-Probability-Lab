@@ -11,7 +11,7 @@
 ["SDLI-EN010","Common","1st Edition",1.11,91001,58996430,"Wulf, Lightsworn Beast"],
 ["SDLI-EN011","Common","1st Edition",0.83,91002,44178886,"Ehren, Lightsworn Monk"],
 ["SDLI-EN012","Common","1st Edition",0.14,91000,95503687,"Lumina, Lightsworn Summoner"],
-["SDLI-EN013","Common","1st Edition",1.09,91003,7183277,"Aurkus, Lightsworn Druid"],
+["SDLI-EN013","Common","1st Edition",1.11,91003,7183277,"Aurkus, Lightsworn Druid"],
 ["SDLI-EN014","Common","1st Edition",0.3,91004,2420921,"Shire, Lightsworn Spirit"],
 ["SDLI-EN015","Common","1st Edition",0.49,91005,21502796,"Ryko, Lightsworn Hunter"],
 ["SDLI-EN016","Common","1st Edition",0.33,91006,37742478,"Honest"],
@@ -25,7 +25,7 @@
 ["SDLI-EN024","Ultra Rare","1st Edition",0.39,91014,52665542,"Lightsworn Sanctuary"],
 ["SDLI-EN025","Common","1st Edition",0.28,91015,36099620,"Realm of Light"],
 ["SDLI-EN026","Common","1st Edition",2.73,91016,691925,"Solar Recharge"],
-["SDLI-EN027","Common","1st Edition",0.29,91017,94886282,"Charge of the Light Brigade"],
+["SDLI-EN027","Common","1st Edition",0.3,91017,94886282,"Charge of the Light Brigade"],
 ["SDLI-EN028","Common","1st Edition",0.26,91018,74848038,"Monster Reincarnation"],
 ["SDLI-EN029","Common","1st Edition",0.3,91019,81439173,"Foolish Burial"],
 ["SDLI-EN030","Common","1st Edition",0.51,91020,61962135,"Glorious Illusion"],
@@ -34,5 +34,5 @@
 ["SDLI-EN033","Common","1st Edition",0.31,91023,16255442,"Beckoning Light"],
 ["SDLI-EN034","Common","1st Edition",0.19,91024,73729209,"Skill Successor"],
 ["SDLI-EN035","Common","1st Edition",0.91,91025,78474168,"Breakthrough Skill"],
-["SDLI-EN036","Ultra Rare","1st Edition",0.9,91026,4779823,"Michael, the Arch-Lightsworn"]
+["SDLI-EN036","Ultra Rare","1st Edition",0.94,91026,4779823,"Michael, the Arch-Lightsworn"]
 ]

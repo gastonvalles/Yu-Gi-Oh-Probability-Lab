@@ -22,7 +22,7 @@
 ["SS01-ENAS3","Common","1st Edition",0.19,183707,300201003,"Final Draw"],
 ["SS01-ENB01","Common","1st Edition",0.38,183735,50712728,"Gravekeeper's Curse"],
 ["SS01-ENB02","Common","1st Edition",0.46,183736,63695531,"Gravekeeper's Spear Soldier"],
-["SS01-ENB03","Common","1st Edition",0.22,183737,99690140,"Gravekeeper's Vassal"],
+["SS01-ENB03","Common","1st Edition",0.24,183737,99690140,"Gravekeeper's Vassal"],
 ["SS01-ENB04","Common","1st Edition",0.37,183738,62473983,"Gravekeeper's Chief"],
 ["SS01-ENB05","Common","1st Edition",0.29,183739,99877698,"Gravekeeper's Cannonholder"],
 ["SS01-ENB06","Common","1st Edition",0.3,183741,25262697,"Gravekeeper's Assailant"],
@@ -62,5 +62,5 @@
 ["SS01-ENCS3","Common","1st Edition",0.4,183713,300201009,"Millennium Eye (Skill Card)"],
 ["SS01-ENV01","Ultra Rare","1st Edition",0.5,183714,33904024,"Shard of Greed"],
 ["SS01-ENV02","Ultra Rare","1st Edition",0.4,183715,42671151,"The Golden Apples"],
-["SS01-ENV03","Ultra Rare","1st Edition",4.39,183716,88032456,"Mimicat"]
+["SS01-ENV03","Ultra Rare","1st Edition",4.48,183716,88032456,"Mimicat"]
 ]
