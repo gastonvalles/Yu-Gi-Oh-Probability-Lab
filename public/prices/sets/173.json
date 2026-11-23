@@ -43,7 +43,7 @@
 ["DR2-EN042","Common","Unlimited",0.35,24663,23701465,"Primal Seed"],
 ["DR2-EN043","Common","Unlimited",0.04,24664,69196160,"Thunder Crash"],
 ["DR2-EN044","Common","Unlimited",0.11,24665,95194279,"Dimension Distortion"],
-["DR2-EN045","Super Rare","Unlimited",9.9,24666,22589918,"Reload"],
+["DR2-EN045","Super Rare","Unlimited",8.39,24666,22589918,"Reload"],
 ["DR2-EN046","Common","Unlimited",0.55,24667,68073522,"Soul Absorption"],
 ["DR2-EN047","Super Rare","Unlimited",3.96,24668,95472621,"Big Burn"],
 ["DR2-EN048","Common","Unlimited",0.18,24669,21466326,"Blasting the Ruins"],
@@ -86,7 +86,7 @@
 ["DR2-EN085","Rare","Unlimited",0.98,24706,63120904,"Orca Mega-Fortress of Darkness"],
 ["DR2-EN086","Common","Unlimited",0.33,24707,95614612,"Cannonball Spear Shellfish"],
 ["DR2-EN087","Rare","Unlimited",0.63,24708,22609617,"Mataza the Zapper"],
-["DR2-EN088","Super Rare","Unlimited",6.13,24709,68007326,"Guardian Angel Joan"],
+["DR2-EN088","Super Rare","Unlimited",6.27,24709,68007326,"Guardian Angel Joan"],
 ["DR2-EN089","Common","Unlimited",1.25,24710,95492061,"Manju of the Ten Thousand Hands"],
 ["DR2-EN090","Common","Unlimited",0.1,24711,21887179,"Getsu Fuhma"],
 ["DR2-EN091","Super Rare","Unlimited",49.87,24712,57281778,"Ryu Kokki"],
@@ -157,7 +157,7 @@
 ["DR2-EN156","Common","Unlimited",0.2,24777,19312169,"Talisman of Trap Sealing"],
 ["DR2-EN157","Common","Unlimited",0.66,24778,45311864,"Goblin Thief"],
 ["DR2-EN158","Common","Unlimited",0.18,24779,82705573,"Backfire"],
-["DR2-EN159","Common","Unlimited",0.27,24780,18190572,"Micro Ray"],
+["DR2-EN159","Common","Unlimited",0.24,24780,18190572,"Micro Ray"],
 ["DR2-EN160","Common","Unlimited",0.18,24781,44595286,"Light of Judgment"],
 ["DR2-EN161","Common","Unlimited",0.11,24782,71983925,"Talisman of Spell Sealing"],
 ["DR2-EN162","Common","Unlimited",1.55,24783,17078030,"Wall of Revealing Light"],
@@ -219,8 +219,8 @@
 ["DR2-EN218","Super Rare","Unlimited",2.1,24839,66742250,"Curse of Anubis"],
 ["DR2-EN219","Common","Unlimited",1.57,24840,93747864,"Desert Sunlight"],
 ["DR2-EN220","Rare","Unlimited",0.74,24841,39131963,"Des Counterblow"],
-["DR2-EN221","Common","Unlimited",0.15,24842,66526672,"Labyrinth of Nightmare"],
+["DR2-EN221","Common","Unlimited",0.14,24842,66526672,"Labyrinth of Nightmare"],
 ["DR2-EN222","Rare","Unlimited",0.53,24843,92924317,"Soul Resurrection"],
 ["DR2-EN223","Common","Unlimited",0.34,24844,39019325,"Order to Smash"],
-["DR2-EN224","Ultra Rare","Unlimited",2.97,24845,65403020,"The End of Anubis"]
+["DR2-EN224","Ultra Rare","Unlimited",3,24845,65403020,"The End of Anubis"]
 ]

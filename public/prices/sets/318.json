@@ -16,7 +16,7 @@
 ["SDGU-EN008","Common","1st Edition",0.1,57084,51232472,"Gren, Tactician of Dark World"],
 ["SDGU-EN008","Common","Unlimited",0.1,57084,51232472,"Gren, Tactician of Dark World"],
 ["SDGU-EN009","Common","1st Edition",0.42,57085,79126789,"Broww, Huntsman of Dark World"],
-["SDGU-EN009","Common","Unlimited",0.35,57085,79126789,"Broww, Huntsman of Dark World"],
+["SDGU-EN009","Common","Unlimited",0.34,57085,79126789,"Broww, Huntsman of Dark World"],
 ["SDGU-EN010","Common","1st Edition",0.18,57086,33731070,"Beiige, Vanguard of Dark World"],
 ["SDGU-EN010","Common","Unlimited",0.34,57086,33731070,"Beiige, Vanguard of Dark World"],
 ["SDGU-EN011","Common","1st Edition",0.11,57087,6214884,"Brron, Mad King of Dark World"],
@@ -44,7 +44,7 @@
 ["SDGU-EN022","Common","1st Edition",0.48,57098,19665973,"Battle Fader"],
 ["SDGU-EN022","Common","Unlimited",0.55,57098,19665973,"Battle Fader"],
 ["SDGU-EN023","Common","1st Edition",0.37,57099,33017655,"The Gates of Dark World"],
-["SDGU-EN023","Common","Unlimited",0.38,57099,33017655,"The Gates of Dark World"],
+["SDGU-EN023","Common","Unlimited",0.41,57099,33017655,"The Gates of Dark World"],
 ["SDGU-EN024","Common","1st Edition",0.34,57100,93554166,"Dark World Lightning"],
 ["SDGU-EN024","Common","Unlimited",null,57100,93554166,"Dark World Lightning"],
 ["SDGU-EN025","Common","1st Edition",0.11,57101,93431518,"Gateway to Dark World"],
@@ -56,7 +56,7 @@
 ["SDGU-EN028","Common","1st Edition",0.41,57104,72892473,"Card Destruction"],
 ["SDGU-EN028","Common","Unlimited",0.42,57104,72892473,"Card Destruction"],
 ["SDGU-EN029","Common","1st Edition",0.19,57105,73628505,"Terraforming"],
-["SDGU-EN029","Common","Unlimited",0.15,57105,73628505,"Terraforming"],
+["SDGU-EN029","Common","Unlimited",0.17,57105,73628505,"Terraforming"],
 ["SDGU-EN030","Common","1st Edition",0.18,57106,674561,"Dark Eruption"],
 ["SDGU-EN030","Common","Unlimited",0.11,57106,674561,"Dark Eruption"],
 ["SDGU-EN031","Common","1st Edition",0.41,57107,69402394,"Dark Scheme"],
@@ -76,5 +76,5 @@
 ["SDGU-EN038","Common","1st Edition",0.14,57114,31550470,"Escape from the Dark Dimension"],
 ["SDGU-EN038","Common","Unlimited",0.45,57114,31550470,"Escape from the Dark Dimension"],
 ["SDGU-EN039","Common","1st Edition",0.82,57115,77538567,"Dark Bribe"],
-["SDGU-EN039","Common","Unlimited",0.71,57115,77538567,"Dark Bribe"]
+["SDGU-EN039","Common","Unlimited",0.72,57115,77538567,"Dark Bribe"]
 ]

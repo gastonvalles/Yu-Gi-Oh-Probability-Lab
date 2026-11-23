@@ -1,8 +1,8 @@
 [
-["DESO-EN001","Super Rare","1st Edition",0.62,125257,91691605,"Destiny HERO - Drilldark"],
+["DESO-EN001","Super Rare","1st Edition",0.63,125257,91691605,"Destiny HERO - Drilldark"],
 ["DESO-EN002","Super Rare","1st Edition",0.4,125258,37780349,"Destiny HERO - Dynatag"],
 ["DESO-EN003","Secret Rare","1st Edition",0.93,125259,64184058,"Destiny HERO - Decider"],
-["DESO-EN004","Secret Rare","1st Edition",15.6,125260,90579153,"Destiny HERO - Dystopia"],
+["DESO-EN004","Secret Rare","1st Edition",14.96,125260,90579153,"Destiny HERO - Dystopia"],
 ["DESO-EN005","Secret Rare","1st Edition",17.04,125261,26964762,"Destiny HERO - Dark Angel"],
 ["DESO-EN006","Secret Rare","1st Edition",3.96,125262,63362460,"Destiny HERO - Celestial"],
 ["DESO-EN007","Secret Rare","1st Edition",0.53,125263,99357565,"D Cubed"],
@@ -10,9 +10,9 @@
 ["DESO-EN009","Super Rare","1st Edition",0.44,125265,13093792,"Destiny HERO - Diamond Dude"],
 ["DESO-EN010","Super Rare","1st Edition",1.89,125266,9411399,"Destiny HERO - Malicious"],
 ["DESO-EN011","Super Rare","1st Edition",0.57,125267,17132130,"Destiny HERO - Dogma"],
-["DESO-EN012","Super Rare","1st Edition",0.84,125268,83965310,"Destiny HERO - Plasma"],
+["DESO-EN012","Super Rare","1st Edition",0.79,125268,83965310,"Destiny HERO - Plasma"],
 ["DESO-EN013","Super Rare","1st Edition",0.35,125269,76263644,"Destiny End Dragoon"],
-["DESO-EN014","Super Rare","1st Edition",0.34,125270,45809008,"Destiny Draw"],
+["DESO-EN014","Super Rare","1st Edition",0.36,125270,45809008,"Destiny Draw"],
 ["DESO-EN015","Super Rare","1st Edition",0.2,125271,72204747,"Over Destiny"],
 ["DESO-EN016","Secret Rare","1st Edition",0.54,125272,52240819,"Abyss Actor - Evil Heel"],
 ["DESO-EN017","Super Rare","1st Edition",0.16,125273,99634927,"Abyss Actor - Funky Comedian"],
@@ -46,9 +46,9 @@
 ["DESO-EN045","Super Rare","1st Edition",0.34,125301,31550470,"Escape from the Dark Dimension"],
 ["DESO-EN046","Super Rare","1st Edition",0.48,125302,57579381,"Darklord Marie"],
 ["DESO-EN047","Super Rare","1st Edition",0.23,125303,82213171,"Prometheus, King of the Shadows"],
-["DESO-EN048","Super Rare","1st Edition",1.01,125304,67316075,"Darklord Nurse Reficule"],
+["DESO-EN048","Super Rare","1st Edition",1,125304,67316075,"Darklord Nurse Reficule"],
 ["DESO-EN049","Super Rare","1st Edition",0.19,125305,64379430,"Doomsday Horror"],
-["DESO-EN050","Super Rare","1st Edition",1.29,125306,59509952,"Archlord Kristya"],
+["DESO-EN050","Super Rare","1st Edition",1.27,125306,59509952,"Archlord Kristya"],
 ["DESO-EN051","Super Rare","1st Edition",1.15,125307,38120068,"Trade-In"],
 ["DESO-EN052","Super Rare","1st Edition",0.16,125308,90434926,"Veil of Darkness"],
 ["DESO-EN053","Super Rare","1st Edition",0.36,125309,73680966,"The Beginning of the End"],
@@ -58,5 +58,5 @@
 ["DESO-EN057","Super Rare","1st Edition",0.15,125313,41722932,"Dark Mambele"],
 ["DESO-EN058","Super Rare","1st Edition",0.25,125314,78811937,"Creeping Darkness"],
 ["DESO-EN059","Super Rare","1st Edition",0.15,125315,35464895,"Destiny Signal"],
-["DESO-EN060","Super Rare","1st Edition",2.49,125316,5562461,"Dark Illusion"]
+["DESO-EN060","Super Rare","1st Edition",2.48,125316,5562461,"Dark Illusion"]
 ]

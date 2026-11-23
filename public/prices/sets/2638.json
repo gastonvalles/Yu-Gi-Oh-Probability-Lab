@@ -1,6 +1,6 @@
 [
 ["SS05-ENA01","Common","1st Edition",0.19,213943,31829185,"Dark Necrofear"],
-["SS05-ENA02","Common","1st Edition",0.51,213944,70084224,"Neck Hunter"],
+["SS05-ENA02","Common","1st Edition",0.52,213944,70084224,"Neck Hunter"],
 ["SS05-ENA03","Common","1st Edition",0.23,213945,66989694,"The Earl of Demise"],
 ["SS05-ENA04","Common","1st Edition",0.34,213946,52367652,"That Which Feeds on Life"],
 ["SS05-ENA05","Common","1st Edition",0.15,213947,91996584,"Whiptail Crow"],
@@ -39,7 +39,7 @@
 ["SS05-ENB08","Common","1st Edition",0.29,214016,58206034,"Dark Lucius LV8"],
 ["SS05-ENB09","Common","1st Edition",0.22,214017,12817939,"Dark Lucius LV6"],
 ["SS05-ENB10","Common","1st Edition",0.12,214019,85313220,"Dark Lucius LV4"],
-["SS05-ENB11","Common","1st Edition",0.38,214021,99747800,"Legendary Fiend"],
+["SS05-ENB11","Common","1st Edition",0.37,214021,99747800,"Legendary Fiend"],
 ["SS05-ENB12","Common","1st Edition",0.79,214022,17597059,"Byser Shock"],
 ["SS05-ENB13","Common","1st Edition",0.37,214024,76052811,"Helpoemer"],
 ["SS05-ENB14","Common","1st Edition",0.42,214025,46820049,"Mefist the Infernal General"],
@@ -63,6 +63,6 @@
 ["SS05-ENS02","Common","1st Edition",0.21,214220,300205002,"Into the Darkness Below"],
 ["SS05-ENS03","Common","1st Edition",0.27,214221,300205003,"Shadow Reborn"],
 ["SS05-ENS04","Common","1st Edition",0.44,214222,300205004,"Twisted Personality"],
-["SS05-ENV01","Ultra Rare","1st Edition",11.84,214054,46565218,"Santa Claws"],
+["SS05-ENV01","Ultra Rare","1st Edition",11.34,214054,46565218,"Santa Claws"],
 ["SS05-ENV02","Ultra Rare","1st Edition",10,214056,98494543,"Magical Stone Excavation"]
 ]

@@ -1,4 +1,4 @@
-{"updated":"2026-11-22","shards":256,"groups":[
+{"updated":"2026-11-23","shards":256,"groups":[
 [126,"2003 Collectors Tin","2003-09-01",6,"BPT"],
 [127,"2004 Collectors Tin","2004-09-01",6,"CT1"],
 [128,"2005 Collectors Tin","2005-09-01",6,"CT2"],
@@ -253,7 +253,7 @@
 [1310,"Premium Gold","2014-03-28",180,"PGLD"],
 [1315,"Sneak Preview Series 5","2009-05-12",1,"STBL"],
 [1317,"Mattel Action Figure Promos: Series 2","2006-08-01",4,"MF02"],
-[1319,"Star Pack 2014","2014-02-21",100,"SP14"],
+[1319,"Star Pack 2014","2014-02-21",99,"SP14"],
 [1320,"X-Saber Power-Up","2010-11-23",1,"XSPU"],
 [1322,"Yu-Gi-Oh! Tokens","2006-07-20",4,"TKN1"],
 [1323,"Mattel Action Figure Promos: Series 1","2006-01-01",1,"MF01"],
@@ -598,7 +598,7 @@
 [24707,"Magnificent Monsters","2026-09-04",220,"MAMO"],
 [24789,"Winner's Pack 2026-2027","2026-07-15",99,"WI26"],
 [24806,"Ultimate Tournament Pack 2","2026-11-04",49,"UP02"],
-[24808,"Magnificent Maestros","2026-11-13",260,"MAMS"],
+[24808,"Magnificent Maestros","2026-11-13",259,"MAMS"],
 [24815,"Beyond the Brave","2026-10-09",130,"BETB"],
-[24918,"Thank You Pack","2026-07-22",6,"TYP1"]
+[24918,"Thank You Pack","2026-07-22",5,"TYP1"]
 ]}

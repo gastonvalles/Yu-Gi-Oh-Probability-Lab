@@ -13,11 +13,11 @@
 ["GLD5-EN012","Common","Limited",0.21,59739,74153887,"Dark Scorpion - Meanae the Thorn"],
 ["GLD5-EN013","Common","Limited",0.35,59740,57281778,"Ryu Kokki"],
 ["GLD5-EN014","Common","Limited",0.64,59741,26495087,"Vampire Lady"],
-["GLD5-EN015","Common","Limited",0.38,59742,44436472,"Double Coston"],
+["GLD5-EN015","Common","Limited",0.41,59742,44436472,"Double Coston"],
 ["GLD5-EN016","Common","Limited",0.22,59743,70821187,"Regenerating Mummy"],
 ["GLD5-EN017","Common","Limited",0.56,59744,74713516,"Dark Mimic LV1"],
 ["GLD5-EN018","Common","Limited",0.63,59745,1102515,"Dark Mimic LV3"],
-["GLD5-EN019","Common","Limited",0.65,59746,17259470,"Zombie Master"],
+["GLD5-EN019","Common","Limited",0.63,59746,17259470,"Zombie Master"],
 ["GLD5-EN020","Common","Limited",0.3,59747,77936940,"Gernia"],
 ["GLD5-EN021","Common","Limited",0.82,59748,63665875,"Goblin Zombie"],
 ["GLD5-EN022","Common","Limited",1.49,59749,40991587,"The Lady in Wight"],
@@ -31,7 +31,7 @@
 ["GLD5-EN030","Ghost/Gold Rare","Limited",14.33,59757,44665365,"Herald of Perfection"],
 ["GLD5-EN031","Gold Rare","Limited",11.6,59758,50321796,"Brionac, Dragon of the Ice Barrier"],
 ["GLD5-EN032","Gold Rare","Limited",0.96,59759,33198837,"Naturia Beast"],
-["GLD5-EN033","Ghost/Gold Rare","Limited",11.61,59760,2956282,"Naturia Barkion"],
+["GLD5-EN033","Ghost/Gold Rare","Limited",11.49,59760,2956282,"Naturia Barkion"],
 ["GLD5-EN034","Gold Rare","Limited",0.68,59761,50091196,"Formula Synchron"],
 ["GLD5-EN035","Gold Rare","Limited",3.13,59762,66976526,"Karakuri Steel Shogun mdl 00X \"Bureido\""],
 ["GLD5-EN036","Gold Rare","Limited",1.91,59763,84013237,"Number 39: Utopia"],
@@ -53,5 +53,5 @@
 ["GLD5-EN052","Gold Rare","Limited",0.88,59779,58120309,"Starlight Road"],
 ["GLD5-EN053","Common","Limited",0.19,59780,3129635,"Tiki Curse"],
 ["GLD5-EN054","Common","Limited",0.25,59781,49514333,"Tiki Soul"],
-["GLD5-EN055","Common","Limited",0.16,59782,21843307,"Copy Knight"]
+["GLD5-EN055","Common","Limited",0.11,59782,21843307,"Copy Knight"]
 ]

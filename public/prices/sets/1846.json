@@ -21,7 +21,7 @@
 ["SDMY-EN020","Common","1st Edition",0.41,123818,40640057,"Kuriboh"],
 ["SDMY-EN021","Common","1st Edition",0.49,123819,73752131,"Skilled Dark Magician"],
 ["SDMY-EN022","Common","1st Edition",0.29,123820,46363422,"Skilled White Magician"],
-["SDMY-EN023","Common","1st Edition",0.15,123821,43586926,"Twin-Headed Behemoth"],
+["SDMY-EN023","Common","1st Edition",0.13,123821,43586926,"Twin-Headed Behemoth"],
 ["SDMY-EN024","Common","1st Edition",1.42,123822,4740489,"Magnetic Field"],
 ["SDMY-EN025","Common","1st Edition",1.2,123823,41735184,"Dark Magic Inheritance"],
 ["SDMY-EN026","Common","1st Edition",0.27,123824,2314238,"Dark Magic Attack"],
@@ -30,7 +30,7 @@
 ["SDMY-EN029","Common","1st Edition",0.21,123827,72302403,"Swords of Revealing Light"],
 ["SDMY-EN030","Common","1st Edition",0.28,123828,93260132,"Spell Shattering Arrow"],
 ["SDMY-EN031","Common","1st Edition",0.8,123829,24094653,"Polymerization"],
-["SDMY-EN032","Common","1st Edition",0.6,123830,95286165,"De-Fusion"],
+["SDMY-EN032","Common","1st Edition",0.57,123830,95286165,"De-Fusion"],
 ["SDMY-EN033","Common","1st Edition",0.62,123831,12923641,"Swords of Concealing Light"],
 ["SDMY-EN034","Common","1st Edition",0.25,123832,83715234,"Attack the Moon!"],
 ["SDMY-EN035","Common","1st Edition",0.44,123833,77133792,"Magnet Conversion"],
@@ -39,9 +39,9 @@
 ["SDMY-EN038","Common","1st Edition",0.37,123836,62279055,"Magic Cylinder"],
 ["SDMY-EN039","Common","1st Edition",0.14,123837,37383714,"Soul Rope"],
 ["SDMY-EN040","Common","1st Edition",0.16,123838,20781762,"Rock Bombardment"],
-["SDMY-EN041","Ultra Rare","1st Edition",1.89,123839,4628897,"Imperion Magnum the Superconductive Battlebot"],
-["SDMY-EN042","Common","1st Edition",0.41,123840,6150044,"Arcana Knight Joker"],
-["SDMY-EN043","Common","1st Edition",0.6,123841,98502113,"Dark Paladin"],
+["SDMY-EN041","Ultra Rare","1st Edition",1.87,123839,4628897,"Imperion Magnum the Superconductive Battlebot"],
+["SDMY-EN042","Common","1st Edition",0.4,123840,6150044,"Arcana Knight Joker"],
+["SDMY-EN043","Common","1st Edition",0.61,123841,98502113,"Dark Paladin"],
 ["SDMY-EN044","Common","1st Edition",0.21,123842,4796100,"Chimera the Flying Mythical Beast"],
-["SDMY-EN045","Common","1st Edition",2.08,123843,86240887,"Buster Blader, the Dragon Destroyer Swordsman"]
+["SDMY-EN045","Common","1st Edition",2.09,123843,86240887,"Buster Blader, the Dragon Destroyer Swordsman"]
 ]
