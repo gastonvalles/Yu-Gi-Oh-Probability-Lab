@@ -26,7 +26,7 @@
 ["SP14-EN013","Common","1st Edition",0.46,79844,17201174,"Hammer Shark"],
 ["SP14-EN013","Starfoil Rare","1st Edition",0.62,79845,17201174,"Hammer Shark"],
 ["SP14-EN014","Common","1st Edition",0.14,80046,42851643,"Jumbo Drill"],
-["SP14-EN014","Starfoil Rare","1st Edition",0.04,80047,42851643,"Jumbo Drill"],
+["SP14-EN014","Starfoil Rare","1st Edition",0.07,80047,42851643,"Jumbo Drill"],
 ["SP14-EN015","Common","1st Edition",0.11,79850,79850798,"Rocket Arrow Express"],
 ["SP14-EN015","Starfoil Rare","1st Edition",0.58,79852,79850798,"Rocket Arrow Express"],
 ["SP14-EN016","Common","1st Edition",null,79853,42969214,"Aye-Iron"],
@@ -87,7 +87,7 @@
 ["SP14-EN043","Starfoil Rare","1st Edition",0.59,79858,64599569,"Chimeratech Overdragon"],
 ["SP14-EN044","Common","1st Edition",0.63,79861,37115575,"Malefic Truth Dragon"],
 ["SP14-EN044","Starfoil Rare","1st Edition",7.49,79863,37115575,"Malefic Truth Dragon"],
-["SP14-EN045","Common","1st Edition",0.32,79848,41788781,"Guldfaxe of the Nordic Beasts"],
+["SP14-EN045","Common","1st Edition",0.36,79848,41788781,"Guldfaxe of the Nordic Beasts"],
 ["SP14-EN045","Starfoil Rare","1st Edition",0.15,79851,41788781,"Guldfaxe of the Nordic Beasts"],
 ["SP14-EN046","Common","1st Edition",0.15,79846,77060848,"Svartalf of the Nordic Alfar"],
 ["SP14-EN046","Starfoil Rare","1st Edition",0.74,79847,77060848,"Svartalf of the Nordic Alfar"],
@@ -97,5 +97,6 @@
 ["SP14-EN048","Starfoil Rare","1st Edition",1.48,79837,30604579,"Thor, Lord of the Aesir"],
 ["SP14-EN049","Common","1st Edition",0.23,79834,67098114,"Loki, Lord of the Aesir"],
 ["SP14-EN049","Starfoil Rare","1st Edition",0.66,79835,67098114,"Loki, Lord of the Aesir"],
-["SP14-EN050","Common","1st Edition",1.39,79826,93483212,"Odin, Father of the Aesir"]
+["SP14-EN050","Common","1st Edition",1.39,79826,93483212,"Odin, Father of the Aesir"],
+["SP14-EN050","Starfoil Rare","1st Edition",5.74,79827,93483212,"Odin, Father of the Aesir"]
 ]

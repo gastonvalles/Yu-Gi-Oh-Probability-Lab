@@ -1,6 +1,6 @@
 [
 ["OP28-EN001","Ultimate Rare","Unlimited",153.92,638100,89631139,"Blue-Eyes White Dragon"],
-["OP28-EN002","Ultimate Rare","Unlimited",3,638101,32600024,"Chamber Dragonmaid"],
+["OP28-EN002","Ultimate Rare","Unlimited",3.1,638101,32600024,"Chamber Dragonmaid"],
 ["OP28-EN003","Ultimate Rare","Unlimited",3.79,638102,46396218,"Azamina Ilia Silvia"],
 ["OP28-EN004","Super Rare","Unlimited",0.23,638103,58786132,"Lucius the Shadow Vassal"],
 ["OP28-EN005","Super Rare","Unlimited",0.25,638104,98385955,"Silvy of the White Forest"],
@@ -24,6 +24,6 @@
 ["OP28-EN023","Common","Unlimited",0.11,638122,59048135,"Augmented Heraldry"],
 ["OP28-EN024","Common","Unlimited",0.28,638123,87931906,"Lunalight Fusion"],
 ["OP28-EN025","Common","Unlimited",0.08,638124,59054773,"Ignister A.I.Land"],
-["OP28-EN026","Common","Unlimited",0.12,638125,87313164,"Oh F!sh!"],
-["OP28-EN027","Super Rare","Unlimited",0.39,638126,55326323,"Crystron Token"]
+["OP28-EN026","Common","Unlimited",0.13,638125,87313164,"Oh F!sh!"],
+["OP28-EN027","Super Rare","Unlimited",0.4,638126,55326323,"Crystron Token"]
 ]

@@ -9,7 +9,7 @@
 ["LEDU-EN007","Common","1st Edition",0.19,144955,52684508,"Inferno Fire Blast"],
 ["LEDU-EN008","Super Rare","1st Edition",8.16,144957,84539520,"Amazoness Princess"],
 ["LEDU-EN009","Ultra Rare","1st Edition",3.12,144959,10928224,"Amazoness Baby Tiger"],
-["LEDU-EN010","Rare","1st Edition",0.95,144961,57312333,"Amazoness Call"],
+["LEDU-EN010","Rare","1st Edition",0.86,144961,57312333,"Amazoness Call"],
 ["LEDU-EN011","Rare","1st Edition",0.74,144962,83407038,"Amazoness Onslaught"],
 ["LEDU-EN012","Common","1st Edition",0.75,144965,91869203,"Amazoness Archer"],
 ["LEDU-EN013","Common","1st Edition",0.5,144966,94004268,"Amazoness Swords Woman"],
@@ -25,8 +25,8 @@
 ["LEDU-EN023","Rare","1st Edition",1.99,144986,82562802,"Cyberdark Claw"],
 ["LEDU-EN024","Super Rare","1st Edition",2.34,144987,18967507,"Cyberdarkness Dragon"],
 ["LEDU-EN025","Super Rare","1st Edition",0.78,144988,44352516,"Cyberdark Inferno"],
-["LEDU-EN026","Common","1st Edition",0.31,144989,41230939,"Cyberdark Horn"],
-["LEDU-EN027","Common","1st Edition",0.2,144990,77625948,"Cyberdark Edge"],
+["LEDU-EN026","Common","1st Edition",0.32,144989,41230939,"Cyberdark Horn"],
+["LEDU-EN027","Common","1st Edition",0.19,144990,77625948,"Cyberdark Edge"],
 ["LEDU-EN028","Common","1st Edition",0.2,144993,3019642,"Cyberdark Keel"],
 ["LEDU-EN029","Rare","1st Edition",0.22,144995,71340250,"Mixeroid"],
 ["LEDU-EN030","Super Rare","1st Edition",0.59,144997,17745969,"Super Vehicroid - Mobile Base"],
@@ -49,6 +49,6 @@
 ["LEDU-EN047","Common","1st Edition",0.18,145027,34016756,"Riryoku"],
 ["LEDU-EN048","Common","1st Edition",0.25,145028,74848038,"Monster Reincarnation"],
 ["LEDU-EN049","Common","1st Edition",0.22,145030,78574395,"Wonder Balloons"],
-["LEDU-EN050","Common","1st Edition",0.25,145032,42671151,"The Golden Apples"],
+["LEDU-EN050","Common","1st Edition",0.22,145032,42671151,"The Golden Apples"],
 ["LEDU-EN051","Common","1st Edition",0.11,145035,45898858,"Bonding - H2O"]
 ]

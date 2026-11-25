@@ -1,5 +1,5 @@
 [
-["SS04-ENA01","Common","1st Edition",0.66,213948,46986414,"Dark Magician"],
+["SS04-ENA01","Common","1st Edition",0.7,213948,46986414,"Dark Magician"],
 ["SS04-ENA02","Common","1st Edition",0.91,213950,6368038,"Gaia The Fierce Knight"],
 ["SS04-ENA03","Common","1st Edition",1.15,213953,28279543,"Curse of Dragon"],
 ["SS04-ENA04","Common","1st Edition",0.22,213955,87796900,"Winged Dragon, Guardian of the Fortress #1"],
@@ -17,7 +17,7 @@
 ["SS04-ENA16","Common","1st Edition",2.56,213977,5405694,"Black Luster Soldier"],
 ["SS04-ENA17","Common","1st Edition",0.6,213979,55761792,"Black Luster Ritual"],
 ["SS04-ENA18","Common","1st Edition",0.42,213983,24094653,"Polymerization"],
-["SS04-ENA19","Common","1st Edition",0.97,213985,5758500,"Soul Release"],
+["SS04-ENA19","Common","1st Edition",0.93,213985,5758500,"Soul Release"],
 ["SS04-ENA20","Common","1st Edition",0.25,213987,93260132,"Spell Shattering Arrow"],
 ["SS04-ENA21","Common","1st Edition",1.12,213991,49328340,"Spiral Spear Strike"],
 ["SS04-ENA22","Common","1st Edition",0.21,213992,45939841,"Twister"],
@@ -30,7 +30,7 @@
 ["SS04-ENA29","Common","1st Edition",0.69,214005,77414722,"Magic Jammer"],
 ["SS04-ENA30","Common","1st Edition",0.2,214006,73872164,"Eliminating the League"],
 ["SS04-ENA31","Common","1st Edition",0.76,214009,66889139,"Gaia the Dragon Champion"],
-["SS04-ENB01","Common","1st Edition",1.2,214010,27125110,"Thousand-Eyes Idol"],
+["SS04-ENB01","Common","1st Edition",1.19,214010,27125110,"Thousand-Eyes Idol"],
 ["SS04-ENB02","Common","1st Edition",0.27,214011,28546905,"Illusionist Faceless Mage"],
 ["SS04-ENB03","Common","1st Edition",0.44,214012,59383041,"Toon Alligator"],
 ["SS04-ENB04","Common","1st Edition",0.22,214013,65570596,"Red Archery Girl"],
@@ -48,8 +48,8 @@
 ["SS04-ENB16","Common","1st Edition",0.27,214044,30492798,"Djinn Disserere of Rituals"],
 ["SS04-ENB17","Common","1st Edition",0.63,214047,64631466,"Relinquished"],
 ["SS04-ENB18","Common","1st Edition",0.72,214049,41426869,"Black Illusion Ritual"],
-["SS04-ENB19","Common","1st Edition",0.25,214053,15259703,"Toon World"],
-["SS04-ENB20","Common","1st Edition",4.09,214055,89997728,"Toon Table of Contents"],
+["SS04-ENB19","Common","1st Edition",0.27,214053,15259703,"Toon World"],
+["SS04-ENB20","Common","1st Edition",4.1,214055,89997728,"Toon Table of Contents"],
 ["SS04-ENB21","Common","1st Edition",1.37,214057,70560957,"Toon Rollback"],
 ["SS04-ENB22","Common","1st Edition",0.15,214052,24094653,"Polymerization"],
 ["SS04-ENB23","Common","1st Edition",0.21,214058,48206762,"Fulfillment of the Contract"],
@@ -65,5 +65,5 @@
 ["SS04-ENS03","Common","1st Edition",0.25,214225,300204003,"Thousand-Eyes Spell"],
 ["SS04-ENS04","Common","1st Edition",0.39,214226,300204004,"Toon Mayhem!"],
 ["SS04-ENV01","Ultra Rare","1st Edition",1.63,214066,46052429,"Advanced Ritual Art"],
-["SS04-ENV02","Ultra Rare","1st Edition",1.77,214067,24508238,"D.D. Crow"]
+["SS04-ENV02","Ultra Rare","1st Edition",1.78,214067,24508238,"D.D. Crow"]
 ]

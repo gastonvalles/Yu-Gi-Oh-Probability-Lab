@@ -6,9 +6,9 @@
 ["SDAZ-EN005","Common","1st Edition",0.1,267997,25451383,"Albion the Shrouded Dragon"],
 ["SDAZ-EN006","Common","1st Edition",0.11,267998,69680031,"Dogmatika Fleurdelis, the Knighted"],
 ["SDAZ-EN007","Common","1st Edition",0.31,267999,88264978,"Red-Eyes Darkness Metal Dragon"],
-["SDAZ-EN008","Common","1st Edition",0.24,268000,48770333,"Thunder King, the Lightningstrike Kaiju"],
+["SDAZ-EN008","Common","1st Edition",0.23,268000,48770333,"Thunder King, the Lightningstrike Kaiju"],
 ["SDAZ-EN009","Common","1st Edition",0.15,268001,55878038,"Chaos Dragon Levianeer"],
-["SDAZ-EN010","Common","1st Edition",0.33,268002,28674152,"Radian, the Multidimensional Kaiju"],
+["SDAZ-EN010","Common","1st Edition",0.31,268002,28674152,"Radian, the Multidimensional Kaiju"],
 ["SDAZ-EN011","Common","1st Edition",0.16,268003,20292186,"Artifact Scythe"],
 ["SDAZ-EN012","Common","1st Edition",0.11,268004,99234526,"White Dragon Wyverburster"],
 ["SDAZ-EN013","Common","1st Edition",0.09,268005,61901281,"Black Dragon Collapserpent"],
@@ -19,10 +19,10 @@
 ["SDAZ-EN018","Common","1st Edition",0.56,268010,97268402,"Effect Veiler"],
 ["SDAZ-EN019","Common","1st Edition",0.13,268011,8972398,"Omni Dragon Brotaur"],
 ["SDAZ-EN020","Common","1st Edition",0.11,268012,18973184,"Branded Lost"],
-["SDAZ-EN021","Super Rare","1st Edition",0.26,268013,44362883,"Branded Fusion"],
+["SDAZ-EN021","Super Rare","1st Edition",0.27,268013,44362883,"Branded Fusion"],
 ["SDAZ-EN022","Common","1st Edition",0.09,268014,34995106,"Branded in White"],
 ["SDAZ-EN023","Common","1st Edition",0.1,268015,62022479,"Branded Bond"],
-["SDAZ-EN024","Common","1st Edition",0.2,268016,33550694,"Fusion Gate"],
+["SDAZ-EN024","Common","1st Edition",0.19,268016,33550694,"Fusion Gate"],
 ["SDAZ-EN025","Common","1st Edition",0.16,268017,22829942,"Fusion Recycling Plant"],
 ["SDAZ-EN026","Common","1st Edition",0.22,268018,74335036,"Fusion Substitute"],
 ["SDAZ-EN027","Common","1st Edition",0.2,268019,75500286,"Gold Sarcophagus"],
@@ -44,5 +44,5 @@
 ["SDAZ-EN043","Common","1st Edition",0.13,268035,41373230,"Titaniklad the Ash Dragon"],
 ["SDAZ-EN044","Common","1st Edition",0.08,268036,34848821,"Brigrand the Glory Dragon"],
 ["SDAZ-EN045","Common","1st Edition",0.06,268037,1906812,"Sprind the Irondash Dragon"],
-["SDAZ-EN046","Common","1st Edition",0.25,268038,87746184,"Albion the Branded Dragon"]
+["SDAZ-EN046","Common","1st Edition",0.26,268038,87746184,"Albion the Branded Dragon"]
 ]
