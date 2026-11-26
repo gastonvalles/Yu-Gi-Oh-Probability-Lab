@@ -24,7 +24,7 @@
 ["SS03-ENA23","Common","1st Edition",1.36,196261,45141013,"Heat Wave"],
 ["SS03-ENA24","Common","1st Edition",0.18,196262,52112003,"Card Advance"],
 ["SS03-ENA25","Common","1st Edition",0.31,196263,11925569,"Hunting Instinct"],
-["SS03-ENA26","Common","1st Edition",0.22,196264,17814387,"Reinforcements"],
+["SS03-ENA26","Common","1st Edition",0.21,196264,17814387,"Reinforcements"],
 ["SS03-ENA27","Common","1st Edition",0.1,196265,63571750,"Pharaoh's Treasure"],
 ["SS03-ENA28","Common","1st Edition",0.08,196266,82324105,"Limit Impulse"],
 ["SS03-ENAS1","Common","1st Edition",0.12,196233,300203001,"Dinosaur Kingdom"],
@@ -33,7 +33,7 @@
 ["SS03-ENB02","Common","1st Edition",0.18,196268,58192742,"Petit Moth"],
 ["SS03-ENB03","Common","1st Edition",0.46,196269,53606874,"Big Insect"],
 ["SS03-ENB04","Common","1st Edition",0.1,196283,89091579,"Basic Insect"],
-["SS03-ENB05","Common","1st Edition",0.26,196284,39175982,"Winged Cleaver"],
+["SS03-ENB05","Common","1st Edition",0.28,196284,39175982,"Winged Cleaver"],
 ["SS03-ENB06","Common","1st Edition",0.05,196285,56283725,"Kumootoko"],
 ["SS03-ENB07","Common","1st Edition",0.2,196286,70924884,"Alinsection"],
 ["SS03-ENB08","Common","1st Edition",0.16,196287,91512835,"Insect Queen"],
@@ -61,5 +61,5 @@
 ["SS03-ENBS1","Common","1st Edition",0.13,196235,300203003,"Hyper Metamorphosis"],
 ["SS03-ENBS2","Common","1st Edition",0.18,196236,300203004,"Hidden Parasite"],
 ["SS03-ENV01","Ultra Rare","1st Edition",0.44,196237,78986941,"Order to Charge"],
-["SS03-ENV02","Ultra Rare","1st Edition",0.48,196238,98954106,"Jar of Avarice"]
+["SS03-ENV02","Ultra Rare","1st Edition",0.47,196238,98954106,"Jar of Avarice"]
 ]

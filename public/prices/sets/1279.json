@@ -15,7 +15,7 @@
 ["DR04-EN014","Common","Unlimited",1.73,80625,79979666,"Elemental HERO Bubbleman"],
 ["DR04-EN015","Ultra Rare","Unlimited",37.61,80626,70095154,"Cyber Dragon"],
 ["DR04-EN016","Rare","Unlimited",null,80627,59023523,"Cybernetic Magician"],
-["DR04-EN017","Common","Unlimited",0.16,80628,96428622,"Cybernetic Cyclopean"],
+["DR04-EN017","Common","Unlimited",0.13,80628,96428622,"Cybernetic Cyclopean"],
 ["DR04-EN018","Common","Unlimited",0.59,80629,22512237,"Mechanical Hound"],
 ["DR04-EN019","Common","Unlimited",0.66,80630,59907935,"Cyber Archfiend"],
 ["DR04-EN020","Super Rare","Unlimited",5.39,80631,85306040,"Goblin Elite Attack Force"],
@@ -166,7 +166,7 @@
 ["DR04-EN165","Common","Unlimited",0.64,80772,66607691,"Photon Generator Unit"],
 ["DR04-EN166","Common","Unlimited",2.75,80773,8198712,"End of the World"],
 ["DR04-EN167","Super Rare","Unlimited",null,80774,92001300,"Ancient Gear Castle"],
-["DR04-EN168","Common","Unlimited",1,80775,44182827,"Samsara"],
+["DR04-EN168","Common","Unlimited",1.1,80775,44182827,"Samsara"],
 ["DR04-EN169","Common","Unlimited",0.45,80776,29590905,"Super Junior Confrontation"],
 ["DR04-EN170","Common","Unlimited",1.28,80777,55985014,"Miracle Kids"],
 ["DR04-EN171","Common","Unlimited",1.25,80778,91989718,"Attack Reflector Unit"],
@@ -243,5 +243,5 @@
 ["DR04-EN242","Secret Rare","Unlimited",39.74,80858,36354007,"Gilford the Lightning"],
 ["DR04-EN243","Secret Rare","Unlimited",88.66,80860,63749102,"Exarion Universe"],
 ["DR04-EN244","Secret Rare","Unlimited",300,80864,70074904,"D.D. Assailant"],
-["DR04-EN245","Secret Rare","Unlimited",56,77471,34627841,"Kaibaman"]
+["DR04-EN245","Secret Rare","Unlimited",55.64,77471,34627841,"Kaibaman"]
 ]
