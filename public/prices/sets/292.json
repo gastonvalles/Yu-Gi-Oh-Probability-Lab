@@ -1,7 +1,7 @@
 [
 ["YSDJ-EN000","Ultra Rare","1st Edition",5.8,26411,89252153,"Elemental HERO Necroshade"],
 ["YSDJ-EN000","Ultra Rare","Unlimited",1.58,26411,89252153,"Elemental HERO Necroshade"],
-["YSDJ-EN001","Common","1st Edition",1.13,26412,48766543,"Cyber-Tech Alligator"],
+["YSDJ-EN001","Common","1st Edition",1.11,26412,48766543,"Cyber-Tech Alligator"],
 ["YSDJ-EN001","Common","Unlimited",2.89,26412,48766543,"Cyber-Tech Alligator"],
 ["YSDJ-EN002","Common","1st Edition",0.76,26413,69140098,"Gemini Elf"],
 ["YSDJ-EN002","Common","Unlimited",1.4,26413,69140098,"Gemini Elf"],
@@ -48,7 +48,7 @@
 ["YSDJ-EN023","Common","1st Edition",0.49,26434,55226821,"Lightning Blade"],
 ["YSDJ-EN023","Common","Unlimited",null,26434,55226821,"Lightning Blade"],
 ["YSDJ-EN024","Common","1st Edition",4.69,26435,19613556,"Heavy Storm"],
-["YSDJ-EN024","Common","Unlimited",5,26435,19613556,"Heavy Storm"],
+["YSDJ-EN024","Common","Unlimited",0.1,26435,19613556,"Heavy Storm"],
 ["YSDJ-EN025","Common","1st Edition",0.11,26436,10012614,"Banner of Courage"],
 ["YSDJ-EN025","Common","Unlimited",2.29,26436,10012614,"Banner of Courage"],
 ["YSDJ-EN026","Common","1st Edition",1.75,26437,97169186,"Smashing Ground"],

@@ -5,7 +5,7 @@
 ["LOB-EN003","Super Rare","Unlimited",4.97,476164,45231177,"Flame Swordsman"],
 ["LOB-EN004","Common","Unlimited",1.5,476168,32274490,"Skull Servant"],
 ["LOB-EN005","Ultra Rare","Unlimited",40.77,476169,46986414,"Dark Magician"],
-["LOB-EN006","Ultra Rare","Unlimited",12.01,476171,6368038,"Gaia The Fierce Knight"],
+["LOB-EN006","Ultra Rare","Unlimited",19.97,476171,6368038,"Gaia The Fierce Knight"],
 ["LOB-EN007","Super Rare","Unlimited",2.86,476173,91152256,"Celtic Guardian"],
 ["LOB-EN008","Common","Unlimited",0.08,476174,89091579,"Basic Insect"],
 ["LOB-EN009","Common","Unlimited",0.45,476176,40374923,"Mammoth Graveyard"],
@@ -14,7 +14,7 @@
 ["LOB-EN012","Common","Unlimited",1.03,476180,77827521,"Trial of Nightmare"],
 ["LOB-EN013","Common","Unlimited",0.74,476181,90963488,"Nemuriko"],
 ["LOB-EN014","Common","Unlimited",0.1,476184,32864,"The 13th Grave"],
-["LOB-EN015","Rare","Unlimited",1.88,476186,37421579,"Charubin the Fire Knight"],
+["LOB-EN015","Rare","Unlimited",1.85,476186,37421579,"Charubin the Fire Knight"],
 ["LOB-EN016","Common","Unlimited",0.5,476189,34460851,"Flame Manipulator"],
 ["LOB-EN017","Common","Unlimited",0.34,476190,36121917,"Monster Egg"],
 ["LOB-EN018","Common","Unlimited",null,476191,53293545,"Firegrass"],
@@ -54,7 +54,7 @@
 ["LOB-EN052","Super Rare","Unlimited",1.39,243662,53129443,"Dark Hole"],
 ["LOB-EN053","Super Rare","Unlimited",4.31,476235,12580477,"Raigeki"],
 ["LOB-EN054","Common","Unlimited",0.1,476239,38199696,"Red Medicine"],
-["LOB-EN055","Common","Unlimited",0.74,476242,76103675,"Sparks"],
+["LOB-EN055","Common","Unlimited",0.28,476242,76103675,"Sparks"],
 ["LOB-EN056","Common","Unlimited",0.71,476244,46130346,"Hinotama"],
 ["LOB-EN057","Rare","Unlimited",1.24,476246,66788016,"Fissure"],
 ["LOB-EN058","Super Rare","Unlimited",2.51,476247,4206964,"Trap Hole"],
@@ -109,7 +109,7 @@
 ["LOB-EN107","Rare","Unlimited",0.2,476432,95952802,"Flower Wolf"],
 ["LOB-EN108","Super Rare","Unlimited",2.44,476433,54652250,"Man-Eater Bug"],
 ["LOB-EN109","Common","Unlimited",0.09,476434,73051941,"Sand Stone"],
-["LOB-EN110","Rare","Unlimited",0.5,476435,7089711,"Hane-Hane"],
+["LOB-EN110","Rare","Unlimited",null,476435,7089711,"Hane-Hane"],
 ["LOB-EN111","Common","Unlimited",0.15,476436,33178416,"Misairuzame"],
 ["LOB-EN112","Common","Unlimited",0.63,476437,29172562,"Steel Ogre Grotto #1"],
 ["LOB-EN113","Common","Unlimited",0.13,476438,55444629,"Lesser Dragon"],
@@ -124,5 +124,5 @@
 ["LOB-EN122","Ultra Rare","Unlimited",20.26,476448,70903634,"Right Arm of the Forbidden One"],
 ["LOB-EN123","Ultra Rare","Unlimited",12.49,476449,7902349,"Left Arm of the Forbidden One"],
 ["LOB-EN124","Ultra Rare","Unlimited",37.22,476450,33396948,"Exodia the Forbidden One"],
-["LOB-EN125","Secret Rare","Unlimited",12.93,476445,66889139,"Gaia the Dragon Champion"]
+["LOB-EN125","Secret Rare","Unlimited",13.25,476445,66889139,"Gaia the Dragon Champion"]
 ]
